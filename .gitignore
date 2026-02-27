@@ -1,0 +1,26 @@
+# PlatformIO
+.pio/
+.platformio/
+
+# Builds & temporaires
+*.bin
+*.elf
+*.o
+build/
+dist/
+
+# VS Code
+.vscode/
+
+# Fichiers secrets
+secrets.h
+config.h
+wifi_credentials.h
+mqtt_credentials.h
+*.key
+*.pem
+
+# Système
+.DS_Store
+Thumbs.db
+*.log

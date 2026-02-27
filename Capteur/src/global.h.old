@@ -1,0 +1,74 @@
+#ifndef __GLOBAL_H__
+#define __GLOBAL_H__
+
+// Envoi des valeurs de test. Voir main.cpp : 
+//   static float mes[nbMes][2] = {
+//                          {10.0,90.0},
+//                          {20.0,80.0},
+//                          {40.0,60.0},
+//                          {-12.0,2.0}
+//                        };
+//#define TEST_EMISSION_RCS
+
+#define DEBUG_NO_DEEP_SLEEP
+//#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
+#define CAPTEUR_DHT20
+//#define CAPTEUR_DS18B20
+
+//----------------------------------------------------------------------------
+// En cas de perte de la configuration, décommenter la ligne suivante
+// et remplissez les champs ssid et passwd par vos propres données.
+//
+// Une fois le Wifi connecté, connectez-vous par Web, reparamétrez les champs
+// et revenez ici effacer vos données
+//----------------------------------------------------------------------------
+//#define FORCE_CONNEXION_WIFI
+
+#ifdef FORCE_CONNEXION_WIFI
+//#define FORCE_WIFI_SSID  "Simpson"
+//#define FORCE_WIFI_PASSWD "al177SOLO$*"
+#define FORCE_WIFI_SSID  "Jbil"
+#define FORCE_WIFI_PASSWD "al177solo10"
+#define FORCE_MQTT_SERVER "51.77.244.19"
+#define FORCE_MQTT_PORT 1883
+#define FORCE_MQTT_USER "ubuntu"
+#define FORCE_MQTT_PWD "al177SOLO$*"
+#endif
+
+// Communication RF 433 MHz
+#define CC1101_GDO0 3
+#define CC1101_CS 7
+#define CC1101_MOSI 6
+#define CC1101_MISO 5
+#define CC1101_SCK 4
+
+// Pins
+
+/*#define LED_RED 4
+#define LED_GREEN 16
+#define LED_BLUE 17
+#define TFT_BL 21*/
+
+//#ifdef _RCSWITCH_MODE_
+#define CC1101_POWER_GPIO 20 // Contrôle l'alimentation du CC1101
+//#endif
+
+// Thermomètre DS18B20
+#ifdef CAPTEUR_DS18B20
+#define DS18B20_PIN 2
+// Etat batterie
+#define BATTERIE_PIN    3
+#else
+// Etat batterie
+#define BATTERIE_PIN    2
+#endif
+#define LED_ON LOW
+#define LED_OFF HIGH
+
+
+// Espace de nom pour l'enregistrement NVS
+#define NVS_NAME_SPACE "ThCh1er"
+
+// Version du logiciel
+#define VERSION "1.6"
+#endif // __GLOBAL_H__

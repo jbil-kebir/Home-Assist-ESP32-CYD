@@ -1,0 +1,324 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include "global.h"
+#include "MyConfig.h"
+#ifndef _RCSWITCH_MODE_
+#include "MyWifi.h"
+#include "MyMqtt.h"
+#include "MyWebServer.h"
+#endif
+#include "MyRCSwitch.h"
+#include "MyCC1101.h"
+#ifdef CAPTEUR_DS18B20
+#include "MyDS18B20.h"
+#endif
+#ifdef CAPTEUR_DHT20
+#include "DHT20Sensor.h"
+#endif
+#include "MyBatterieAA.h"
+#include "MyDateTime.h"
+
+
+
+
+// === OBJETS GLOBAUX ===
+CMyDateTime mDateTime;
+CConfig config("Thermomètre ThCh1er", mDateTime);
+#ifndef _RCSWITCH_MODE_ 
+CWifi mWifi[MAX_WIFI_NETS];
+WiFiClient wifiClient;
+CMqtt mqtt(wifiClient, config/*, mRmoteTH1*/);
+MyWebServer webServer(config, mqtt, mWifi);
+#endif
+CCC1101 mCC1101;
+CMyRCSwitch mRCSwitch(config);
+
+#ifdef CAPTEUR_DS18B20
+MyDS18B20 ds18b20(DS18B20_PIN, mDateTime);  
+#endif
+#ifdef CAPTEUR_DHT20
+DHT20Sensor dht20(mDateTime);  
+#endif
+CBatterieAA mBatterie(BATTERIE_PIN, mDateTime);  
+
+
+
+void print();
+
+
+
+// === SETUP & LOOP ===
+void setup() {
+  Serial.begin(115200);
+  while(!Serial);
+  randomSeed(analogRead(0));  // Initialisation aléatoire
+
+  pinMode(CC1101_POWER_GPIO, OUTPUT);
+  digitalWrite(CC1101_POWER_GPIO, LOW);  // Allume le CC1101
+  
+  config.setPrefixNVS("cfg_");
+  #ifndef _RCSWITCH_MODE_
+  config.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
+      return ptr->publish(topic, payload);
+  });
+  #endif
+
+  Serial.printf("\n=== %s %s ===\n",config.nomEquipement, VERSION);
+
+  #ifdef CAPTEUR_DS18B20
+  Serial.println("Initialisation DS18B20...");
+  ds18b20.begin("th_");
+  config.ds18b20 = &ds18b20;
+  // Thermomètre Chambre 1er - publication MQTT
+  ds18b20.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
+      return ptr->publish(topic, payload);
+  });
+  #endif
+  mBatterie.setup("bat_");
+  config.mBatterieAA = &mBatterie;
+
+  #ifndef _RCSWITCH_MODE_
+  mBatterie.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
+      return ptr->publish(topic, payload);
+  });
+  #endif
+
+  #ifdef CAPTEUR_DHT20
+  Serial.println("Initialisation DHT20...");
+  dht20.begin("thhum_");
+  config.dht20 = &dht20;
+  dht20.mRCSwitch = &mRCSwitch;
+  #ifndef _RCSWITCH_MODE_
+  dht20.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
+      return ptr->publish(topic, payload);
+  });
+  #endif
+  #endif
+ 
+  config.setup();
+
+  mCC1101.setup();
+  mRCSwitch.setup();
+
+  #ifdef FORCE_CONNEXION_WIFI
+  // Mettre votre SSID mais n'oubliez pas de le retirer
+  for(int i=0; i< MAX_WIFI_NETS; i++) {
+    mWifi[i].wifi_ssid = FORCE_WIFI_SSID; mWifi[i].wifi_password=FORCE_WIFI_PASSWD; // On met le SSI et le password par défaut dans toutes les connexions
+    if (i==0) mWifi[i].active=true; else mWifi[i].active=false;           // On ne laisse active que la première
+    String prefix = String("wifi")  + String("_") + String(i) + String("_"); // On met en place les préfixes NVS
+    mWifi[i].setPrefixNVS(prefix.c_str());
+  }
+  //#undef MAX_WIFI_NETS
+  //#define MAX_WIFI_NETS 1
+  #else
+  #ifndef _RCSWITCH_MODE_
+  for(int i=0; i< MAX_WIFI_NETS; i++) {
+    String prefix = String("wifi")  + String("_") + String(i) + String("_");
+    mWifi[i].setup(prefix.c_str());
+  }
+  #endif
+  #endif
+
+  #ifndef _RCSWITCH_MODE_
+  mqtt.setup("mqtt_");
+  #endif
+
+  print(); // Affiche toute la config
+  
+  #ifndef _RCSWITCH_MODE_
+  int i = 0;
+  while(true) {
+    Serial.printf("WiFi %d : %s\n", i, mWifi[i].nomEquipement);
+    if (mWifi[i].active) {
+//      mWifi[i].setup();
+      mWifi[i].begin();
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\nEchec de la connexion");
+      }
+      else break;
+    }
+    i = (i + 1) % MAX_WIFI_NETS;
+  }
+  config.setWifi(&mWifi[i]);
+
+  // Configurer et synchroniser l'heure
+  Serial.println("\nSynchronisation de l'heure...");
+  mDateTime.setup();
+  //configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  
+  // Attendre la synchronisation
+  delay(2000);
+  
+  // Afficher la date et l'heure
+  Serial.println("\n========== DATE ET HEURE ==========");
+  Serial.print("DateTime: ");
+  Serial.println(mDateTime.getDateTime());
+  Serial.print("Date seule: ");
+  Serial.println(mDateTime.getDate());
+  Serial.print("Heure seule: ");
+  Serial.println(mDateTime.getTime());
+  Serial.print("Format ISO: ");
+  Serial.println(mDateTime.getDateTimeISO());
+  Serial.println("===================================\n");
+
+  if (WiFi.status() == WL_CONNECTED) {
+    webServer.setup();
+  }
+  mqtt.begin();
+  #endif
+
+  #ifndef TEST_EMISSION_RCS
+  // Nécessite wifi et mqtt
+  config.traiteReveil();
+  #ifdef CAPTEUR_DS18B20
+  int retTemp = ds18b20.readAndPublish(true); // Force une première remontée
+  #endif
+  int retBatt = mBatterie.readAndPublish(true); // Force une première remontée
+  #ifdef CAPTEUR_DHT20
+  int retTempHum = dht20.readAndPublish(true, true); // Force une première remontée
+  #endif
+  #endif // TEST_EMISSION_RCS
+
+
+}
+
+
+
+void loop() {
+
+  #ifdef TEST_EMISSION_RCS
+  //-------------------------------------
+  // TEST
+  //-------------------------------------
+  static unsigned long ttt=0L;
+  static int index=0;
+  /*#define nbMes 4
+  static float mes[nbMes][2] = {
+                          {10.0,90.0},
+                          {20.0,80.0},
+                          {40.0,60.0},
+                          {-12.0,2.0}
+                        };*/
+  #define nbMes 1
+  static float mes[nbMes][2] = {
+                          {20.0,80.0}
+                        };
+  if (millis() - ttt > 5000 || ttt == 0L) {
+    dht20.readAndPublishTEST(mes[index][0], mes[index][1]); 
+    //dht20.mRCSwitch->envoieCode(nullptr, 0);
+    ttt = millis();
+    index = (index+1) % nbMes;
+    delay(10);
+    return;
+  }
+  else {
+    delay(10);
+    return;
+  }
+  //-------------------------------------
+  // TEST FIN
+  //-------------------------------------
+  #endif // TEST_EMISSION_RCS
+  
+  config.loop();
+  #ifndef _RCSWITCH_MODE_
+  mqtt.loop();  // Toujours actif, même écran éteint
+  webServer.loop();
+  #endif
+ 
+  #ifdef CAPTEUR_DS18B20
+ 
+  int ret = ds18b20.loop();
+  if (ret == -1) {
+    Serial.println("ds18b20.readTemperature() - échec");
+  } 
+  else if (ret == 0) {
+    Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C inchangé");
+  } 
+  else if (ret == 1 && ds18b20.active) { // Température changée
+    Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C changée");
+
+  } 
+  else if (ret == -9) { // Inactif
+    String s = "Thermomètre " + ds18b20.nomEquipement + " inactif";
+    Serial.println(s);
+    }
+  #endif
+
+
+  
+  int retTension = mBatterie.loop();
+  if (retTension == -1) {
+    Serial.println("mBatterie.readTension() - échec");
+  } 
+  else if (retTension == 0) {
+    Serial.println(String(mBatterie.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V inchangé");
+  } 
+  else if (retTension == 1 && mBatterie.active) { // Température changée
+    Serial.println(String(mBatterie.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V changée");
+
+  } 
+  else if (retTension == -9) { // Inactif
+    String s = "Tension " + mBatterie.nomEquipement + " inactif";
+    Serial.println(s);
+    }
+
+  //------------------------------------------------------------------------------------
+  // DHT20
+  //------------------------------------------------------------------------------------
+  #ifdef CAPTEUR_DHT20
+  int retdht20 = dht20.loop();
+  if (retdht20 == -1) {
+    Serial.println("dht20.readTemperature() - échec");
+  } 
+  else if (retdht20 == 0) {
+    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C inchangé");
+    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Humidite " + String(dht20.getLastHumidite(), 1) + " %% inchangé");
+  } 
+  else if (retdht20 == 1 && dht20.active) { // Température changée
+    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C changée");
+    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Humidite " + String(dht20.getLastHumidite(), 1) + " %% changée");
+
+  } 
+  else if (retdht20 == -9) { // Inactif
+    String s = "Thermomètre " + dht20.nomEquipement + " inactif";
+    Serial.println(s);
+    }
+  #endif
+    delay(10);
+}
+
+
+void print() {
+  Serial.println("\n=== CONFIGURATION CHARGÉE DEPUIS NVS ===");
+  
+  config.print();
+  Serial.println();
+
+  #ifndef _RCSWITCH_MODE_
+  Serial.println("[WiFi]");
+  for (int i=0; i< MAX_WIFI_NETS; i++) {
+    mWifi[i].print();
+    Serial.println();
+  }
+  mqtt.print();
+  Serial.println();
+  #endif
+
+  #ifdef CAPTEUR_DS18B20
+  Serial.println("[DS18B20]");
+  ds18b20.print();
+  #endif
+
+  #ifdef CAPTEUR_DHT20
+  Serial.println("[DHT20]");
+  dht20.print();
+  #endif
+
+  Serial.println("[Batterie AA]");
+  mBatterie.print();
+
+  Serial.println("============================================\n");
+  Serial.flush();
+}
