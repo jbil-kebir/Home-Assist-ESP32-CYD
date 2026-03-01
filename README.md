@@ -9,77 +9,53 @@ Système domotique complet et évolutif basé sur **ESP32** (C3 & S3) avec inté
 - Ancienne compatibilité **RF 433 MHz** (CC1101)
 - Capteurs déportés : température/humidité (**DHT20**), température filaire (**DS18B20**), batterie AA/lithium, tout-ou-rien
 - Suivi d'état batterie et alertes faible tension
-- Passerelle dédiée **ESP32-S3** (reçoit LoRa ? publie MQTT)
+- Passerelle dédiée **ESP32-S3** (reçoit LoRa → publie MQTT)
 - Mode deep-sleep optimisé sur les capteurs (autonomie plusieurs mois sur piles AA)
 - Intégration **Home Assistant** via MQTT
 
-<<<<<<< HEAD
-## Aper�u visuel
+## Aperçu visuel
 
-### Contr�leur principal (station ma�tre)
-
-| Photo                                          | Description                                                                 |
-|------------------------------------------------|-----------------------------------------------------------------------------|
-| ![Contr�leur principal avec CYD](images/Controleur-primaire-avec-CYD.jpg) | Contr�leur principal �quip� de l'�cran CYD (interface tactile locale)     |
-| ![Contr�leur principal sans CYD](images/Controleur-primaire-sans-CYD.jpg) | M�me contr�leur principal, version sans �cran (montage discret)            |
-
-### Contr�leur auxiliaire (CYD) � �crans disponibles
+### Contrôleur principal (station maître)
 
 | Photo                                          | Description                                                                 |
 |------------------------------------------------|-----------------------------------------------------------------------------|
-| ![�cran 1](images/Controleur-Aux-Ecran-1.jpg)  | �cran principal du contr�leur auxiliaire                                    |
-| ![�cran 2](images/Controleur-Aux-Ecran-2.jpg)  | �cran 2 (exemple d'affichage alternatif)                                    |
-| ![�cran 3](images/Controleur-Aux-Ecran-3.jpg)  | �cran 3                                                                     |
-| ![�cran 4](images/Controleur-Aux-Ecran-4.jpg)  | �cran 4                                                                     |
+| ![Contrôleur principal avec CYD](images/Controleur-primaire-avec-CYD.jpg) | Contrôleur principal équipé de l'écran CYD (interface tactile locale)     |
+| ![Contrôleur principal sans CYD](images/Controleur-primaire-sans-CYD.jpg) | Même contrôleur principal, version sans écran (montage discret)            |
 
-### Passerelle LoRa ? MQTT
+### Contrôleur auxiliaire (CYD) – écrans disponibles
+
+| Photo                                          | Description                                                                 |
+|------------------------------------------------|-----------------------------------------------------------------------------|
+| ![Écran 1](images/Controleur-Aux-Ecran-1.jpg)  | Écran principal du contrôleur auxiliaire                                    |
+| ![Écran 2](images/Controleur-Aux-Ecran-2.jpg)  | Écran 2 (exemple d'affichage alternatif)                                    |
+| ![Écran 3](images/Controleur-Aux-Ecran-3.jpg)  | Écran 3                                                                     |
+| ![Écran 4](images/Controleur-Aux-Ecran-4.jpg)  | Écran 4                                                                     |
+
+### Passerelle LoRa → MQTT
 
 ![Passerelle LoRa](images/Relais-Lora.jpg)
 
-Passerelle d�di�e bas�e sur ESP32-S3 qui re�oit les messages LoRa des capteurs et les publie en MQTT.
+Passerelle dédiée basée sur ESP32-S3 qui reçoit les messages LoRa des capteurs et les publie en MQTT.
 
 ### Exemple de capteur LoRa P2P
 
 ![Capteur LoRa P2P](images/Capteur-Lora-P2P.jpg)
 
-N�ud capteur autonome LoRa P2P avec DHT20 (temp�rature + humidit�) et d�tecteur de niveau d'eau (non visible sur cette photo).
-=======
-## Matériel utilisé
-
-| Composant                  | Modèle principal                  | Rôle                              |
-|----------------------------|------------------------------------|-----------------------------------|
-| Contrôleur principal       | ESP32-C3 Super Mini / ESP32-S3     | MQTT + écran CYD                  |
-| Écran tactile              | Cheap Yellow Display (ILI9341 + XPT2046) | Interface locale                |
-| Capteurs LoRa              | ESP32-C3/S3 + Wio-SX1262           | Température, humidité, batterie   |
-| Passerelle LoRa ? MQTT     | ESP32-S3 (XIAO ou autre)           | Relais LoRa / MQTT                |
-| Ancienne RF 433 MHz        | CC1101                             | Compatibilité descendante         |
->>>>>>> 59ba36edb351da530ebde4cb6aaf16d71cfc22a7
+Nœud capteur autonome LoRa P2P avec DHT20 (température + humidité) et détecteur de niveau d'eau (non visible sur cette photo).
 
 ## Structure du projet
 
 Home-Assist-ESP32-CYD/
-<<<<<<< HEAD
-+-- Home-Assist/          # Contr�leur principal + CYD (interface MQTT + LoRa gateway)
-+-- Capteur/              # Tous les n�uds capteurs LoRa (temp�rature, batterie, tout-ou-rien)
-+-- Relais-Lora/          # Passerelle ESP32-S3 LoRa ? MQTT
-+-- images/               # Photos et visuels
-+-- docs/                 # Sch�mas, diagrammes, flux d'information (� venir)
-=======
-+-- Home-Assist/          # Contrôleur principal + CYD (interface MQTT + LoRa gateway)
-+-- Capteur/              # Tous les nœuds capteurs LoRa (température, batterie, tout-ou-rien)
-+-- Relais-Lora/          # Passerelle ESP32-S3 LoRa / MQTT
-+-- docs/                 # Notices
-+-- images/               # Photos, schémas, captures d'écran
->>>>>>> 59ba36edb351da530ebde4cb6aaf16d71cfc22a7
-+-- LICENSE               # MIT
-+-- README.md             # Ce fichier
+├── Home-Assist/          # Contrôleur principal + CYD (interface MQTT + LoRa gateway)
+├── Capteur/              # Tous les nœuds capteurs LoRa (température, batterie, tout-ou-rien)
+├── Relais-Lora/          # Passerelle ESP32-S3 LoRa → MQTT
+├── images/               # Photos et visuels
+├── docs/                 # Schémas, diagrammes, flux d'information (à venir)
+├── LICENSE               # MIT
+└── README.md             # Ce fichier
 
 
-<<<<<<< HEAD
 Chaque sous-dossier est autonome et contient son propre `platformio.ini`.
-=======
-Chaque sous-dossier contient son propre `platformio.ini` et peut être ouvert indépendamment dans VS Code + PlatformIO.
->>>>>>> 59ba36edb351da530ebde4cb6aaf16d71cfc22a7
 
 ## Installation rapide
 
@@ -89,19 +65,16 @@ Chaque sous-dossier contient son propre `platformio.ini` et peut être ouvert in
    git clone https://github.com/jbil-kebir/Home-Assist-ESP32-CYD.git
    
 3. Ouvrir un des sous-dossiers dans VS Code (ex: Home-Assist)
-4. S�lectionner l�environnement :
-    esp32c3 ? ESP32-C3 Super Mini
-    esp32s3 ? ESP32-S3 (XIAO ou autre)
+4. Sélectionner l’environnement :
+esp32c3 → ESP32-C3 Super Mini
+esp32s3 → ESP32-S3 (XIAO ou autre)
 
 5. Compiler / flasher :
-
 pio run -e esp32c3
 pio run -e esp32c3 --target upload
 
-## Licence
-
-MIT License � voir le fichier [LICENSE](LICENSE)
-
-## Mots-cl�s
-
+Licence
+MIT License – voir le fichier LICENSE
+Mots-clés
 Domotique, CYD, ESP32, ESP32-C3, ESP32-S3, LoRa, LoRa P2P, SX1262, MQTT, Home Assistant, DHT20, DS18B20, Batterie, Capteur, Passerelle, RF 433 MHz, CC1101
+
