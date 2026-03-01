@@ -1,44 +1,45 @@
 # Home-Assist-ESP32-CYD
 
-Système domotique complet et évolutif basé sur **ESP32** (C3 & S3) avec intégration **LoRa P2P**, **MQTT**, écran tactile **CYD** (Cheap Yellow Display) et capteurs déportés.
+SystÃ¨me domotique complet et Ã©volutif basÃ© sur **ESP32** (C3 & S3) avec intÃ©gration **LoRa P2P**, **MQTT**, Ã©cran tactile **CYD** (Cheap Yellow Display) et capteurs dÃ©portÃ©s.
 
-## Fonctionnalités principales
+## FonctionnalitÃ©s principales
 
-- Contrôleur principal avec écran tactile **CYD** (interface locale + MQTT)
-- Communication **LoRa P2P** (SX1262) pour longue portée et pénétration (sous-sol, dépendances)
-- Ancienne compatibilité **RF 433 MHz** (CC1101)
-- Capteurs déportés : température/humidité (**DHT20**), température filaire (**DS18B20**), batterie AA/lithium, tout-ou-rien
-- Suivi d'état batterie et alertes faible tension
-- Passerelle dédiée **ESP32-S3** (reçoit LoRa ? publie MQTT)
-- Mode deep-sleep optimisé sur les capteurs (autonomie plusieurs mois sur piles AA)
-- Intégration **Home Assistant** via MQTT
+- ContrÃ´leur principal avec Ã©cran tactile **CYD** (interface locale + MQTT)
+- Communication **LoRa P2P** (SX1262) pour longue portÃ©e et pÃ©nÃ©tration (sous-sol, dÃ©pendances)
+- Ancienne compatibilitÃ© **RF 433 MHz** (CC1101)
+- Capteurs dÃ©portÃ©s : tempÃ©rature/humiditÃ© (**DHT20**), tempÃ©rature filaire (**DS18B20**), batterie AA/lithium, tout-ou-rien
+- Suivi d'Ã©tat batterie et alertes faible tension
+- Passerelle dÃ©diÃ©e **ESP32-S3** (reÃ§oit LoRa ? publie MQTT)
+- Mode deep-sleep optimisÃ© sur les capteurs (autonomie plusieurs mois sur piles AA)
+- IntÃ©gration **Home Assistant** via MQTT
 
-## Matériel utilisé
+## MatÃ©riel utilisÃ©
 
-| Composant                  | Modèle principal                  | Rôle                              |
+| Composant                  | ModÃ¨le principal                  | RÃ´le                              |
 |----------------------------|------------------------------------|-----------------------------------|
-| Contrôleur principal       | ESP32-C3 Super Mini / ESP32-S3     | MQTT + écran CYD                  |
-| Écran tactile              | Cheap Yellow Display (ILI9341 + XPT2046) | Interface locale                |
-| Capteurs LoRa              | ESP32-C3/S3 + Wio-SX1262           | Température, humidité, batterie   |
-| Passerelle LoRa ? MQTT     | ESP32-S3 (XIAO ou autre)           | Relais LoRa ? MQTT                |
-| Ancienne RF 433 MHz        | CC1101                             | Compatibilité descendante         |
+| ContrÃ´leur principal       | ESP32-C3 Super Mini / ESP32-S3     | MQTT + Ã©cran CYD                  |
+| Ã‰cran tactile              | Cheap Yellow Display (ILI9341 + XPT2046) | Interface locale                |
+| Capteurs LoRa              | ESP32-C3/S3 + Wio-SX1262           | TempÃ©rature, humiditÃ©, batterie   |
+| Passerelle LoRa ? MQTT     | ESP32-S3 (XIAO ou autre)           | Relais LoRa / MQTT                |
+| Ancienne RF 433 MHz        | CC1101                             | CompatibilitÃ© descendante         |
 
 ## Structure du projet
 Home-Assist-ESP32-CYD/
-+-- Home-Assist/          # Contrôleur principal + CYD (interface MQTT + LoRa gateway)
-+-- Capteur/              # Tous les nœuds capteurs LoRa (température, batterie, tout-ou-rien)
-+-- Relais-Lora/          # Passerelle ESP32-S3 LoRa ? MQTT
-+-- docs/                 # Photos, schémas, captures d'écran (à remplir)
++-- Home-Assist/          # ContrÃ´leur principal + CYD (interface MQTT + LoRa gateway)
++-- Capteur/              # Tous les nÅ“uds capteurs LoRa (tempÃ©rature, batterie, tout-ou-rien)
++-- Relais-Lora/          # Passerelle ESP32-S3 LoRa / MQTT
++-- docs/                 # Notices
++-- images/               # Photos, schÃ©mas, captures d'Ã©cran
 +-- LICENSE               # MIT
 +-- README.md             # Ce fichier
 
 
-Chaque sous-dossier contient son propre `platformio.ini` et peut être ouvert indépendamment dans VS Code + PlatformIO.
+Chaque sous-dossier contient son propre `platformio.ini` et peut Ãªtre ouvert indÃ©pendamment dans VS Code + PlatformIO.
 
 ## Installation rapide
 
 1. Installer **VS Code** + extension **PlatformIO**
-2. Cloner le dépôt :
+2. Cloner le dÃ©pÃ´t :
    ```bash
    git clone https://github.com/jbil-kebir/Home-Assist-ESP32-CYD.git
    
