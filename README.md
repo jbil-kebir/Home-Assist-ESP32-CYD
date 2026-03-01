@@ -73,6 +73,16 @@ esp32s3 → ESP32-S3 (XIAO ou autre)
 pio run -e esp32c3
 pio run -e esp32c3 --target upload
 
+## Firmwares pré-compilés (v1.0)
+
+Téléchargez les binaires prêts à flasher depuis la release :
+
+→ [Releases / v1.0](https://github.com/jbil-kebir/Home-Assist-ESP32-CYD/releases/tag/v1.0)
+
+- firmware-Controleur-principal-CYD-1.0.bin : Contrôleur principal avec CYD + DS18B20
+- firmware-Controleur-principal-sans-CYD-1.0.bin : Contrôleur principal sans CYD
+- firmware-Controleur-auxiliaire-CYD-1.0.bin : Contrôleur auxiliaire (CYD seul)
+
 Licence
 MIT License – voir le fichier LICENSE
 Mots-clés
