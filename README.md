@@ -1,6 +1,7 @@
 # Home-Assist-ESP32-CYD
 
-Système domotique complet et évolutif basé sur **ESP32** (C3 & S3) avec intégration **LoRa P2P**, **MQTT**, écran tactile **CYD** (Cheap Yellow Display) et capteurs déportés.
+Système domotique complet et évolutif basé sur **ESP32** (C3 & S3) avec intégration **LoRa P2P**, **MQTT**, écran tactile **CYD** (Cheap Yellow Display) et capteurs déportés. Visualisation et pilotage das actionneurs par **aplication Androïd**.
+Merci à Grok (xAI) pour l’aide sur Riverpod et MQTT entre autre.
 
 ## Fonctionnalités principales
 
