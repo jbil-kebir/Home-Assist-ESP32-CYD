@@ -1,0 +1,52 @@
+# PlatformIO
+.pio/
+.platformio/
+
+# Builds & temporaires
+*.bin
+*.elf
+*.o
+build/
+dist/
+
+# VS Code
+.vscode/
+
+# Fichiers secrets
+secrets.h
+config.h
+wifi_credentials.h
+mqtt_credentials.h
+
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins*
+.packages
+.pub-cache/
+.pub/
+build/
+ios/Flutter/
+*.g.dart
+*.freezed.dart
+*.lock
+
+# Fichiers sensibles
+.env
+*.key
+*.pem
+*.secrets
+*.log
+
+# Système / éditeurs
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Android spécifiques
+android/.gradle/
+android/local.properties
+android/app/build/
+

@@ -1,0 +1,32 @@
+Faire cohabiter l'envoi RCSwitch et Wifi
+
+DHT20Sensor.h
+mDelai_Inter_Envoi : A mettre dans NVS et page Web
+
+Mettre les pins dans NVS et page Web
+
+Pour personnaliser les configurations,
+Mettre en place 
+home/confthsdb/
+
+    SLEEP ENABLE
+    SLEEP DISABLE
+    SLEEP n
+        
+Gérer la sortie du deep sleep en MQTT retain
+
+MQTT_COMMAND et MQTT_COMMAND_2 : pareils
+
+==================================== 
+              Fait 
+====================================
+
+OK A tester - 27/01/2026
+------------------------
+
+
+OK - 24/01/2026
+---------------
+Envoyer des status MQTT lors :
+  - de mise en deep sleep
+  - de réveil

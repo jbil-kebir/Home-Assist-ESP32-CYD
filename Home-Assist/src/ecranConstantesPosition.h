@@ -1,0 +1,356 @@
+#ifndef __ECRAN_CONSTANTES_POSITION__
+#define __ECRAN_CONSTANTES_POSITION__
+
+#define TS_MINX 300
+#define TS_MINY 400
+#define TS_MAXX 3800
+#define TS_MAXY 3750
+
+// Écran
+#define RESOLUTION_X 320
+#define RESOLUTION_Y 240
+
+#define ZONE_DE_TITRE_Y 0
+#define ZONE_DE_TITRE_H 30
+
+#define PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_NB 2
+#define PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_W 40
+
+#define PREMIERE_LIGNE_DE_BOUTONS_X 10
+#define PREMIERE_LIGNE_DE_BOUTONS_NB 2 // Nombre de boutons, permet de calculer la largeur des boutons
+#define PREMIERE_LIGNE_DE_BOUTONS_ESPACE_ENTRE 5 // Epsace boutons, permet de calculer la largeur des boutons
+#define PREMIERE_LIGNE_DE_BOUTONS_Y (ZONE_DE_TITRE_Y + ZONE_DE_TITRE_H)
+#define PREMIERE_LIGNE_DE_BOUTONS_H (25+10)
+#define PREMIERE_LIGNE_DE_BOUTONS_W ((RESOLUTION_X - 2*PREMIERE_LIGNE_DE_BOUTONS_X - PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_NB*PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_W - (PREMIERE_LIGNE_DE_BOUTONS_NB + 1)*PREMIERE_LIGNE_DE_BOUTONS_ESPACE_ENTRE)/PREMIERE_LIGNE_DE_BOUTONS_NB)
+
+#define DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_NB 2
+#define DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W 40
+
+#define DEUXIEME_LIGNE_DE_BOUTONS_X 10
+#define DEUXIEME_LIGNE_DE_BOUTONS_NB 2 // Nombre de boutons, permet de calculer la largeur des boutons
+#define DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE 5 // Nombre de boutons, permet de calculer la largeur des boutons
+#define DEUXIEME_LIGNE_DE_BOUTONS_Y (PREMIERE_LIGNE_DE_BOUTONS_Y + PREMIERE_LIGNE_DE_BOUTONS_H + 2)
+#define DEUXIEME_LIGNE_DE_BOUTONS_H (25+2)
+#define DEUXIEME_LIGNE_DE_BOUTONS_W ((RESOLUTION_X - 2*DEUXIEME_LIGNE_DE_BOUTONS_X - DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_NB*DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W - (DEUXIEME_LIGNE_DE_BOUTONS_NB + 1)*DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)/DEUXIEME_LIGNE_DE_BOUTONS_NB)
+
+#define TROISIEME_LIGNE_DE_BOUTONS_ACTIVATION_NB 2
+#define TROISIEME_LIGNE_DE_BOUTONS_ACTIVATION_W 40
+
+#define TROISIEME_LIGNE_DE_BOUTONS_X 10
+#define TROISIEME_LIGNE_DE_BOUTONS_NB 2 // Nombre de boutons, permet de calculer la largeur des boutons
+#define TROISIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE 5 // Epsace boutons, permet de calculer la largeur des boutons
+#define TROISIEME_LIGNE_DE_BOUTONS_Y (DEUXIEME_LIGNE_DE_BOUTONS_Y + DEUXIEME_LIGNE_DE_BOUTONS_H + 2)
+#define TROISIEME_LIGNE_DE_BOUTONS_H (25+2)
+#define TROISIEME_LIGNE_DE_BOUTONS_W ((RESOLUTION_X - 2*TROISIEME_LIGNE_DE_BOUTONS_X - TROISIEME_LIGNE_DE_BOUTONS_ACTIVATION_NB*TROISIEME_LIGNE_DE_BOUTONS_ACTIVATION_W - (TROISIEME_LIGNE_DE_BOUTONS_NB + 1)*TROISIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)/TROISIEME_LIGNE_DE_BOUTONS_NB)
+
+#define STATUS_EXT_DEBUT_Y  (TROISIEME_LIGNE_DE_BOUTONS_Y + TROISIEME_LIGNE_DE_BOUTONS_H + 2)
+
+// Zone de titre
+#define TITRE_X 0
+#define TITRE_Y ZONE_DE_TITRE_Y
+#define TITRE_W 320
+#define TITRE_H ZONE_DE_TITRE_H
+#define TITRE_C TFT_DARKGREEN
+#define TITRE_MSG_POS_X (RESOLUTION_X/2)
+#define TITRE_MSG_POS_Y 7
+#define TITRE_MSG_C TFT_WHITE
+#define TITRE_MSG_FONT 2
+
+// Zone de status
+#define STATUS_EXT_X 10
+#define STATUS_EXT_Y STATUS_EXT_DEBUT_Y
+#define STATUS_EXT_W 300
+#define STATUS_EXT_H 30
+#define STATUS_EXT_C TFT_WHITE
+#define STATUS_INT_X (STATUS_EXT_X+2)
+#define STATUS_INT_Y (STATUS_EXT_Y+2)
+#define STATUS_INT_W (STATUS_EXT_W-4)
+#define STATUS_INT_H (STATUS_EXT_H-4)
+#define STATUS_INT_C TFT_BLACK
+#define STATUS_MSG_POS_X 15
+#define STATUS_MSG_POS_Y (STATUS_INT_Y + 4) //128
+#define STATUS_MSG_FONT 2
+
+// Zone de status 2 (états)
+#define STATUS_2_EXT_X 10
+#define STATUS_2_EXT_Y (STATUS_EXT_DEBUT_Y + STATUS_EXT_H + 2)
+#define STATUS_2_EXT_W 300
+#define STATUS_2_EXT_H 75
+#define STATUS_2_EXT_C TFT_WHITE
+#define STATUS_2_INT_X (STATUS_2_EXT_X+5)
+#define STATUS_2_INT_Y (STATUS_2_EXT_Y+10)
+#define STATUS_2_INT_W (STATUS_2_EXT_W-10)
+#define STATUS_2_INT_H (STATUS_2_EXT_H-15)
+#define STATUS_2_INT_C TFT_BLACK
+#define STATUS_2_MSG_POS_X 15
+#define STATUS_2_MSG_POS_Y 165
+#define STATUS_2_MSG_ON_C TFT_GREEN
+#define STATUS_2_MSG_OFF_C TFT_RED
+#define STATUS_2_MSG_FONT 2
+
+//============================================================================================
+// Affichage mesure et batterie - emplacement OUEST
+//============================================================================================
+//-------------------------------- AFFICHAGE MESURES REMOTE 1 --------------------------------
+#define REMOTE_1_X 10
+#define REMOTE_1_Y (STATUS_EXT_DEBUT_Y + STATUS_EXT_H + 2) // 200
+#define REMOTE_1_W 80
+#define REMOTE_1_H 40 //(RESOLUTION_Y - (STATUS_EXT_DEBUT_Y + 2) ) //40
+#define REMOTE_1_OK_C TFT_WHITE
+#define REMOTE_1_KO_C TFT_RED
+#define REMOTE_1_TEXTE_X  (REMOTE_1_X + 4) // 230
+#define REMOTE_1_TEXTE_L1_Y  (REMOTE_1_Y + 2)   // 2210
+#define REMOTE_1_TEXTE_L2_Y  (REMOTE_1_TEXTE_L1_Y + 15) //+ 40 
+#define REMOTE_1_TEXTE_L3_Y  (REMOTE_1_TEXTE_L2_Y + 25) //+ 40 
+#define REMOTE_1_TEXTE_L1_F  2 // Font
+#define REMOTE_1_TEXTE_L2_F  4 // Font
+#define REMOTE_1_TEXTE_L3_F  2 // Font
+#define REMOTE_1_BG_C TFT_DARKCYAN
+//-------------------------------- AFFICHAGE BATTERIE REMOTE 1 --------------------------------
+#define REMOTE_B_1_X 10
+#define REMOTE_B_1_Y (REMOTE_1_Y + REMOTE_1_H + 2) // 200
+#define REMOTE_B_1_W 80
+#define REMOTE_B_1_H 20 //(RESOLUTION_Y - (STATUS_EXT_DEBUT_Y + 2) ) //40
+#define REMOTE_B_1_OK_C TFT_GREEN
+#define REMOTE_B_1_KO_C TFT_RED
+#define REMOTE_B_1_TEXTE_X  (REMOTE_1_X + 4 + 35)
+#define REMOTE_B_1_TEXTE_L1_Y  (REMOTE_B_1_Y + 2)
+#define REMOTE_B_1_TEXTE_L1_F  2 // Font
+#define REMOTE_B_1_TEXTE_L2_F  4 // Font
+#define REMOTE_B_1_TEXTE_L3_F  2 // Font
+#define REMOTE_B_1_BG_C TFT_DARKCYAN
+//============================================================================================
+// Affichage mesure et batterie - emplacement CENTRE
+//============================================================================================
+//-------------------------------- AFFICHAGE MESURES REMOTE 2 --------------------------------
+#define REMOTE_2_X (REMOTE_1_X + REMOTE_1_W + 2)
+#define REMOTE_2_Y REMOTE_1_Y
+#define REMOTE_2_W REMOTE_1_W
+#define REMOTE_2_H REMOTE_1_H
+#define REMOTE_2_OK_C TFT_WHITE
+#define REMOTE_2_KO_C TFT_RED
+#define REMOTE_2_TEXTE_X  (REMOTE_2_X + 4) // 230
+#define REMOTE_2_TEXTE_L1_Y  REMOTE_1_TEXTE_L1_Y
+#define REMOTE_2_TEXTE_L2_Y  REMOTE_1_TEXTE_L2_Y
+#define REMOTE_2_TEXTE_L3_Y  REMOTE_1_TEXTE_L3_Y
+#define REMOTE_2_TEXTE_L1_F  2 // Font
+#define REMOTE_2_TEXTE_L2_F  4 // Font
+#define REMOTE_2_TEXTE_L3_F  2 // Font
+#define REMOTE_2_BG_C TFT_DARKCYAN
+//-------------------------------- AFFICHAGE BATTERIE REMOTE 2 --------------------------------
+#define REMOTE_B_2_X REMOTE_2_X
+#define REMOTE_B_2_Y REMOTE_B_1_Y
+#define REMOTE_B_2_W REMOTE_B_1_W
+#define REMOTE_B_2_H REMOTE_B_1_H
+#define REMOTE_B_2_OK_C TFT_GREEN
+#define REMOTE_B_2_KO_C TFT_RED
+#define REMOTE_B_2_TEXTE_X  (REMOTE_2_X + 4 + 35) 
+#define REMOTE_B_2_TEXTE_L1_Y  REMOTE_B_1_TEXTE_L1_Y
+#define REMOTE_B_2_TEXTE_L1_F  2 // Font
+#define REMOTE_B_2_TEXTE_L2_F  4 // Font
+#define REMOTE_B_2_TEXTE_L3_F  2 // Font
+#define REMOTE_B_2_BG_C TFT_DARKCYAN
+//-------------------------------- AFFICHAGE MESURES LOCAL 1 --------------------------------
+#define LOCAL_1_X (REMOTE_2_X + REMOTE_1_W + 2)
+#define LOCAL_1_Y REMOTE_1_Y
+#define LOCAL_1_W REMOTE_1_W
+#define LOCAL_1_H REMOTE_1_H
+#define LOCAL_1_OK_C TFT_WHITE
+#define LOCAL_1_KO_C TFT_RED
+#define LOCAL_1_TEXTE_X  (LOCAL_1_X + 4) // 230
+#define LOCAL_1_TEXTE_L1_Y  (LOCAL_1_Y + 2)   // 2210
+#define LOCAL_1_TEXTE_L2_Y  (LOCAL_1_TEXTE_L1_Y + 15) //+ 40
+#define LOCAL_1_TEXTE_L1_F  2 // Font
+#define LOCAL_1_TEXTE_L2_F  4 // Font
+#define LOCAL_1_BG_C TFT_DARKCYAN //TFT_SKYBLUE
+//-------------------------------- AFFICHAGE BATTERIE LOCAL_1 --------------------------------
+#define LOCAL_B_1_X LOCAL_1_X
+#define LOCAL_B_1_Y REMOTE_B_2_Y
+#define LOCAL_B_1_W REMOTE_B_2_W
+#define LOCAL_B_1_H REMOTE_B_2_H
+#define LOCAL_B_1_OK_C TFT_GREEN
+#define LOCAL_B_1_KO_C TFT_RED
+#define LOCAL_B_1_TEXTE_X  (LOCAL_1_X + 4 + 35) 
+#define LOCAL_B_1_TEXTE_L1_Y  REMOTE_B_2_TEXTE_L1_Y
+#define LOCAL_B_1_TEXTE_L1_F  2 // Font
+#define LOCAL_B_1_TEXTE_L2_F  4 // Font
+#define LOCAL_B_1_TEXTE_L3_F  2 // Font
+#define LOCAL_B_1_BG_C TFT_DARKCYAN
+//-------------------------------- AFFICHAGE TEMPERATURE CAVE = LOCAL 1 --------------------------------
+#define REMOTE_3_X LOCAL_1_X 
+#define REMOTE_3_Y LOCAL_1_Y 
+#define REMOTE_3_W LOCAL_1_W 
+#define REMOTE_3_H LOCAL_1_H 
+#define REMOTE_3_OK_C LOCAL_1_OK_C 
+#define REMOTE_3_KO_C LOCAL_1_KO_C 
+#define REMOTE_3_TEXTE_X LOCAL_1_TEXTE_X  
+#define REMOTE_3_TEXTE_L1_Y LOCAL_1_TEXTE_L1_Y  
+#define REMOTE_3_TEXTE_L2_Y LOCAL_1_TEXTE_L2_Y  
+#define REMOTE_3_TEXTE_L1_F LOCAL_1_TEXTE_L1_F  
+#define REMOTE_3_TEXTE_L2_F LOCAL_1_TEXTE_L2_F  
+#define REMOTE_3_BG_C LOCAL_1_BG_C  //TFT_SKYBLUE
+//-------------------------------- AFFICHAGE HUMIDITE CAVE = BATTERIE LOCAL_1 --------------------------------
+#define REMOTE_3_H_X LOCAL_1_X
+#define REMOTE_3_H_Y REMOTE_B_2_Y
+#define REMOTE_3_H_W REMOTE_B_2_W
+#define REMOTE_3_H_H REMOTE_B_2_H
+#define REMOTE_3_H_OK_C TFT_GREEN
+#define REMOTE_3_H_KO_C TFT_RED
+#define REMOTE_3_H_TEXTE_X  (LOCAL_1_X + 4 + 26) 
+#define REMOTE_3_H_TEXTE_L1_Y  REMOTE_B_2_TEXTE_L1_Y
+#define REMOTE_3_H_TEXTE_L1_F  2 // Font
+#define REMOTE_3_H_TEXTE_L2_F  4 // Font
+#define REMOTE_3_H_TEXTE_L3_F  2 // Font
+#define REMOTE_3_H_BG_C TFT_DARKCYAN
+//-------------------------------- AFFICHAGE BATTERIE CAVE = BATTERIE LOCAL_1 + offset --------------------------------
+#define REMOTE_3_B_X LOCAL_1_X
+#define REMOTE_3_B_Y (REMOTE_3_H_Y + REMOTE_3_H_H + 2)
+#define REMOTE_3_B_W REMOTE_B_2_W
+#define REMOTE_3_B_H REMOTE_B_2_H
+#define REMOTE_3_B_OK_C TFT_GREEN
+#define REMOTE_3_B_KO_C TFT_RED
+#define REMOTE_3_B_TEXTE_X  (LOCAL_1_X + 4 + 35) 
+#define REMOTE_3_B_TEXTE_L1_Y  REMOTE_3_H_TEXTE_L1_Y + 23
+#define REMOTE_3_B_TEXTE_L1_F  2 // Font
+#define REMOTE_3_B_TEXTE_L2_F  4 // Font
+#define REMOTE_3_B_TEXTE_L3_F  2 // Font
+#define REMOTE_3_B_BG_C TFT_DARKCYAN
+//-------------------------------- AFFICHAGE Date / Heure --------------------------------
+#define DATE_HEURE_X (LOCAL_1_X + LOCAL_1_W + 2)
+#define DATE_HEURE_Y LOCAL_1_Y
+#define DATE_HEURE_W 60 //LOCAL_1_W
+#define DATE_HEURE_H LOCAL_1_H
+#define DATE_HEURE_OK_C TFT_WHITE
+#define DATE_HEURE_KO_C TFT_RED
+#define DATE_HEURE_TEXTE_L1_X  (DATE_HEURE_X + 10) 
+#define DATE_HEURE_TEXTE_L2_X  (DATE_HEURE_X + 10) 
+#define DATE_HEURE_TEXTE_L1_Y  (DATE_HEURE_Y + 2)   // 2210
+#define DATE_HEURE_TEXTE_L2_Y  (DATE_HEURE_TEXTE_L1_Y + 15) //+ 40
+#define DATE_HEURE_TEXTE_L1_F  2 // Font
+#define DATE_HEURE_TEXTE_L2_F  2.8 //4 // Font
+#define DATE_HEURE_BG_C TFT_BLACK
+//--------------------------PREMIERE LIGNE------------------------------------------------------
+
+//--------------------------------------------------------------------------------
+// Projecteur (gauche)
+//--------------------------------------------------------------------------------
+// Bouton d'activation / désactivation
+#define BOUTON_PA_X   PREMIERE_LIGNE_DE_BOUTONS_X
+#define BOUTON_PA_Y   PREMIERE_LIGNE_DE_BOUTONS_Y
+#define BOUTON_PA_W   PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_PA_H   PREMIERE_LIGNE_DE_BOUTONS_H
+#define BOUTON_PA_C   TFT_GREENYELLOW
+#define BOUTON_PA_N   ""
+// Bouton de command ON/OFF
+#define BOUTON_P_X   (BOUTON_PA_X + PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_W + PREMIERE_LIGNE_DE_BOUTONS_ESPACE_ENTRE) //PREMIERE_LIGNE_DE_BOUTONS_X
+#define BOUTON_P_Y   PREMIERE_LIGNE_DE_BOUTONS_Y
+#define BOUTON_P_W   PREMIERE_LIGNE_DE_BOUTONS_W
+#define BOUTON_P_H   PREMIERE_LIGNE_DE_BOUTONS_H
+#define BOUTON_P_C   TFT_ORANGE
+#define BOUTON_P_N   "Projecteur"
+
+//--------------------------------------------------------------------------------
+// Guirlande (droite)
+//--------------------------------------------------------------------------------
+// Bouton de command ON/OFF
+#define BOUTON_G_X   (BOUTON_P_X + PREMIERE_LIGNE_DE_BOUTONS_W + PREMIERE_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_G_Y   PREMIERE_LIGNE_DE_BOUTONS_Y
+#define BOUTON_G_W   PREMIERE_LIGNE_DE_BOUTONS_W
+#define BOUTON_G_H   PREMIERE_LIGNE_DE_BOUTONS_H
+#define BOUTON_G_C   TFT_ORANGE
+#define BOUTON_G_N   "Guirlande"
+// Bouton d'activation / désactivation
+#define BOUTON_GA_X   (BOUTON_G_X + PREMIERE_LIGNE_DE_BOUTONS_W + PREMIERE_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_GA_Y   PREMIERE_LIGNE_DE_BOUTONS_Y
+#define BOUTON_GA_W   PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_GA_H   PREMIERE_LIGNE_DE_BOUTONS_H
+#define BOUTON_GA_C   TFT_GREENYELLOW
+#define BOUTON_GA_N   ""
+
+//--------------------------DEUXIEME LIGNE------------------------------------------------------
+
+// Bouton d'activation / désactivation
+#define BOUTON_SBA_ON_X   DEUXIEME_LIGNE_DE_BOUTONS_X
+#define BOUTON_SBA_ON_Y   DEUXIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_SBA_ON_W   DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_SBA_ON_H   DEUXIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_SBA_ON_C   TFT_GREENYELLOW
+#define BOUTON_SBA_ON_N   ""
+// Salle de bain ON/OFF (ligne 2)
+#define BOUTON_SB_ON_X  (BOUTON_SBA_ON_X + DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE) //DEUXIEME_LIGNE_DE_BOUTONS_X
+#define BOUTON_SB_ON_Y  DEUXIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_SB_ON_W  DEUXIEME_LIGNE_DE_BOUTONS_W
+#define BOUTON_SB_ON_H  DEUXIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_SB_ON_C  TFT_RED
+#define BOUTON_SB_ON_N  "SB ON"
+
+//#define BOUTON_SB_OFF_X (BOUTON_SB_ON_X + 110) //120
+#define BOUTON_SB_OFF_X (BOUTON_SB_ON_X + DEUXIEME_LIGNE_DE_BOUTONS_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_SB_OFF_Y DEUXIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_SB_OFF_W DEUXIEME_LIGNE_DE_BOUTONS_W
+#define BOUTON_SB_OFF_H DEUXIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_SB_OFF_C TFT_RED
+#define BOUTON_SB_OFF_N "SB OFF"
+// Bouton d'activation / désactivation
+#define BOUTON_SBA_OFF_X   (BOUTON_SB_OFF_X + DEUXIEME_LIGNE_DE_BOUTONS_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE) //DEUXIEME_LIGNE_DE_BOUTONS_X
+#define BOUTON_SBA_OFF_Y   DEUXIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_SBA_OFF_W   DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_SBA_OFF_H   DEUXIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_SBA_OFF_C   TFT_GREENYELLOW
+#define BOUTON_SBA_OFF_N   ""
+
+// Bouton série d'affichages
+#define BOUTON_SERIE_X   (BOUTON_G_X + PREMIERE_LIGNE_DE_BOUTONS_W + PREMIERE_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_SERIE_Y   (DATE_HEURE_Y + DATE_HEURE_H + 2)
+#define BOUTON_SERIE_W   PREMIERE_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_SERIE_H   PREMIERE_LIGNE_DE_BOUTONS_H
+#define BOUTON_SERIE_C   TFT_GREENYELLOW
+#define BOUTON_SERIE_N   "0"
+//--------------------------TROISIEME LIGNE------------------------------------------------------
+
+// Bouton d'activation / désactivation
+#define BOUTON_ONA_X   TROISIEME_LIGNE_DE_BOUTONS_X
+#define BOUTON_ONA_Y   TROISIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_ONA_W   TROISIEME_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_ONA_H   TROISIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_ONA_C   TFT_GREENYELLOW
+#define BOUTON_ONA_N   ""
+// Chaudière ON 
+#define BOUTON_ON_X  (BOUTON_ONA_X + TROISIEME_LIGNE_DE_BOUTONS_ACTIVATION_W + TROISIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE) //TROISIEME_LIGNE_DE_BOUTONS_X
+#define BOUTON_ON_Y  TROISIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_ON_W  TROISIEME_LIGNE_DE_BOUTONS_W
+#define BOUTON_ON_H  TROISIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_ON_C  TFT_ORANGE
+#define BOUTON_ON_N  "ON"
+
+// Chaudière OFF 
+//#define BOUTON_OFF_X  (BOUTON_ON_X + BOUTON_ON_W +1)
+#define BOUTON_OFF_X (BOUTON_ON_X + TROISIEME_LIGNE_DE_BOUTONS_W + TROISIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_OFF_Y  TROISIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_OFF_W  TROISIEME_LIGNE_DE_BOUTONS_W
+#define BOUTON_OFF_H  TROISIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_OFF_C  TFT_RED
+#define BOUTON_OFF_N  "OFF"
+// Bouton d'activation / désactivation
+#define BOUTON_OFFA_X   (BOUTON_OFF_X + TROISIEME_LIGNE_DE_BOUTONS_W + TROISIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE) //TROISIEME_LIGNE_DE_BOUTONS_X
+#define BOUTON_OFFA_Y   TROISIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_OFFA_W   TROISIEME_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_OFFA_H   TROISIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_OFFA_C   TFT_GREENYELLOW
+#define BOUTON_OFFA_N   ""
+
+#define COULEUR_TEXTE_DE_BASE TFT_BLACK
+#define COULEUR_FOND_ECRAN TFT_BLACK
+#define COULEUR_BTN_INACTIF TFT_DARKGREY
+#define COULEUR_BTN_ON  TFT_DARKGREEN // Status ON
+#define COULEUR_BTN_OFF  TFT_RED // Status OFF
+
+// Veille (en minutes, configurable dans NVS)
+#define TEMPS_VEILLE_MINUTES 0.5  // Peut être remplacé par config.sleep_timeout
+
+#define ORIENTATION_ECRAN_LANDSCAPE 1
+#define ORIENTATION_ECRAN_LANDSCAPE_INV 3
+#define ORIENTATION_ECRAN_PORTRAIT  0
+#define ORIENTATION_ECRAN_POERTRAIT_INV 2
+#define DEFAUT_ORIENTATION_ECRAN ORIENTATION_ECRAN_LANDSCAPE_INV
+#endif // __ECRAN_CONSTANTES_POSITION__

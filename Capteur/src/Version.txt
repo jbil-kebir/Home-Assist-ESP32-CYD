@@ -1,0 +1,13 @@
+----------------------------------------------------------------
+A faire
+----------------------------------------------------------------
+Pin du DS18B20 : configurable par Web et MQTT
+Délai polling
+Activation / désactivation Deep Sleep
+    Si activation Deep Sleep : Réveil pour polling
+----------------------------------------------------------------
+1.0
+----------------------------------------------------------------
+Version initiale
+Polling toutes les 30 secondes et envoi de la température horodatée 
+par MQTT

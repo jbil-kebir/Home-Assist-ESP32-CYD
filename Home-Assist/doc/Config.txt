@@ -1,0 +1,81 @@
+=== AD200 1.1 ===
+
+=== CONFIGURATION CHARGÉE DEPUIS NVS ===
+[LOGICIEL]
+  VERSION      : 1.1
+[WiFi]
+  SSID         : Simpson
+  Password     : al177SOLO$*
+[MQTT]
+  Server       : 51.77.244.19
+  Port         : 1883
+  User         : ubuntu
+  Password     : al177SOLO$*
+
+[Veille écran]
+  Timeout      : 600 secondes (10 minutes)
+
+[Orientation écran]
+Paysage inversé
+
+[CHAUDIERE]
+  [GENERAL]
+     Nom            : Chaudiere
+     Actif          : OUI
+     Nom btn ON     : Chaudier ON
+     Nom btn OFF    : Chaudier OFF
+  [Protocole]
+     Fréquence      : 434.040009
+  [MQTT]==
+     MQTTSubTopic   : ad200/
+     Topic prefix   : ad200/
+     Command        : ad200/command
+     State          : ad200/state
+     Status         : ad200/status
+  [État chaudière]
+     Dernier état   : ON
+  [Keep-Alive]
+     Activé         : OUI
+     Timings ON   : 10 20 300 85 626
+     Timings OFF  : 10 20 300 626
+[Appareils 433 MHz]
+   Appareil 1
+     Nom            : Projecteur
+     Actif          : OUI
+     Etat           : OFF
+     ButtonName     : Projecteur
+     Code RCSwitch  : 0xa882b8
+     Protocole      : 1
+     PulseLength    : 320
+     Repeat         : 7
+     Frequency      : 433.899994
+     MQTTSubTopic   : projecteur/
+     MQTTCmd        : home/projecteur/command
+     MQTTState      : home/projecteur/state
+   Appareil 2
+     Nom            : Guirlande
+     Actif          : OUI
+     Etat           : OFF
+     ButtonName     : Guirlande
+     Code RCSwitch  : 0xa882b2
+     Protocole      : 5
+     PulseLength    : 713
+     Repeat         : 5
+     Frequency      : 433.899994
+     MQTTSubTopic   : guirlande/
+     MQTTCmd        : home/guirlande/command
+     MQTTState      : home/guirlande/state
+   Appareil 3
+     Nom            : Chauffage SDB
+     Actif          : OUI
+     Etat           : OFF
+     ButtonName     : Chauffage
+     Code RCSwitch  : 0x39cab8
+     Protocole      : 1
+     PulseLength    : 199
+     Repeat         : 30
+     Frequency      : 433.920013
+     MQTTSubTopic   : chauffage/
+     MQTTCmd        : home/chauffage/command
+     MQTTState      : home/chauffage/state
+============================================

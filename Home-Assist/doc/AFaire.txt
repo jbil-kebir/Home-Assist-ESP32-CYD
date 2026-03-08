@@ -1,0 +1,127 @@
+CEcran : implémenter mPrefixNVS pour les sauvegardes/récupérations NVS
+
+WiFi : Vérifier la connexion WiFi régulièrement. Si déconnecté, relancer une tentative de connexion.
+
+Réception RCSwitch : Ajuster la fréquence d'émission du thCave car il émet à 492.961 alors qu'on l'attend sur 433.92
+
+Démarrage de l'appli :
+  - Ne pas envoyer d'ordre aux effecteurs
+  - Les écrans aux doivent demander les valeurs en cours au maître : états des boutons et valeurs des capteurs
+    ==> Envoyer une requête MQTT : REQUEST INIT. En réponse le maître envoie toutes les infos.
+
+MyDSB20.cpp
+MyDS18B20(uint8_t gpioPin) : mucPin(gpioPin), oneWire(gpioPin), sensors(&oneWire)
+gpioPin est appelé par le constructeur ==> En cas de modif par Page Web, c'est toujours la valeur par défaut qui sera prise en compte.
+Il faudra initialiser oneWire et sensors dans le setup() après loadFromNVS()
+
+Reformater toutes les trames MQTT :
+    'Type equipement' Taille Date Time Fonction Argument1 Argument2 ...
+    Type equipement : Thermometre, Configuration, ...
+    Taille : Nombre de champs 
+    
+
+Ajouter un commutateur : Maitre - Maitre aux (Remarque c'est le commutateur LOCAL_MODE à renommer)
+    Maitre : affiche le nb de Maitres aux présents sur le réseau
+    Maitre aux : affiche présence du Maitre afin de permettre ou non les commandes
+    Ces deux fonctionnalités nécessitent des Watchdogs :
+    Trame MQTT Maitre --> Maitre Aux : NomEquipement MAITRE Alive DATE TIME DUREE
+    Trame MQTT Maitre aux --> Maitre : NomEquipement MAITREAUX Alive DATE TIME DUREE
+
+
+Deep sleep
+    Tenir compte des keep alive chaudière
+
+Mettre les broches thermomètres en config NVS et web
+
+#Dans Webserver : ajouter directement les équipements (pointeurs), sans passer par config.
+
+Rendre cohérent le topic "home/". Il doit appartenir à CConfig et non à CChaudiere.
+
+L'accès à CEcran dans les autres classes doit être un pointeur pour faciliter la 
+réutilisation de celles-ci. C'est encore mieux si on pouvait ne pas inclure cette classe.
+
+
+==================================================================================================
+Erreur OneWire
+.pio/libdeps/esp32dev/OneWire/OneWire.cpp:599:22: warning: extra tokens at end of #undef directive
+ #  undef noInterrupts() {portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;portENTER_CRITICAL(&mux)
+                      ^
+.pio/libdeps/esp32dev/OneWire/OneWire.cpp:600:20: warning: extra tokens at end of #undef directive   
+ #  undef interrupts() portEXIT_CRITICAL(&mux);}
+
+Solution ?
+Dans .pio/libdeps/esp32-c3-devkitm-1/OneWire/OneWire.cpp
+Remplacer les lignes ~599–600 par ceci
+#ifdef ARDUINO_ARCH_ESP32
+#undef noInterrupts
+#define noInterrupts() do { \
+    portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED; \
+    portENTER_CRITICAL(&mux); \
+} while (0)
+
+#undef interrupts
+#define interrupts() do { \
+    portEXIT_CRITICAL(&mux); \
+} while (0)
+#endif
+==================================================================================================
+Erreur Wifi : ressemble à celle de OneWire
+
+Compiling .pio\build\esp32dev\libd60\WiFi\WiFiAP.cpp.o
+.pio/libdeps/esp32dev/OneWire/OneWire.cpp:599:22: warning: extra tokens at end of #undef directive
+ #  undef noInterrupts() {portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;portENTER_CRITICAL(&mux)
+                      ^
+.pio/libdeps/esp32dev/OneWire/OneWire.cpp:600:20: warning: extra tokens at end of #undef directive
+ #  undef interrupts() portEXIT_CRITICAL(&mux);}
+==================================================================================================
+Mettre en place une super classe "CEquipement" dont héritent tous les équipements et qui contient :
+  Preferences prefs;
+  const char* default_domotique_topic_prefix = "home/";
+  String domotique_prefix;
+  const char* nvs_namespace = NVS_NAME_SPACE;  // 
+  String mPrefixNVS = "th_";  // Préfixe par défaut
+  String nomEquipement = "Thermomètre";
+  String mqttSubTopic = "Appareil";
+  bool active = true;
+  //bool bLocal = true; // true : Equipement local, commandé par l'ESP32. False : distant, commandé par Mqtt
+  String mqttSubTopicCommand;
+  String mqttSubTopicState;
+    void loadFromNVS();
+  void loadFromWebServer (WebServer& server);
+  void saveToNVS();
+  void setActive(bool state);
+  void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}
+  void setup(const String pref);
+  int loop();
+  void print() const;
+==================================================================================================
+
+
+==================================== 
+              Fait 
+====================================
+OK 15/02/2026
+Deep-sleep du CYD
+  Si actif
+    Eveil durant dureeEveil : 
+    Sleep durant dureeSleep : 0 pour infini
+    Eveil sur toucher de l'écran ou sur timer
+    
+OK 31/01/2026
+Ajouter un bouton en bas à droite pour afficher des séries de capteurs 
+  Par défaut : série 1
+  Appui une fois : série deux
+  Appui une deuxième : fois série 3
+  
+OK 19/01/2026
+  Thermomètres distants :
+    Forcer une remontée de mesure au début et au bout d'un timeout
+    Watchdog : sur les appareils distants
+
+OK 18/01/2026
+  Chaudiere : mettre comme topic home/chaudiere/command et home/chaudiere/state
+  Class CWifi : encapsuler les paramètres webserver restants
+
+OK - Modifier le titre : Fréquence à mettre ailleurs ou à supprimer, ajouter le nom du réseau
+OK - Indication du ON/OFF des équipements : directement par la couleur des boutons et non dans la 
+fenêtre de messages.
