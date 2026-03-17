@@ -4,6 +4,7 @@
 import 'package:dom_new/providers/app_providers.dart';
 import 'package:dom_new/screens/config_screen.dart';
 import 'package:dom_new/services/preferences_service.dart';
+import 'package:dom_new/widgets/CouleurCard.dart';
 import 'package:dom_new/widgets/actionneur_card_2_Btn.dart';
 import 'package:dom_new/widgets/appBar.dart';
 import 'package:flutter/material.dart';
@@ -120,6 +121,7 @@ class HomeScreen extends ConsumerWidget {
     'chambre 1er': 'ThCh1er',
     'chambre RDC': 'ThChRDC',
     'sdb': 'ThSdb',
+    'coulsdb': 'CoulSdb',
   };
 
   final Map<String, String> actionneurs = const {
@@ -131,7 +133,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isConnected = ref.watch(mqttConnectedProvider);
+    //final isConnected = ref.watch(mqttConnectedProvider);
 
     // Écoute des messages MQTT
     ref.listen(mqttServiceProvider, (previous, next) {
@@ -145,7 +147,8 @@ class HomeScreen extends ConsumerWidget {
           }
         });   
 
-    // Listener pour les capteurs 
+    // Listener pour les capteurs. Chaque type de mesure correspond à un provider
+    // Une map update est en place et contient les infos type, valeur
     ref.listen(mqttCapteurMessagesProvider, (previous, next) {
       if (next.value == null) return;
       final update = next.value!;
@@ -157,13 +160,16 @@ class HomeScreen extends ConsumerWidget {
       else if (nom == 'BATNOMADE') nom = 'THNOMADE';
       else if (nom == 'BATCH1ER') nom = 'THCH1ER';
       else if (nom == 'BATCAVE') nom = 'THCAVE';
+      //else if (nom == 'COULSDB') nom = 'THSDB';
 
 
       if (update['type'] == 'TEMP') {
         ref.read(temperatureProvider(nom).notifier).state = update['valeur'];
-      } else if (update['type'] == 'HUM') {
+      } 
+      else if (update['type'] == 'HUM') {
         ref.read(humiditeProvider(nom).notifier).state = update['valeur'];
-      } else if (update['type'] == 'TENSION') {
+      } 
+      else if (update['type'] == 'TENSION') {
         final etat = update['etat'] as String?;
         final tension = update['valeur'] as double?;
         if (tension != null) {
@@ -173,11 +179,37 @@ class HomeScreen extends ConsumerWidget {
           }
         }
       }
+      else if (update['type'] == 'COUL' || update['type'] == 'COULR') {
+        final valeurR = update['valeurR'] as double?;
+        final valeurG = update['valeurG'] as double?;
+        final valeurB = update['valeurB'] as double?;
+        final valeurLux = update['valeurLux'] as double?;
+        final valeurLuxBrut = update['valeurLuxBrut'] as double?;
+
+        if (valeurR != null)
+          ref.read(couleurRProvider(nom).notifier).state = valeurR;
+        if (valeurG != null)
+          ref.read(couleurGProvider(nom).notifier).state = valeurG;
+        if (valeurB != null)
+          ref.read(couleurBProvider(nom).notifier).state = valeurB;
+        if (valeurLux != null)
+          ref.read(couleurLuxProvider(nom).notifier).state = valeurLux;
+        if (valeurLuxBrut != null)
+          ref.read(couleurLuxBrutProvider(nom).notifier).state = valeurLuxBrut;
+
+      }
       else if (update['type'] == 'ONOFF' || update['type'] == 'ONOFFR') {
         final valeur = update['valeur'] as double?;
         if (valeur != null) {
           final estHaut = valeur == 1.0 || valeur == 1;
           ref.read(flotteurProvider(nom).notifier).state = estHaut;
+        }
+      }
+      else if (update['type'] == 'DEL' || update['type'] == 'DELR') {
+        final delON = update['delON'] as double?;
+        if (delON != null) {
+          final estON = delON == 1.0 || delON == 1;
+          ref.read(delOnOffProvider(nom).notifier).state = estON;
         }
       }
 
@@ -206,7 +238,7 @@ class HomeScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: CustomAppBar(),
+      appBar: CustomAppBar(), // ================================================================= AppBar
       body: ListView(
         padding: const EdgeInsets.all(6),
         children: [
@@ -217,7 +249,7 @@ class HomeScreen extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  'Capteurs',
+                  'Capteurs', // ================================================================= Barre de titre Capteurs
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -232,37 +264,51 @@ class HomeScreen extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.7,
+              childAspectRatio: 1.4,//1.7,
               children: [
-                CapteurCard(
+                CapteurCard( // ================================================================= Carte ThNomade
                   nomCapteurNormalise: capteurs['nomade']!.trim().toUpperCase(),
                   nomCapteurAffiche: capteurs['nomade']!,
-                  bDeuxMesures: true,
-                  bFlotteur: true,
+                  bDeuxMesures: true, // Deux mesures : température et humidité
+                  bFlotteur: true, // Flotteur
+                  bBatterie: true, // Niveau de batterie
+                  bDEL : false,
                 ),
-                CapteurCard(
+                CapteurCard( // ================================================================= Carte ThCave
                   nomCapteurNormalise: capteurs['cave']!.trim().toUpperCase(),
                   nomCapteurAffiche: capteurs['cave']!,
                   bDeuxMesures: true,
                   bFlotteur: false,
+                  bBatterie: false,
+                  bDEL : false,
                 ),
-                CapteurCard(
+                CapteurCard( // ================================================================= Carte ThCh1er
                   nomCapteurNormalise: capteurs['chambre 1er']!.trim().toUpperCase(),
                   nomCapteurAffiche: capteurs['chambre 1er']!,
                   bDeuxMesures: false,
                   bFlotteur: false,
+                  bBatterie: true,
+                  bDEL : false,
                 ),
-                CapteurCard(
+                CapteurCard( // ================================================================= Carte ThChRDC
                   nomCapteurNormalise: capteurs['chambre RDC']!.trim().toUpperCase(),
                   nomCapteurAffiche: capteurs['chambre RDC']!,
                   bDeuxMesures: false,
                   bFlotteur: false,
+                  bBatterie: false,
+                  bDEL : false,
                 ),
-                CapteurCard(
+                CapteurCard( // ================================================================= Carte ThNSdb
                   nomCapteurNormalise: capteurs['sdb']!.trim().toUpperCase(),
                   nomCapteurAffiche: capteurs['sdb']!,
                   bDeuxMesures: false,
                   bFlotteur: false,
+                  bBatterie: true,
+                  bDEL : true,
+                ),
+                CouleurCard( // ================================================================= Carte CoulSdb
+                  nomCapteurNormalise: capteurs['coulsdb']!.trim().toUpperCase(),
+                  nomCapteurAffiche: capteurs['coulsdb']!,
                 ),
               ],
             ),
@@ -283,28 +329,28 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
           ),
-          Container(
+          Container( 
             child: GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.3,
+              childAspectRatio: 1.6,
               children: [
-                ActionneurCard(
+                ActionneurCard( // ================================================================= Carte Projecteur
                   nomActionneurNormalise: actionneurs['projecteur']!.trim().toUpperCase(),
                   nomActionneurAffiche: actionneurs['projecteur']!,
                 ),
-                ActionneurCard(
+                ActionneurCard( // ================================================================= Carte Guirlande
                   nomActionneurNormalise: actionneurs['guirlande']!.trim().toUpperCase(),
                   nomActionneurAffiche: actionneurs['guirlande']!,
                 ),
-                ActionneurCard(
+                ActionneurCard( // ================================================================= Carte Chauffage
                   nomActionneurNormalise: actionneurs['chauffage']!.trim().toUpperCase(),
                   nomActionneurAffiche: actionneurs['chauffage']!,
                 ),
-                ActionneurCard2Btn(
+                ActionneurCard2Btn( // ================================================================= Carte Chausière
                   nomActionneurNormalise: actionneurs['chaudiere']!.trim().toUpperCase(),
                   nomActionneurAffiche: actionneurs['chaudiere']!,
                 ),

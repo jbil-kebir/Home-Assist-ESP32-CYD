@@ -17,6 +17,7 @@
 #include "MyWifi.h"
 #include "RemoteTh.h"
 #include "RemoteDHT20.h"
+#include "RemoteTCS34725.h"
 #include "RemoteBatAA.h"
 #include "RemoteTor.h"
 #include "MyDateTime.h"
@@ -25,6 +26,7 @@
 class CWifi;
 class CRemoteThermo;
 class CRemoteDHT20;
+class CRemoteTCS34725;
 class CRemoteBatterieAA;
 class CRemoteTor;
 
@@ -72,6 +74,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   CRemoteBatterieAA *mRemoteBatThCh1er=nullptr;
 
   CRemoteThermo *mRemoteThSdb=nullptr;
+  CRemoteTCS34725 *mRemoteCoulSdb=nullptr;
   CRemoteBatterieAA *mRemoteBatSdb=nullptr;
 
   CRemoteDHT20 *mRemoteThCave=nullptr;

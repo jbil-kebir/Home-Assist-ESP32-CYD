@@ -33,12 +33,17 @@
 
 //#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
-//#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
-#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, lissant uniquement la RF
-#define _LORA_P2P_MODE_ // Envoi par LORA
-#define CAPTEUR_DHT20
-//#define CAPTEUR_DS18B20
-#define FLOTTEUR_VERTICAL
+#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
+//#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, lissant uniquement la RF
+//#define _LORA_P2P_MODE_ // Envoi par LORA
+//----------------------------------------------------------------------------
+// Décommenter en fonction des capteurs / détecteurs installés
+//----------------------------------------------------------------------------
+//#define CAPTEUR_DHT20 // Fonctionne en I2C
+#define CAPTEUR_DS18B20
+//#define FLOTTEUR_VERTICAL
+#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
+#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
@@ -101,6 +106,13 @@
 
   #ifdef FLOTTEUR_VERTICAL
     #define DEFAULT_TOR_PIN 1 // Pin 10
+  #endif
+
+  #ifdef CAPTEUR_RGB_TCS34725
+    #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // Optionnel
+    #ifdef LED_CAPTEUR_RGB
+      #define LED_CAPTEUR_RGB_PIN 1
+    #endif
   #endif
 
 #elif defined(__ESP32_S3__)
@@ -174,6 +186,6 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "1.6"
+#define VERSION "1.9"
 
 #endif // __GLOBAL_H__

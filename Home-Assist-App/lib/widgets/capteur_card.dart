@@ -9,7 +9,10 @@ class CapteurCard extends ConsumerWidget {
   final bool bDeuxMesures;
   final String nomCapteurNormalise; // pour les providers
   final String nomCapteurAffiche;   // pour l'écran
-  final bool bFlotteur;
+  final bool bFlotteur; // true s'il faut afficher un flotteur
+  final bool bBatterie; // true s'il faut afficher un niveau batterie
+  final bool bDEL;
+  //final bool bCouleurs;
 
   const CapteurCard({
     super.key,
@@ -17,6 +20,9 @@ class CapteurCard extends ConsumerWidget {
     required this.nomCapteurAffiche,
     required this.bDeuxMesures,
     required this.bFlotteur,
+    required this.bBatterie,
+    required this.bDEL,
+    //required this.bCouleurs,
   });
 
   @override
@@ -27,9 +33,20 @@ class CapteurCard extends ConsumerWidget {
     final dh = ref.watch(derniereMesureProvider(nomCapteurNormalise));
     final tension = ref.watch(batterieTensionProvider(nomCapteurNormalise));
     final etat = ref.watch(batterieEtatProvider(nomCapteurNormalise));
-
+  
     // État du flotteur (seulement si bFlotteur == true)
     final flotteurHaut = bFlotteur ? ref.watch(flotteurProvider('FLOTTEURNOMADE')) : null;
+    // État DEL surveillée par le capteur RGB
+    //final bAfficherLedRGB = bDEL ? ref.watch(delOnOffProvider('THSDB')) : null;
+
+    // Providers couleurs et état LED (seulement si bCouleurs ou bDEL)
+    //final couleurR = bCouleurs ? ref.watch(couleurRProvider(nomCapteurNormalise)) : null;
+    //final couleurG = bCouleurs ? ref.watch(couleurGProvider(nomCapteurNormalise)) : null;
+    //final couleurB = bCouleurs ? ref.watch(couleurBProvider(nomCapteurNormalise)) : null;
+    //final couleurLux = bCouleurs ? ref.watch(couleurLuxProvider(nomCapteurNormalise)) : null;
+    //final couleurLuxBrut = bCouleurs ? ref.watch(couleurLuxBrutProvider(nomCapteurNormalise)) : null;
+    final etatLed = bDEL ? ref.watch(delOnOffProvider("COULSDB")) : null;
+
 
     return Card(
       elevation: 2,
@@ -44,7 +61,7 @@ class CapteurCard extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
+                  child: Text( // ================================================================= Nom du capteur
                     nomCapteurAffiche,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
@@ -52,6 +69,7 @@ class CapteurCard extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (bBatterie) ...[ // ================================================================= Icône de la batterie
                 const Icon(
                   Icons.battery_4_bar,
                   color: Colors.blueAccent,
@@ -59,7 +77,7 @@ class CapteurCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 4),
                 if (tension != null)
-                  Text(
+                  Text( // ================================================================= Tension de la batterie
                     tension < 0 ? '-- V' : '${tension.toStringAsFixed(1)} V',
                     style: TextStyle(
                       fontSize: 14,
@@ -72,14 +90,16 @@ class CapteurCard extends ConsumerWidget {
                     ),
                   )
                 else
-                  Text(
+                  Text( // ================================================================= Unité (V)
                     '-- V',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey,
                     ),
-                  ),
+                  ),          
+                ],
+
               ],
             ),
             const SizedBox(height: 10),
@@ -88,14 +108,14 @@ class CapteurCard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const Icon(
+                const Icon( // ================================================================= Icône de la température
                   Icons.device_thermostat,
                   color: Colors.blueAccent,
                   size: 18,
                 ),
                 const SizedBox(width: 4),
                 if (temp != null)
-                  Text(
+                  Text( // ================================================================= Valeur de la température et unité
                     temp == -127 ? '-- °C' : '${temp.toStringAsFixed(1)} °C',
                     style: TextStyle(
                       fontSize: 14,
@@ -113,16 +133,16 @@ class CapteurCard extends ConsumerWidget {
                     ),
                   ),
 
-                if (bDeuxMesures) ...[
+                if (bDeuxMesures) ...[ // ================================================================= Cas où il y a une deuxième mesure (Humidité)
                   const SizedBox(width: 14),
-                  const Icon(
+                  const Icon( // ================================================================= Icône humiité
                     Icons.water_drop,
                     color: Colors.blueAccent,
                     size: 18,
                   ),
                   const SizedBox(width: 4),
                   if (hum != null)
-                    Text(
+                    Text( // ================================================================= Valeur de l'humidité
                       '${hum.toStringAsFixed(1)} %',
                       style: TextStyle(
                         fontSize: 14,
@@ -142,6 +162,49 @@ class CapteurCard extends ConsumerWidget {
                 ],
               ],
             ),
+
+            // Affichage des couleurs brutes 16 bits + état LED
+            if (etatLed != null) ...[
+              //const SizedBox(height: 12),
+              Row(
+                //mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Valeurs brutes 16 bits
+                  /*Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'R: ${couleurR.toInt()}   G: ${couleurG.toInt()}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        'B: ${couleurB.toInt()}   C: ${couleurLuxBrut.toInt()}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),*/
+
+                  // État LED (si bDEL activé)
+                  if (bDEL && etatLed != null) ...[
+                    Icon(
+                      etatLed ? Icons.power : Icons.power_off,
+                      color: etatLed ? Colors.green : Colors.red,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      etatLed ? 'LED ON' : 'LED OFF',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: etatLed ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
 
             // Date + flotteur
             Row(

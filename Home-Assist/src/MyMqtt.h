@@ -6,10 +6,10 @@
 #include "global.h"
 #include "MyWebServer.h"
 
-#ifdef MQTT_MAX_PACKET_SIZE
+/*#ifdef MQTT_MAX_PACKET_SIZE
 #undef MQTT_MAX_PACKET_SIZE
 #endif
-#define MQTT_MAX_PACKET_SIZE 1024
+#define MQTT_MAX_PACKET_SIZE 512*/
 
 class CEcran;
 class CConfig;
@@ -36,6 +36,8 @@ public:
   int publishState(bool state);
   int publish(const char* topic, const char* payload);
   int publish(const char* topic, const char* payload, bool retained);
+  int publishWithIP(const char* topic, const char* payload);
+  int publishWithIP(const char* topic, const char* payload, bool retained);
   bool getCurrentState() const {
     return currentState;
   }

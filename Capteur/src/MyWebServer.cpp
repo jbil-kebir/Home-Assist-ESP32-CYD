@@ -81,6 +81,9 @@ void MyWebServer::handleRoot() {
   #ifdef FLOTTEUR_VERTICAL
   html += config.mFlotteurVertical->getHTML();
   #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  html += config.mCapteurRGB->getHTML();
+  #endif
   // === Batterie ===
   html += config.mBatterieAA->getHTML();
 
@@ -119,6 +122,9 @@ void MyWebServer::handleSave() {
   #ifdef FLOTTEUR_VERTICAL
   config.mFlotteurVertical->loadFromWebServer(server);
   #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  config.mCapteurRGB->loadFromWebServer(server);
+  #endif
   config.mBatterieAA->loadFromWebServer(server);
 
   // === SAUVEGARDE DES PARAMETRES GENERAUX ===
@@ -139,6 +145,9 @@ void MyWebServer::handleSave() {
   #endif
   #ifdef FLOTTEUR_VERTICAL
   config.mFlotteurVertical->saveToNVS();
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  config.mCapteurRGB->saveToNVS();
   #endif
   config.mBatterieAA->saveToNVS();
 

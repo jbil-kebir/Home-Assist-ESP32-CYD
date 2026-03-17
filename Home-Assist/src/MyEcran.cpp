@@ -26,6 +26,7 @@
     mBtnSeries(tft, touch, BOUTON_SERIE_X, BOUTON_SERIE_Y, BOUTON_SERIE_W, BOUTON_SERIE_H, TFT_BLUE, "0"),
     
     mZoneMesureOuest(tft, REMOTE_1_X, REMOTE_1_Y, REMOTE_1_W, REMOTE_1_H, REMOTE_1_BG_C),
+    //mZoneMesureDoubleOuest(tft, REMOTE_1_X, REMOTE_1_Y, REMOTE_1_W, REMOTE_1_H, REMOTE_1_BG_C),
     
     mZoneMesureCentre(tft, REMOTE_2_X, REMOTE_2_Y, REMOTE_2_W, REMOTE_2_H, REMOTE_2_BG_C),
     mZoneMesureDoubleCentre(tft, REMOTE_2_X, REMOTE_2_Y, REMOTE_2_W, REMOTE_2_H, REMOTE_2_BG_C),
@@ -38,6 +39,7 @@
     mZoneDateTime(cfg, tft, DATE_HEURE_X, DATE_HEURE_Y, DATE_HEURE_W, DATE_HEURE_H, DATE_HEURE_BG_C),
     mZoneTitle(cfg, tft, TITRE_X, TITRE_Y, TITRE_W, TITRE_H, TITRE_C),
     mZoneFlotteur(tft, REMOTE_2_X, (REMOTE_2_Y + REMOTE_2_H + 2 + MESURE_2_HAUTEUR + 2), REMOTE_2_W, REMOTE_2_H, REMOTE_2_BG_C),
+    mZoneCouleurSdb(tft, REMOTE_1_X, (REMOTE_1_Y + REMOTE_1_H + 2 + MESURE_2_HAUTEUR + 2), REMOTE_1_W, REMOTE_1_H, REMOTE_1_BG_C),
     mZoneAffichageIP(tft, mvsControleurs, mvsEsclaves, PREMIERE_LIGNE_DE_BOUTONS_X, PREMIERE_LIGNE_DE_BOUTONS_Y, RESOLUTION_X-PREMIERE_LIGNE_DE_BOUTONS_X, RESOLUTION_Y-PREMIERE_LIGNE_DE_BOUTONS_Y, REMOTE_1_BG_C)
     {
     }
@@ -454,6 +456,7 @@ void CEcran::updateAppareilsDeMesure() {
   updateRemoteDevice_ThCh1er(mConfig.mRemoteThCh1er->nomEquipement, mConfig.mRemoteThCh1er->getLastTemperature());
   updateRemoteBat_ThCh1er(mConfig.mRemoteBatThCh1er->nomEquipement, mConfig.mRemoteBatThCh1er->miLastEtatBatterie, mConfig.mRemoteBatThCh1er->getLastTension());
   updateRemoteDevice_ThSdb(mConfig.mRemoteThSdb->nomEquipement, mConfig.mRemoteThSdb->getLastTemperature());
+  updateRemoteDevice_ThSdbDel(mConfig.mRemoteCoulSdb->nomEquipement, mConfig.mRemoteCoulSdb->getLastLedStatus());
   updateRemoteBat_ThSdb(mConfig.mRemoteBatSdb->nomEquipement, mConfig.mRemoteBatSdb->miLastEtatBatterie, mConfig.mRemoteBatSdb->getLastTension());
   updateRemoteDevice_ThCave(mConfig.mRemoteThCave->nomEquipement, mConfig.mRemoteThCave->getLastTemperature());
   updateRemoteDevice_ThCaveH(mConfig.mRemoteThCave->nomEquipement, mConfig.mRemoteThCave->getLastHumidite());
@@ -526,6 +529,21 @@ void CEcran::updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float va
   if (mucSerieAffichageEnCours != 1 && mucSerieAffichageEnCours != 3) return;
   mZoneMesureCentre.drawEtatBatterie(val, etatBatterie, nom);
 }
+// Couleur
+void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, bool val) {
+  //Serial.printf("void CEcran::updateRemoteDevice_ThSdbDel() - nom = %s, val = 0x%lx\n", nom.c_str(), val);
+  #ifdef __LOCAL_MODE__
+  mConfig.chaudiere->setEtatReelOnOff(val);
+  #else
+  mConfig.mRemoteChaudiere->setEtatReelOnOff(val);
+  #endif
+  Serial.printf("=========================================== val = %d\n", val);
+  Serial.println("===========================================");
+  //updateAllStates();
+  if (mucSerieAffichageEnCours > 3) return;
+  mZoneCouleurSdb.drawMesure(val, nom);
+}
+
 //-------------------------------------- ThNomade --------------------------------------
 void CEcran::updateRemoteDevice_ThNomade(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
@@ -557,7 +575,7 @@ void CEcran::updateRemoteDevice_ThCaveH(const String& nom, float val) {
 // Tout ou Rien
 void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
   if (mucSerieAffichageEnCours == 4) return;
-  Serial.printf("void CEcran::updateRemoteDevice_ThCaveTor(nom, val) = (%s, %d)\n", nom.c_str(), val);
+  //Serial.printf("void CEcran::updateRemoteDevice_ThCaveTor(nom, val) = (%s, %d)\n", nom.c_str(), val);
   mZoneFlotteur.drawMesure(val, nom);
 }
 

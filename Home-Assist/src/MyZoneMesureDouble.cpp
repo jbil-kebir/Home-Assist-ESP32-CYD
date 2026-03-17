@@ -101,6 +101,7 @@ int CZoneMesureDouble::drawMesure2(float val, const String& nom/*=""*/) {
 return 0;
 
 }
+
 //
 // Retour
 // -1 : Mesure invalide, on ne fait rien

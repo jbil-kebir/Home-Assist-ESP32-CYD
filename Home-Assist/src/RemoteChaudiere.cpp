@@ -230,6 +230,24 @@ void CRemoteChaudiere::saveState(bool state) {
   etatStr = state ? "ON" : "OFF";
 }
 
+//
+// Etat réel de la chaudière
+// Vient de l'observatoion de la DEL rouge
+//  Eteint : 0
+//  Allulmée : 1
+//
+void CRemoteChaudiere::setEtatReelOnOff(bool state) {
+  // On prévient les appareils distants
+  Serial.printf("void CRemoteChaudiere::setEtatReelOnOff() - state=%d - etat=%d\n", state, etat);
+  if (etat == state) return;
+  String sEnvoi = state ? "ONR" : "OFFR";
+  if (onMqttPublish != nullptr)
+    onMqttPublish(this->mqttSubTopicCommand.c_str(), sEnvoi.c_str());
+  saveState(state); // Sauvegarde NVS
+  if (mEcran != nullptr) 
+    mEcran->updateAllStates();
+}
+
 void CRemoteChaudiere::handleMqttCommand(const String& payload) {
   String cmd = payload;
   cmd.toUpperCase();

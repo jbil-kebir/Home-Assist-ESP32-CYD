@@ -36,7 +36,7 @@ void setup_ds18b20() {
   ds18b20.begin("th_");
   config.ds18b20 = &ds18b20;
   ds18b20.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-    return ptr->publish(topic, payload);
+    return ptr->publishWithIP(topic, payload);
   });
   #endif
 #else

@@ -46,6 +46,7 @@ public:
   void loadFromNVS();
   void loadFromWebServer (WebServer& server);
   void saveToNVS();
+  void setEtatReelOnOff(bool state);
   void saveState(bool state);
   //void setActive(bool state);
   int envoiTrameON(); // Bouton ON appuyé

@@ -458,6 +458,8 @@ void CChaudiere::print() const {
 }
 
 void CChaudiere::saveState(bool state) {
+  if (etat == state) return;
+
   prefs.begin(nvs_namespace, false);
   prefs.putBool("boiler_state", state);
   prefs.end();
@@ -468,6 +470,8 @@ void CChaudiere::saveState(bool state) {
   prefs.end();
 }
 void CChaudiere::setActive(bool state) {
+  if (active == state) return;
+
   prefs.begin(nvs_namespace, false);
   prefs.putBool("chaud_active", state);
   prefs.end();
@@ -487,6 +491,24 @@ int CChaudiere::remonteStatusParMqtt() {
   return ret;
 } 
 
+//
+// Etat réel de la chaudière
+// Vient de l'observatoion de la DEL rouge
+//  Eteint : 0
+//  Allulmée : 1
+//
+void CChaudiere::setEtatReelOnOff(bool state) {
+  // On prévient les appareils distants
+  Serial.printf("void CChaudiere::setEtatReelOnOff() - state=%d - etat=%d\n", state, etat);
+  if (etat == state) return;
+  String sEnvoi = state ? "ONR" : "OFFR";
+  if (onMqttPublish != nullptr)
+    onMqttPublish(this->mqttSubTopicCommand.c_str(), sEnvoi.c_str());
+  saveState(state); // Sauvegarde NVS
+  if (mEcran != nullptr) 
+    mEcran->updateAllStates();
+}
+
 void CChaudiere::handleMqttCommand(const String& payload) {
   String cmd = payload;
   cmd.toUpperCase();
@@ -500,13 +522,15 @@ void CChaudiere::handleMqttCommand(const String& payload) {
 
         bSetEnvoyerTramesOFF(false);
         bSetEnvoyerTramesON(true);
-        onMqttPublish(this->mqttSubTopicCommand.c_str(), "ONR");
+        if (onMqttPublish != nullptr)
+          onMqttPublish(this->mqttSubTopicCommand.c_str(), "ONR");
         //if (mEcran != nullptr) mEcran->updateBoilerStatus();
       }
       else {
         bSetEnvoyerTramesON(false);
         bSetEnvoyerTramesOFF(true);
-        onMqttPublish(this->mqttSubTopicCommand.c_str(), "OFFR");
+        if (onMqttPublish != nullptr)
+          onMqttPublish(this->mqttSubTopicCommand.c_str(), "OFFR");
         //if (mEcran != nullptr) mEcran->updateBoilerStatus();
       }
       saveState(state);

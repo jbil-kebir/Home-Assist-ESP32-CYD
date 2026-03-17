@@ -1,3 +1,5 @@
+Protocole Radio : prévoir un horodatage pour pouvoir envoyer la date et l'heure : faire un échange régulier avec le contrôleur primaire pour synchroniser le temps
+
 Faire cohabiter l'envoi RCSwitch et Wifi
 
 DHT20Sensor.h

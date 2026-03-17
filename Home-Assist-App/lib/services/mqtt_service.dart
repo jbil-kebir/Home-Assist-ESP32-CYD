@@ -252,6 +252,60 @@ Future<void> reconnectWithNewConfig() async {
 
       _capteurMessagesController.add(update);
     } 
+    // Cas Coul / CoulR :  Remontée des couleurs RGB et Luminosité du capteur RGB
+    else if (typeNormalise == 'COUL' || typeNormalise == 'COULR') {
+      final date = parts[2];
+      final heure = parts[3];
+      final valeurStrR = parts[4];
+      final valeurStrG = parts[5];
+      final valeurStrB = parts[6];
+      final valeurStrLux = parts[7];
+      final valeurStrLuxBrut = parts[8];
+      final valeurR = double.tryParse(valeurStrR);
+      final valeurG = double.tryParse(valeurStrG);
+      final valeurB = double.tryParse(valeurStrB);
+      final valeurLux = double.tryParse(valeurStrLux);
+      final valeurLuxBrut = double.tryParse(valeurStrLuxBrut);
+      if (valeurR == null || valeurG == null  || valeurB == null  || valeurLux == null  || valeurLuxBrut == null) return;
+
+      final force = parts.length > 9 && parts[9].trim().toUpperCase() == 'FORCE';
+
+      final update = <String, dynamic>{
+        'equipement': equipNormalise,
+        'equipement_affiche': equipBrut,
+        'type': typeNormalise.endsWith('R') ? typeNormalise.substring(0, typeNormalise.length - 1) : typeNormalise,
+        'valeurR': valeurR,
+        'valeurG': valeurG,
+        'valeurB': valeurB,
+        'valeurLux': valeurLux,
+        'valeurLuxBrut': valeurLuxBrut,
+        'dateHeure': '$date $heure',
+        'force': force,
+      };
+
+      _capteurMessagesController.add(update);
+    }
+    // Cas Del / Del : Capteur RGB. On remonté l'état d'une del rouge surveillée. 
+    else if (typeNormalise == 'DEL' || typeNormalise == 'DELR') {
+      final date = parts[2];
+      final heure = parts[3];
+      final delONStr = parts[4];
+      final delON = double.tryParse(delONStr);
+      if (delON == null) return;
+
+      final force = parts.length > 5 && parts[5].trim().toUpperCase() == 'FORCE';
+
+      final update = <String, dynamic>{
+        'equipement': equipNormalise,
+        'equipement_affiche': equipBrut,
+        'type': typeNormalise.endsWith('R') ? typeNormalise.substring(0, typeNormalise.length - 1) : typeNormalise,
+        'delON': delON,
+        'dateHeure': '$date $heure',
+        'force': force,
+      };
+
+      _capteurMessagesController.add(update);
+    }
 
   }
 

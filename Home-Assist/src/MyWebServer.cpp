@@ -118,6 +118,7 @@ void MyWebServer::handleRoot() {
   html += config.mRemoteThCh1er->getHTML();
   html += config.mRemoteBatThCh1er->getHTML();
   html += config.mRemoteThSdb->getHTML();
+  html += config.mRemoteCoulSdb->getHTML();
   html += config.mRemoteBatSdb->getHTML();
   html += config.mRemoteThCave->getHTML();
   html += config.mRemoteBatCave->getHTML();
@@ -173,6 +174,7 @@ void MyWebServer::handleSave() {
   config.mRemoteThCh1er->loadFromWebServer(server);
   config.mRemoteBatThCh1er->loadFromWebServer(server);
   config.mRemoteThSdb->loadFromWebServer(server);
+  config.mRemoteCoulSdb->loadFromWebServer(server);
   config.mRemoteBatSdb->loadFromWebServer(server);
   config.mRemoteThCave->loadFromWebServer(server);
   config.mRemoteTor->loadFromWebServer(server);
@@ -216,6 +218,7 @@ void MyWebServer::handleSave() {
   config.mRemoteThCh1er->saveToNVS();
   config.mRemoteBatThCh1er->saveToNVS();
   config.mRemoteThSdb->saveToNVS();
+  config.mRemoteCoulSdb->saveToNVS();
   config.mRemoteBatSdb->saveToNVS();
   config.mRemoteThCave->saveToNVS();
   config.mRemoteTor->saveToNVS();

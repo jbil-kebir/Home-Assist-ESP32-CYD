@@ -14,6 +14,11 @@
 #ifdef FLOTTEUR_VERTICAL
 #include "MyTor.h"
 #endif
+#ifdef CAPTEUR_RGB_TCS34725
+#include <Wire.h>
+#include <Adafruit_TCS34725.h>
+#include "DetecteurRGB_TCS34725.h"
+#endif
 #include "MyBatterieAA.h"
 #include "MyWifi.h"
 #include "MyDateTime.h"
@@ -45,7 +50,10 @@ public:
   #ifdef FLOTTEUR_VERTICAL
   CTor *mFlotteurVertical=nullptr;  
   #endif
-  CBatterieAA *mBatterieAA=nullptr;
+  #ifdef CAPTEUR_RGB_TCS34725
+  CDetecteurRGB_TCS34725 *mCapteurRGB=nullptr;
+  #endif
+ CBatterieAA *mBatterieAA=nullptr;
   String nomEquipement = "ThCh1er";
   // === MQTT ===
   //MQTT_DEF  mqqtInfo;

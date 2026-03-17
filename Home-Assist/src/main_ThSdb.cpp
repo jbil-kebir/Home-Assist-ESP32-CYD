@@ -6,6 +6,7 @@
 #include "MyEcran.h"
 #include "MyMqtt.h"
 #include "RemoteTh.h"
+#include "RemoteTCS34725.h"
 #include "RemoteBatAA.h"
 #include "MyDateTime.h"
 
@@ -15,14 +16,17 @@ extern CMqtt mqtt;
 extern CMyDateTime mDateTime;
 
 CRemoteThermo mRemoteThSdb(String("ThSdb"), &ecran);
+CRemoteTCS34725 mRemoteCoulSdb(String("CoulSdb"), &ecran);
 CRemoteBatterieAA mRemoteBatSdb(String("BatSdb"), &ecran);
 
 extern int ajouterControleur(const String& nom, const String& ip);
 
 void setup_ThSdb() {
   mRemoteThSdb.begin("t0Sdb_"); // Type, etage, lieu (thermomètre, 1er, chanmre)
+  mRemoteCoulSdb.begin("colSdb_"); // 
   mRemoteBatSdb.begin("batsdb_");
   config.mRemoteThSdb = &mRemoteThSdb; // Toujours remote
+  config.mRemoteCoulSdb = &mRemoteCoulSdb; // Toujours remote
   config.mRemoteBatSdb = &mRemoteBatSdb; // Toujours remote
 
   // Thermomètre Salle de bain - affichage
@@ -34,6 +38,20 @@ void setup_ThSdb() {
   mRemoteThSdb.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
       return ptr->publish(topic, payload);
   });
+  // Couleur Salle de bain - affichage couleur
+  mRemoteCoulSdb.setDisplayCallbackCouleur([ptr = &ecran](const String& exp, unsigned long coul) {
+      ptr->updateRemoteDevice_ThSdbDel(exp, coul);
+  });
+  // Couleur Salle de bain - affichage luminosité
+  /*mRemoteCoulSdb.setDisplayCallbackCouleur([ptr = &ecran](const String& exp, unsigned long lum) {
+      ptr->updateRemoteDevice_ThSdbL(exp, lum);
+  });*/
+
+  // Couleur Salle de bain - publication MQTT
+  mRemoteCoulSdb.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
+      return ptr->publish(topic, payload);
+  });
+
   // Batterie du thermomètre Salle de bain - affichage
   mRemoteBatSdb.setDisplayCallback([ptr = &ecran](const String& exp, bool etatBatterie, float temp) {
       ptr->updateRemoteBat_ThSdb(exp, etatBatterie, temp);

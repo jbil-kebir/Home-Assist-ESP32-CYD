@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
+#include <vector>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include "global.h"
@@ -77,6 +78,8 @@ client.publish("home/chaudiere/status",  "", true);*/
       #endif
       Serial.println("Abonnement à " + mConfig.topic_config_command);
       client.subscribe(mConfig.topic_config_command.c_str()); //, 1);
+      Serial.println("Abonnement à " + mConfig.topic_config_state);
+      client.subscribe(mConfig.topic_config_state.c_str()); //, 1);
       Serial.println("Abonnement à " + mConfig.mRemoteThCh1er->mqttSubTopicState);
       client.subscribe(mConfig.mRemoteThCh1er->mqttSubTopicState.c_str());
     } else {
@@ -106,8 +109,28 @@ client.publish("home/chaudiere/status",  "", true);*/
 
 int CMqtt::publish(const char* topic, const char* payload, bool retained) {
   if (!active) return -1;
+  String s = String(payload);// + String(" ") + WiFi.localIP().toString();
   if (client.connected()) {
-    client.publish(topic, payload, retained);
+    client.publish(topic, s.c_str(), retained);
+    Serial.printf("MQTT publié (retained=%d) sur %s : %s\n", retained, topic, payload);
+  } 
+  else {
+    Serial.println("MQTT non connecté — publication ignorée");
+  }
+  return 0;
+}
+// Garde aussi la version sans retained (pour compatibilité)
+int CMqtt::publish(const char* topic, const char* payload) {
+  if (!active) return -1;
+  publish(topic, payload, false);
+  return 0;
+}
+
+int CMqtt::publishWithIP(const char* topic, const char* payload, bool retained) {
+  if (!active) return -1;
+  String s = payload + String(" ") + WiFi.localIP().toString();
+  if (client.connected()) {
+    client.publish(topic, s.c_str(), retained);
     Serial.printf("MQTT publié (retained=%d) sur %s : %s\n", retained, topic, payload);
   } 
   else {
@@ -116,13 +139,13 @@ int CMqtt::publish(const char* topic, const char* payload, bool retained) {
   return 0;
 }
 
+
 // Garde aussi la version sans retained (pour compatibilité)
-int CMqtt::publish(const char* topic, const char* payload) {
+int CMqtt::publishWithIP(const char* topic, const char* payload) {
   if (!active) return -1;
-  publish(topic, payload, false);
+  publishWithIP(topic, payload, false);
   return 0;
 }
-
 /*void CMqtt::setonEquipementCallback(std::function<int(const String& nom, const String& ip)> onEqu) {
   onEquipement = onEqu;
 }*/
@@ -187,6 +210,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     else if (message.startsWith("THSDB")) {
       mConfig.mRemoteThSdb->handleMqttState(messageOrg);
     }
+    else if (message.startsWith("COULSDB")) {
+      mConfig.mRemoteCoulSdb->handleMqttState(messageOrg);
+    }
     else if (message.startsWith("BATSDB")) {
       mConfig.mRemoteBatSdb->handleMqttState(messageOrg);
     }
@@ -234,20 +260,34 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       statusMsg += "Salle de bain : " + String(mConfig.chauffageSb->active ? "ACTIF" : "INACTIF") + " - " + mConfig.chauffageSb->etatStr + "\n";
       #else // Chaudière, thermomètre principal et équipements 433 MHz
       statusMsg += "Chaudière     : " + String(mConfig.mRemoteChaudiere->active ? "ACTIVE" : "INACTIVE") + " - "  + mConfig.mRemoteChaudiere->etatStr + "\n";
-//      statusMsg += "Keep-alive    : " + String(mConfig.mRemoteChaudiere->enableKeepAlive ? "ACTIVÉ" : "DÉSACtivé") + "\n";
+      //statusMsg += "Keep-alive    : " + String(mConfig.mRemoteChaudiere->enableKeepAlive ? "ACTIVÉ" : "DÉSACtivé") + "\n";
       statusMsg += "Projecteur    : " + String(mConfig.mRemoteProjecteur->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteProjecteur->etatStr + "\n";
       statusMsg += "Guirlande     : " + String(mConfig.mRemoteGuirlande->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.mRemoteGuirlande->etatStr + "\n";
       statusMsg += "Salle de bain : " + String(mConfig.mRemoteChauffage->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteChauffage->etatStr + "\n";
       #endif
+      String statusMsgBis = "=== ÉTAT Home Assisstant "+ String(mConfig.nomEquipement) +" (Suite) ===\n";
       #ifdef __CYD__
       statusMsg += "Veille écran  : " + String(mEcran.sleep_timeout > 0 ? String(mEcran.sleep_timeout) + "s" : "Désactivée") + "\n";
       #endif
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 
-      client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
+      std::vector<CIPModule> *mvsControleurs = mConfig.mvsControleurs;
+      if (mvsControleurs != nullptr) {
+        statusMsg += "\n=== Contrôleurs et capteurs connus ===\n";
+        for (const auto& ctrl : *mvsControleurs) {
+            String sCtrl = ctrl.getNom();
+            String sIp = ctrl.getIP();
+            statusMsg += sCtrl + " ==> " + sIp + "\n";
+        }
+      }
+
+
+      publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
       Serial.println("STATUS publié sur " + mConfig.topic_config_state + " :");
       Serial.println(statusMsg);
+      Serial.printf("Taille : %d\n", statusMsg.length());
+
     }
     else if (message.startsWith("VEILLE ")) {
       #ifdef __CYD__
@@ -293,6 +333,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.mRemoteBatCave->remonteStatusParMqtt();
 
       mConfig.mRemoteThSdb->remonteStatusParMqtt();
+      mConfig.mRemoteCoulSdb->remonteStatusParMqtt();
       mConfig.mRemoteBatSdb->remonteStatusParMqtt();
 
       mConfig.mRemoteThNomade->remonteStatusParMqtt();

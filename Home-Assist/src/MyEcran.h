@@ -20,6 +20,7 @@
 #include "MyZoneDateTime.h"
 #include "MyZoneTitle.h"
 #include "MyZoneMesureOnOff.h"
+#include "MyZoneMesureCouleur.h"
 #include "MyZoneAffichageIP.h"
 #include "MyIPModule.h"
 
@@ -66,10 +67,13 @@ private:
               mZoneMesureCentre,
               mZoneMesureEst;
 
-  CZoneMesureDouble mZoneMesureDoubleEst;
+  //CZoneMesureDouble mZoneMesureDoubleOuest;
   CZoneMesureDouble mZoneMesureDoubleCentre;
+  CZoneMesureDouble mZoneMesureDoubleEst;
 
   CZoneMesureOnOff  mZoneFlotteur;
+
+  CZoneMesureCouleur  mZoneCouleurSdb;
 
   CZoneStatus mZoneStatus;
   CZoneStatusBas mZoneStatusBas;
@@ -149,6 +153,7 @@ public:
   void updateRemoteDevice_ThCh1er(const String& nom, float val);
   void updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float val);
   void updateRemoteDevice_ThSdb(const String& nom, float val);
+  void updateRemoteDevice_ThSdbDel(const String& nom, bool val);
   void updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float val);
   void updateRemoteDevice_ThCave(const String& nom, float val);
   void updateRemoteDevice_ThCaveH(const String& nom, float val);

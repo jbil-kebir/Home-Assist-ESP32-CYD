@@ -24,6 +24,12 @@
 #ifdef FLOTTEUR_VERTICAL
 #include "MyTor.h"
 #endif
+#ifdef CAPTEUR_RGB_TCS34725
+#include <Wire.h>
+#include <Adafruit_TCS34725.h>
+#include "DetecteurRGB_TCS34725.h"
+#endif
+
 #include "MyBatterieAA.h"
 #include "MyDateTime.h"
 
@@ -57,11 +63,17 @@ CBatterieAA mBatterie(BATTERIE_PIN, mDateTime);
 #ifdef FLOTTEUR_VERTICAL
 CTor mFlotteurVertical(mDateTime);  
 #endif
+#ifdef CAPTEUR_RGB_TCS34725
+CDetecteurRGB_TCS34725 mCapteurRGB(mDateTime);
+#endif
 
 
 
 void print();
 void printBoardInfo();
+
+
+
 
 
 //-------------------------------------------------------------------------------------------
@@ -174,7 +186,27 @@ void setup() {
   });
   #endif
   #endif // FLOTTEUR_VERTICAL
-
+//================================================== Capteur RGB ==================================================
+  #ifdef CAPTEUR_RGB_TCS34725
+  Serial.println("Initialisation CAPTEUR_RGB_TCS34725...");
+  mCapteurRGB.begin("thhum_"); 
+  config.mCapteurRGB = &mCapteurRGB;
+  mCapteurRGB.domotique_prefix = "home/";
+  Serial.printf("void loop() - mCapteurRGB.domotique_prefix : %s\n", mCapteurRGB.domotique_prefix.c_str()); Serial.flush();
+  #ifdef _WIFI_MODE_
+  mCapteurRGB.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
+      return ptr->publish(topic, payload);
+  });
+  #endif
+  #ifdef _RCSWITCH_MODE_
+  mCapteurRGB.mRCSwitch = &mRCSwitch;
+  #endif
+  #ifdef _LORA_P2P_MODE_
+  mCapteurRGB.setLoraP2PPublishCallback([ptr = &mLoraRxTx](const char* payload) -> int {
+      return ptr->sendPacket(payload);
+  });
+  #endif
+  #endif // CAPTEUR_RGB_TCS34725
 
   
   config.setup();
@@ -260,6 +292,9 @@ void setup() {
   #ifdef CAPTEUR_DHT20
   int retTempHum = dht20.readAndPublish(true, true); // Force une première remontée
   #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  int retRGBLux = mCapteurRGB.readAndPublish(true, true); // Force une première remontée
+  #endif
   #endif // TEST_EMISSION_RCS
 
 
@@ -337,21 +372,27 @@ void loop() {
   // DS18B20
   //------------------------------------------------------------------------------------
   #ifdef CAPTEUR_DS18B20
+  static bool dsDejaAffiche = false;
  
   int ret = ds18b20.loop();
   if (ret == -1) {
+    dsDejaAffiche = false;
     Serial.println("ds18b20.readTemperature() - échec");
   } 
   else if (ret == 0) {
+    dsDejaAffiche = false;
     Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C inchangé");
   } 
   else if (ret == 1 && ds18b20.active) { // Température changée
     Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C changée");
-
+    dsDejaAffiche = false;
   } 
   else if (ret == -9) { // Inactif
-    String s = "Thermomètre " + ds18b20.nomEquipement + " inactif";
-    Serial.println(s);
+    if (!dsDejaAffiche) {
+      String s = "Thermomètre " + ds18b20.nomEquipement + " inactif";
+      Serial.println(s);
+      dsDejaAffiche = true;
+    }
     }
   #endif
 
@@ -436,6 +477,34 @@ void loop() {
     }
   #endif
 
+  //------------------------------------------------------------------------------------
+  // Capteur RGB
+  //------------------------------------------------------------------------------------
+  #ifdef CAPTEUR_RGB_TCS34725
+  static bool RGBInactifDejaAffiche = false;
+  int retRGB = mCapteurRGB.loop();
+  if (retRGB == -1) {
+    Serial.println("mCapteurRGB.readTemperature() - échec");
+    RGBInactifDejaAffiche = false;
+  } 
+  else if (retRGB == 0) {
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Couleur 0x" + String(mCapteurRGB.getLastR(), HEX) + " inchangé");
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Luminosité 0x" + String(mCapteurRGB.getLastLuminosite(), HEX) + " inchangé");
+    RGBInactifDejaAffiche = false;
+  } 
+  else if (retRGB == 1 && mCapteurRGB.active) { // Température changée
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Couleur 0x" + String(mCapteurRGB.getLastR(), HEX) + " changée");
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Luminosité 0x" + String(mCapteurRGB.getLastLuminosite(), HEX) + " changée");
+    RGBInactifDejaAffiche = false;
+  } 
+  else if (retRGB == -9) { // Inactif
+    if (!RGBInactifDejaAffiche) {
+      String s = "Equipement " + mCapteurRGB.nomEquipement + " inactif";
+      Serial.println(s);
+      RGBInactifDejaAffiche = true;
+    }
+  }
+  #endif  
 
     delay(10);
 }

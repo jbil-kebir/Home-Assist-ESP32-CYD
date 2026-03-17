@@ -1,3 +1,7 @@
+1.9
+Ajout capteur RGB TCS34725
+Ajout led signalant l'état du capteur (ON/OFF)
+
 1.8
 Ajout Tout Ou Rien
 Implémentation de la remontée de mesure par Lora P2P

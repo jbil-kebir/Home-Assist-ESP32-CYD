@@ -17,7 +17,7 @@ class ActionneurCard2Btn extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dateTime = 'toto_date';
+    //final dateTime = 'toto_date';
     final isEnabled = ref.watch(actionneurEnabledProvider(nomActionneurNormalise));
     final isOn = ref.watch(actionneurOnOffProvider(nomActionneurNormalise));
 
@@ -26,7 +26,7 @@ class ActionneurCard2Btn extends ConsumerWidget {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(2, 2, 2, 2), // (12, 8, 12, 12), // haut réduit à 8 au lieu de 12
+        padding: const EdgeInsets.fromLTRB(12, 2, 12, 2), // (12, 8, 12, 12), // haut réduit à 8 au lieu de 12
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -61,7 +61,7 @@ class ActionneurCard2Btn extends ConsumerWidget {
             ),
 
             // Date (si présente) – très proche du nom
-            if (dateTime.isNotEmpty)
+            /*if (dateTime.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 2), // réduit de 4 à 2
                 child: Text(
@@ -69,7 +69,7 @@ class ActionneurCard2Btn extends ConsumerWidget {
                   style: const TextStyle(fontSize: 10, color: Colors.grey), // encore plus petit
                   textAlign: TextAlign.center,
                 ),
-              ),
+              ),*/
 
             const SizedBox(height: 6), // espace entre nom/date et boutons → réduit de 12 à 6
 

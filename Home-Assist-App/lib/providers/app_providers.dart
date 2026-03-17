@@ -29,6 +29,13 @@ final batterieEtatProvider = StateProvider.family<String?, String>((ref, nom) =>
 final batterieTensionProvider = StateProvider.family<double?, String>((ref, nom) => null);
 // État réel du flotteur (true = haut/ON, false = bas/OFF)
 final flotteurProvider = StateProvider.family<bool, String>((ref, nom) => false);  // bas par défaut
+// Remontée des couleurs et de l'état de la del surveillée par le capteur RGB
+final couleurRProvider = StateProvider.family<double?, String>((ref, nom) => null); // Couleur
+final couleurGProvider = StateProvider.family<double?, String>((ref, nom) => null); // Couleur
+final couleurBProvider = StateProvider.family<double?, String>((ref, nom) => null); // Couleur
+final couleurLuxProvider = StateProvider.family<double?, String>((ref, nom) => null); // Couleur
+final couleurLuxBrutProvider = StateProvider.family<double?, String>((ref, nom) => null); // Couleur
+final delOnOffProvider = StateProvider.family<bool, String>((ref, nom) => false);  // Del ON/Off
 
 //----------------------------------------------------------------------------------------
 // Providers actionneurs
