@@ -116,7 +116,7 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   final Map<String, String> capteurs = const {
-    'nomade': 'ThNomade',
+    'remise': 'ThRemise',
     'cave': 'ThCave',
     'chambre 1er': 'ThCh1er',
     'chambre RDC': 'ThChRDC',
@@ -157,7 +157,7 @@ class HomeScreen extends ConsumerWidget {
 
       // Batteries liées
       if (nom == 'BATSDB') nom = 'THSDB';
-      else if (nom == 'BATNOMADE') nom = 'THNOMADE';
+      else if (nom == 'BATREMISE') nom = 'THREMISE';
       else if (nom == 'BATCH1ER') nom = 'THCH1ER';
       else if (nom == 'BATCAVE') nom = 'THCAVE';
       //else if (nom == 'COULSDB') nom = 'THSDB';
@@ -266,9 +266,9 @@ class HomeScreen extends ConsumerWidget {
               crossAxisSpacing: 12,
               childAspectRatio: 1.4,//1.7,
               children: [
-                CapteurCard( // ================================================================= Carte ThNomade
-                  nomCapteurNormalise: capteurs['nomade']!.trim().toUpperCase(),
-                  nomCapteurAffiche: capteurs['nomade']!,
+                CapteurCard( // ================================================================= Carte ThRemise
+                  nomCapteurNormalise: capteurs['remise']!.trim().toUpperCase(),
+                  nomCapteurAffiche: capteurs['remise']!,
                   bDeuxMesures: true, // Deux mesures : température et humidité
                   bFlotteur: true, // Flotteur
                   bBatterie: true, // Niveau de batterie

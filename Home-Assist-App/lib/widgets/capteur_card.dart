@@ -35,7 +35,7 @@ class CapteurCard extends ConsumerWidget {
     final etat = ref.watch(batterieEtatProvider(nomCapteurNormalise));
   
     // État du flotteur (seulement si bFlotteur == true)
-    final flotteurHaut = bFlotteur ? ref.watch(flotteurProvider('FLOTTEURNOMADE')) : null;
+    final flotteurHaut = bFlotteur ? ref.watch(flotteurProvider('FLOTTEURREMISE')) : null;
     // État DEL surveillée par le capteur RGB
     //final bAfficherLedRGB = bDEL ? ref.watch(delOnOffProvider('THSDB')) : null;
 
