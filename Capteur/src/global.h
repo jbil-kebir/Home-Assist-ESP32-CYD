@@ -34,16 +34,16 @@
 //#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
 #define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
-//#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, lissant uniquement la RF
-//#define _LORA_P2P_MODE_ // Envoi par LORA
+#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
+#define _LORA_P2P_MODE_ // Envoi par LORA
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
-//#define CAPTEUR_DHT20 // Fonctionne en I2C
-#define CAPTEUR_DS18B20
-//#define FLOTTEUR_VERTICAL
-#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
-#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
+#define CAPTEUR_DHT20 // Fonctionne en I2C
+//#define CAPTEUR_DS18B20
+#define FLOTTEUR_VERTICAL
+//#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
+//#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
@@ -55,16 +55,14 @@
 //#define FORCE_CONNEXION_WIFI
 
 #ifdef FORCE_CONNEXION_WIFI
-#define FORCE_WIFI_SSID  "xxxxxxxx"
-#define FORCE_WIFI_PASSWD "xxxxxxx"
-#define FORCE_MQTT_SERVER "119.177.244.151"
+#define FORCE_WIFI_SSID  "Simpson"
+#define FORCE_WIFI_PASSWD "al177SOLO$*"
+#define FORCE_MQTT_SERVER "19.77.244.51"
 #define FORCE_MQTT_PORT 1883
-#define FORCE_MQTT_USER "ubu_ntu"
-#define FORCE_MQTT_PWD "ffffffffff*"
+#define FORCE_MQTT_USER "ubuntu"
+#define FORCE_MQTT_PWD "al177SOLO$**"
 #endif
 
-//#define __ESP32_C3__
-//#define __ESP32_S3__
 // -----------------------------------------------------------------------------
 // Détection automatique de la carte ESP32-C3 ou ESP32-S3
 // -----------------------------------------------------------------------------
@@ -120,7 +118,7 @@
   #define IS_ESP32_S3       1
   #define BOARD_NAME        "ESP32-S3 (XIAO / Super Mini S3)"
 
-  #ifdef _LORA_P2P_MODE_
+  //#ifdef _LORA_P2P_MODE_
     // Pins spécifiques ESP32-S3 (tirés de ton mapping)
     #define LORA_MISO_PIN     8
     #define LORA_SCK_PIN      7
@@ -138,9 +136,10 @@
     #define LORA_SYNC_WORD    0x12
     #define LORA_OUTPUT_POWER 14.0
     #define LORA_PREAMBLE_LENGTH 8
+    #define LORA_TCXO_VOLTAGE 1.8  // Wio-SX1262 Seeed : TCXO 1.8V (et non 1.6V)
 
     #define START_STOP "==========" // A mettre en début et en fin de message
-  #endif // _LORA_P2P_MODE_
+  //#endif // _LORA_P2P_MODE_
 
     #define DEFAULT_SDA_PIN   5   // Pin 5 // DHT20 entre autre
     #define DEFAULT_SCL_PIN   6   // Pin 6 // DHT20 entre autre

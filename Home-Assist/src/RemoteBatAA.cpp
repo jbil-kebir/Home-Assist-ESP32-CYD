@@ -44,9 +44,9 @@ float CRemoteBatterieAA::getLastTension() const {
 
 void CRemoteBatterieAA::printTension() const {
   if (lastTension != -1.0) {
-    Serial.printf("Tension : %.2f °C\n", lastTension);
+    DBG(DBG_CAPTEURS, "Tension : %.2f °C\n", lastTension);
   } else {
-    Serial.println("Aucune tension valide");
+    DBG(DBG_CAPTEURS, "Aucune tension valide\n");
   }
 }
 
@@ -73,13 +73,13 @@ void CRemoteBatterieAA::loadFromWebServer (WebServer& server) {
 
 void CRemoteBatterieAA::print() const {
 
-  Serial.printf("==========================================================\n");
-  Serial.printf("     Nom              : %s\n", nomEquipement);
-  Serial.printf("     Actif            : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Watchdog         : %ld s\n", mulWatchdogIntervalle);
-  Serial.printf("     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState        : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_CAPTEURS, "==========================================================\n");
+  DBG(DBG_CAPTEURS, "     Nom              : %s\n", nomEquipement.c_str());
+  DBG(DBG_CAPTEURS, "     Actif            : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_CAPTEURS, "     Watchdog         : %ld s\n", mulWatchdogIntervalle);
+  DBG(DBG_CAPTEURS, "     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTState        : %s\n", mqttSubTopicState.c_str());
 }
 
 void CRemoteBatterieAA::mqttMessageToStruct_split(MQTTMessage_2& st, const String& s) {
@@ -104,85 +104,6 @@ void CRemoteBatterieAA::setMqttPublishCallback(std::function<int(const char*, co
         onMqttPublish = cb;
     }
         
-/*void CRemoteBatterieAA::handleMqttState(const String& payload) {
-    static bool inactifAffiche = false;
-    if (!active) {
-      if (!inactifAffiche) {
-        Serial.printf("void CRemoteBatterieAA::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
-        inactifAffiche = true;
-      }
-      return;
-    }
-    inactifAffiche = false;
-    // On réinitiallise le WatchDog
-    mulWatchDog = millis();
-
-    ParsedMqttMessage msg;
-    msg.parse(payload);
-    int n = msg.miTailleMesure;
-    Serial.printf("void CRemoteBatterieAA::handleMqttState(const String& payload) - paylod = %s - Nb de champs = %d\n", payload.c_str(), n);
-    if (n) { //msg.parse(payload)) {
-        msg.printDebug();
-        if (msg.msExpediteur != getNomEquipement()) {
-            return; // pas pour nous
-        }
-
-        if (msg.mvsMesure.empty()) return;
-
-        if (!msg.msIp.isEmpty()) mIP = msg.msIp.isEmpty();
-        
-        String premiereMesure = msg.mvsMesure[0];
-        premiereMesure.toUpperCase();
-
-        if (premiereMesure == "TENSION") {
-            // La valeur est généralement le dernier champ
-            if (!msg.mvsMesure.empty()) {
-              String sEtatBatterie = msg.mvsMesure[1];
-              String sTension = msg.mvsMesure.back();
-              int etatBatterie;
-              if (sEtatBatterie == "CHARGEE") etatBatterie = 1;
-              else if (sEtatBatterie == "DECHARGEE") etatBatterie = 0;
-              float val = sTension.toFloat();
-              // Traiter val selon premiereMesure
-                if (onTensionChanged != nullptr) {
-                  onTensionChanged(msg.msExpediteur, etatBatterie, val);
-                }
-                else {
-                  Serial.printf("void CRemoteBatterieAA::handleMqttState - Aucun callback défini pour <%s %s %d %.2f>", getNomEquipement(), premiereMesure, etatBatterie, val);
-                }
-              } // if (!msg.mvsMesure.empty())
-            } // if (premiereMesure == "TENSION")
-  #ifndef __LOCAL_MODE__
-        if (premiereMesure == "TENSIONR") {
-            // La valeur est généralement le dernier champ
-            if (!msg.mvsMesure.empty()) {
-              String sEtatBatterie = msg.mvsMesure[1];
-              String sTension = msg.mvsMesure.back();
-              int etatBatterie;
-              if (sEtatBatterie == "CHARGEE") etatBatterie = 1;
-              else if (sEtatBatterie == "DECHARGEE") etatBatterie = 0;
-              float val = sTension.toFloat();
-              // Traiter val selon premiereMesure
-                if (onTensionChanged != nullptr) {
-                  onTensionChanged(msg.msExpediteur, etatBatterie, val);
-                }
-                else {
-                  Serial.printf("void CRemoteBatterieAA::handleMqttState - Aucun callback défini pour <%s %s %d %.2f>", getNomEquipement(), premiereMesure, etatBatterie, val);
-                }
-              } // if (!msg.mvsMesure.empty())
-            } // if (premiereMesure == "TENSIONR")
-        else if (st.sAction == "INACTIFR") {
-          setActive(false);
-        } 
-        else {
-          Serial.println("Aucun callback défini pour " + nomEquipement);
-        }
-
-  #endif
-        } // if (n)
-}*/
-
-
 void CRemoteBatterieAA::handleMqttState(const String& payload) {
   String cmd = payload, cmdOrg;
   cmd.trim();
@@ -191,7 +112,7 @@ void CRemoteBatterieAA::handleMqttState(const String& payload) {
   static bool inactifAffiche = false;
   if (!active) {
     if (!inactifAffiche) {
-      Serial.printf("void CRemoteBatterieAA::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
+      DBG(DBG_CAPTEURS, "void CRemoteBatterieAA::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
       inactifAffiche = true;
     }
     return;
@@ -212,7 +133,7 @@ void CRemoteBatterieAA::handleMqttState(const String& payload) {
       onTensionChanged(stOrg.sExpediteur, miLastEtatBatterie, st.fVal);
     }
     else {
-      Serial.println("Aucun callback défini pour " + nomEquipement);
+      DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
     }
   } 
   #ifndef __LOCAL_MODE__
@@ -232,7 +153,7 @@ void CRemoteBatterieAA::handleMqttState(const String& payload) {
     setActive(false);
   } 
   else {
-    Serial.println("Aucun callback défini pour " + nomEquipement);
+    DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
   }
   #endif
 
@@ -257,7 +178,7 @@ bool CRemoteBatterieAA::remonteStatusParMqtt() {
   else {
     sVal = nomEquipement + " INACTIFR " + mDateTime.getDate() + " " + mDateTime.getTime();
   }
-  Serial.println("CBatterieAA::publieSurMqtt() : " + sVal);
+  DBGLN(DBG_CAPTEURS, "CBatterieAA::publieSurMqtt() : " + sVal);
   bool ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
   return ret;
 } 

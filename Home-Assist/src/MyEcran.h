@@ -67,13 +67,17 @@ private:
               mZoneMesureCentre,
               mZoneMesureEst;
 
-  //CZoneMesureDouble mZoneMesureDoubleOuest;
+  CZoneMesureDouble mZoneMesureDoubleOuest;
   CZoneMesureDouble mZoneMesureDoubleCentre;
   CZoneMesureDouble mZoneMesureDoubleEst;
 
   CZoneMesureOnOff  mZoneFlotteur;
+  CZoneMesureOnOff  mZoneTorNomade;
 
   CZoneMesureCouleur  mZoneCouleurSdb;
+
+  CZoneMesureOnOff  mZoneHa1;   // Série 4 : état HA colonne droite ligne 1
+  CZoneMesureOnOff  mZoneHa2;   // Série 4 : état HA colonne droite ligne 2
 
   CZoneStatus mZoneStatus;
   CZoneStatusBas mZoneStatusBas;
@@ -131,8 +135,8 @@ public:
   void desactiveChauffageSb(bool bDrawInterface=true);
   void activeChauffageSb(bool activ=true, bool bDrawInterface=true);
   void updateSleepTimeout(int32_t st);
-  String setLastStatusMessage(String& s);
-  String getLastStatusMessage();
+  //String setLastStatusMessage(String& s);
+  //String getLastStatusMessage();
   void print() const;
   void setSerieAffichageEnCours(unsigned char num);
   void serieAffichagePlusUn();
@@ -146,22 +150,43 @@ public:
   int drawStatus(const String& msg, bool memorise=false);
  int drawStatus();
 
+  int  remonteEcranSerieParMqtt();
+  int  remonteOrientationEcranParMqtt();
+  int  remonteVeilleEcranParMqtt();
+  int  remonteStatusParMqtt(); // Appelle les 3 méthodes au-dessus
+
   void updateAppareilsDeMesure();
   void updateThermometreLocal();
+
   void updateRemoteDevice_DS18B20(const String& nom, float val);
   void updateRemoteBat_DS18B20(const String& nom, int etatBatterie, float val);
+
   void updateRemoteDevice_ThCh1er(const String& nom, float val);
   void updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float val);
+
   void updateRemoteDevice_ThSdb(const String& nom, float val);
-  void updateRemoteDevice_ThSdbDel(const String& nom, bool val);
+  void updateRemoteDevice_ThSdbDel(const String& nom, int val);
   void updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float val);
+
   void updateRemoteDevice_ThCave(const String& nom, float val);
   void updateRemoteDevice_ThCaveH(const String& nom, float val);
   void updateRemoteDevice_ThCaveTor(const String& nom, int val);
   void updateRemoteBat_ThCave(const String& nom, int etatBatterie, float val);
+
   void updateRemoteDevice_ThNomade(const String& nom, float val);
   void updateRemoteDevice_ThNomadeH(const String& nom, float val);
+  void updateRemoteDevice_ThNomadeTor(const String& nom, int val);
   void updateRemoteBat_ThNomade(const String& nom, int etatBatterie, float val);
+
+  void updateRemoteDevice_NewNas(const String& nom, int val);
+  void updateRemoteDevice_BigNas(const String& nom, int val);
+
+  void updateSerie4();
+
+  void updateRemoteDevice_ThRemise(const String& nom, float val);
+  void updateRemoteDevice_ThRemiseH(const String& nom, float val);
+  void updateRemoteBat_ThRemise(const String& nom, int etatBatterie, float val);
+
   void updateDateHeure(const String& date, const String& heure);
   void updateDateHeure();
   void updateControleursEtEsclaves();

@@ -47,9 +47,9 @@ float CRemoteThermo::getLastTemperature() const {
 
 void CRemoteThermo::printTemperature() const {
   if (lastTempC != -127.0) {
-    Serial.printf("Temperature : %.2f °C\n", lastTempC);
+    DBG(DBG_CAPTEURS, "Temperature : %.2f °C\n", lastTempC);
   } else {
-    Serial.println("Aucune Temperature valide");
+    DBG(DBG_CAPTEURS, "Aucune Temperature valide\n");
   }
 }
 
@@ -84,13 +84,13 @@ void CRemoteThermo::loadFromWebServer (WebServer& server) {
 
 void CRemoteThermo::print() const {
 
-  Serial.printf("==========================================================\n");
-  Serial.printf("     Nom              : %s\n", nomEquipement);
-  Serial.printf("     Actif            : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Watchdog         : %ld s\n", mulWatchdogIntervalle);
-  Serial.printf("     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState        : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_CAPTEURS, "==========================================================\n");
+  DBG(DBG_CAPTEURS, "     Nom              : %s\n", nomEquipement.c_str());
+  DBG(DBG_CAPTEURS, "     Actif            : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_CAPTEURS, "     Watchdog         : %ld s\n", mulWatchdogIntervalle);
+  DBG(DBG_CAPTEURS, "     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTState        : %s\n", mqttSubTopicState.c_str());
 }
 
 void CRemoteThermo::setDisplayCallback(std::function<void(const String&, float)> cb) {
@@ -106,7 +106,7 @@ void CRemoteThermo::handleMqttState(const String& payload) {
   static bool inactifAffiche = false;
   if (!active) {
     if (!inactifAffiche) {
-      Serial.printf("void CRemoteThermo::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
+      DBG(DBG_CAPTEURS, "void CRemoteThermo::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
       inactifAffiche = true;
     }
     return;
@@ -121,16 +121,16 @@ void CRemoteThermo::handleMqttState(const String& payload) {
   if (n > 0) {
     //msg.printDebug();
     if (onEquipement != nullptr) 
-      onEquipement(msg.msExpediteur, msg.msIp);
-    else Serial.printf("void CRemoteThermo::handleMqttState() - Pas de callback onEquipement()\n");
+      onEquipement(msg.msExpediteur, msg.msIp); // On ajoute à la liste d'équuipements si ça n'est pas déjà fait
+    else DBG(DBG_CAPTEURS, "void CRemoteThermo::handleMqttState() - Pas de callback onEquipement() - %s\n", nomEquipement.c_str());
     
     if (msg.msExpediteur != getNomEquipement()) {
-      Serial.printf("void CRemoteThermo::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
+      DBG(DBG_CAPTEURS, "void CRemoteThermo::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
       return; // pas pour nous
     }
 
     if (msg.mvsMesure.empty()) {
-      Serial.printf("void CRemoteThermo::handleMqttState() Equipement %s - Mesure vide. On sort.\n", getNomEquipement().c_str());
+      DBG(DBG_CAPTEURS, "void CRemoteThermo::handleMqttState() Equipement %s - Mesure vide. On sort.\n", getNomEquipement().c_str());
       return;
     }
     // On réinitiallise le WatchDog
@@ -148,7 +148,7 @@ void CRemoteThermo::handleMqttState(const String& payload) {
         onTemperatureChanged(msg.msExpediteur, lastTempC);
       }
       else {
-        Serial.println("Aucun callback défini pour " + nomEquipement);
+        DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
     } 
     #ifndef __LOCAL_MODE__ // Les CYD auxiliaires peuvent recevoir des infos température à leur demande
@@ -162,7 +162,7 @@ void CRemoteThermo::handleMqttState(const String& payload) {
         onTemperatureChanged(msg.msExpediteur, lastTempC);
       }
       else {
-        Serial.println("Aucun callback défini pour " + nomEquipement);
+        DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
     } 
     else if (premiereMesure == "INACTIFR") {
@@ -188,7 +188,7 @@ bool CRemoteThermo::remonteStatusParMqtt() {
   else {
     sVal = nomEquipement + " INACTIFR " + mDateTime.getDate() + " " + mDateTime.getTime();
   }
-  Serial.println("CRemoteThermo::remonteStatusParMqtt() : " + sVal);
+  DBGLN(DBG_CAPTEURS, "CRemoteThermo::remonteStatusParMqtt() : " + sVal);
   bool ret = onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str());
   return ret;
 } 

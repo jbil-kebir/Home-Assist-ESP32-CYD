@@ -16,6 +16,7 @@ class CRadioTX;
 class CChaudiere : public CRadioTX, public CEquipementBase {
 private:
   CEcran *mEcran=nullptr;
+  bool mbForcerDisable = false; // Permet de forcer la désactivation de l'équipement même s'il est actif (ex: pour forcer l'arrêt de la chaudière même si elle est active) Vient du MQTT avec la commande OFF_FORCE
 
 public:
   CChaudiere() = default;

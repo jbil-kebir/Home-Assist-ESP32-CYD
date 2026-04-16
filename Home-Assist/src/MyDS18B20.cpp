@@ -13,17 +13,17 @@ int MyDS18B20::begin(const String pref) {
   // On charge les infos de config depuis le NVS
   loadFromNVS();
   sensors.begin();
-  Serial.print("DS18B20 trouvé : ");
+  DBG(DBG_CAPTEURS, "DS18B20 trouvé : ");
   uint8_t nbDevices = sensors.getDeviceCount();
   if (nbDevices == 0) {
     return -1;
   } 
-  Serial.println();
+  DBG(DBG_CAPTEURS, "\n");
   // Premier relevé
   if (readTemperature()) {
     printTemperature();
   } else {
-    Serial.println("DS18B20 non détecté !");
+    DBG(DBG_CAPTEURS, "DS18B20 non détecté !\n");
     return -2;
   }
   return 0;
@@ -96,7 +96,7 @@ bool MyDS18B20::publieSurMqtt(bool force/*=false*/) {
     CMyDateTime mDateTime;
     String sVal = nomEquipement + " Temp " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(temp, 1);
     if (force) sVal += " FORCE";
-    Serial.println("MyDS18B20::publieSurMqtt() : " + sVal);
+    DBGLN(DBG_CAPTEURS, "MyDS18B20::publieSurMqtt() : " + sVal);
     bool ret = onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str());
     return ret;
 }
@@ -118,7 +118,7 @@ bool MyDS18B20::remonteStatusParMqtt() {
   else {
     sVal = nomEquipement + " INACTIFR " + mDateTime.getDate() + " " + mDateTime.getTime();
   }
-  Serial.println("MyDS18B20::remonteStatusParMqtt() : " + sVal);
+  DBGLN(DBG_CAPTEURS, "MyDS18B20::remonteStatusParMqtt() : " + sVal);
   bool ret = onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str());
   return ret;
 } 
@@ -129,7 +129,7 @@ bool MyDS18B20::readTemperature() {
   float temp = sensors.getTempCByIndex(0);
 
   if ( temp == DEVICE_DISCONNECTED_C || temp == -127.0) {
-    Serial.println("Erreur : DS18B20 déconnecté ou erreur");
+    DBG(DBG_CAPTEURS, "Erreur : DS18B20 déconnecté ou erreur\n");
     return false;
   }
   newTempC = temp;
@@ -142,9 +142,9 @@ float MyDS18B20::getLastTemperature() const {
 
 void MyDS18B20::printTemperature() const {
   if (lastTempC != -127.0) {
-    Serial.printf("void MyDS18B20::printTemperature() - Température : %.2f °C\n", lastTempC);
+    DBG(DBG_CAPTEURS, "void MyDS18B20::printTemperature() - Température : %.2f °C\n", lastTempC);
   } else {
-    Serial.println("Aucune température valide");
+    DBG(DBG_CAPTEURS, "Aucune température valide\n");
   }
 }
 
@@ -182,14 +182,14 @@ void MyDS18B20::loadFromWebServer (WebServer& server) {
 
 void MyDS18B20::print() const {
 
-  Serial.printf("     Nom                : %s\n", nomEquipement);
-  Serial.printf("     GPIO               : %d\n", mucPin);
-  Serial.printf("     Actif              : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Intervalle mesures : %ld s\n", mulIntervalleMesure);
-  Serial.printf("     Forcage remontée   : %ld s\n", mulIntervalleForcageRemonteeMesure);
-  Serial.printf("     MQTTSubTopic       : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd            : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState          : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_CAPTEURS, "     Nom                : %s\n", nomEquipement.c_str());
+  DBG(DBG_CAPTEURS, "     GPIO               : %d\n", mucPin);
+  DBG(DBG_CAPTEURS, "     Actif              : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_CAPTEURS, "     Intervalle mesures : %ld s\n", mulIntervalleMesure);
+  DBG(DBG_CAPTEURS, "     Forcage remontée   : %ld s\n", mulIntervalleForcageRemonteeMesure);
+  DBG(DBG_CAPTEURS, "     MQTTSubTopic       : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTCmd            : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTState          : %s\n", mqttSubTopicState.c_str());
 }
 
 String MyDS18B20::getHTML() {

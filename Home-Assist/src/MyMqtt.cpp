@@ -32,7 +32,7 @@ void CMqtt::begin(String sserv/*=""*/, uint16_t uiport/*=0*/, String user/*=""*/
 
 void CMqtt::reconnect() {
   while (!client.connected()) {
-    Serial.print("Connexion MQTT...");
+    DBG(DBG_MQTT, "Connexion MQTT...");
     String clientId = "CYD_AD200_" + String(random(0xffff), HEX);
     #ifdef __LOCAL_MODE__
     String topicStatus = mConfig.chaudiere->mqttSubTopicStatus;
@@ -42,7 +42,7 @@ void CMqtt::reconnect() {
     String sOut = mConfig.nomEquipement + " - Reconnect le " + mConfig.mDateTime->getDate() + " à " + mConfig.mDateTime->getTime();
     if (client.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_password.c_str(),
                         topicStatus.c_str(), 0, false, sOut.c_str())) {
-      Serial.println(sOut);
+      DBGLN(DBG_MQTT, sOut);
 
 // Nettoyage retained chaudière (à faire une seule fois, puis commenter)
 /*client.publish("home/chaudiere/command", "", true);
@@ -51,40 +51,44 @@ client.publish("home/chaudiere/status",  "", true);*/
 
       #ifdef __LOCAL_MODE__
       // === ABONNEMENTS FORCÉS À CHAQUE CONNEXION ===
-      Serial.println("Abonnement à ad200/command");
+      DBG(DBG_MQTT, "Abonnement à ad200/command\n");
       client.subscribe(mConfig.chaudiere->mqttSubTopicCommand.c_str());
 
-      Serial.println("Abonnement à " + mConfig.projecteur->mqttSubTopicCommand);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.projecteur->mqttSubTopicCommand);
       client.subscribe(mConfig.projecteur->mqttSubTopicCommand.c_str());
 
-      Serial.println("Abonnement à " + mConfig.guirlande->mqttSubTopicCommand);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.guirlande->mqttSubTopicCommand);
       client.subscribe(mConfig.guirlande->mqttSubTopicCommand.c_str());
 
-      Serial.println("Abonnement à " + mConfig.chauffageSb->mqttSubTopicCommand);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.chauffageSb->mqttSubTopicCommand);
       client.subscribe(mConfig.chauffageSb->mqttSubTopicCommand.c_str());
 
       // Publication des états retained
       //client.publish(mConfig.chaudiere->mqttSubTopicStatus.c_str(), "online", false);
       //publishState(currentState);
       #else
-      Serial.println("Abonnement à " + mConfig.mRemoteChaudiere->mqttSubTopicCommand);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteChaudiere->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteChaudiere->mqttSubTopicCommand.c_str());
-      Serial.println("Abonnement à " + mConfig.mRemoteProjecteur->mqttSubTopicCommand);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteProjecteur->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteProjecteur->mqttSubTopicCommand.c_str());
-      Serial.println("Abonnement à " + mConfig.mRemoteGuirlande->mqttSubTopicCommand);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteGuirlande->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteGuirlande->mqttSubTopicCommand.c_str());
-      Serial.println("Abonnement à " + mConfig.mRemoteChauffage->mqttSubTopicCommand);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteChauffage->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteChauffage->mqttSubTopicCommand.c_str());
       #endif
-      Serial.println("Abonnement à " + mConfig.topic_config_command);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.topic_config_command);
       client.subscribe(mConfig.topic_config_command.c_str()); //, 1);
-      Serial.println("Abonnement à " + mConfig.topic_config_state);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.topic_config_state);
       client.subscribe(mConfig.topic_config_state.c_str()); //, 1);
-      Serial.println("Abonnement à " + mConfig.mRemoteThCh1er->mqttSubTopicState);
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteThCh1er->mqttSubTopicState);
       client.subscribe(mConfig.mRemoteThCh1er->mqttSubTopicState.c_str());
+      if (mConfig.mRemoteNewNas) {
+        DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteNewNas->mqttSubTopicState);
+        client.subscribe(mConfig.mRemoteNewNas->mqttSubTopicState.c_str());
+      }
     } else {
-      Serial.print("échec, rc=");
-      Serial.println(client.state());
+      DBG(DBG_MQTT, "échec, rc=");
+      DBGLN(DBG_MQTT, client.state());
       delay(5000);
     }
   }
@@ -112,10 +116,10 @@ int CMqtt::publish(const char* topic, const char* payload, bool retained) {
   String s = String(payload);// + String(" ") + WiFi.localIP().toString();
   if (client.connected()) {
     client.publish(topic, s.c_str(), retained);
-    Serial.printf("MQTT publié (retained=%d) sur %s : %s\n", retained, topic, payload);
-  } 
+    DBG(DBG_MQTT, "MQTT publié (retained=%d) sur %s : %s\n", retained, topic, payload);
+  }
   else {
-    Serial.println("MQTT non connecté — publication ignorée");
+    DBG(DBG_MQTT, "MQTT non connecté — publication ignorée\n");
   }
   return 0;
 }
@@ -131,10 +135,10 @@ int CMqtt::publishWithIP(const char* topic, const char* payload, bool retained) 
   String s = payload + String(" ") + WiFi.localIP().toString();
   if (client.connected()) {
     client.publish(topic, s.c_str(), retained);
-    Serial.printf("MQTT publié (retained=%d) sur %s : %s\n", retained, topic, payload);
-  } 
+    DBG(DBG_MQTT, "MQTT publié (retained=%d) sur %s : %s\n", retained, topic, payload);
+  }
   else {
-    Serial.println("MQTT non connecté — publication ignorée");
+    DBG(DBG_MQTT, "MQTT non connecté — publication ignorée\n");
   }
   return 0;
 }
@@ -157,11 +161,11 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   messageOrg = message;
   message.toUpperCase();
 
-  //Serial.printf("void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
+  DBG(DBG_MQTT, "void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
 
   #ifdef __LOCAL_MODE__
   if (String(topic) == mConfig.chaudiere->mqttSubTopicCommand) {
-    Serial.println("CMqtt::callback() - Chaudière - Topic : " + String(topic) + " - Msg : " + message);
+    DBGLN(DBG_MQTT, "CMqtt::callback() - Chaudière - Topic : " + String(topic) + " - Msg : " + message);
     mConfig.chaudiere->handleMqttCommand(messageOrg);
   } // Projecteur
   else if (String(topic) == mConfig.projecteur->mqttSubTopicCommand) {
@@ -225,7 +229,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     else if (message.startsWith("THCAVE")) {
       mConfig.mRemoteThCave->handleMqttState(messageOrg);
     }
-    else if (message.startsWith("FLOTTEURNOMADE")) {
+    else if (message.startsWith("FLOTTEURREMISE")) {
       mConfig.mRemoteTor->handleMqttState(messageOrg);
     }
     else if (message.startsWith("BATCAVE")) {
@@ -234,21 +238,41 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     else if (message.startsWith("THNOMADE")) {
       mConfig.mRemoteThNomade->handleMqttState(messageOrg);
     }
+    else if (message.startsWith("FLOTTEURNOMADE")) {
+      mConfig.mRemoteTorNomade->handleMqttState(messageOrg);
+    }
     else if (message.startsWith("BATNOMADE")) {
       mConfig.mRemoteBatNomade->handleMqttState(messageOrg);
     }
-    else {
-      Serial.printf("CMqtt::callback() message non traité ***%s*** : \n", message.c_str());
+    else if (message.startsWith("THREMISE")) {
+      mConfig.mRemoteThRemise->handleMqttState(messageOrg);
     }
-    
-  } 
+    else if (message.startsWith("BATREMISE")) {
+      mConfig.mRemoteBatRemise->handleMqttState(messageOrg);
+    }
+    else {
+      DBG(DBG_MQTT, "CMqtt::callback() message non traité ***%s*** : \n", message.c_str());
+    }
+
+  }
+  else if (mConfig.mRemoteNewNas && String(topic) == mConfig.mRemoteNewNas->mqttSubTopicState) { // Messages provenant de Home Assistant (via MQTT)
+    if (message.startsWith("NEWNAS")) {
+      mConfig.mRemoteNewNas->handleMqttState(messageOrg);
+    }
+    else if (message.startsWith("BIGNAS")) {
+      mConfig.mRemoteBigNas->handleMqttState(messageOrg);
+    }
+    else {
+      DBG(DBG_MQTT, "CMqtt::callback() homeassistant message non traité ***%s*** : \n", message.c_str());
+    }
+  }
   // Traitement des commandes de configuration
   else if (String(topic) == mConfig.topic_config_command) {
     message.trim();  // Supprime espaces début/fin
     message.toUpperCase();
     //mConfig.handleMqttCommand(message);
 
-    Serial.println("Commande configuration reçue : " + message);
+    DBGLN(DBG_MQTT, "Commande configuration reçue : " + message);
   if (message == "STATUS") {
       String statusMsg = "=== ÉTAT Home Assisstant "+ String(mConfig.nomEquipement) +" ===\n";
       statusMsg += String(mConfig.mDateTime->getDate()) + " " + String(mConfig.mDateTime->getTime()) + "\n";
@@ -284,9 +308,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
 
 
       publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
-      Serial.println("STATUS publié sur " + mConfig.topic_config_state + " :");
-      Serial.println(statusMsg);
-      Serial.printf("Taille : %d\n", statusMsg.length());
+      DBGLN(DBG_MQTT, "STATUS publié sur " + mConfig.topic_config_state + " :");
+      DBGLN(DBG_MQTT, statusMsg);
+      DBG(DBG_MQTT, "Taille : %d\n", statusMsg.length());
 
     }
     else if (message.startsWith("VEILLE ")) {
@@ -317,6 +341,13 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mEcran.setOrientationEcran(rotation);
       #endif
     }
+    else if (message.startsWith("ALIVE ")) {
+      int32_t watchdogPeriodEnMin = (int32_t)message.substring(6).toDouble();
+      mConfig.setWatchDogAlivePeriod(watchdogPeriodEnMin);
+      String s = "Watchdog Alive period : " + String(watchdogPeriodEnMin) + " min";
+      DBG(DBG_MQTT, "CMqtt::callback() - %s\n", s.c_str());
+      mEcran.updateStatus(s);
+    }
     else if (message.startsWith("DEVICE ")) { // Un nouveau module (CYD) vient d'apparaître sur le réseau, si on est en __LOCAL_MODE__, on lui envoie les états des appareils
       #ifdef __LOCAL_MODE__
       mConfig.chaudiere->remonteStatusParMqtt();
@@ -336,9 +367,12 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.mRemoteCoulSdb->remonteStatusParMqtt();
       mConfig.mRemoteBatSdb->remonteStatusParMqtt();
 
-      mConfig.mRemoteThNomade->remonteStatusParMqtt();
-      mConfig.mRemoteBatNomade->remonteStatusParMqtt();
+      mConfig.mRemoteThRemise->remonteStatusParMqtt();
+      mConfig.mRemoteBatRemise->remonteStatusParMqtt();
       mConfig.mRemoteTor->remonteStatusParMqtt();
+
+      mConfig.mRemoteNewNas->remonteStatusParMqtt();
+      mConfig.mRemoteBigNas->remonteStatusParMqtt();
 
       mConfig.remonteCYDInfoToEcran(messageOrg);
       #endif
@@ -386,13 +420,13 @@ void CMqtt::loadFromWebServer(WebServer& server) {
 }
 
 void CMqtt::print() const {
-  Serial.println("[MQTT]");
-  Serial.printf("  Nom          : %s\n", nomEquipement.c_str());
-  Serial.printf("  Actif        : %s\n", active ? "OUI" : "NON");
-  Serial.printf("  Server       : %s\n", mqtt_server.c_str());
-  Serial.printf("  Port         : %d\n", mqtt_port);
-  Serial.printf("  User         : %s\n", mqtt_user.c_str());
-  Serial.printf("  Password     : %s\n", mqtt_password.c_str());
+  DBG(DBG_MQTT, "[MQTT]\n");
+  DBG(DBG_MQTT, "  Nom          : %s\n", nomEquipement.c_str());
+  DBG(DBG_MQTT, "  Actif        : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_MQTT, "  Server       : %s\n", mqtt_server.c_str());
+  DBG(DBG_MQTT, "  Port         : %d\n", mqtt_port);
+  DBG(DBG_MQTT, "  User         : %s\n", mqtt_user.c_str());
+  DBG(DBG_MQTT, "  Password     : %s\n", mqtt_password.c_str());
 }
 
 String CMqtt::getHTML() {

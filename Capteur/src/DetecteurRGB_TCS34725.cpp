@@ -587,9 +587,10 @@ void CDetecteurRGB_TCS34725::loadFromNVS() {
   muiRougeOff = prefs.getUInt((mPrefixNVS+"roff").c_str(), VAL_LED_ROUGE_OFF);
   muiLuxOn = prefs.getUInt((mPrefixNVS+"luxon").c_str(), VAL_LUX_ON);
   muiLuxOff = prefs.getUInt((mPrefixNVS+"luxoff").c_str(), VAL_LUX_OFF);
+  #ifdef LED_CAPTEUR_RGB
   mucLedCapteurRGBPin = prefs.getUShort((mPrefixNVS+"rgbpin").c_str(), LED_CAPTEUR_RGB_PIN);
   mucLedRGBIsOFF = prefs.getUChar((mPrefixNVS+"rgboff").c_str(), LOW);
-
+  #endif
   
   // On forme les subtopic MQTT
   //domotique_prefix = prefs.getString((mPrefixNVS+"domo_pref").c_str(), default_domotique_topic_prefix);
@@ -623,9 +624,10 @@ void CDetecteurRGB_TCS34725::saveToNVS() {
   prefs.putUInt((mPrefixNVS+"luxon").c_str(), muiLuxOn);
   prefs.putUInt((mPrefixNVS+"luxoff").c_str(), muiLuxOff);
 //  prefs.putString((mPrefixNVS+"domo_pref").c_str(), domotique_prefix);
+  #ifdef LED_CAPTEUR_RGB
   prefs.putUShort((mPrefixNVS+"rgbpin").c_str(), mucLedCapteurRGBPin);
   prefs.putUChar((mPrefixNVS+"rgboff").c_str(), mucLedRGBIsOFF);
-
+  #endif
   prefs.end();
 }
 
@@ -656,8 +658,10 @@ void CDetecteurRGB_TCS34725::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"roff").c_str())) muiRougeOff = server.arg((mPrefixNVS+"roff")).toInt();
   if (server.hasArg((mPrefixNVS+"luxon").c_str())) muiLuxOn = server.arg((mPrefixNVS+"luxon")).toInt();
   if (server.hasArg((mPrefixNVS+"luxoff").c_str())) muiLuxOff = server.arg((mPrefixNVS+"luxoff")).toInt();
+  #ifdef LED_CAPTEUR_RGB
   if (server.hasArg((mPrefixNVS+"rgbpin").c_str())) mucLedCapteurRGBPin = server.arg((mPrefixNVS+"rgbpin")).toInt();
   if (server.hasArg((mPrefixNVS+"rgboff").c_str())) mucLedRGBIsOFF = server.arg((mPrefixNVS+"rgboff")).toInt();
+  #endif
 }
 
 String CDetecteurRGB_TCS34725::getHTML() {
@@ -682,10 +686,12 @@ String CDetecteurRGB_TCS34725::getHTML() {
         "<div><label>Valeur Led ON (0-255)</label><input type=\"text\" name=" + (mPrefixNVS+"ron") + " value=\"" + muiRougeOn + "\"></div>"
         "<div><label>Valeur Led OFF (0-255)</label><input type=\"text\" name=" + (mPrefixNVS+"roff") + " value=\"" + muiRougeOff + "\"></div>"
       "</div>"
+      #ifdef LED_CAPTEUR_RGB
       "<div class=\"row\">"
         "<div><label>DEL RGB Pin</label><input type=\"text\" name=" + (mPrefixNVS+"rgbpin") + " value=\"" + mucLedCapteurRGBPin + "\"></div>"
         "<div><label>DEL OFF (0 ou 1)</label><input type=\"text\" name=" + (mPrefixNVS+"rgboff") + " value=\"" + mucLedRGBIsOFF + "\"></div>"
       "</div>"
+      #endif
       "<div class=\"row\">"
         "<div><label>Luminosité ON (0-255)</label><input type=\"text\" name=" + (mPrefixNVS+"luxon") + " value=\"" + muiLuxOn + "\"></div>"
         "<div><label>Luminosité OFF (0-255)</label><input type=\"text\" name=" + (mPrefixNVS+"luxoff") + " value=\"" + muiLuxOff + "\"></div>"
@@ -715,8 +721,10 @@ void CDetecteurRGB_TCS34725::print() const {
   Serial.printf("     Actif                : %s\n", active ? "OUI" : "NON");
   Serial.printf("     GPIO SDA             : %d\n", mucSdaPin);
   Serial.printf("     GPIO SCL             : %d\n", mucSclPin);
+  #ifdef LED_CAPTEUR_RGB
   Serial.printf("     DEL RGB PIN          : %d\n", mucLedCapteurRGBPin);
   Serial.printf("     DEL RGB OFF (0 ou 1) : %d\n", mucLedRGBIsOFF);
+  #endif
   Serial.printf("     Temps d'intégration  : 0x%x\n", mucIntegrationTime);
   Serial.printf("     Gain                 : 0x%x\n", mucGain);
   Serial.printf("     Valeur Led ON        : %d\n", muiRougeOn);

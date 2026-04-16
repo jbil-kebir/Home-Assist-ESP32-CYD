@@ -23,15 +23,15 @@ CRemoteChaudiere mRemoteChaudiere(String("Chaudiere"), ecran);
 void setup_chaudiere() {
 #ifdef __LOCAL_MODE__
   config.chaudiere = &chaudiere;
-  chaudiere.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  chaudiere.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   chaudiere.setup();
 #else
   config.mRemoteChaudiere = &mRemoteChaudiere;
   mRemoteChaudiere.setup();
-  mRemoteChaudiere.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteChaudiere.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
 #endif
 }

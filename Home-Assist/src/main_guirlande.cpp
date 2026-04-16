@@ -26,15 +26,15 @@ CRemoteRCDevice mRemoteGuirlande(String("Guirlande"), ecran);
 void setup_guirlande() {
 #ifdef __LOCAL_MODE__
   config.guirlande = &guirlande;
-  guirlande.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-    return ptr->publish(topic, payload);
+  guirlande.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+    return mqtt.publish(topic, payload);
   });
   guirlande.setup("guir_");
 #else
   config.mRemoteGuirlande = &mRemoteGuirlande;
   mRemoteGuirlande.setup("guir_");
-  mRemoteGuirlande.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteGuirlande.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
 #endif // __LOCAL_MODE__
 }

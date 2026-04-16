@@ -339,6 +339,18 @@
 #define BOUTON_OFFA_C   TFT_GREENYELLOW
 #define BOUTON_OFFA_N   ""
 
+// === POSITIONS POUR LA SÉRIE 4 (coulSdb / Flotteur / Ha1 / Ha2) ===
+#define SERIE4_COL_LEFT_X    10
+#define SERIE4_COL_RIGHT_X   164
+#define SERIE4_COL_W         150
+
+//#define SERIE4_ROW1_Y        REMOTE_1_Y
+//#define SERIE4_ROW2_Y        (REMOTE_1_Y + REMOTE_1_H + 2)
+#define SERIE4_ROW1_Y        PREMIERE_LIGNE_DE_BOUTONS_Y
+#define SERIE4_ROW2_Y        (SERIE4_ROW1_Y + REMOTE_B_1_H + 2)
+#define SERIE4_ROW3_Y        (SERIE4_ROW2_Y + REMOTE_B_1_H + 2)
+#define SERIE4_ROW_H         REMOTE_B_1_H //REMOTE_1_H
+
 #define COULEUR_TEXTE_DE_BASE TFT_BLACK
 #define COULEUR_FOND_ECRAN TFT_BLACK
 #define COULEUR_BTN_INACTIF TFT_DARKGREY

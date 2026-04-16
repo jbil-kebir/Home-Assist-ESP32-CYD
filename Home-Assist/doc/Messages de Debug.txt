@@ -1,0 +1,178 @@
+Bonjour, je voudrais qu'on améliore les messages de debug. Il y en a vraiment trop. Je souhaiterais pouvoir choisir de manière cumulative : CAPTEURS, ACTIONNEURS, CONFIGURATION, ... as-tu une proposition ?
+  ?  ? Selected 1 lines from src\MyMqtt.cpp in Visual Studio Code
+
+? Laisse-moi d'abord explorer le projet pour comprendre le système de debug existant.
+
+? Explore(Explore debug system in codebase)
+  ?  Done (32 tool uses · 49.4k tokens · 1m 57s)
+  (ctrl+o to expand)
+
+? Voici ma proposition pour un système de debug par catégories avec bitmask.
+
+  Searched for 3 patterns, read 1 file (ctrl+o to expand)
+
+? Voici ce que j'ai trouvé. Le projet ESP32 dispose de 502 appels Serial.print* directs, sans aucune abstraction. Voici ma proposition :
+
+  ---
+  Proposition : Système de debug par bitmask
+
+  Principe
+
+  Un uint32_t global gDebugFlags dont chaque bit correspond à une catégorie. Les macros DBG(cat, ...) ne s'exécutent que si le bit est actif. Combinaison cumulative avec |.
+
+  Catégories proposées (basées sur le code)
+
+  +-------------------------------------------------------------------+
+  ¦    Constante    ¦                     Contenu                     ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_MQTT        ¦ Connexions, souscriptions, routage des messages ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_CAPTEURS    ¦ DS18B20, DHT20, TCS34725, thermomètres radio    ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_ACTIONNEURS ¦ RC devices, volets (TOR), télécommandes RF      ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_CHAUDIERE   ¦ Logique chaudière, keep-alive, transitions      ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_CONFIG      ¦ Chargement config, méthodes print(), init       ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_RESEAU      ¦ WiFi, WebServer                                 ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_ECRAN       ¦ Affichage CYD, zones                            ¦
+  +-------------------------------------------------------------------+
+
+  Utilisation dans main.cpp
+
+  // Activer cumulativement ce qu'on veut voir :
+  gDebugFlags = DBG_MQTT | DBG_CAPTEURS;  // seulement MQTT et capteurs
+  gDebugFlags = DBG_ALL;                  // tout voir
+  gDebugFlags = DBG_NONE;                 // silence total
+
+  Ce qui serait ajouté dans global.h
+
+  #include <Arduino.h>
+
+  // Catégories de debug (bitmask)
+  constexpr uint32_t DBG_NONE        = 0;
+  constexpr uint32_t DBG_MQTT        = 1 << 0;
+  constexpr uint32_t DBG_CAPTEURS    = 1 << 1;
+  constexpr uint32_t DBG_ACTIONNEURS = 1 << 2;
+  constexpr uint32_t DBG_CHAUDIERE   = 1 << 3;
+  constexpr uint32_t DBG_CONFIG      = 1 << 4;
+  constexpr uint32_t DBG_RESEAU      = 1 << 5;
+  constexpr uint32_t DBG_ECRAN       = 1 << 6;
+  constexpr uint32_t DBG_ALL         = 0xFFFFFFFF;
+
+  extern uint32_t gDebugFlags;
+
+  #define DBG(cat, ...)  do { if (gDebugFlags & (cat)) Serial.printf(__VA_ARGS__); } while(0)
+  #define DBGLN(cat, msg) do { if (gDebugFlags & (cat)) Serial.println(msg); } while(0)
+
+  ---
+  Questions avant de commencer :
+
+  1. Les catégories te conviennent-elles ? En veux-tu d'autres (ex. DBG_NAS, DBG_RADIO) ?
+  2. Faut-il garder certains messages toujours actifs (erreurs critiques, démarrage) indépendamment des flags ?
+  3. Souhaites-tu que je migre tous les 502 appels existants, ou seulement certains fichiers en priorité ?
+  
+Voici ma proposition pour un système de debug par catégories avec bitmask.
+
+  Searched for 3 patterns, read 1 file (ctrl+o to expand)
+
+? Voici ce que j'ai trouvé. Le projet ESP32 dispose de 502 appels Serial.print* directs, sans aucune abstraction. Voici ma proposition :
+
+  ---
+  Proposition : Système de debug par bitmask
+
+  Principe
+
+  Un uint32_t global gDebugFlags dont chaque bit correspond à une catégorie. Les macros DBG(cat, ...) ne s'exécutent que si le bit est actif. Combinaison cumulative avec |.
+
+  Catégories proposées (basées sur le code)
+
+  +-------------------------------------------------------------------+
+  ¦    Constante    ¦                     Contenu                     ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_MQTT        ¦ Connexions, souscriptions, routage des messages ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_CAPTEURS    ¦ DS18B20, DHT20, TCS34725, thermomètres radio    ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_ACTIONNEURS ¦ RC devices, volets (TOR), télécommandes RF      ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_CHAUDIERE   ¦ Logique chaudière, keep-alive, transitions      ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_CONFIG      ¦ Chargement config, méthodes print(), init       ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_RESEAU      ¦ WiFi, WebServer                                 ¦
+  +-----------------+-------------------------------------------------¦
+  ¦ DBG_ECRAN       ¦ Affichage CYD, zones                            ¦
+  +-------------------------------------------------------------------+
+
+  Utilisation dans main.cpp
+
+  // Activer cumulativement ce qu'on veut voir :
+  gDebugFlags = DBG_MQTT | DBG_CAPTEURS;  // seulement MQTT et capteurs
+  gDebugFlags = DBG_ALL;                  // tout voir
+  gDebugFlags = DBG_NONE;                 // silence total
+
+  Ce qui serait ajouté dans global.h
+
+  #include <Arduino.h>
+
+  // Catégories de debug (bitmask)
+  constexpr uint32_t DBG_NONE        = 0;
+  constexpr uint32_t DBG_MQTT        = 1 << 0;
+  constexpr uint32_t DBG_CAPTEURS    = 1 << 1;
+  constexpr uint32_t DBG_ACTIONNEURS = 1 << 2;
+  constexpr uint32_t DBG_CHAUDIERE   = 1 << 3;
+  constexpr uint32_t DBG_CONFIG      = 1 << 4;
+  constexpr uint32_t DBG_RESEAU      = 1 << 5;
+  constexpr uint32_t DBG_ECRAN       = 1 << 6;
+  constexpr uint32_t DBG_ALL         = 0xFFFFFFFF;
+
+  extern uint32_t gDebugFlags;
+
+  #define DBG(cat, ...)  do { if (gDebugFlags & (cat)) Serial.printf(__VA_ARGS__); } while(0)
+  #define DBGLN(cat, msg) do { if (gDebugFlags & (cat)) Serial.println(msg); } while(0)
+
+  ---
+  Questions avant de commencer :
+
+  1. Les catégories te conviennent-elles ? En veux-tu d'autres (ex. DBG_NAS, DBG_RADIO) ?
+  2. Faut-il garder certains messages toujours actifs (erreurs critiques, démarrage) indépendamment des flags ?
+  3. Souhaites-tu que je migre tous les 502 appels existants, ou seulement certains fichiers en priorité ?
+
+? Brewed for 2m 37s
+
+?--- Claude Code v2.1.108 -----------------------------------------------------------------------------------------------?
+¦                                                    ¦ Tips for getting started                                          ¦
+¦                 Welcome back Kébir!                ¦ Run /init to create a CLAUDE.md file with instructions for Claude ¦
+?--- Claude Code v2.1.108 -----------------------------------------------------------------------------------------------?
+¦                                                    ¦ Tips for getting started                                          ¦
+¦                 Welcome back Kébir!                ¦ Run /init to create a CLAUDE.md file with instructions for Claude ¦
+¦                                                    ¦ ----------------------------------------------------------------- ¦
+¦                       ¦?¦¦¦?¦                      ¦ Recent activity                                                   ¦
+¦                      ??¦¦¦¦¦??                     ¦ No recent activity                                                ¦
+¦                        ?? ??                       ¦                                                                   ¦
+¦ Sonnet 4.6 · Claude Pro · jbil.kebir@gmail.com's   ¦                                                                   ¦
+¦ Organization                                       ¦                                                                   ¦
+¦ D:\Developpement\Pilotage_Maison_Dev\Home-Assist … ¦                                                                   ¦
+?------------------------------------------------------------------------------------------------------------------------?
+
+? tu pourrra faire un clean puis build et upload, je seari au téléphone 
+
+? D'accord, je vérifie d'abord que la migration est correcte, puis je lance clean/build/upload.
+
+  Read 3 files (ctrl+o to expand)
+  ?  You've hit your limit · resets 7pm (Europe/Paris)
+     /upgrade to increase your usage limit.
+
+? Baked for 19m 45s
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------?  
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  ?? bypass permissions on (shift+tab to cycle)                                                                                                                                                                                                ? In platformio.ini  
+
+
+
+
+
+

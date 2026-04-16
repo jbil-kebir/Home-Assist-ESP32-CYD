@@ -21,6 +21,7 @@ int CRemoteTor::setup(const String pref) {
 //--------------------------------------------------------------------------
 int CRemoteTor::loop() {
   int ret = -99;
+  if (!active) return -2;
   if ((millis() - mulWatchDog) >= mulWatchdogIntervalle*1000) {
     // Ca fait trop longtemps que rien n'a été reçu
     return -10;
@@ -45,9 +46,9 @@ float CRemoteTor::getLastMesure() const {
 
 void CRemoteTor::printMesure() const {
   if (lastMesure != -1.0) {
-    Serial.printf("Mesure : %d\n", lastMesure);
+    DBG(DBG_ACTIONNEURS, "Mesure : %d\n", lastMesure);
   } else {
-    Serial.println("Aucune mesure valide");
+    DBG(DBG_ACTIONNEURS, "Aucune mesure valide\n");
   }
 }
 
@@ -74,13 +75,13 @@ void CRemoteTor::loadFromWebServer (WebServer& server) {
 
 void CRemoteTor::print() const {
 
-  Serial.printf("==========================================================\n");
-  Serial.printf("     Nom              : %s\n", nomEquipement);
-  Serial.printf("     Actif            : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Watchdog         : %ld s\n", mulWatchdogIntervalle);
-  Serial.printf("     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState        : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_ACTIONNEURS, "==========================================================\n");
+  DBG(DBG_ACTIONNEURS, "     Nom              : %s\n", nomEquipement.c_str());
+  DBG(DBG_ACTIONNEURS, "     Actif            : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_ACTIONNEURS, "     Watchdog         : %ld s\n", mulWatchdogIntervalle);
+  DBG(DBG_ACTIONNEURS, "     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_ACTIONNEURS, "     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_ACTIONNEURS, "     MQTTState        : %s\n", mqttSubTopicState.c_str());
 }
 
 /*void CRemoteTor::mqttMessageToStruct_split(MQTTMessage_5& st, const String& s) {
@@ -109,7 +110,7 @@ void CRemoteTor::handleMqttState(const String& payload) {
   static bool inactifAffiche = false;
   if (!active) {
     if (!inactifAffiche) {
-      Serial.printf("void CRemoteTor::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
+      DBG(DBG_ACTIONNEURS, "void CRemoteTor::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
       inactifAffiche = true;
     }
     return;
@@ -122,14 +123,18 @@ void CRemoteTor::handleMqttState(const String& payload) {
   //Serial.printf("void CRemoteTor::handleMqttState(const String& payload) - paylod = %s - Nb de champs = %d\n", payload.c_str(), n);
   
   if (n > 0) {
-    //msg.printDebug();
+    msg.printDebug();
+    if (onEquipement != nullptr) 
+      onEquipement(msg.msExpediteur, msg.msIp); // On ajoute à la liste d'équuipements si ça n'est pas déjà fait
+    else DBG(DBG_ACTIONNEURS, "void CRemoteTor::handleMqttState() - Pas de callback onEquipement() - %s\n", nomEquipement.c_str());
+
     if (msg.msExpediteur != getNomEquipement()) {
-      Serial.printf("void CRemoteTor::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
+      DBG(DBG_ACTIONNEURS, "void CRemoteTor::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
       return; // pas pour nous
     }
 
     if (msg.mvsMesure.empty()) {
-      Serial.printf("void CRemoteTor::handleMqttState() Equipement %s - Mesure vide. On sort.\n", getNomEquipement().c_str());
+      DBG(DBG_ACTIONNEURS, "void CRemoteTor::handleMqttState() Equipement %s - Mesure vide. On sort.\n", getNomEquipement().c_str());
       return;
     }
     // On réinitiallise le WatchDog
@@ -147,9 +152,20 @@ void CRemoteTor::handleMqttState(const String& payload) {
         onMesureChanged(msg.msExpediteur, lastMesure);
       }
       else {
-        Serial.println("Aucun callback défini pour " + nomEquipement);
+        DBGLN(DBG_ACTIONNEURS, "Aucun callback défini pour " + nomEquipement);
       }
-    } 
+    }
+    else if (premiereMesure == "ETAT") {
+      setActive(true);
+      if (onMesureChanged != nullptr) {
+        String valStr = msg.mvsMesure.back();
+        lastMesure = valStr.toInt();
+        onMesureChanged(msg.msExpediteur, lastMesure);
+      }
+      else {
+        DBGLN(DBG_ACTIONNEURS, "Aucun callback défini pour " + nomEquipement);
+      }
+    }
     #ifndef __LOCAL_MODE__
     else if (premiereMesure == "ONOFFR") {
       // Lorsqu'on reçoit une mesure, cela indique que le capteur est actif
@@ -165,7 +181,7 @@ void CRemoteTor::handleMqttState(const String& payload) {
       setActive(false);
     } 
     else {
-      Serial.println("Aucun callback défini pour " + nomEquipement);
+      DBGLN(DBG_ACTIONNEURS, "Aucun callback défini pour " + nomEquipement);
     }
     #endif
 
@@ -190,7 +206,7 @@ bool CRemoteTor::remonteStatusParMqtt() {
   else {
     sVal = nomEquipement + " INACTIFR " + mDateTime.getDate() + " " + mDateTime.getTime();
   }
-  Serial.println("CRemoteTor::publieSurMqtt() : " + sVal);
+  DBGLN(DBG_ACTIONNEURS, "CRemoteTor::publieSurMqtt() : " + sVal);
   bool ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
   return ret;
 } 
@@ -220,7 +236,7 @@ String CRemoteTor::getHTML() {
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active").c_str() + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Intervalle Watchdog (min)</label><input type=\"text\" name=" + (mPrefixNVS + "wdog").c_str() + " value=\"" + mulWatchdogIntervalle + "\"></div>"
+        "<div><label>Intervalle Watchdog (s)</label><input type=\"text\" name=" + (mPrefixNVS + "wdog").c_str() + " value=\"" + mulWatchdogIntervalle + "\"></div>"
         "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS + "subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 

@@ -26,7 +26,7 @@
     mBtnSeries(tft, touch, BOUTON_SERIE_X, BOUTON_SERIE_Y, BOUTON_SERIE_W, BOUTON_SERIE_H, TFT_BLUE, "0"),
     
     mZoneMesureOuest(tft, REMOTE_1_X, REMOTE_1_Y, REMOTE_1_W, REMOTE_1_H, REMOTE_1_BG_C),
-    //mZoneMesureDoubleOuest(tft, REMOTE_1_X, REMOTE_1_Y, REMOTE_1_W, REMOTE_1_H, REMOTE_1_BG_C),
+    mZoneMesureDoubleOuest(tft, REMOTE_1_X, BOUTON_PA_Y, REMOTE_1_W, REMOTE_1_H, REMOTE_1_BG_C),
     
     mZoneMesureCentre(tft, REMOTE_2_X, REMOTE_2_Y, REMOTE_2_W, REMOTE_2_H, REMOTE_2_BG_C),
     mZoneMesureDoubleCentre(tft, REMOTE_2_X, REMOTE_2_Y, REMOTE_2_W, REMOTE_2_H, REMOTE_2_BG_C),
@@ -39,7 +39,10 @@
     mZoneDateTime(cfg, tft, DATE_HEURE_X, DATE_HEURE_Y, DATE_HEURE_W, DATE_HEURE_H, DATE_HEURE_BG_C),
     mZoneTitle(cfg, tft, TITRE_X, TITRE_Y, TITRE_W, TITRE_H, TITRE_C),
     mZoneFlotteur(tft, REMOTE_2_X, (REMOTE_2_Y + REMOTE_2_H + 2 + MESURE_2_HAUTEUR + 2), REMOTE_2_W, REMOTE_2_H, REMOTE_2_BG_C),
+    mZoneTorNomade(tft, REMOTE_2_X, (REMOTE_2_Y + REMOTE_2_H + 2 + MESURE_2_HAUTEUR + 2 + MESURE_2_HAUTEUR + 2), REMOTE_2_W, REMOTE_2_H, REMOTE_2_BG_C),
     mZoneCouleurSdb(tft, REMOTE_1_X, (REMOTE_1_Y + REMOTE_1_H + 2 + MESURE_2_HAUTEUR + 2), REMOTE_1_W, REMOTE_1_H, REMOTE_1_BG_C),
+    mZoneHa1(tft, SERIE4_COL_RIGHT_X, SERIE4_ROW1_Y, SERIE4_COL_W, SERIE4_ROW_H, REMOTE_1_BG_C),
+    mZoneHa2(tft, SERIE4_COL_RIGHT_X, SERIE4_ROW2_Y, SERIE4_COL_W, SERIE4_ROW_H, REMOTE_1_BG_C),
     mZoneAffichageIP(tft, mvsControleurs, mvsEsclaves, PREMIERE_LIGNE_DE_BOUTONS_X, PREMIERE_LIGNE_DE_BOUTONS_Y, RESOLUTION_X-PREMIERE_LIGNE_DE_BOUTONS_X, RESOLUTION_Y-PREMIERE_LIGNE_DE_BOUTONS_Y, REMOTE_1_BG_C)
     {
     }
@@ -99,11 +102,11 @@
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnSeries; i++;
 
     // Charge les paramètres liés à l'écran
-    loadFromNVS ();
+    //loadFromNVS ();
 
     // Initiallisation de l'écran
     tft.init();
-    tft.setRotation(mucOrientationEcran);
+//    tft.setRotation(mucOrientationEcran);
     tft.fillScreen(TFT_NAVY);
     tft.setTextColor(TFT_YELLOW);
     tft.drawCentreString("Home Assistant", 160, 40, 4);
@@ -113,6 +116,10 @@
     // Initiallisation de la partie tactile de l'écran
     touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     touch.begin(touchSPI);
+
+    // Charge les paramètres liés à l'écran
+    loadFromNVS ();
+    tft.setRotation(mucOrientationEcran);
     touch.setRotation(mucOrientationEcran);
 
     mbEcranAllume = true; // Pas de veille à l'allumage
@@ -147,7 +154,7 @@ unsigned char CEcran::setOrientationEcran(unsigned char orientation/*=DEFAUT_ORI
     tft.setRotation(orientation);
     touch.setRotation(orientation);
     drawMainInterface();  // Redessine tout
-    Serial.println("Rotation ecran change a : " + String(orientation));
+    DBGLN(DBG_ECRAN, "Rotation ecran change a : " + String(orientation));
   }
 
   mucOrientationEcran = orientation;
@@ -183,7 +190,7 @@ void CEcran::updateSleepTimeout(int32_t st) {
 }
 void CEcran::desactiveChaudiere(bool bDrawInterface/*=true*/) {
   drawMainInterface();
-  Serial.println("CEcran::desactiveChaudiere()");
+  DBG(DBG_ECRAN, "CEcran::desactiveChaudiere()\n");
   drawStatus("Chaudiere desactivee", false);
 }
 void CEcran::activeChaudiere(bool activ/*=true*/, bool bDrawInterface/*=true*/){
@@ -192,7 +199,7 @@ void CEcran::activeChaudiere(bool activ/*=true*/, bool bDrawInterface/*=true*/){
     return;
   }
   drawMainInterface();
-  Serial.println("CEcran::activeChaudiere()");
+  DBG(DBG_ECRAN, "CEcran::activeChaudiere()\n");
   drawStatus("Chaudiere activee", false);
 }
 void CEcran::desactiveProjecteur(bool bDrawInterface/*=true*/) {
@@ -224,7 +231,7 @@ void CEcran::desactiveChauffageSb(bool bDrawInterface/*=true*/) {
   drawStatus("Chauffage desactive", false);
 }
 void CEcran::activeChauffageSb(bool activ/*=true*/, bool bDrawInterface/*=true*/) {
-  Serial.printf("activ : %d - drwInterface : %d\n", activ, bDrawInterface);
+  DBG(DBG_ECRAN, "activ : %d - drwInterface : %d\n", activ, bDrawInterface);
   if (!activ) {
     desactiveChauffageSb (bDrawInterface);
     return;
@@ -235,9 +242,9 @@ void CEcran::activeChauffageSb(bool activ/*=true*/, bool bDrawInterface/*=true*/
 
 
 int CEcran::drawStatus(const String& msg, bool memorise/*=false*/) {
-  if (mucSerieAffichageEnCours == 4)
+  /*if (mucSerieAffichageEnCours == 4)
     mZoneStatusBas.drawStatus(msg, memorise);
-  else mZoneStatus.drawStatus(msg, memorise);
+  else */mZoneStatus.drawStatus(msg, memorise);
   return 0;
 }
 
@@ -278,35 +285,35 @@ int CEcran::getPressedButton() {
 
 void CEcran::print() const {
 
-  Serial.println("[Veille ecran]");
+  DBG(DBG_ECRAN, "[Veille ecran]\n");
   if (sleep_timeout <= 0) {
-    Serial.println("  Désactivee");
+    DBG(DBG_ECRAN, "  Désactivee\n");
   } else {
-    Serial.printf("  Timeout      : %ld secondes (%ld minutes)\n", sleep_timeout, sleep_timeout / 60);
+    DBG(DBG_ECRAN, "  Timeout      : %ld secondes (%ld minutes)\n", sleep_timeout, sleep_timeout / 60);
   }
-  Serial.println();
-  Serial.println("[Orientation ecran]");
+  DBG(DBG_ECRAN, "\n");
+  DBG(DBG_ECRAN, "[Orientation ecran]\n");
   switch(mucOrientationEcran) {
     case 0:
-    Serial.println("Portrait");
+    DBG(DBG_ECRAN, "Portrait\n");
     break;
     case 1:
-    Serial.println("Paysage");
+    DBG(DBG_ECRAN, "Paysage\n");
     break;
     case 2:
-    Serial.println("Portrait inverse");
+    DBG(DBG_ECRAN, "Portrait inverse\n");
     break;
     case 3:
-    Serial.println("Paysage inverse");
+    DBG(DBG_ECRAN, "Paysage inverse\n");
     break;
     default:
-    Serial.printf("Orientation inconnue %d\n", mucOrientationEcran);
+    DBG(DBG_ECRAN, "Orientation inconnue %d\n", mucOrientationEcran);
     break;
   }
-  Serial.println();
-  Serial.println("[Série d'affichage]");
-  Serial.printf("  Max      : %d\n", mucNbAffichagesMax);
-  Serial.printf("  En cours : %d\n", mucSerieAffichageEnCours);
+  DBG(DBG_ECRAN, "\n");
+  DBG(DBG_ECRAN, "[Série d'affichage]\n");
+  DBG(DBG_ECRAN, "  Max      : %d\n", mucNbAffichagesMax);
+  DBG(DBG_ECRAN, "  En cours : %d\n", mucSerieAffichageEnCours);
 
 }
 
@@ -332,9 +339,12 @@ void CEcran::loadFromNVS() {
   mucOrientationEcran = prefs.getInt("or_ecran", default_orientation_ecran);
   // Lecture des paramètre de srie d'affichage
   mucNbAffichagesMax = prefs.getUChar("aff_max", 1);
-  mucSerieAffichageEnCours = prefs.getUChar("aff", 1);
-  if (mucSerieAffichageEnCours > mucNbAffichagesMax) 
-    setSerieAffichageEnCours(mucNbAffichagesMax);
+  unsigned char ucSerieAffichageEnCours = prefs.getUChar("aff", 1);
+  if (ucSerieAffichageEnCours > mucNbAffichagesMax) 
+    ucSerieAffichageEnCours = mucNbAffichagesMax;
+
+  setSerieAffichageEnCours(ucSerieAffichageEnCours);
+  //mucSerieAffichageEnCours = ucSerieAffichageEnCours;
  
   prefs.end();  
 }
@@ -422,9 +432,13 @@ void CEcran::drawMainInterface() {
 
   }
   else if (mucSerieAffichageEnCours == 4) {
+    tft.drawRect(STATUS_EXT_X, STATUS_EXT_Y, STATUS_EXT_W, STATUS_EXT_H, STATUS_EXT_C);
+    updateSerie4();
+  }
+  else if (mucSerieAffichageEnCours == 5) {
     updateControleursEtEsclaves();
   }
-  
+
   // Changement de série d'affichage
   mBtnSeries.draw(mucSerieAffichageEnCours);
 
@@ -444,7 +458,44 @@ void CEcran::setSerieAffichageEnCours(unsigned char num) {
   prefs.begin(nvs_namespace, false);
   prefs.putUChar("aff", mucSerieAffichageEnCours);
   prefs.end();
+  remonteEcranSerieParMqtt();
 }
+
+int CEcran::remonteEcranSerieParMqtt() {
+  int ret = 0;
+  String s = "ECRAN SERIE " + String(mucSerieAffichageEnCours);
+  if (mConfig.onMqttPublish != nullptr) {
+    DBG(DBG_ECRAN, "void CEcran::remonteStatusParMqtt() %s : %s\n", mConfig.topic_config_state.c_str(), s.c_str());
+    mConfig.onMqttPublish(mConfig.topic_config_state.c_str(), s.c_str());
+  }
+  return ret;
+} 
+int CEcran::remonteOrientationEcranParMqtt() {
+  int ret = 0;
+  String s = "ECRAN " + String(mucOrientationEcran);
+  if (mConfig.onMqttPublish != nullptr) {
+    DBG(DBG_ECRAN, "void CEcran::remonteOrientationEcranParMqtt() %s : %s\n", mConfig.topic_config_state.c_str(), s.c_str());
+    mConfig.onMqttPublish(mConfig.topic_config_state.c_str(), s.c_str());
+  }
+  return ret;
+} 
+int CEcran::remonteVeilleEcranParMqtt() {
+  int ret = 0;
+  String s = "VEILLE " + String(sleep_timeout);
+  if (mConfig.onMqttPublish != nullptr) {
+    DBG(DBG_ECRAN, "void CEcran::remonteVeilleEcranParMqtt() %s : %s\n", mConfig.topic_config_state.c_str(), s.c_str());
+    mConfig.onMqttPublish(mConfig.topic_config_state.c_str(), s.c_str());
+  }
+  return ret;
+} 
+int CEcran::remonteStatusParMqtt() {
+  int ret = 0;
+  ret = remonteEcranSerieParMqtt();
+  ret = remonteOrientationEcranParMqtt();
+  ret = remonteVeilleEcranParMqtt();
+  delay(200);
+  return ret;
+} 
 
 void CEcran::updateAppareilsDeMesure() {
   #ifdef __LOCAL_MODE__
@@ -455,21 +506,28 @@ void CEcran::updateAppareilsDeMesure() {
   #endif
   updateRemoteDevice_ThCh1er(mConfig.mRemoteThCh1er->nomEquipement, mConfig.mRemoteThCh1er->getLastTemperature());
   updateRemoteBat_ThCh1er(mConfig.mRemoteBatThCh1er->nomEquipement, mConfig.mRemoteBatThCh1er->miLastEtatBatterie, mConfig.mRemoteBatThCh1er->getLastTension());
+
   updateRemoteDevice_ThSdb(mConfig.mRemoteThSdb->nomEquipement, mConfig.mRemoteThSdb->getLastTemperature());
   updateRemoteDevice_ThSdbDel(mConfig.mRemoteCoulSdb->nomEquipement, mConfig.mRemoteCoulSdb->getLastLedStatus());
   updateRemoteBat_ThSdb(mConfig.mRemoteBatSdb->nomEquipement, mConfig.mRemoteBatSdb->miLastEtatBatterie, mConfig.mRemoteBatSdb->getLastTension());
+
   updateRemoteDevice_ThCave(mConfig.mRemoteThCave->nomEquipement, mConfig.mRemoteThCave->getLastTemperature());
   updateRemoteDevice_ThCaveH(mConfig.mRemoteThCave->nomEquipement, mConfig.mRemoteThCave->getLastHumidite());
   updateRemoteDevice_ThCaveTor(mConfig.mRemoteTor->nomEquipement, mConfig.mRemoteTor->getLastMesure());
   updateRemoteBat_ThCave(mConfig.mRemoteBatCave->nomEquipement, mConfig.mRemoteBatCave->miLastEtatBatterie, mConfig.mRemoteBatCave->getLastTension());
+
   updateRemoteDevice_ThNomade(mConfig.mRemoteThNomade->nomEquipement, mConfig.mRemoteThNomade->getLastTemperature());
   updateRemoteDevice_ThNomadeH(mConfig.mRemoteThNomade->nomEquipement, mConfig.mRemoteThNomade->getLastHumidite());
-  updateRemoteBat_ThNomade(mConfig.mRemoteBatNomade->nomEquipement, mConfig.mRemoteBatNomade->miLastEtatBatterie, mConfig.mRemoteBatNomade->getLastTension());
+  updateRemoteDevice_ThNomadeTor(mConfig.mRemoteTorNomade->nomEquipement, mConfig.mRemoteTorNomade->getLastMesure());
+  updateRemoteBat_ThNomade(mConfig.mRemoteBatNomade->nomEquipement, mConfig.mRemoteBatNomade->miLastEtatBatterie, mConfig.mRemoteBatNomade->getLastTension());  
 
-  // TEST : utile pour ne pas attendre els remontées cave
-  /*updateRemoteDevice_ThCave("Cave", 21.1);
-  updateRemoteDevice_ThCaveH("Cave", 17.8);
-  updateRemoteBat_ThCave("Cave", 1, 6.5);  */
+  updateRemoteDevice_ThRemise(mConfig.mRemoteThRemise->nomEquipement, mConfig.mRemoteThRemise->getLastTemperature());
+  updateRemoteDevice_ThRemiseH(mConfig.mRemoteThRemise->nomEquipement, mConfig.mRemoteThRemise->getLastHumidite());
+  updateRemoteBat_ThRemise(mConfig.mRemoteBatRemise->nomEquipement, mConfig.mRemoteBatRemise->miLastEtatBatterie, mConfig.mRemoteBatRemise->getLastTension());
+
+  updateRemoteDevice_NewNas(mConfig.mRemoteNewNas->nomEquipement, mConfig.mRemoteNewNas->getLastMesure());
+  updateRemoteDevice_BigNas(mConfig.mRemoteBigNas->nomEquipement, mConfig.mRemoteBigNas->getLastMesure());
+
 }
 //============================================================================================
 // Affichage mesure et batterie - emplacement EST (1 mesure + batterie) => Série 1 sur LOCAL
@@ -507,11 +565,11 @@ void CEcran::updateRemoteBat_DS18B20(const String& nom, int etatBatterie, float 
 
 //-------------------------------------- ThCh1er --------------------------------------
 void CEcran::updateRemoteDevice_ThCh1er(const String& nom, float val) {
-  if (mucSerieAffichageEnCours == 4) return;
+  if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
   mZoneMesureOuest.drawMesure(val, nom);
 }
 void CEcran::updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float val) {
-  if (mucSerieAffichageEnCours == 4) return;
+  if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
   mZoneMesureOuest.drawEtatBatterie(val, etatBatterie, nom);
 }
 
@@ -530,32 +588,43 @@ void CEcran::updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float va
   mZoneMesureCentre.drawEtatBatterie(val, etatBatterie, nom);
 }
 // Couleur
-void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, bool val) {
+void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, int val) {
   //Serial.printf("void CEcran::updateRemoteDevice_ThSdbDel() - nom = %s, val = 0x%lx\n", nom.c_str(), val);
   #ifdef __LOCAL_MODE__
   mConfig.chaudiere->setEtatReelOnOff(val);
   #else
   mConfig.mRemoteChaudiere->setEtatReelOnOff(val);
   #endif
-  Serial.printf("=========================================== val = %d\n", val);
-  Serial.println("===========================================");
   //updateAllStates();
-  if (mucSerieAffichageEnCours > 3) return;
+  if (mucSerieAffichageEnCours > 4) return;
+  if (mucSerieAffichageEnCours == 4) {
+    mZoneCouleurSdb.muiPosX = SERIE4_COL_LEFT_X;
+    mZoneCouleurSdb.muiPosY = SERIE4_ROW1_Y;
+    mZoneCouleurSdb.muiWidth = SERIE4_COL_W;
+    mZoneCouleurSdb.muiHight = REMOTE_B_1_H; //SERIE4_ROW_H;
+    mZoneCouleurSdb.calculeCoordonnees();
+  } else {
+    mZoneCouleurSdb.muiPosX = REMOTE_1_X;
+    mZoneCouleurSdb.muiPosY = (REMOTE_1_Y + REMOTE_1_H + 2 + MESURE_2_HAUTEUR + 2);
+    mZoneCouleurSdb.muiWidth = REMOTE_1_W;
+    mZoneCouleurSdb.muiHight = REMOTE_1_H;
+    mZoneCouleurSdb.calculeCoordonnees();
+  }
   mZoneCouleurSdb.drawMesure(val, nom);
 }
 
-//-------------------------------------- ThNomade --------------------------------------
-void CEcran::updateRemoteDevice_ThNomade(const String& nom, float val) {
+//-------------------------------------- ThRemise --------------------------------------
+void CEcran::updateRemoteDevice_ThRemise(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
   mZoneMesureDoubleCentre.drawMesure1(val, nom);
 }
 // Humidité
-void CEcran::updateRemoteDevice_ThNomadeH(const String& nom, float val) {
+void CEcran::updateRemoteDevice_ThRemiseH(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
   mZoneMesureDoubleCentre.drawMesure2(val, nom);
 }
-// Batterie du thermomètre Nomade (à la place de thermomètre Chambre 1er)
-void CEcran::updateRemoteBat_ThNomade(const String& nom, int etatBatterie, float val) {
+// Batterie du thermomètre Remise (à la place de thermomètre Chambre 1er)
+void CEcran::updateRemoteBat_ThRemise(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
   mZoneMesureDoubleCentre.drawEtatBatterie(val, etatBatterie, nom);
 }
@@ -574,8 +643,21 @@ void CEcran::updateRemoteDevice_ThCaveH(const String& nom, float val) {
 }
 // Tout ou Rien
 void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
-  if (mucSerieAffichageEnCours == 4) return;
+  if (mucSerieAffichageEnCours == 5) return;
   //Serial.printf("void CEcran::updateRemoteDevice_ThCaveTor(nom, val) = (%s, %d)\n", nom.c_str(), val);
+  if (mucSerieAffichageEnCours == 4) {
+    mZoneFlotteur.muiPosX = SERIE4_COL_LEFT_X;
+    mZoneFlotteur.muiPosY = SERIE4_ROW2_Y;
+    mZoneFlotteur.muiWidth = SERIE4_COL_W;
+    mZoneFlotteur.muiHight = REMOTE_B_1_H; //SERIE4_ROW_H;
+    mZoneFlotteur.calculeCoordonnees();
+  } else {
+    mZoneFlotteur.muiPosX = REMOTE_2_X;
+    mZoneFlotteur.muiPosY = (REMOTE_2_Y + REMOTE_2_H + 2 + MESURE_2_HAUTEUR + 2);
+    mZoneFlotteur.muiWidth = REMOTE_2_W;
+    mZoneFlotteur.muiHight = REMOTE_2_H;
+    mZoneFlotteur.calculeCoordonnees();
+  }
   mZoneFlotteur.drawMesure(val, nom);
 }
 
@@ -583,6 +665,65 @@ void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
 void CEcran::updateRemoteBat_ThCave(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
   mZoneMesureDoubleEst.drawEtatBatterie(val, etatBatterie, nom);
+}
+
+//============================================================================================
+// Affichage mesure et batterie - emplacement OUEST HAUT (2 mesures + batterie) => Série 3
+//============================================================================================
+void CEcran::updateRemoteDevice_ThNomade(const String& nom, float val) {
+  if (mucSerieAffichageEnCours != 3) return;
+  mZoneMesureDoubleOuest.drawMesure1(val, nom);
+}
+// Humidité
+void CEcran::updateRemoteDevice_ThNomadeH(const String& nom, float val) {
+  if (mucSerieAffichageEnCours != 3) return;
+  mZoneMesureDoubleOuest.drawMesure2(val, nom);
+}
+// Tout ou Rien
+void CEcran::updateRemoteDevice_ThNomadeTor(const String& nom, int val) {
+  if (mucSerieAffichageEnCours == 5) return;
+  //Serial.printf("void CEcran::updateRemoteDevice_ThNomadeTor(nom, val) = (%s, %d)\n", nom.c_str(), val);
+  if (mucSerieAffichageEnCours == 4) {
+    mZoneTorNomade.muiPosX = SERIE4_COL_LEFT_X;
+    mZoneTorNomade.muiPosY = SERIE4_ROW3_Y;
+    mZoneTorNomade.muiWidth = SERIE4_COL_W;
+    mZoneTorNomade.muiHight = REMOTE_B_1_H; //SERIE4_ROW_H;
+    mZoneTorNomade.calculeCoordonnees();
+    mZoneTorNomade.drawMesure(val, nom);
+  } else {
+    /*mZoneTorNomade.muiPosX = REMOTE_2_X;
+    mZoneTorNomade.muiPosY = (REMOTE_2_Y + REMOTE_2_H + 2 + MESURE_2_HAUTEUR + 2);
+    mZoneTorNomade.muiWidth = REMOTE_2_W;
+    mZoneTorNomade.muiHight = REMOTE_2_H;
+    mZoneTorNomade.calculeCoordonnees();*/
+  }
+}
+
+// Batterie du thermomètre Nomade
+void CEcran::updateRemoteBat_ThNomade(const String& nom, int etatBatterie, float val) {
+  if (mucSerieAffichageEnCours != 3) return;
+  mZoneMesureDoubleOuest.drawEtatBatterie(val, etatBatterie, nom);
+}
+
+//============================================================================================
+// Série 4 : coulSdb / Flotteur / Ha1 / Ha2
+//============================================================================================
+void CEcran::updateRemoteDevice_NewNas(const String& nom, int val) {
+  if (mucSerieAffichageEnCours != 4) return;
+  mZoneHa1.drawMesure(val, nom);
+}
+void CEcran::updateRemoteDevice_BigNas(const String& nom, int val) {
+  if (mucSerieAffichageEnCours != 4) return;
+  mZoneHa2.drawMesure(val, nom);
+}
+void CEcran::updateSerie4() {
+  if (mucSerieAffichageEnCours != 4) return;
+  updateRemoteDevice_ThSdbDel(mConfig.mRemoteCoulSdb->nomEquipement, mConfig.mRemoteCoulSdb->getLastLedStatus());
+  updateRemoteDevice_ThCaveTor(mConfig.mRemoteTor->nomEquipement, (int)mConfig.mRemoteTor->getLastMesure());
+  if (mConfig.mRemoteNewNas != nullptr)
+    updateRemoteDevice_NewNas(mConfig.mRemoteNewNas->nomEquipement, (int)mConfig.mRemoteNewNas->getLastMesure());
+  if (mConfig.mRemoteBigNas != nullptr)
+    updateRemoteDevice_BigNas(mConfig.mRemoteBigNas->nomEquipement, (int)mConfig.mRemoteBigNas->getLastMesure());
 }
 
 //============================================================================================

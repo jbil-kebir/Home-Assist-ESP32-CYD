@@ -6,7 +6,8 @@
 // this file contains binary patch for the SX1262
 //#include <modules/SX126x/patches/SX126x_patch_scan.h>
 
-extern CMyDateTime mDateTime;
+enum RadioMode { MODE_RX, MODE_TX };
+RadioMode currentMode = MODE_RX;
 
 volatile bool operationDone = false;
 
@@ -18,6 +19,11 @@ void setFlag(void) {
   operationDone = true;
 }
 
+void CMyLoraRxTx::startRx() {
+  mRadio.startReceive();
+  operationDone = false;   // efface l'interruption parasite de la transition d'état
+  currentMode = MODE_RX;
+}
 
 //
 // Retour
@@ -36,29 +42,44 @@ int CMyLoraRxTx::setup() {
   // Force SPI init
   SPI.begin(mucSckPin, mucMisoPin, mucMosiPin, mucCsPin);  
   
-  int state = mRadio.begin(mfFrequency, mfBandwidth, mucSpreadingFactor, mucCodingRate, mucSyncWord, mfOutputPower, muiPreambleLength, 1.6, false);
+  while (true) { 
+    int nbTentatives = 5; // 5 tentatives
+    int state = mRadio.begin(mfFrequency, mfBandwidth, mucSpreadingFactor, mucCodingRate, mucSyncWord, mfOutputPower, muiPreambleLength, 1.6, false);
 
-  if (state == RADIOLIB_ERR_NONE) {
-    Serial.println(F("success!"));
-    // Active la callback sur DIO1 (paquet reçu)
-    mRadio.setDio1Action(setFlag);    
-    // Démarre la réception continue
-    state = mRadio.startReceive();
     if (state == RADIOLIB_ERR_NONE) {
-      Serial.println("Réception démarrée");
+      Serial.println(F("success!"));
+      // Active la callback sur DIO1 (paquet reçu)
+      //mRadio.setDio1Action(setFlag);    
+      // Démarre la réception continue
+      /*state = mRadio.startReceive();
+      if (state == RADIOLIB_ERR_NONE) {
+        Serial.println("Réception démarrée");
+      } 
+      else {
+        Serial.print("startReceive failed, code ");
+        Serial.println(state);
+        return -9;
+      }*/
+      ret = 0; 
+      mbInitialized = true;
+      // Un seul callback pour TX done et RX done
+      mRadio.setPacketSentAction(setFlag);
+      mRadio.setPacketReceivedAction(setFlag);
+
+      startRx();
+
     } 
     else {
-      Serial.print("startReceive failed, code ");
+      Serial.print(F("failed, code "));
       Serial.println(state);
-      return -9;
-    }
-    ret = 0;
-  } 
-  else {
-    Serial.print(F("failed, code "));
-    Serial.println(state);
-    ret = -8;
-  } // if (state == RADIOLIB_ERR_NONE)
+      mbInitialized = false;
+      ret = -8;
+    } // if (state == RADIOLIB_ERR_NONE)
+    nbTentatives--;
+    
+  if ( (ret == 0) || (nbTentatives == 0) ) break;
+  delay(5000);
+  }
   
   return ret;
 }
@@ -157,96 +178,123 @@ void CMyLoraRxTx::setMqttPublishCallback(std::function<int(const char*, const ch
     onMqttPublish = cb;
 }
 
+//
+// Récupère la chaîne de caractères reçue par Lora, la parse, et si elle est valide, ajoute : 
+// - la date et l'heure (en remplaçant les tokens "DATE" et "TIME" s'ils sont présents)
+// - 0.0.0.0 (à la fin du message, pour l'instant, à remplacer par l'IP réelle si besoin)
+// Exemple d'entrée :
+// =home/thermometre/state=ThNomade Temp DATE TIME 23.0
+// Exemple de sortie MQTT :
+// Topic : home/thermometre/state 
+// Payload : ThNomade Temp 2024-06-01 14:30:00 23.0
+// Retour :
+// > 0  = nombre total de champs extraits (topic + fields)  
+// 0 = message non parsé (ex: message vide ou ne respectant pas le format de base)
+//
 int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
-  int ret = 0;
+  Serial.println("int CMyLoraRxTx::handleIncommingLoraP2PMessage() - Reçu : " + inMessage);
+
   ParsedLoraP2PMessage msg;
   int nb = parseMessage(msg, inMessage);
 
-  Serial.println("int CMyLoraRxTx::handleIncommingLoraP2PMessage() - Chaîne : " + inMessage);
-  //printParsed(msg, nb);
+  if (nb <= 0 || !msg.isValid) {
+    Serial.printf("handleIncommingLoraP2PMessage() - parsing invalide (%d)\n", nb);
+    return nb;
+  }
 
-  //Serial.println("---------------------");
+  printParsed(msg, nb);
 
-  // On met en place la date et l'heure
+  // Substitution DATE / TIME
   for (size_t i = 0; i < msg.fields.size(); i++) {
-    //msg.fields[i].toUpperCase();
-    if (msg.fields[i] == "DATE") msg.fields[i] = mDateTime.getDate();
-    else if (msg.fields[i] == "TIME") msg.fields[i] = mDateTime.getTime();
+    if (msg.fields[i] == "DATE") msg.fields[i] = mConfig->mDateTime->getDate();
+    else if (msg.fields[i] == "TIME") msg.fields[i] = mConfig->mDateTime->getTime();
   }
-  //Serial.println("++++++++++++++++++++++++++++");
-  //printParsed(msg, nb);
-  //Serial.println("++++++++++++++++++++++++++++");
-  if (msg.fields.size() > 0) {
-    // On forme le message MQTT à envoyer
-    String mqttMsg="";
-    for (size_t i = 0; i < msg.fields.size(); i++) {
-      mqttMsg += msg.fields[i] + " ";
-    }
-    // On ajoute l'IP
-    mqttMsg += "0.0.0.0"; //WiFi.localIP().toString();
-    // Envoi
-    if (onMqttPublish != nullptr) {
-      String sTopic = msg.topic;
-      onMqttPublish(sTopic.c_str(), mqttMsg.c_str());
-      //Serial.printf("int CMyLoraRxTx::handleIncommingLoraP2PMessage() - Envoi MQTT sur %s : %s\n", sTopic.c_str(), mqttMsg.c_str());
-    }
+
+  // Construction payload
+  String mqttMsg = "";
+  for (size_t i = 0; i < msg.fields.size(); i++) {
+    if (i > 0) mqttMsg += " ";
+    mqttMsg += msg.fields[i];
   }
-  ret = nb;
-  return ret;
+  String sIP = msg.fields.back();
+  IPAddress ipAddr;
+  if (!ipAddr.fromString(sIP)) {
+    mqttMsg += " 0.0.0.0";
+  }
+
+  // Publication MQTT
+  if (onMqttPublish) {
+    Serial.printf("handleIncommingLoraP2PMessage() - %s : %s\n", msg.topic.c_str(), mqttMsg.c_str());
+    onMqttPublish(msg.topic.c_str(), mqttMsg.c_str());
+  }
+
+  return nb;
 }
 //
 // Retour
 // 0 : RAS
 // -1 : Erreur de lecture des données reçues
+// -9 : Non initialisé
+
 //
 int CMyLoraRxTx::loop() {
   int ret = 0;
+  if (!mbInitialized) return -9;
 
-  // check if the flag is set
-  if(operationDone) {
-    // reset flag
+  /*if (operationDone) {
     operationDone = false;
 
-    // you can read received data as an Arduino String
     String str;
     int state = mRadio.readData(str);
 
-    handleIncommingLoraP2PMessage(str);
+    // Relancer la réception continue immédiatement
+    mRadio.startReceive();
 
-    /*if (state == RADIOLIB_ERR_NONE) {
-      // packet was successfully received
-      Serial.println(F("[SX1262] Received packet!"));
+    if (state != RADIOLIB_ERR_NONE) {
+      Serial.printf("loop() - readData failed, code %d\n", state);
+      return -1;
+    }
 
-      // print data of the packet
-      Serial.print(F("[SX1262] Data:\t\t"));
-      Serial.println(str);
+    Serial.printf("int CMyLoraRxTx::loop() - Reçu : %s\n", str.c_str());
 
-      // print RSSI (Received Signal Strength Indicator)
-      Serial.print(F("[SX1262] RSSI:\t\t"));
-      Serial.print(mRadio.getRSSI());
-      Serial.println(F(" dBm"));
+    ret = handleIncommingLoraP2PMessage(str);
+  }*/
 
-      // print SNR (Signal-to-Noise Ratio)
-      Serial.print(F("[SX1262] SNR:\t\t"));
-      Serial.print(mRadio.getSNR());
-      Serial.println(F(" dB"));
+    if (operationDone) {
+      operationDone = false;
 
-      // print mfFrequency error
-      Serial.print(F("[SX1262] Frequency error:\t"));
-      Serial.print(mRadio.getFrequencyError());
-      Serial.println(F(" Hz"));
+      if (currentMode == MODE_TX) {
+        // C'était une émission
+        mRadio.finishTransmit();
+        Serial.println(F("[LoRa] Envoi terminé, retour en écoute."));
+        startRx();
+    
+      } else {
+        // C'était une réception
+        String received;
+        int state = mRadio.readData(received);
 
-    } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
-      // packet was received, but is malformed
-      Serial.println(F("CRC error!"));
+        if (state == RADIOLIB_ERR_NONE) {
+          Serial.print(F("[LoRa] Reçu : "));
+          Serial.println(received);
+          Serial.print(F("  RSSI : "));
+          Serial.print(mRadio.getRSSI());
+          Serial.print(F(" dBm  SNR : "));
+          Serial.print(mRadio.getSNR());
+          Serial.println(F(" dB"));
+        } else {
+          Serial.print(F("[LoRa] Erreur RX, code "));
+          Serial.println(state);
+        }
+        Serial.printf("int CMyLoraRxTx::loop() - Reçu (RSSI: %.1f dBm) : %s\n", mRadio.getRSSI(), received.c_str());
 
-    } else {
-      // some other error occurred
-      Serial.print(F("failed, code "));
-      Serial.println(state);
+        ret = handleIncommingLoraP2PMessage(received);
 
-    }*/
-  }
+        startRx();
+      }
+    }
+  
+
   
   return ret;
 }
@@ -288,10 +336,28 @@ int CMyLoraRxTx::validateParameters() { //float mfFrequency, float mfBandwidth, 
 
 
 // Send packet
-void CMyLoraRxTx::sendPacket(const char* message) {
+/*void CMyLoraRxTx::sendPacket(const char* message) {
   Serial.print(F("[SX1262] Sending packet ... "));
   transmissionState = mRadio.startTransmit(message);
   transmitFlag = true;
+}*/
+// Send packet
+int CMyLoraRxTx::sendPacket(const char* message) {
+  int ret = 0;//RADIOLIB_ERR_NONE;
+  if (!mbInitialized) return -9;
+  String sToSend = START_STOP + String(message) + START_STOP;
+  Serial.printf("[SX1262] Sending packet <%s> ... \n", sToSend.c_str());
+  currentMode = MODE_TX;
+  operationDone = false;   // efface l'interruption parasite de la transition d'état
+  /*transmissionState = */ret = mRadio.startTransmit(sToSend.c_str());
+  //transmitFlag = true;
+  if (ret == RADIOLIB_ERR_NONE) ret = 0;
+  return ret;
+}
+
+int CMyLoraRxTx::sendPacket(const char* topic, const char* pyload) {
+  String message = String(topic) + " " + String(pyload);
+  return sendPacket(message.c_str());
 }
 
 // Receive packet

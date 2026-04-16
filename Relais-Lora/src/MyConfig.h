@@ -58,6 +58,9 @@ public:
   // MQTT callback pour le deep-sleep
   std::function<int(const char*, const char*)> onMqttPublish;    
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish) {onMqttPublish = cbMqttPublish;}; // Pour publication MQTT
+  // Lora callback 
+  std::function<int(const char*, const char*)> onLoraPublish;    
+  void setLoraPublishCallback(std::function<int(const char* topic, const char* payload)> cbLoraPublish) {onLoraPublish = cbLoraPublish;}; // Pour publication Lora
 
   void setup(const String pref);
   void loop();

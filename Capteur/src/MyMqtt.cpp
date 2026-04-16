@@ -51,7 +51,7 @@ void CMqtt::reconnect() {
       Serial.println("Abonnement à : " + mConfig.topic_config_command);
  
  
-      sPayload = mConfig.nomEquipement + String(" ") + String("online") + " le " + mConfig.mDateTime->getDate() + " à " + mConfig.mDateTime->getTime();
+      sPayload = mConfig.nomEquipement + String(" ") + String("online") + " le " + mConfig.mDateTime->getDate() + " à " + mConfig.mDateTime->getTime() + String(" ") + WiFi.localIP().toString();
       // Publication des états retained
       #ifdef CAPTEUR_DS18B20
       client.publish(mConfig.ds18b20->mqttSubTopicState.c_str(), sPayload.c_str(), false);
@@ -123,6 +123,87 @@ int CMqtt::publish(const char* topic, const char* payload) {
 
 void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   if (!active) return;
+  String message, messageOrg;
+  for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
+  message.trim();
+  messageOrg = message;
+  message.toUpperCase();
+
+  #ifdef CAPTEUR_DS18B20
+  String sDs18B20Equipement = mConfig.ds18b20->nomEquipement; sDs18B20Equipement.toUpperCase();
+  #endif
+  #ifdef CAPTEUR_DHT20  
+  String sDht20Equipement = mConfig.dht20->nomEquipement; sDht20Equipement.toUpperCase();
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  String sRgbEquipement = mConfig.mCapteurRGB->nomEquipement; sRgbEquipement.toUpperCase();
+  #endif
+  #ifdef FLOTTEUR_VERTICAL
+  String sFlotteurEquipement = mConfig.mFlotteurVertical->nomEquipement; sFlotteurEquipement.toUpperCase();
+  #endif
+
+  Serial.printf("[MQTT] void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
+
+  // Commandes de configuration
+  if (String(topic) == mConfig.topic_config_command) {
+    Serial.println("Commande configuration reçue : " + message);
+    mConfig.handleMqttCommand(messageOrg);
+    if (message == "STATUS") {
+      String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
+      statusMsg += String(mConfig.mDateTime->getDate()) + " " + String(mConfig.mDateTime->getTime()) + "\n";
+      statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
+      statusMsg += "Uptime : " + String(millis() / 1000) + "s";
+
+      client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
+      Serial.println("STATUS publié sur " + mConfig.topic_config_state);
+      Serial.println(statusMsg); Serial.flush();
+    }
+    else if (message == "REBOOT") {
+      ESP.restart();
+    }
+  } // if (String(topic) == mConfig.topic_config_command) { 
+  else if (String(topic) == "home/thermometre/command") {
+    if (false) {
+      // Traiter les commandes de configuration
+    }
+    #ifdef CAPTEUR_DS18B20
+    else if (message.startsWith(sDs18B20Equipement)) {
+      mConfig.ds18b20->handleMqttCommand(messageOrg);
+    }
+    #endif
+    #ifdef CAPTEUR_DHT20
+    else if (message.startsWith(sDht20Equipement)) {
+      mConfig.dht20->handleMqttCommand(messageOrg);
+    }
+    #endif
+    #ifdef CAPTEUR_RGB_TCS34725
+    else if (message.startsWith(sRgbEquipement)) {
+      mConfig.mCapteurRGB->handleMqttCommand(messageOrg);
+    }
+    #endif
+    #ifdef FLOTTEUR_VERTICAL
+    else if (message.startsWith(sFlotteurEquipement)) {
+      mConfig.mFlotteurVertical->handleMqttCommand(messageOrg);
+    } 
+    #endif
+    else {
+      Serial.println("void CMqtt::callback() - Non traité " + String(topic) + " : " + message);
+      // Traiter les autres commandes MQTT spécifiques à d'autres capteurs ou fonctions
+    }
+
+  } // if (String(topic) == "home/thermometre/command") {
+  else {
+    Serial.printf("void CMqtt::callback() - Topic non pris en charge - %s : %s\n", topic, message.c_str());
+  }
+
+  // On peut ajouter d’autres commandes plus tard
+}
+
+
+
+
+/*void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
+  if (!active) return;
   String message;
   for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
   message.toUpperCase();
@@ -150,7 +231,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       return; // Commande sans argument. RAS
     }
     else {
-      if (sCommand == "SLEEP") {
+      if (sCommand == "SLEEP") { // Commande 
         String sArg = message.substring(idx, message.indexOf(' ', idx));
         int sleep = (int)sArg.substring(0).toDouble();
         Serial.println("Sleep : "+String(sleep));
@@ -187,24 +268,12 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     else if (message == "REBOOT") {
       ESP.restart();
     }
-   /* else if(message.startsWith("SLEEP")) {
-      // On regarde s'il y a un argujment
-      int idx = 0;
-      String sCmd = message.substring(0, message.indexOf(' ', idx));
-      idx = message.indexOf(' ', idx) + 1;
-      Serial.println("Long : " + String(message.length()) + " Index : "+String(idx));
-      String sArg = message.substring(idx, message.indexOf(' ', idx));
-
-      Serial.println("============================================");
-      Serial.println("cmd : "+sCmd+" Arg : " + sArg) + " index : " + String(idx);
-
-    }*/
     // On peut ajouter d’autres commandes plus tard
   }
   #endif
   
 }
-
+*/
 void CMqtt::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
   mqtt_server = prefs.getString((mPrefixNVS + "server").c_str(), default_mqtt_server);

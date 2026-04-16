@@ -10,16 +10,16 @@ void CWifi::setup(const String pref) { //const String pref) {
 
 void CWifi::begin() {
   WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
-  Serial.printf("Connexion au WiFi %s", wifi_ssid.c_str());
+  DBG(DBG_RESEAU, "Connexion au WiFi %s", wifi_ssid.c_str());
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
     delay(500);
-    Serial.print(".");
+    DBG(DBG_RESEAU, ".");
   }
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\nWiFi connecté - IP : " + WiFi.localIP().toString());
+    DBGLN(DBG_RESEAU, "\nWiFi connecté - IP : " + WiFi.localIP().toString());
   } else {
-    Serial.println("\nÉchec connexion WiFi");
+    DBG(DBG_RESEAU, "\nÉchec connexion WiFi\n");
   }
 }
 
@@ -45,11 +45,11 @@ void CWifi::saveToNVS() {
 }
 
 void CWifi::print() const {
-  Serial.println("   WiFi Config");
-  Serial.printf("     Nom            : %s\n", nomEquipement.c_str());
-  Serial.printf("     Actif          : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     SSID           : %s\n", wifi_ssid.c_str());
-  Serial.printf("     MQTT SubTopic  : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_RESEAU, "   WiFi Config\n");
+  DBG(DBG_RESEAU, "     Nom            : %s\n", nomEquipement.c_str());
+  DBG(DBG_RESEAU, "     Actif          : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_RESEAU, "     SSID           : %s\n", wifi_ssid.c_str());
+  DBG(DBG_RESEAU, "     MQTT SubTopic  : %s\n", mqttSubTopic.c_str());
 }
 
 void CWifi::loadFromWebServer(WebServer& server) {

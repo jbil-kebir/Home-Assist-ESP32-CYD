@@ -30,8 +30,8 @@ private:
   unsigned int muiLastLuxBrut = 0x0;  // Valeur invalide par défaut. Une luminosité sera envoyée sous la forme 0xFFFFFFLM (LM = Luminosité)
   unsigned int muiNewLuxBrut = 0x0;  // Valeur invalide par défaut
   // Etet ON/OFF
-  bool mbNewEtatOnOff = false; // Mis à jour par calcul. N'a pas besoin d'être dans le NVS. true = ON
-  bool mbLastEtatOnOff = false; // Mis à jour par calcul. N'a pas besoin d'être dans le NVS. true = ON
+  int mbNewEtatOnOff = -1; // Mis à jour par calcul. N'a pas besoin d'être dans le NVS. true = 1 ON, false = 0 OFF, -1 valeur invalide
+  int mbLastEtatOnOff = -1; // Mis à jour par calcul. N'a pas besoin d'être dans le NVS. true = 1 ON, false = 0 OFF, -1 valeur invalide
 
   //====================== Commandes MQTT ======================
   String sMqttCommandMesure = "MESURE"; // Force une mesure
@@ -76,7 +76,7 @@ public:
   int begin(const String pref);
   int loop();
   bool readMesures();
-  bool getLastLedStatus() const;
+  int getLastLedStatus() const;
   unsigned long getLastCouleur() const;
   unsigned long getLastLuminosite() const;
   unsigned long getLastLuminositeBrut() const;

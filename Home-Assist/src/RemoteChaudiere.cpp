@@ -62,7 +62,7 @@ int CRemoteChaudiere::envoiTrameON() {
     // après demande OFF
     if (active) {
       bool b = bGetEnvoiEnCours();
-      Serial.printf("main loop - ON appuye - Envoi en cours : % d\n", b);
+      DBG(DBG_CHAUDIERE, "main loop - ON appuye - Envoi en cours : % d\n", b);
       bSetEnvoyerTramesOFF(false);
       if (bGetEnvoiEnCours()) {
         ret = -2;
@@ -92,7 +92,7 @@ int CRemoteChaudiere::envoiTrameOFF() {
   // après demande ON
   if (active) {
     bool b = bGetEnvoiEnCours();
-    Serial.printf("main loop - OFF appuye - Envoi en cours : % d\n", b);
+    DBG(DBG_CHAUDIERE, "main loop - OFF appuye - Envoi en cours : % d\n", b);
     bSetEnvoyerTramesON(false);
     if (bGetEnvoiEnCours()) {
       ret = -2;
@@ -206,22 +206,22 @@ void CRemoteChaudiere::saveToNVS() {
 }
 
 void CRemoteChaudiere::print() const {
-  Serial.println("[CHAUDIERE]");
-  Serial.println("  [GENERAL]");
-  Serial.printf("     Nom            : %s\n", nomEquipement);
-  Serial.printf("     Actif          : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Nom btn ON     : %s\n", nomBoutonON.c_str());
-  Serial.printf("     Nom btn OFF    : %s\n", nomBoutonOFF.c_str());
+  DBG(DBG_CHAUDIERE, "[CHAUDIERE]\n");
+  DBG(DBG_CHAUDIERE, "  [GENERAL]\n");
+  DBG(DBG_CHAUDIERE, "     Nom            : %s\n", nomEquipement.c_str());
+  DBG(DBG_CHAUDIERE, "     Actif          : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_CHAUDIERE, "     Nom btn ON     : %s\n", nomBoutonON.c_str());
+  DBG(DBG_CHAUDIERE, "     Nom btn OFF    : %s\n", nomBoutonOFF.c_str());
 
-  Serial.println("  [MQTT]==");
-  Serial.printf("     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_CHAUDIERE, "  [MQTT]==\n");
+  DBG(DBG_CHAUDIERE, "     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
 
-  Serial.printf("     Command        : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     State          : %s\n", mqttSubTopicState.c_str());
-  Serial.printf("     Status         : %s\n", mqttSubTopicStatus.c_str());
-  
-  Serial.println("  [État chaudière]");
-  Serial.printf("     Dernier état   : %s\n", etatStr.c_str());
+  DBG(DBG_CHAUDIERE, "     Command        : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_CHAUDIERE, "     State          : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_CHAUDIERE, "     Status         : %s\n", mqttSubTopicStatus.c_str());
+
+  DBG(DBG_CHAUDIERE, "  [État chaudière]\n");
+  DBG(DBG_CHAUDIERE, "     Dernier état   : %s\n", etatStr.c_str());
 
 }
 
@@ -238,11 +238,12 @@ void CRemoteChaudiere::saveState(bool state) {
 //
 void CRemoteChaudiere::setEtatReelOnOff(bool state) {
   // On prévient les appareils distants
-  Serial.printf("void CRemoteChaudiere::setEtatReelOnOff() - state=%d - etat=%d\n", state, etat);
+  DBG(DBG_CHAUDIERE, "void CRemoteChaudiere::setEtatReelOnOff() - state=%d - etat=%d\n", state, etat);
   if (etat == state) return;
   String sEnvoi = state ? "ONR" : "OFFR";
-  if (onMqttPublish != nullptr)
-    onMqttPublish(this->mqttSubTopicCommand.c_str(), sEnvoi.c_str());
+  // Désactivé : provoque une boucle MQTT avec LOCAL_MODE pendant le démarrage de la chaudière
+  // if (onMqttPublish != nullptr)
+  //   onMqttPublish(this->mqttSubTopicCommand.c_str(), sEnvoi.c_str());
   saveState(state); // Sauvegarde NVS
   if (mEcran != nullptr) 
     mEcran->updateAllStates();
@@ -253,19 +254,17 @@ void CRemoteChaudiere::handleMqttCommand(const String& payload) {
   cmd.toUpperCase();
   cmd.trim();
         
-  Serial.printf("void CRemoteChaudiere::handleMqttCommand() - reçu : %s\n", cmd.c_str());
+  DBG(DBG_CHAUDIERE, "void CRemoteChaudiere::handleMqttCommand() - reçu : %s\n", cmd.c_str());
 
   if (cmd == "ONR") {
     bool state = true;
     if (active) {    
       saveState(state); // Ajout 2.0
-      //if (mEcran != nullptr) mEcran->updateBoilerStatus();
       if (mEcran != nullptr) mEcran->updateAllStates();
     }
     else {
       String s = "L'equipement " + String(nomEquipement) + " n'est pas actif";
       if (mEcran != nullptr) mEcran->updateStatus(s);
-      //Serial.println(s);
     }
 
   }
@@ -273,13 +272,11 @@ void CRemoteChaudiere::handleMqttCommand(const String& payload) {
     bool state = false;
     if (active) {    
       saveState(state); // Ajout 2.0
-      //if (mEcran != nullptr) mEcran->updateBoilerStatus();
       if (mEcran != nullptr) mEcran->updateAllStates();
     }
     else {
       String s = "L'equipement " + String(nomEquipement) + " n'est pas actif";
       if (mEcran != nullptr) mEcran->updateStatus(s);
-      //Serial.println(s);
     }
 
   }

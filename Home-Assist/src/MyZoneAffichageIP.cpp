@@ -56,11 +56,11 @@ CZoneAffichageIP::CZoneAffichageIP(/*CConfig& cfg, */TFT_eSPI& tft, std::vector<
 int CZoneAffichageIP::drawEquipements () { 
   int ret = 0;
   if (mvsControleurs == nullptr) {
-    Serial.printf("int CZoneAffichageIP::drawEquipements () - Pointeur mvsControleurs null\n");
+    DBG(DBG_ECRAN, "int CZoneAffichageIP::drawEquipements () - Pointeur mvsControleurs null\n");
     return -1;
   }
   if (mvsEsclaves == nullptr) {
-    Serial.printf("int CZoneAffichageIP::drawEquipements () - Pointeur mvsEsclaves null\n");
+    DBG(DBG_ECRAN, "int CZoneAffichageIP::drawEquipements () - Pointeur mvsEsclaves null\n");
     return -1;
   }
 
@@ -69,7 +69,7 @@ int CZoneAffichageIP::drawEquipements () {
 
   //Serial.printf("int CZoneAffichageIP::drawEquipements () - mvsControleurs %d\n", mvsControleurs->size());
   if (mvsControleurs->empty()) {
-    Serial.printf("int CZoneAffichageIP::drawEquipements () - mvsControleurs vide\n");
+    DBG(DBG_ECRAN, "int CZoneAffichageIP::drawEquipements () - mvsControleurs vide\n");
   }
 
   mTft.setTextColor(TFT_ORANGE, TFT_BLACK);

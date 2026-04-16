@@ -1,3 +1,4 @@
+#include "global.h"
 #include "ParsedMqttMessage.h"
 
 // Méthodes de détection (à mettre dans la classe ou en helpers)
@@ -214,31 +215,31 @@ return mbIsValid;
 
 void ParsedMqttMessage::printDebug() const {
     if (!mbIsValid) {
-        Serial.println("Message MQTT invalide");
+        DBG(DBG_MQTT, "Message MQTT invalide\n");
         return;
     }
 
-    Serial.println("Parsed MQTT message:");
-    Serial.print("  Expéditeur    : "); Serial.println(msExpediteur);
-    Serial.print("  Mesures       : [");
+    DBG(DBG_MQTT, "Parsed MQTT message:\n");
+    DBG(DBG_MQTT, "  Expéditeur    : "); DBGLN(DBG_MQTT, msExpediteur);
+    DBG(DBG_MQTT, "  Mesures       : [");
     for (size_t i = 0; i < mvsMesure.size(); ++i) {
-        if (i > 0) Serial.print(", ");
-        Serial.print(mvsMesure[i]);
+        if (i > 0) DBG(DBG_MQTT, ", ");
+        DBGLN(DBG_MQTT, mvsMesure[i]);
     }
-    Serial.println("]");
-    Serial.print("  Taille mesures: "); Serial.println(miTailleMesure);
+    DBG(DBG_MQTT, "]\n");
+    DBG(DBG_MQTT, "  Taille mesures: "); DBGLN(DBG_MQTT, miTailleMesure);
     if (msDate.length() > 0) {
-        Serial.print("  Date          : "); Serial.println(msDate);
+        DBG(DBG_MQTT, "  Date          : "); DBGLN(DBG_MQTT, msDate);
     }
     if (msTime.length() > 0) {
-        Serial.print("  Heure         : "); Serial.println(msTime);
+        DBG(DBG_MQTT, "  Heure         : "); DBGLN(DBG_MQTT, msTime);
     }
     if (mfValeur != 0.0f) {
-        Serial.print("  Valeur        : "); Serial.println(mfValeur, 1);
+        DBG(DBG_MQTT, "  Valeur        : "); DBGLN(DBG_MQTT, mfValeur);
     }
     if (msIp.length() > 0) {
-        Serial.print("  IP            : "); Serial.println(msIp);
+        DBG(DBG_MQTT, "  IP            : "); DBGLN(DBG_MQTT, msIp);
     }
-    Serial.print("  Force         : "); Serial.println(mbForce ? "OUI" : "NON");
-    Serial.println();
+    DBG(DBG_MQTT, "  Force         : "); DBGLN(DBG_MQTT, mbForce ? "OUI" : "NON");
+    DBG(DBG_MQTT, "\n");
 }

@@ -57,9 +57,9 @@ void CEquipementBase::loadFromWebServer (WebServer& server) {
 
 void CEquipementBase::print() const {
 
-  Serial.printf("     Nom                : %s\n", nomEquipement);
-  Serial.printf("     Actif              : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     MQTTSubTopic       : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd            : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState          : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_CONFIG, "     Nom                : %s\n", nomEquipement.c_str());
+  DBG(DBG_CONFIG, "     Actif              : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_CONFIG, "     MQTTSubTopic       : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_CONFIG, "     MQTTCmd            : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_CONFIG, "     MQTTState          : %s\n", mqttSubTopicState.c_str());
 }

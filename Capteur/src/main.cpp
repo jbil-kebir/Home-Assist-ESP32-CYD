@@ -5,16 +5,19 @@
 #include "MyConfig.h"
 #ifdef _WIFI_MODE_
 #include "MyWifi.h"
+#ifndef __DESACTIVE_ENVOI_MQTT__
 #include "MyMqtt.h"
+#endif
 #include "MyWebServer.h"
 #endif
 #ifdef _RCSWITCH_MODE_
 #include "MyRCSwitch.h"
 #include "MyCC1101.h"
 #endif
-#ifdef _LORA_P2P_MODE_
+//#ifdef _LORA_P2P_MODE_
+// Test : on initialise Lora pour l'endormir si pas utilisé
 #include "MyLoraRxTx.h"
-#endif
+//#endif
 #ifdef CAPTEUR_DS18B20
 #include "MyDS18B20.h"
 #endif
@@ -42,17 +45,23 @@ CConfig config("Thermomètre ThCh1er", mDateTime);
 #ifdef _WIFI_MODE_ 
 CWifi mWifi[MAX_WIFI_NETS];
 WiFiClient wifiClient;
+#ifndef __DESACTIVE_ENVOI_MQTT__
 CMqtt mqtt(wifiClient, config/*, mRmoteTH1*/);
+#endif
+#ifndef __DESACTIVE_ENVOI_MQTT__
 MyWebServer webServer(config, mqtt, mWifi);
+#else
+MyWebServer webServer(config, mWifi);
+#endif
 #endif
 #ifdef _RCSWITCH_MODE_
 CCC1101 mCC1101;
 CMyRCSwitch mRCSwitch(config);
 #endif
-#ifdef _LORA_P2P_MODE_
-//SX1262 radio = new Module(LORA_CS_PIN, LORA_DIO1_PIN, LORA_RESET_PIN, LORA_BUSY_PIN);
+//#ifdef _LORA_P2P_MODE_
+// Test : on initialise Lora pour l'endormir si pas utilisé
 CMyLoraRxTx mLoraRxTx(config); //, radio);
-#endif
+//#endif
 #ifdef CAPTEUR_DS18B20
 MyDS18B20 ds18b20(DS18B20_PIN, mDateTime);  
 #endif
@@ -81,8 +90,12 @@ void printBoardInfo();
 //-------------------------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
-  while(!Serial);
-  randomSeed(analogRead(0));  // Initialisation aléatoire
+  unsigned long start = millis();
+  while(!Serial && millis() - start < 5000); // Attend max 5 secondes (USB CDC : re-énumération après reboot)
+
+  Serial.println("\n\n=== Démarrage de " + String(config.nomEquipement) + " (version " + String(VERSION) + ") ===");
+
+  randomSeed(esp_random());  // Initialisation aléatoire (esp_random = RNG matériel)
   printBoardInfo();  // affiche "Carte détectée : ESP32-C3 Super Mini" ou S3
 
   #ifdef _RCSWITCH_MODE_
@@ -93,17 +106,35 @@ void setup() {
   
   config.setPrefixNVS("cfg_");
 
-  #ifdef _LORA_P2P_MODE_
+//  #ifdef _LORA_P2P_MODE_
+  // Test : on initialise Lora pour l'endormir si pas utilisé
   int ret = mLoraRxTx.setup();
   if (ret != 0) {
     Serial.println("Erreur init LoRa RX/TX : " + String(ret));
   }
+//  #endif
+  // Si Lora pas utilisé, on met le module en sleep
+  #ifndef _LORA_P2P_MODE_ 
+  mLoraRxTx.sleep(); // Via RadioLib 
   #endif
 
+
+  #ifdef _LORA_P2P_MODE_ 
   #ifdef _WIFI_MODE_
-  config.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mLoraRxTx.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
+  #endif
+  #endif
+  #endif // _LORA_P2P_MODE_
+
+  #ifdef _WIFI_MODE_
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  config.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
+  });
+  #endif
   #endif
   Serial.printf("\n=== %s %s ===\n",config.nomEquipement.c_str(), VERSION);
 
@@ -114,16 +145,18 @@ void setup() {
   config.ds18b20 = &ds18b20;
   #ifdef _WIFI_MODE_
   // Thermomètre Chambre 1er - publication MQTT
-  ds18b20.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  ds18b20.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
+  #endif
   #endif
   #ifdef _RCSWITCH_MODE_
   ds18b20.mRCSwitch = &mRCSwitch;
   #endif
   #ifdef _LORA_P2P_MODE_
-  ds18b20.setLoraP2PPublishCallback([ptr = &mLoraRxTx](const char* payload) -> int {
-      return ptr->sendPacket(payload);
+  ds18b20.setLoraP2PPublishCallback([](const char* payload) -> int {
+      return mLoraRxTx.sendPacket(payload);
   });
   #endif
   #endif // CAPTEUR_DS18B20
@@ -132,19 +165,21 @@ void setup() {
   config.mBatterieAA = &mBatterie;
 
   #ifdef _WIFI_MODE_
-  mBatterie.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mBatterie.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
+  #endif
   #endif
   #ifdef _RCSWITCH_MODE_
   //mBatterie.mRCSwitch = &mRCSwitch;
   #endif
   #ifdef _LORA_P2P_MODE_
-  mBatterie.setLoraP2PPublishCallback([ptr = &mLoraRxTx](const char* payload) -> int {
-      return ptr->sendPacket(payload);
+  config.mLoraRxTx = &mLoraRxTx;
+  mBatterie.setLoraP2PPublishCallback([](const char* payload) -> int {
+      return mLoraRxTx.sendPacket(payload);
   });
   #endif
-
   //================================================== DHT20 ==================================================
   #ifdef CAPTEUR_DHT20
   Serial.println("Initialisation DHT20...");
@@ -153,16 +188,18 @@ void setup() {
   dht20.domotique_prefix = "home/";
   Serial.printf("void loop() - dht20.domotique_prefix : %s\n", dht20.domotique_prefix.c_str()); Serial.flush();
   #ifdef _WIFI_MODE_
-  dht20.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  dht20.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
+  #endif
   #endif
   #ifdef _RCSWITCH_MODE_
   dht20.mRCSwitch = &mRCSwitch;
   #endif
   #ifdef _LORA_P2P_MODE_
-  dht20.setLoraP2PPublishCallback([ptr = &mLoraRxTx](const char* payload) -> int {
-      return ptr->sendPacket(payload);
+  dht20.setLoraP2PPublishCallback([](const char* payload) -> int {
+      return mLoraRxTx.sendPacket(payload);
   });
   #endif
   #endif // CAPTEUR_DHT20
@@ -173,16 +210,18 @@ void setup() {
   mFlotteurVertical.setup("mfv_");
   config.mFlotteurVertical = &mFlotteurVertical;
   #ifdef _WIFI_MODE_
-  mFlotteurVertical.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mFlotteurVertical.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
+  #endif
   #endif // _WIFI_MODE_
   #ifdef _RCSWITCH_MODE_
   mFlotteurVertical.mRCSwitch = &mRCSwitch;
   #endif
   #ifdef _LORA_P2P_MODE_
-  mFlotteurVertical.setLoraP2PPublishCallback([ptr = &mLoraRxTx](const char* payload) -> int {
-      return ptr->sendPacket(payload);
+  mFlotteurVertical.setLoraP2PPublishCallback([](const char* payload) -> int {
+      return mLoraRxTx.sendPacket(payload);
   });
   #endif
   #endif // FLOTTEUR_VERTICAL
@@ -194,16 +233,18 @@ void setup() {
   mCapteurRGB.domotique_prefix = "home/";
   Serial.printf("void loop() - mCapteurRGB.domotique_prefix : %s\n", mCapteurRGB.domotique_prefix.c_str()); Serial.flush();
   #ifdef _WIFI_MODE_
-  mCapteurRGB.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mCapteurRGB.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
+  #endif
   #endif
   #ifdef _RCSWITCH_MODE_
   mCapteurRGB.mRCSwitch = &mRCSwitch;
   #endif
   #ifdef _LORA_P2P_MODE_
-  mCapteurRGB.setLoraP2PPublishCallback([ptr = &mLoraRxTx](const char* payload) -> int {
-      return ptr->sendPacket(payload);
+  mCapteurRGB.setLoraP2PPublishCallback([](const char* payload) -> int {
+      return mLoraRxTx.sendPacket(payload);
   });
   #endif
   #endif // CAPTEUR_RGB_TCS34725
@@ -235,7 +276,9 @@ void setup() {
   }
   //#endif
   #endif
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.setup("mqtt_");
+  #endif
   #endif //_WIFI_MODE_
 
   print(); // Affiche toute la config
@@ -243,7 +286,7 @@ void setup() {
   #ifdef _WIFI_MODE_
   int i = 0;
   while(true) {
-    Serial.printf("WiFi %d : %s\n", i, mWifi[i].nomEquipement);
+    Serial.printf("WiFi %d : %s\n", i, mWifi[i].nomEquipement); Serial.flush();
     if (mWifi[i].active) {
 //      mWifi[i].setup();
       mWifi[i].begin();
@@ -279,7 +322,9 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     webServer.setup();
   }
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.begin();
+  #endif
   #endif
 
   #ifndef TEST_EMISSION_RCS
@@ -306,7 +351,6 @@ void setup() {
 //      LOOP
 //-------------------------------------------------------------------------------------------
 void loop() {
-
   // Test de la commande du MosFet - DEBUT
   /*unsigned long temps = 10000UL;
   pinMode(CC1101_POWER_GPIO, OUTPUT);
@@ -350,7 +394,9 @@ void loop() {
   
   config.loop();
   #ifdef _WIFI_MODE_
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.loop();  // Toujours actif, même écran éteint
+  #endif
   webServer.loop();
   #endif
  
@@ -367,7 +413,7 @@ void loop() {
     break;
   }
   #endif
- 
+
   //------------------------------------------------------------------------------------
   // DS18B20
   //------------------------------------------------------------------------------------
@@ -381,10 +427,10 @@ void loop() {
   } 
   else if (ret == 0) {
     dsDejaAffiche = false;
-    Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C inchangé");
+    Serial.println(String(ds18b20.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C inchangé");
   } 
   else if (ret == 1 && ds18b20.active) { // Température changée
-    Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C changée");
+    Serial.println(String(ds18b20.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C changée");
     dsDejaAffiche = false;
   } 
   else if (ret == -9) { // Inactif
@@ -400,21 +446,28 @@ void loop() {
   
   int retTension = mBatterie.loop();
   static bool BatInactifDejaAffiche = false;
+  String sDate = "DATE";
+  String sHeure = "HEURE";
+  #ifdef __WIFI_MODE__
+  sDate = mDateTime.getDate();
+  sHeure = mDateTime.getTime();
+  #endif
+
   if (retTension == -1) {
     Serial.println("mBatterie.readTension() - échec");
     BatInactifDejaAffiche = false;
   } 
   else if (retTension == 0) {
-    Serial.println(String(mBatterie.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V inchangé");
+    Serial.println(String(mBatterie.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V inchangé");
     BatInactifDejaAffiche = false;
   } 
   else if (retTension == 1 && mBatterie.active) { // Température changée
-    Serial.println(String(mBatterie.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V changée");
+    Serial.println(String(mBatterie.nomEquipement) + " - " + sDate + " - " + sHeure  + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V changée");
     BatInactifDejaAffiche = false;
   } 
   else if (retTension == -9) { // Inactif
     if (!BatInactifDejaAffiche) {
-      String s = "Tension " + mBatterie.nomEquipement + " inactif";
+      String s = "[Main] Tension " + mBatterie.nomEquipement + " inactif";
       Serial.println(s);
       BatInactifDejaAffiche = true;
     }
@@ -427,22 +480,22 @@ void loop() {
   static bool DHT20InactifDejaAffiche = false;
   int retdht20 = dht20.loop();
   if (retdht20 == -1) {
-    Serial.println("dht20.readTemperature() - échec");
+    Serial.println("[Main] dht20.readTemperature() - échec");
     DHT20InactifDejaAffiche = false;
   } 
   else if (retdht20 == 0) {
-    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C inchangé");
-    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Humidite " + String(dht20.getLastHumidite(), 1) + " %% inchangé");
+    Serial.println("[Main] " + String(dht20.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C inchangé");
+    Serial.println("[Main] " + String(dht20.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Humidite " + String(dht20.getLastHumidite(), 1) + " % inchangé");
     DHT20InactifDejaAffiche = false;
   } 
   else if (retdht20 == 1 && dht20.active) { // Température changée
-    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C changée");
-    Serial.println(String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Humidite " + String(dht20.getLastHumidite(), 1) + " %% changée");
+    Serial.println("[Main] " + String(dht20.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C changée");
+    Serial.println("[Main] " + String(dht20.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Humidite " + String(dht20.getLastHumidite(), 1) + " % changée");
     DHT20InactifDejaAffiche = false;
   } 
   else if (retdht20 == -9) { // Inactif
     if (!DHT20InactifDejaAffiche) {
-      String s = "Thermomètre " + dht20.nomEquipement + " inactif";
+      String s = "[Main] Thermomètre " + dht20.nomEquipement + " inactif";
       Serial.println(s);
       DHT20InactifDejaAffiche = true;
     }
@@ -457,20 +510,20 @@ void loop() {
   static bool FVInactifDejaAffiche = false;
   int retFV = mFlotteurVertical.loop();
   if (retFV == -1) {
-    Serial.println("mFlotteurVertical.readMesure() - échec");
+    Serial.println("[Main] mFlotteurVertical.readMesure() - échec");
     FVInactifDejaAffiche = false;
   } 
   else if (retFV == 0) {
-    Serial.println(String(mFlotteurVertical.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Etat " + String(mFlotteurVertical.getLastMesure()) + " inchangé");
+    Serial.println("[Main] " + String(mFlotteurVertical.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Etat " + String(mFlotteurVertical.getLastMesure()) + " inchangé");
     FVInactifDejaAffiche = false;
   } 
   else if (retFV == 1 && mFlotteurVertical.active) { // Mesure changée
-    Serial.println(String(mFlotteurVertical.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Etat " + String(mFlotteurVertical.getLastMesure()) + " changé");
+    Serial.println("[Main] " + String(mFlotteurVertical.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Etat " + String(mFlotteurVertical.getLastMesure()) + " changé");
     FVInactifDejaAffiche = false;
   } 
   else if (retFV == -9) { // Inactif
     if (!FVInactifDejaAffiche) {
-      String s = "Capteur " + mFlotteurVertical.nomEquipement + " inactif";
+      String s = "[Main] Capteur " + mFlotteurVertical.nomEquipement + " inactif";
       Serial.println(s);
       FVInactifDejaAffiche = true;
       }
@@ -488,13 +541,13 @@ void loop() {
     RGBInactifDejaAffiche = false;
   } 
   else if (retRGB == 0) {
-    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Couleur 0x" + String(mCapteurRGB.getLastR(), HEX) + " inchangé");
-    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Luminosité 0x" + String(mCapteurRGB.getLastLuminosite(), HEX) + " inchangé");
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Couleur 0x" + String(mCapteurRGB.getLastR(), HEX) + " inchangé");
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Luminosité 0x" + String(mCapteurRGB.getLastLuminosite(), HEX) + " inchangé");
     RGBInactifDejaAffiche = false;
   } 
   else if (retRGB == 1 && mCapteurRGB.active) { // Température changée
-    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Couleur 0x" + String(mCapteurRGB.getLastR(), HEX) + " changée");
-    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Luminosité 0x" + String(mCapteurRGB.getLastLuminosite(), HEX) + " changée");
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Couleur 0x" + String(mCapteurRGB.getLastR(), HEX) + " changée");
+    Serial.println(String(mCapteurRGB.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Luminosité 0x" + String(mCapteurRGB.getLastLuminosite(), HEX) + " changée");
     RGBInactifDejaAffiche = false;
   } 
   else if (retRGB == -9) { // Inactif
@@ -523,8 +576,11 @@ void print() {
     mWifi[i].print();
     Serial.println();
   }
+  
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.print();
   Serial.println();
+  #endif
   #endif
 
   #ifdef CAPTEUR_DS18B20

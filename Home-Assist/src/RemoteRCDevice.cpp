@@ -47,13 +47,13 @@ void CRemoteRCDevice::saveToNVS() {
 
 void CRemoteRCDevice::print() const {
 
-  Serial.printf("     Nom            : %s\n", nomEquipement);
-  Serial.printf("     Actif          : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Etat           : %s\n", active ? "ON" : "OFF");
-  Serial.printf("     ButtonName     : %s\n", buttonName.c_str());
-  Serial.printf("     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd        : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState      : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_ACTIONNEURS, "     Nom            : %s\n", nomEquipement.c_str());
+  DBG(DBG_ACTIONNEURS, "     Actif          : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_ACTIONNEURS, "     Etat           : %s\n", active ? "ON" : "OFF");
+  DBG(DBG_ACTIONNEURS, "     ButtonName     : %s\n", buttonName.c_str());
+  DBG(DBG_ACTIONNEURS, "     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_ACTIONNEURS, "     MQTTCmd        : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_ACTIONNEURS, "     MQTTState      : %s\n", mqttSubTopicState.c_str());
 }
 
 void CRemoteRCDevice::saveState(bool state) {
@@ -71,7 +71,7 @@ void CRemoteRCDevice::setMqttPublishCallback(std::function<int(const char*, cons
 
 int CRemoteRCDevice::toggleDevice() {
   int ret = 0;
-  Serial.printf("CRemoteRCDevice::toggleDevice()\n");
+  DBG(DBG_ACTIONNEURS, "CRemoteRCDevice::toggleDevice()\n");
   String payload = (etat ? "ONR" : "OFFR");
   return ret;
 }
@@ -106,7 +106,7 @@ void CRemoteRCDevice::handleMqttCommand(const String& payload) {
   cmd.toUpperCase();
   cmd.trim();
 
-  Serial.printf("CRemoteRCDevice::handleMqttCommand() - Equipement %s - Cmd : %s \n", nomEquipement.c_str(), cmd.c_str());
+  DBG(DBG_ACTIONNEURS, "CRemoteRCDevice::handleMqttCommand() - Equipement %s - Cmd : %s \n", nomEquipement.c_str(), cmd.c_str());
 
   if (cmd == "ONR") {
     if (this->active) {
@@ -118,7 +118,7 @@ void CRemoteRCDevice::handleMqttCommand(const String& payload) {
     else {
       String s = "L'equipement " + String(this->nomEquipement) + " n'est pas actif";
       if (mEcran != nullptr) mEcran->updateStatus(s);
-      Serial.println(s);
+      DBGLN(DBG_ACTIONNEURS, s);
     }
  }
  else if (cmd == "OFFR") {
@@ -131,7 +131,7 @@ void CRemoteRCDevice::handleMqttCommand(const String& payload) {
     else {
       String s = "L'equipement " + nomEquipement + " n'est pas actif";
       if (mEcran != nullptr) mEcran->updateStatus(s);
-      Serial.println(s);
+      DBGLN(DBG_ACTIONNEURS, s);
     }
  }
  else if (cmd == "ENABLER") {
@@ -147,7 +147,7 @@ void CRemoteRCDevice::handleMqttCommand(const String& payload) {
     //Serial.printf("CRemoteRCDevice::handleMqttCommand() - %s", s.c_str());
   }
   else {
-    Serial.printf("CRemoteRCDevice::handleMqttCommand() message non traité ***%s*** : \n", cmd.c_str());
+    DBG(DBG_ACTIONNEURS, "CRemoteRCDevice::handleMqttCommand() message non traité ***%s*** : \n", cmd.c_str());
   }
 }
 

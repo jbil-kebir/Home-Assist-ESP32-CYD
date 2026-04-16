@@ -24,22 +24,22 @@ void setup_ThCh1er() {
   mRemoteBatThCh1er.begin("bat1er_");
   config.mRemoteThCh1er = &mRemoteThCh1er; // Toujours remote
   config.mRemoteBatThCh1er = &mRemoteBatThCh1er; // Toujours remote
-  mRemoteThCh1er.setDisplayCallback([ptr = &ecran](const String& exp, float temp) {
-      ptr->updateRemoteDevice_ThCh1er(exp, temp);
+  mRemoteThCh1er.setDisplayCallback([](const String& exp, float temp) {
+      ecran.updateRemoteDevice_ThCh1er(exp, temp);
   });
 
   // Thermomètre Chambre 1er - publication MQTT
-  mRemoteThCh1er.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteThCh1er.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   // Thermomètre Chambre 1er - Affichage
-  mRemoteBatThCh1er.setDisplayCallback([ptr = &ecran](const String& exp, bool etatBatterie, float temp) {
-      ptr->updateRemoteBat_ThCh1er(exp, etatBatterie, temp);
+  mRemoteBatThCh1er.setDisplayCallback([](const String& exp, bool etatBatterie, float temp) {
+      ecran.updateRemoteBat_ThCh1er(exp, etatBatterie, temp);
   });
 
   // Batterie du thermomètre Salle de bain - publication MQTT
-  mRemoteBatThCh1er.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteBatThCh1er.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   mRemoteThCh1er.setonEquipementCallback([](const String& nom, const String& ip) -> int {
       return ajouterControleur(nom, ip);
@@ -56,7 +56,7 @@ void loop_ThCh1er() {
   }
   else if (retThCh1er == -10) { // Watchdog error
     if (!bWdogThCh1erErr) {
-      Serial.println("void loop()" + String(" - ") + " - " + mRemoteThCh1er.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
+      DBGLN(DBG_CAPTEURS, "void loop()" + String(" - ") + " - " + mRemoteThCh1er.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
       ecran.updateRemoteDevice_ThCh1er(mRemoteThCh1er.nomEquipement, -254.0);
       bWdogThCh1erErr = true;
     }

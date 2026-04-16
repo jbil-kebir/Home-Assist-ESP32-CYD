@@ -32,11 +32,11 @@ CRemoteBatterieAA mRemoteBatMain(String("BatMain"), &ecran); // Sera désactivé
 void setup_ds18b20() {
 #ifdef __LOCAL_MODE__
   #ifdef __LOCAL_DS18B20__
-  Serial.println("Initialisation DS18B20...");
+  DBG(DBG_CAPTEURS, "Initialisation DS18B20...\n");
   ds18b20.begin("th_");
   config.ds18b20 = &ds18b20;
-  ds18b20.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-    return ptr->publishWithIP(topic, payload);
+  ds18b20.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+    return mqtt.publishWithIP(topic, payload);
   });
   #endif
 #else
@@ -45,22 +45,22 @@ void setup_ds18b20() {
   mRemoteThMain.begin("th_");
   mRemoteBatMain.begin("bat1er_");
   // Affichage écran
-  mRemoteThMain.setDisplayCallback([ptr = &ecran](const String& exp, float temp) {
-      ptr->updateRemoteDevice_DS18B20(exp, temp);
+  mRemoteThMain.setDisplayCallback([](const String& exp, float temp) {
+      ecran.updateRemoteDevice_DS18B20(exp, temp);
   });
 
   // publication MQTT
-  mRemoteThMain.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteThMain.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   // Batterie du thermomètre - Affichage écran
-  mRemoteBatMain.setDisplayCallback([ptr = &ecran](const String& exp, bool etatBatterie, float temp) {
-      ptr->updateRemoteBat_DS18B20(exp, etatBatterie, temp);
+  mRemoteBatMain.setDisplayCallback([](const String& exp, bool etatBatterie, float temp) {
+      ecran.updateRemoteBat_DS18B20(exp, etatBatterie, temp);
   });
 
   // Batterie du thermomètre - publication MQTT
-  mRemoteBatMain.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteBatMain.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });  
 
 #endif
@@ -71,19 +71,19 @@ void loop_ds18b20() {
   static bool inactifAffiche = false;
   int ret = ds18b20.loop();
   if (ret == -1) {
-    Serial.println("ds18b20.readTemperature() - échec");
-  } 
+    DBG(DBG_CAPTEURS, "ds18b20.readTemperature() - échec\n");
+  }
   else if (ret == 0) {
-    Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C inchangé");
-  } 
+    DBGLN(DBG_CAPTEURS, String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C inchangé");
+  }
   else if (ret == 1 && ds18b20.active) { // Température changée
-    Serial.println(String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C changée");
+    DBGLN(DBG_CAPTEURS, String(ds18b20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(ds18b20.getLastTemperature(), 1) + " °C changée");
     ecran.updateThermometreLocal();
-  } 
+  }
   else if (ret == -9) { // Inactif
     if (!inactifAffiche) {
       String s = "Thermomètre " + ds18b20.nomEquipement + " inactif";
-      Serial.println(s);
+      DBGLN(DBG_CAPTEURS, s);
       inactifAffiche = true;
     }
   }

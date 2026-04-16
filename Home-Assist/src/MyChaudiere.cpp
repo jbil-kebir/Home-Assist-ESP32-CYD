@@ -105,11 +105,11 @@ void CChaudiere::loop_envoi_trames() {
       if (  mbEnvoyerTramesON && // Si envoi trame ON demandé
             !mbTrameCommandeEnvoyee // et pas encore envoyée
       ) {
-        Serial.printf("Demande ON et pas encore envoyee...\n");
+        DBG(DBG_CHAUDIERE, "Demande ON et pas encore envoyee...\n");
         // On envoi la trame ON
         envoiCommande(pulseBufferON, TAILLE_BUFFER_ON_1, "Commande ON");
         mbTrameCommandeEnvoyee = true; // On signale que la première trame a été envoyée
-        Serial.printf("\t...Demande ON envoyee\n");
+        DBG(DBG_CHAUDIERE, "\t...Demande ON envoyee\n");
         // Activation keep-alive après première trame ON
         mbKeepAliveActive = enableKeepAlive == 0 ? false : true;
         muiKeepAliveIndexEnCours = 0;
@@ -118,11 +118,11 @@ void CChaudiere::loop_envoi_trames() {
       else if ( mbEnvoyerTramesOFF && // Si envoi trame OFF demandé
                 !mbTrameCommandeEnvoyee // et pas encore envoyée
       ) {
-        Serial.printf("Demande OFF et pas encore envoyee\n");
+        DBG(DBG_CHAUDIERE, "Demande OFF et pas encore envoyee\n");
         // On envoi la trame ON
         envoiCommande(pulseBufferOFF, TAILLE_BUFFER_OFF_1, "Commande OFF");
         mbTrameCommandeEnvoyee = true; // On signale que la première trame a été envoyée
-        Serial.printf("\t...Demande OFF envoyee\n");
+        DBG(DBG_CHAUDIERE, "\t...Demande OFF envoyee\n");
         // Activation keep-alive après première trame OFF
         mbKeepAliveActive = enableKeepAlive == 0 ? false : true;
         muiKeepAliveIndexEnCours = 0;
@@ -133,9 +133,9 @@ void CChaudiere::loop_envoi_trames() {
             mbKeepAliveActive   // et Keep active activé
       ) {
         if (millis() - lastKeepAliveTime > onKeepalive[muiKeepAliveIndexEnCours] * 1000UL) { // S'il est temps d'envoyer un keep alive
-          Serial.printf("Demande ON deja envoye - Keep alive actif\n");
+          DBG(DBG_CHAUDIERE, "Demande ON deja envoye - Keep alive actif\n");
           String s = "Keep-Alive ON " + String(onKeepalive[muiKeepAliveIndexEnCours]) + "s";
-          Serial.printf("..Envoi ON Keep-Alive : %d - %s\n", muiKeepAliveIndexEnCours, s.c_str());
+          DBG(DBG_CHAUDIERE, "..Envoi ON Keep-Alive : %d - %s\n", muiKeepAliveIndexEnCours, s.c_str());
           envoiCommande(pulseBufferON, TAILLE_BUFFER_ACK_ON, s.c_str());
           muiKeepAliveIndexEnCours++;
           if (muiKeepAliveIndexEnCours + 1 >= on_keepalive_count) { // Si le dernier Keppe alive du tableau a été envoyé, on le renvoit
@@ -150,9 +150,9 @@ void CChaudiere::loop_envoi_trames() {
             mbKeepAliveActive   // et Keep active activé
       ) {
         if (millis() - lastKeepAliveTime > offKeepalive[muiKeepAliveIndexEnCours] * 1000UL) { // S'il est temps d'envoyer un keep alive
-          Serial.printf("Demande OFF deja envoye - Keep alive actif : %d\n", offKeepalive[muiKeepAliveIndexEnCours]);
+          DBG(DBG_CHAUDIERE, "Demande OFF deja envoye - Keep alive actif : %d\n", offKeepalive[muiKeepAliveIndexEnCours]);
           String s = "Keep-Alive OFF " + String(offKeepalive[muiKeepAliveIndexEnCours]) + "s";
-          Serial.printf("..Envoi OFF Keep-Alive : %d - %s\n", muiKeepAliveIndexEnCours, s.c_str());
+          DBG(DBG_CHAUDIERE, "..Envoi OFF Keep-Alive : %d - %s\n", muiKeepAliveIndexEnCours, s.c_str());
           envoiCommande(pulseBufferOFF, TAILLE_BUFFER_ACK_OFF, s.c_str());
           muiKeepAliveIndexEnCours++;
           if (muiKeepAliveIndexEnCours + 1 >= off_keepalive_count) { // Si le dernier Keep alive du tableau a été envoyé, on le renvoit
@@ -179,7 +179,7 @@ int CChaudiere::envoiTrameON() {
     // après demande OFF
     if (active) {
       bool b = bGetEnvoiEnCours();
-      Serial.printf("main loop - ON appuye - Envoi en cours : % d\n", b);
+      DBG(DBG_CHAUDIERE, "main loop - ON appuye - Envoi en cours : % d\n", b);
       bSetEnvoyerTramesOFF(false);
       if (bGetEnvoiEnCours()) {
         ret = -2;
@@ -210,7 +210,7 @@ int CChaudiere::envoiTrameOFF() {
   // après demande ON
   if (active) {
     bool b = bGetEnvoiEnCours();
-    Serial.printf("main loop - OFF appuye - Envoi en cours : % d\n", b);
+    DBG(DBG_CHAUDIERE, "main loop - OFF appuye - Envoi en cours : % d\n", b);
     bSetEnvoyerTramesON(false);
     if (bGetEnvoiEnCours()) {
       ret = -2;
@@ -269,14 +269,14 @@ int CChaudiere::allumer() {
     if (mEcran != nullptr) {
       mEcran->updateStatus(s);
     }
-    Serial.println(s);
+    DBGLN(DBG_CHAUDIERE, s);
   }
   else if (ret == -2) { // Envoi en cours, on ne fait rien
-    Serial.printf("Envoi en cours\n");
-  }   
+    DBG(DBG_CHAUDIERE, "Envoi en cours\n");
+  }
   if (onMqttPublish != nullptr)
     onMqttPublish(mqttSubTopicCommand.c_str(),"ONR"); // Mise à jour de l'IHM des CYD auxilliaires
-  else Serial.printf("int CChaudiere::allumer() - onMqttPublish == nullptr\n");
+  else DBG(DBG_CHAUDIERE, "int CChaudiere::allumer() - onMqttPublish == nullptr\n");
     
   return ret;
 }
@@ -295,14 +295,14 @@ int CChaudiere::eteindre() {
     if (mEcran != nullptr) {
       mEcran->updateStatus(s);
     }
-      Serial.println(s);
+      DBGLN(DBG_CHAUDIERE, s);
   }
   else if (ret == -2) {
-    Serial.printf("Envoi déjà en cours\n");
+    DBG(DBG_CHAUDIERE, "Envoi déjà en cours\n");
   }
   if (onMqttPublish != nullptr)
     ret = onMqttPublish(mqttSubTopicCommand.c_str(),"OFFR");
-  else Serial.printf("int CChaudiere::eteindre() - onMqttPublish == nullptr\n");
+  else DBG(DBG_CHAUDIERE, "int CChaudiere::eteindre() - onMqttPublish == nullptr\n");
     
  return ret;
 }
@@ -416,43 +416,43 @@ void CChaudiere::saveToNVS() {
 }
 
 void CChaudiere::print() const {
-  Serial.println("[CHAUDIERE]");
-  Serial.println("  [GENERAL]");
-  Serial.printf("     Nom            : %s\n", nomEquipement);
-  Serial.printf("     Actif          : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Nom btn ON     : %s\n", nomBoutonON.c_str());
-  Serial.printf("     Nom btn OFF    : %s\n", nomBoutonOFF.c_str());
+  DBG(DBG_CHAUDIERE, "[CHAUDIERE]\n");
+  DBG(DBG_CHAUDIERE, "  [GENERAL]\n");
+  DBG(DBG_CHAUDIERE, "     Nom            : %s\n", nomEquipement.c_str());
+  DBG(DBG_CHAUDIERE, "     Actif          : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_CHAUDIERE, "     Nom btn ON     : %s\n", nomBoutonON.c_str());
+  DBG(DBG_CHAUDIERE, "     Nom btn OFF    : %s\n", nomBoutonOFF.c_str());
 
-  Serial.println("  [Protocole]");
-  Serial.printf("     Fréquence      : %f\n", frequency);
-  
-  Serial.println("  [MQTT]==");
-  Serial.printf("     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     Topic prefix   : %s\n", mqttSubTopic.c_str());//topic_prefix.c_str());
-  Serial.printf("     Command        : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     State          : %s\n", mqttSubTopicState.c_str());
-  Serial.printf("     Status         : %s\n", mqttSubTopicStatus.c_str());
-  
-  Serial.println("  [État chaudière]");
-  Serial.printf("     Dernier état   : %s\n", etatStr.c_str());
+  DBG(DBG_CHAUDIERE, "  [Protocole]\n");
+  DBG(DBG_CHAUDIERE, "     Fréquence      : %f\n", frequency);
 
-  Serial.println("  [Keep-Alive]");
-  Serial.printf("     Activé         : %s\n", enableKeepAlive ? "OUI" : "NON");
+  DBG(DBG_CHAUDIERE, "  [MQTT]==\n");
+  DBG(DBG_CHAUDIERE, "     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_CHAUDIERE, "     Topic prefix   : %s\n", mqttSubTopic.c_str());//topic_prefix.c_str());
+  DBG(DBG_CHAUDIERE, "     Command        : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_CHAUDIERE, "     State          : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_CHAUDIERE, "     Status         : %s\n", mqttSubTopicStatus.c_str());
 
-  Serial.print("     Timings ON   : ");
+  DBG(DBG_CHAUDIERE, "  [État chaudière]\n");
+  DBG(DBG_CHAUDIERE, "     Dernier état   : %s\n", etatStr.c_str());
+
+  DBG(DBG_CHAUDIERE, "  [Keep-Alive]\n");
+  DBG(DBG_CHAUDIERE, "     Activé         : %s\n", enableKeepAlive ? "OUI" : "NON");
+
+  DBG(DBG_CHAUDIERE, "     Timings ON   : ");
   for (uint8_t i = 0; i < MAX_KEEPALIVE; i++) {
     if (onKeepalive[i] > 0) {
-      Serial.print(onKeepalive[i]);
-      Serial.print(" ");
+      DBGLN(DBG_CHAUDIERE, onKeepalive[i]);
+      DBG(DBG_CHAUDIERE, " ");
     }
   }
-  Serial.println();
+  DBG(DBG_CHAUDIERE, "\n");
 
-  Serial.print("     Timings OFF  : ");
+  DBG(DBG_CHAUDIERE, "     Timings OFF  : ");
   for (uint8_t i = 0; i < MAX_KEEPALIVE; i++) {
     if (offKeepalive[i] > 0) {
-      Serial.print(offKeepalive[i]);
-      Serial.print(" ");
+      DBGLN(DBG_CHAUDIERE, offKeepalive[i]);
+      DBG(DBG_CHAUDIERE, " ");
     }
   }
 }
@@ -482,10 +482,10 @@ void CChaudiere::setActive(bool state) {
 // Envoie l'état actif/inactif ainsi que ON/OFF
 int CChaudiere::remonteStatusParMqtt() {
   int ret = 0;
-  Serial.printf("CChaudiere::remonteStatusParMqtt() - Envoi %s sur %s\n", this->active ? "ENABLER" : "DISABLER", this->mqttSubTopicCommand.c_str());
+  DBG(DBG_CHAUDIERE, "CChaudiere::remonteStatusParMqtt() - Envoi %s sur %s\n", this->active ? "ENABLER" : "DISABLER", this->mqttSubTopicCommand.c_str());
   onMqttPublish(this->mqttSubTopicCommand.c_str(), this->active ? "ENABLER" : "DISABLER");
   delay(200);
-  Serial.printf("CChaudiere::remonteStatusParMqtt() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
+  DBG(DBG_CHAUDIERE, "CChaudiere::remonteStatusParMqtt() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
   onMqttPublish(this->mqttSubTopicCommand.c_str(), this->etat ? "ONR" : "OFFR");
   delay(200);
   return ret;
@@ -499,17 +499,116 @@ int CChaudiere::remonteStatusParMqtt() {
 //
 void CChaudiere::setEtatReelOnOff(bool state) {
   // On prévient les appareils distants
-  Serial.printf("void CChaudiere::setEtatReelOnOff() - state=%d - etat=%d\n", state, etat);
+  //Serial.printf("void CChaudiere::setEtatReelOnOff() - state=%d - etat=%d\n", state, etat);
   if (etat == state) return;
   String sEnvoi = state ? "ONR" : "OFFR";
   if (onMqttPublish != nullptr)
     onMqttPublish(this->mqttSubTopicCommand.c_str(), sEnvoi.c_str());
+
   saveState(state); // Sauvegarde NVS
   if (mEcran != nullptr) 
     mEcran->updateAllStates();
+
+  // Si on a reçu OFF (state = false), et si bForcerDisable est à true, alors on remet l'équipement dans un état inactif (forcé)
+  if (!state && mbForcerDisable) {
+    setActive(false);
+    if (onMqttPublish != nullptr)
+      onMqttPublish(this->mqttSubTopicCommand.c_str(), "DISABLER");
+    String s = nomEquipement + " : désactivee (force OFF)";
+    if (mEcran != nullptr) mEcran->updateStatus(s, true);
+    DBGLN(DBG_CHAUDIERE, s);
+    mbForcerDisable = false; // Réinitialisation du flag après utilisation
+  }
+
 }
 
 void CChaudiere::handleMqttCommand(const String& payload) {
+  String cmd = payload;
+  cmd.toUpperCase();
+  cmd.trim();
+        
+  // ON_FORCE et OFF_FORCE permettent de forcer ON ou OFF même si la chaudière est désactivée.
+  if (cmd == "ON" || cmd == "OFF" || cmd == "ON_FORCE" || cmd == "OFF_FORCE") {
+    bool state = (cmd == "ON" || cmd == "ON_FORCE") ? true : false; // 
+    bool bForceEnable = (cmd == "ON_FORCE") ? true : false;
+    bool bForceDisable = (cmd == "OFF_FORCE") ? true : false;
+    bool mbOldActif = active; // Sauvegarde de l'état actif avant changement
+    // Si c'est une commande ON ou OFF forcée, on active l'équipement même s'il est désactivé
+    if (bForceEnable || bForceDisable) {
+      setActive(true);
+      if (onMqttPublish != nullptr)
+        onMqttPublish(this->mqttSubTopicCommand.c_str(), "ENABLER");
+      String s = nomEquipement + " : active (force ON)";
+      if (mEcran != nullptr) mEcran->updateStatus(s, true);
+      DBGLN(DBG_CHAUDIERE, s);
+    }
+    /*else if (bForceDisable) {
+      setActive(false);
+      String s = nomEquipement + " : désactivee (force OFF)";
+      if (mEcran != nullptr) mEcran->updateStatus(s, true);
+      Serial.println(s);
+    }*/
+    if (active) {    
+      saveState(state); // Ajout 2.0
+      if (state) { // On doit allumer la chaudière
+
+        bSetEnvoyerTramesOFF(false);
+        bSetEnvoyerTramesON(true);
+        if (onMqttPublish != nullptr)
+          onMqttPublish(this->mqttSubTopicCommand.c_str(), "ONR");
+        //if (mEcran != nullptr) mEcran->updateBoilerStatus();
+      }
+      else { // On doit éteindre la chaudière
+        bSetEnvoyerTramesON(false);
+        bSetEnvoyerTramesOFF(true);
+        if (onMqttPublish != nullptr)
+          onMqttPublish(this->mqttSubTopicCommand.c_str(), "OFFR");
+        //if (mEcran != nullptr) mEcran->updateBoilerStatus();
+      }
+      saveState(state);
+      if (mEcran != nullptr) mEcran->updateAllStates();
+      // Si l'équipement était inactif avant un OFF forcé, il faudra le remettre dans l'atat inactif au retour du résultat du OFF
+      if (bForceDisable /*&& !mbOldActif*/) {
+        mbForcerDisable=true;
+      }
+      // Si on a éteint de manière forcée, on remet l'équipement dans sont état précédent actif / inactif
+      /*if (bForceDisable) {
+        if (active != mbOldActif) {
+          setActive(mbOldActif);
+          if (onMqttPublish != nullptr)
+            onMqttPublish(this->mqttSubTopicCommand.c_str(), active ? "ENABLER" : "DISABLER");
+          String s = nomEquipement + " : désactivee (force OFF)";
+          if (mEcran != nullptr) mEcran->updateStatus(s, true);
+          Serial.println(s);
+        }
+      }*/
+    } // if (active) {
+    else {
+      String s = "L'equipement " + String(nomEquipement) + " n'est pas actif";
+      if (mEcran != nullptr) mEcran->updateStatus(s);
+      DBGLN(DBG_CHAUDIERE, s);
+    }
+
+  }
+  else if (cmd == "ENABLE") {
+    setActive(true);
+    if (onMqttPublish != nullptr)
+      onMqttPublish(this->mqttSubTopicCommand.c_str(), "ENABLER");
+    String s = nomEquipement + " : active";
+    if (mEcran != nullptr) mEcran->updateStatus(s, true);
+    DBGLN(DBG_CHAUDIERE, s);
+  }
+  else if (cmd == "DISABLE") {
+    setActive(false);
+    if (onMqttPublish != nullptr)
+      onMqttPublish(this->mqttSubTopicCommand.c_str(), "DISABLER");
+    String s = nomEquipement + " : désactivee";
+    if (mEcran != nullptr) mEcran->updateStatus(s, true);
+    DBGLN(DBG_CHAUDIERE, s);
+  }
+}
+
+/*void CChaudiere::handleMqttCommand(const String& payload) {
   String cmd = payload;
   cmd.toUpperCase();
   cmd.trim();
@@ -557,8 +656,9 @@ void CChaudiere::handleMqttCommand(const String& payload) {
     if (mEcran != nullptr) mEcran->updateStatus(s, true);
     Serial.println(s);
   }
-}
-    
+}*/
+   
+
 void CChaudiere::loadFromWebServer (WebServer& server) {
   if (server.hasArg("chaud_nom")) nomEquipement = server.arg("chaud_nom");
   if (server.hasArg("chaud_active")) active = true; else active = false;

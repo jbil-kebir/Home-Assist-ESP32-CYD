@@ -29,20 +29,25 @@ void print();
 //----------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
-  while(!Serial);
+  unsigned long start = millis();
+  while(!Serial && millis() - start < 3000); // Attend max 3 secondes
+
   Serial.printf("\n=== %s %s ===\n", config.nomEquipement.c_str(), VERSION);
 
   config.setup("cfg_");
-  config.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  config.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
+  });
+  config.setLoraPublishCallback([](const char* topic, const char* payload) -> int {
+      return mLoraRxTx.sendPacket(topic, payload);
   });
   
   int ret = mLoraRxTx.setup();
   if (ret != 0) {
     Serial.println("Erreur init LoRa RX/TX : " + String(ret));
   }
-  mLoraRxTx.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mLoraRxTx.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   /*ret = radio.startReceive();
   if (ret == RADIOLIB_ERR_NONE) {
@@ -150,10 +155,19 @@ void loop() {
   webServer.loop(); // Toujours actif, même écran éteint
   
 
-  int retRCS = mLoraRxTx.loop();; // On écoute sur la fréquence Lora
+  int retRCS = mLoraRxTx.loop(); // On écoute sur la fréquence Lora
 
+  // Envoi périodique aléatoire de l'ACK (5 à 20 secondes)
+  /*static unsigned long ulTimerAck = 0;
+  static unsigned long ulDelaiAck = 0;
+  if (ulDelaiAck == 0) ulDelaiAck = random(5000, 20001); // Init au premier passage
+  if (millis() - ulTimerAck >= ulDelaiAck) {
+    ulTimerAck = millis();
+    ulDelaiAck = random(5000, 20001);
+    mLoraRxTx.sendPacket("==========home/thermometre/command FlotteurRemise ACK==========");
+  }*/
 
-delay(10);
+  delay(10);
 }
 
 void print() {

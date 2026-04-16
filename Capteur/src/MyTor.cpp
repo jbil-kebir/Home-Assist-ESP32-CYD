@@ -374,6 +374,7 @@ void CTor::loadFromNVS() {
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
   mucNbEnvois = prefs.getUShort((mPrefixNVS+"renvois").c_str(), 1);
   mulIntervalleEnvoi = prefs.getLong((mPrefixNVS+"interr").c_str(), mulDefaultIntervalleEnvoi);
+  mbAckNeeded = prefs.getBool((mPrefixNVS+"ack").c_str(), false);
 
   
   // On forme les subtopic MQTT
@@ -400,6 +401,7 @@ void CTor::saveToNVS() {
   prefs.putLong((mPrefixNVS+"force").c_str(), mulIntervalleForcageRemonteeMesure);
   prefs.putUShort((mPrefixNVS+"renvois").c_str(), mucNbEnvois);
   prefs.putLong((mPrefixNVS+"interr").c_str(), mulIntervalleEnvoi);
+  prefs.putBool((mPrefixNVS+"ack").c_str(), mbAckNeeded);
 
   prefs.end();
 }
@@ -420,6 +422,13 @@ void CTor::setpinMode(unsigned char mode/* = INPUT_PULLUP*/) {
   prefs.end();
 }
 
+void CTor::setAck(bool state) {
+  mbAckNeeded = state;
+  prefs.begin(nvs_namespace, false);
+  prefs.putBool((mPrefixNVS+"ack").c_str(), state);
+  prefs.end();
+}
+
 void CTor::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"nom").c_str())) nomEquipement = server.arg((mPrefixNVS+"nom").c_str());
   if (server.hasArg((mPrefixNVS+"id").c_str())) mucCapteurID = server.arg((mPrefixNVS+"id")).toInt();
@@ -436,6 +445,7 @@ void CTor::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
   if (server.hasArg((mPrefixNVS+"renvois").c_str())) mucNbEnvois = server.arg((mPrefixNVS+"renvois")).toInt();
   if (server.hasArg((mPrefixNVS+"interr").c_str())) mulIntervalleEnvoi = server.arg((mPrefixNVS+"interr")).toInt();
+  if (server.hasArg((mPrefixNVS+"ack").c_str())) mbAckNeeded = true; else mbAckNeeded = false;
 }
 
 String CTor::getHTML() {
@@ -444,6 +454,9 @@ String CTor::getHTML() {
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+      "</div>"
+      "<div class=\"row\">"
+        "<div class=\"checkbox-row\"><label>Acknoledge</label><input type=\"checkbox\" name=" + (mPrefixNVS+"ack") + " value=\"1\"" + String(mbAckNeeded ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>ID</label><input type=\"text\" name=" + (mPrefixNVS+"id") + " value=\"" + mucCapteurID + "\"></div>"
@@ -472,6 +485,7 @@ void CTor::print() const {
   Serial.printf("     Nom                  : %s\n", nomEquipement.c_str());
   Serial.printf("     ID                   : %d\n", mucCapteurID);
   Serial.printf("     Actif                : %s\n", active ? "OUI" : "NON");
+  Serial.printf("     Acknoledge           : %s\n", mbAckNeeded ? "OUI" : "NON");
   Serial.printf("     Pin                  : %d\n", mucPin);
   Serial.printf("     Mode                 : %s\n", mucPinMode == INPUT_PULLUP ? "INPUT_PULLUP" : "INPUT_PULLDOWN");
   Serial.printf("     Intervalle mesures   : %ld s\n", mulIntervalleMesure);
@@ -514,30 +528,21 @@ int CTor::handleMqttCommand(const String& payload) {
     idx = cmd.indexOf(' ', idx) + 1;
     if (idx >= cmd.length()) {
       Serial.println("Commande sans argument. RAS");
-      ret = 0; // Commande sans argument. RAS
+      return -2; // Commande sans argument. RAS
     }
-    else {
-      if (st.sCommand == "SLEEP") {
-        st.sArg = cmd.substring(idx, cmd.indexOf(' ', idx));
-        /*if (st.sArg == "ENABLE") {
-          Serial.println("SLEEP ENABLE");
-
-        }
-        else if (st.sArg == "DISABLE") {
-          Serial.println("SLEEP DISABLE");
-        }*/
-        unsigned long sleep = (unsigned int)st.sArg.substring(0).toDouble();
-        Serial.println("Sleep : "+String(sleep));
-        if (sleep!=0L) {
-          
-        }
+    if (st.sCommand == "SLEEP") { // Ce n'est pas ici que c'est géré mais dans MQTT
+      st.sArg = cmd.substring(idx, cmd.indexOf(' ', idx));
+      unsigned long sleep = (unsigned int)st.sArg.substring(0).toDouble();
+      Serial.println("Sleep : "+String(sleep));
+      if (sleep!=0L) {
+        
       }
-//      
-//      Serial.println("Argument : " + st.sArg);
-      ret = 0; // Argument récupéré. RAS
     }
-    // Traitement de la commande
-    if (st.sCommand == "MESURE") { // Demande de remontée de mesure
+    else if (st.sCommand == "ACK") {
+      Serial.println("ACK command received");
+      mbAckReceived = true;
+    }
+    else if (st.sCommand == "MESURE") { // Demande de remontée de mesure
 
       // Appel de la méthode pour lire la mesure et la remonter par Mqtt
       ret = readAndPublish(true);

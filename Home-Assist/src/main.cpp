@@ -62,14 +62,29 @@ extern CRemoteRCDevice mRemoteChauffage;
 
 extern CRemoteThermo mRemoteThCh1er;
 extern CRemoteBatterieAA mRemoteBatThCh1er;
+
 extern CRemoteThermo mRemoteThSdb;
 extern CRemoteBatterieAA mRemoteBatSdb;
+
 extern CRemoteDHT20 mRemoteThCave;
 extern CRemoteTor mRemoteTor;
 extern CRemoteBatterieAA mRemoteBatCave;
+
 extern CRemoteDHT20 mRemoteThNomade;
+extern CRemoteTor mRemoteTorNomade;
 extern CRemoteBatterieAA mRemoteBatNomade;
 
+extern CRemoteTor mRemoteNewNas;
+extern CRemoteTor mRemoteBigNas;
+
+extern CRemoteDHT20 mRemoteThRemise;
+extern CRemoteBatterieAA mRemoteBatRemise;
+
+
+// DBG_NONE, 
+// DBG_MQTT, _CAPTEURS, DBG_ACTIONNEURS, DBG_CHAUDIERE, DBG_CONFIG, DBG_RESEAU, DBG_ECRAN, 
+// DBG_ALL         
+uint32_t gDebugFlags = DBG_CHAUDIERE|DBG_MQTT;
 
 CMyDateTime mDateTime;
 
@@ -102,6 +117,22 @@ int ajouterEsclave(const String& nom, const String& ip) {
     mvsEsclaves.emplace_back(nom, ip);
     return 0;
 }
+// Retour
+// -1 : non connecté. Ne devrait jamais arriver
+// >= 0 : N° de la connexion WiFi ayant réussi à se connecter au réseau
+int connecte_wifi() {
+  int i = 0;
+  for(i=0; i< MAX_WIFI_NETS; i++) {
+    if (mWifi[i].active) {
+      mWifi[i].begin();
+      if (WiFi.status() == WL_CONNECTED) {
+        config.setWifi(&mWifi[i]);
+        return i;
+      }
+    }
+  }
+  return -1;
+}
 void printControleurs();
 void printEsclaves();
 
@@ -114,23 +145,30 @@ extern void setup_guirlande();
 extern void setup_chauffageSb();
 
 extern void setup_ThCave();
+extern void setup_ThNomade();
 extern void setup_ThSdb();
 extern void setup_ThCh1er();
-extern void setup_ThNomade();
+extern void setup_ThRemise();
+extern void setup_homeassistant();
 
 extern void loop_ds18b20();
 extern void loop_ThCave();
+extern void loop_ThNomade();
 extern void loop_ThSdb();
 extern void loop_ThCh1er();
-extern void loop_ThNomade();
+extern void loop_ThRemise();
 
-//#define NOM_EQUIPEMENT  String("Home Assistant")
-#define NOM_EQUIPEMENT  "Home Assistant"
+extern void loop_homeassistant();
+
+
+//#define NOM_EQUIPEMENT  "CYD HA"
 //-------------------------------------------------------------------------------------------
 //      SETUP
 //-------------------------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
+  unsigned long start = millis();
+  while(!Serial && millis() - start < 3000); // Attend max 3 secondes
   Serial.printf("\n=== %s %s ===\n", NOM_EQUIPEMENT, VERSION);
 
   mvsControleurs.clear();
@@ -159,23 +197,23 @@ void setup() {
   setup_ThSdb();
   setup_ThCave();
   setup_ThNomade();
-
+  setup_ThRemise();
+  setup_homeassistant();
   
   config.setup("cfg_", &mvsControleurs, &mvsEsclaves);
   config.setonEquipementCallback([](const String& nom, const String& ip) -> int {
       return ajouterControleur(nom, ip);
   });
 
-  #ifndef __LOCAL_MODE__
-  config.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  //#ifndef __LOCAL_MODE__
+  config.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
-  #endif
+  //#endif
 
   #ifdef __CYD__
   ecran.setup("ecr", &mvsControleurs, &mvsEsclaves);
-  //ecran.eteindreEcran();
-  //ecran.updateBoilerStatus(); // On affiche le dernier état de la chaudière
+
   ecran.drawMainInterface();
   #endif
  
@@ -202,8 +240,8 @@ void setup() {
   print(); // Affiche toute la config
   
   ecran.updateStatus("Initialisation WiFi...");
-  int i = 0;
-  while(true) {
+  int i = connecte_wifi();
+  /*while(true) {
     Serial.printf("WiFi %d : %s\n", i, mWifi[i].nomEquipement);
     if (mWifi[i].active) {
       mWifi[i].begin();
@@ -213,6 +251,12 @@ void setup() {
       else break;
     }
     i = (i + 1) % MAX_WIFI_NETS;
+  }*/
+ if (i == -1) { // Ne devrait jamais arriver car on boucle dans connecte_wifi() jusqu'à trouver une connexion, mais on gère le cas au cas où
+    String sError = "ERREUR : Impossible de se connecter à un réseau WiFi. Vérifiez la configuration.";
+    Serial.println(sError);
+    ecran.updateStatus(sError);
+    while(true); // On bloque tout
   }
   config.setWifi(&mWifi[i]);
   ecran.updateTitleWithIP(WiFi.localIP().toString());
@@ -247,12 +291,7 @@ void setup() {
     webServer.setup();
     Serial.println("...Serveur Web OK");
   }
-  /*#ifdef __CYD__
-  ecran.setup("ecr");
-  //ecran.eteindreEcran();
-  //ecran.updateBoilerStatus(); // On affiche le dernier état de la chaudière
-  ecran.drawMainInterface();
-  #endif*/
+  
   #ifdef DISABLE_EFFECTEUR
   #ifndef __LOCAL_MODE__
   String sWarning = "WARNING : DISABLE_EFFECTEUR défini sans __LOCAL_MODE__";
@@ -291,6 +330,7 @@ void setup() {
   signalementMsg += String(mDateTime.getDate()) + " " + String(mDateTime.getTime()) + " 0 " + WiFi.localIP().toString()+ "\n";
   mqtt.publish(config.topic_config_maitre_command.c_str(), signalementMsg.c_str(), false);
   #endif
+  ecran.remonteStatusParMqtt();
   ecran.updateStatus("...Pret");
   //ecran.allumerEcran();
 }
@@ -300,7 +340,35 @@ void setup() {
 //      LOOP
 //-------------------------------------------------------------------------------------------
 void loop() {
-  config.loop();
+  // Avant toute chose, on vérifie la connexion WiFi. Si elle est perdue, on tente de se reconnecter. Tant que la connexion n'est pas rétablie, on ne fait rien d'autre.
+  if (WiFi.status() != WL_CONNECTED) {
+    ecran.updateStatus("Connexion WiFi perdue. Reconnexion...");
+    int i = connecte_wifi();
+    if (i == -1) { // Ne devrait jamais arriver car on boucle dans connecte_wifi() jusqu'à trouver une connexion, mais on gère le cas au cas où
+      String sError = "ERREUR : Impossible de se reconnecter à un réseau WiFi. Vérifiez la configuration.";
+      DBGLN(DBG_CONFIG, sError);
+      ecran.updateStatus(sError);
+      while(true); // On bloque tout
+    }
+    config.setWifi(&mWifi[i]);
+    ecran.updateTitleWithIP(WiFi.localIP().toString());
+    ecran.updateStatus("...Reconnexion WiFi réussie !");
+    // Au réveil, on envoie les états des appareils pour synchroniser les autres CYD
+    /*#ifdef __LOCAL_MODE__
+    config.chaudiere->remonteStatusParMqtt();
+    config.projecteur->remonteStatusParMqtt();
+    config.guirlande->remonteStatusParMqtt();
+    config.chauffageSb->remonteStatusParMqtt();     
+    #endif*/
+  } // if (WiFi.status() != WL_CONNECTED) {
+
+  int retCfg = config.loop();
+  if (retCfg == -10) {
+    // Watchdog Alive Time : il est temps d'envoyer un Watchdog
+    String s = "ALIVEWDOG " + String(mDateTime.getDateTime());
+    //Serial.println(s);
+    mqtt.publishWithIP(config.topic_config_state.c_str(), s.c_str());
+  } 
 
   #ifdef __CYD__
   ecran.loop();
@@ -317,10 +385,11 @@ void loop() {
 
   loop_ds18b20();
   loop_ThCave();
+  loop_ThNomade();
   loop_ThCh1er();
   loop_ThSdb();
-  loop_ThNomade();
-
+  loop_ThRemise();
+  loop_homeassistant();
   
   #ifdef __CYD__  
   int btnNum = ecran.getPressedButton();
@@ -444,98 +513,106 @@ void loop() {
 }
 
 void printControleurs() {
-    Serial.printf("\n=== Contrôleurs connus : %d ===\n", mvsControleurs.size());
+    DBG(DBG_CONFIG, "\n=== Contrôleurs connus : %d ===\n", mvsControleurs.size());
     for (const auto& ctrl : mvsControleurs) {
-        Serial.print(" - ");
-        Serial.print(ctrl.getNom());
-        Serial.print(" → ");
-        Serial.println(ctrl.getIP());
+        DBG(DBG_CONFIG, " - ");
+        DBG(DBG_CONFIG, "%s", ctrl.getNom().c_str());
+        DBG(DBG_CONFIG, " → ");
+        DBG(DBG_CONFIG, "%s\n", ctrl.getIP().c_str());
     }
 }
 
 void printEsclaves() {
-    Serial.printf("\n=== Esclaves connus : %d ===\n", mvsControleurs.size());
+    DBG(DBG_CONFIG, "\n=== Esclaves connus : %d ===\n", mvsControleurs.size());
     for (const auto& ctrl : mvsEsclaves) {
-        Serial.print(" - ");
-        Serial.print(ctrl.getNom());
-        Serial.print(" → ");
-        Serial.println(ctrl.getIP());
+        DBG(DBG_CONFIG, " - ");
+        DBG(DBG_CONFIG, "%s", ctrl.getNom().c_str());
+        DBG(DBG_CONFIG, " → ");
+        DBG(DBG_CONFIG, "%s\n", ctrl.getIP().c_str());
     }
 }
 
 
 void print() {
-  Serial.println("\n=== CONFIGURATION CHARGÉE DEPUIS NVS ===");
-  
-  config.print();
-  Serial.println();
+  DBG(DBG_CONFIG, "\n=== CONFIGURATION CHARGÉE DEPUIS NVS ===\n");
 
-  Serial.println("[WiFi]");
+  config.print();
+  DBG(DBG_CONFIG, "\n");
+
+  DBG(DBG_CONFIG, "[WiFi]\n");
   for (int i=0; i< MAX_WIFI_NETS; i++) {
     mWifi[i].print();
-    Serial.println();
+    DBG(DBG_CONFIG, "\n");
   }
   mqtt.print();
-  Serial.println();
+  DBG(DBG_CONFIG, "\n");
 
   #ifdef __CYD__
   ecran.print();
-  Serial.println();
+  DBG(DBG_CONFIG, "\n");
   #endif
 
   #ifdef __LOCAL_MODE__
   chaudiere.print();
-  Serial.println();
+  DBG(DBG_CONFIG, "\n");
 
-  Serial.println("[Appareils 433 MHz]");
-  Serial.println("   Appareil 1");
+  DBG(DBG_CONFIG, "[Appareils 433 MHz]\n");
+  DBG(DBG_CONFIG, "   Appareil 1\n");
   projecteur.print();
 
-  Serial.println("   Appareil 2");
+  DBG(DBG_CONFIG, "   Appareil 2\n");
   guirlande.print();
 
-  Serial.println("   Appareil 3");
+  DBG(DBG_CONFIG, "   Appareil 3\n");
   chauffageSb.print();
 
   #ifdef __LOCAL_DS18B20__
-  Serial.println("[DS18B20]");
+  DBG(DBG_CONFIG, "[DS18B20]\n");
   ds18b20.print();
   #endif
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   mRemoteChaudiere.print();
-  Serial.println();
+  DBG(DBG_CONFIG, "\n");
 
-  Serial.println("[Appareils 433 MHz]");
-  Serial.println("   Appareil 1");
+  DBG(DBG_CONFIG, "[Appareils 433 MHz]\n");
+  DBG(DBG_CONFIG, "   Appareil 1\n");
   mRemoteProjecteur.print();
 
-  Serial.println("   Appareil 2");
+  DBG(DBG_CONFIG, "   Appareil 2\n");
   mRemoteGuirlande.print();
 
-  Serial.println("   Appareil 3");
+  DBG(DBG_CONFIG, "   Appareil 3\n");
   mRemoteChauffage.print();
 
-  Serial.println("[DS18B20]");
+  DBG(DBG_CONFIG, "[DS18B20]\n");
   mRemoteThMain.print();
 
   #endif // __LOCAL_MODE__
 
 
-  Serial.println("[Remote]");
+  DBG(DBG_CONFIG, "[Remote]\n");
+
   mRemoteThCh1er.print();
   mRemoteBatThCh1er.print();
+
   mRemoteThSdb.print();
   mRemoteBatSdb.print();
+
   mRemoteThCave.print();
   mRemoteTor.print();
   mRemoteBatCave.print();
+
   mRemoteThNomade.print();
+  mRemoteTorNomade.print();
   mRemoteBatNomade.print();
+
+  mRemoteThRemise.print();
+  mRemoteBatRemise.print();
 
   printControleurs();
   printEsclaves();
 
 
 
-  Serial.println("============================================\n");
+  DBG(DBG_CONFIG, "============================================\n\n");
 }

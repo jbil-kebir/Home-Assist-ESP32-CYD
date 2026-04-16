@@ -117,14 +117,24 @@ void MyWebServer::handleRoot() {
   // === Thermomètres et autres remote ===
   html += config.mRemoteThCh1er->getHTML();
   html += config.mRemoteBatThCh1er->getHTML();
+
   html += config.mRemoteThSdb->getHTML();
   html += config.mRemoteCoulSdb->getHTML();
   html += config.mRemoteBatSdb->getHTML();
+
   html += config.mRemoteThCave->getHTML();
   html += config.mRemoteBatCave->getHTML();
+  html += config.mRemoteTor->getHTML();
+
   html += config.mRemoteThNomade->getHTML();
   html += config.mRemoteBatNomade->getHTML();
-  html += config.mRemoteTor->getHTML();
+  html += config.mRemoteTorNomade->getHTML();
+
+  html += config.mRemoteThRemise->getHTML();
+  html += config.mRemoteBatRemise->getHTML();
+
+  html += config.mRemoteNewNas->getHTML();
+  html += config.mRemoteBigNas->getHTML();
 
   html +=  "</div>";
 
@@ -144,7 +154,7 @@ void MyWebServer::handleSave() {
   // === PARAMÈTRES WIFI ===
   for(int i=0; i<MAX_WIFI_NETS;i++) {
     mWifi[i].loadFromWebServer(server);
-    Serial.println("MyWebServer::handleSave() - mWifi[" + String(i) + "].print();");
+    DBGLN(DBG_RESEAU, "MyWebServer::handleSave() - mWifi[" + String(i) + "].print();");
     mWifi[i].print();
   }
   
@@ -173,14 +183,24 @@ void MyWebServer::handleSave() {
   #endif // __LOCAL_MODE__
   config.mRemoteThCh1er->loadFromWebServer(server);
   config.mRemoteBatThCh1er->loadFromWebServer(server);
+
   config.mRemoteThSdb->loadFromWebServer(server);
   config.mRemoteCoulSdb->loadFromWebServer(server);
   config.mRemoteBatSdb->loadFromWebServer(server);
+
   config.mRemoteThCave->loadFromWebServer(server);
   config.mRemoteTor->loadFromWebServer(server);
   config.mRemoteBatCave->loadFromWebServer(server);
+
   config.mRemoteThNomade->loadFromWebServer(server);
+  config.mRemoteTorNomade->loadFromWebServer(server);
   config.mRemoteBatNomade->loadFromWebServer(server);
+
+  config.mRemoteThRemise->loadFromWebServer(server);
+  config.mRemoteBatRemise->loadFromWebServer(server);
+
+  config.mRemoteNewNas->loadFromWebServer(server);
+  config.mRemoteBigNas->loadFromWebServer(server);
 
   // === SAUVEGARDE DES PARAMETRES GENERAUX ===
   config.saveToNVS();
@@ -217,14 +237,24 @@ void MyWebServer::handleSave() {
   // === SAUVEGARDE DES APPAREILS REMOTE ===
   config.mRemoteThCh1er->saveToNVS();
   config.mRemoteBatThCh1er->saveToNVS();
+
   config.mRemoteThSdb->saveToNVS();
   config.mRemoteCoulSdb->saveToNVS();
   config.mRemoteBatSdb->saveToNVS();
+
   config.mRemoteThCave->saveToNVS();
   config.mRemoteTor->saveToNVS();
   config.mRemoteBatCave->saveToNVS();
+
   config.mRemoteThNomade->saveToNVS();
+  config.mRemoteTorNomade->saveToNVS();
   config.mRemoteBatNomade->saveToNVS();
+
+  config.mRemoteThRemise->saveToNVS();
+  config.mRemoteBatRemise->saveToNVS();
+
+  config.mRemoteNewNas->saveToNVS();
+  config.mRemoteBigNas->saveToNVS();
 
   // Page de confirmation
   String html = F("<!DOCTYPE html>"
@@ -433,7 +463,7 @@ void MyWebServer::handleForceOn() {
   bool bEnvoiEnCours = false;
   #endif // __LOCAL_MODE__  config.chaudiere->bSetEnvoyerTramesOFF(false);
   if (bEnvoiEnCours) {
-    Serial.println("Envoi déjà en cours (ON ignoré)");
+    DBG(DBG_RESEAU, "Envoi déjà en cours (ON ignoré)\n");
   } 
   else {
     #ifdef __LOCAL_MODE__
@@ -467,7 +497,7 @@ void MyWebServer::handleForceOff() {
   bool bEnvoiEnCours = false;
   #endif // __LOCAL_MODE__  config.chaudiere->bSetEnvoyerTramesOFF(false);
   if (bEnvoiEnCours) {
-    Serial.println("Envoi déjà en cours (OFF ignoré)");
+    DBG(DBG_RESEAU, "Envoi déjà en cours (OFF ignoré)\n");
   } else {
     #ifdef __LOCAL_MODE__
     config.chaudiere->bSetEnvoyerTramesOFF(true);
@@ -507,7 +537,7 @@ void MyWebServer::setup() {
   server.on("/chauffage_sb_off", HTTP_POST, [this]() { handleChauffageSbOff(); });
   server.onNotFound([this]() { handleNotFound(); });
   server.begin();
-  Serial.println("Serveur web démarré");
+  DBG(DBG_RESEAU, "Serveur web démarré\n");
 }
 
 void MyWebServer::loop() {

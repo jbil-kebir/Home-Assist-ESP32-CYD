@@ -59,7 +59,9 @@ void MyWebServer::handleRoot() {
   html +=  "</div>";
 
   // === MQTT (2 colonnes) ===
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   html += mqtt.getHTML();
+  #endif
 
   // === PRÉFIXE DOMOTIQUE ===
   /*html += "<h2>Préfixe domotique (projecteur, guirlande, sdb)</h2>"
@@ -111,7 +113,9 @@ void MyWebServer::handleSave() {
   }
   
   // === PARAMÈTRES MQTT ===
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.loadFromWebServer(server);
+  #endif
 
   #ifdef CAPTEUR_DS18B20
   config.ds18b20->loadFromWebServer(server);
@@ -134,7 +138,9 @@ void MyWebServer::handleSave() {
     mWifi[i].saveToNVS();
   }
   // === SAUVEGARDE DES PARAMETRES MQTT ===
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.saveToNVS();
+  #endif
   
   // === SAUVEGARDE DU THERMOMETRE LOCAL ===
   #ifdef CAPTEUR_DS18B20

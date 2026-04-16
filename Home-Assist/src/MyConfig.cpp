@@ -13,7 +13,7 @@ void CConfig::setup(const String pref, std::vector<CIPModule> *ctrl, std::vector
   // topic command de configuration. Par exemple home/configaux/command Permet de différenbcier les config des CYD
   topic_config_command = domotique_prefix + mqttConfigSubTopic + "command";
   topic_config_state   = domotique_prefix + mqttConfigSubTopic + "state";
-  Serial.printf("void CConfig::setup() - topic_config_state : %s\n", topic_config_state.c_str());
+  DBG(DBG_CONFIG, "void CConfig::setup() - topic_config_state : %s\n", topic_config_state.c_str());
 
   // topic command de configuration général. Typiquement, au démarrage, un CYD demande au maître l'état des appareils
   // C'est home/configuration/command. 
@@ -22,35 +22,49 @@ void CConfig::setup(const String pref, std::vector<CIPModule> *ctrl, std::vector
   #endif
 }
 
-void CConfig::loop() {
+//--------------------------------------------------------------------------
+//  int CConfig::loop()
+//
+// Retour
+// -10 : Watchdog Alive Time : il est temps d'envoyer un Watchdog
+// 0 : RAS
+//--------------------------------------------------------------------------
+int CConfig::loop() {
+  int ret = 0;
   // Deep Sleep pour le moment uniquement si on n'est pas contrôleur principal
   #ifndef __LOCAL_MODE__ 
   if (mbDeepSleepActive) {
     if (millis() < mulWakeDuration*1000) {
       // Pas encore le temps de dormir
-      return;
+      ret = 0;
     }
     else
       // Deep Sleep. 
       enterDeepSleep();
   }
   #endif
+  static unsigned long lastWatchdogAliveSent = 0UL;
+  if (mulWatchDogAlivePeriod > 0 && millis() - lastWatchdogAliveSent >= mulWatchDogAlivePeriod*1000UL) {
+    lastWatchdogAliveSent = millis(); // Arrondi à la seconde
+    ret = -10; // Watchdog Alive Time
+  }
+  return ret;
 }
 
 void CConfig::enterDeepSleep() {
-  Serial.printf("Deep sleep pour %lu secondes...\n", mulSleepDuration);
+  DBG(DBG_CONFIG, "Deep sleep pour %lu secondes...\n", mulSleepDuration);
   Serial.flush();           // Attend que le serial soit vide
   delay(100);               // Sécurité
 
   unsigned int dureeEveil = mDateTime->getAbsoluteSecondes() - mulDateReveil; // Durée de réveil
-  String sMqttMsg = nomEquipement + " DEEPSLEEP ON le " + mDateTime->getDate() + " à " + mDateTime->getTime() + " " + String(mulSleepDuration) + " Durée éveil : " + String (dureeEveil); 
-  Serial.println(sMqttMsg + String(". Deep sleep in few seconds ..."));
+  String sMqttMsg = nomEquipement + " DEEPSLEEP ON le " + mDateTime->getDate() + " à " + mDateTime->getTime() + " " + String(mulSleepDuration) + " Durée éveil : " + String (dureeEveil);
+  DBGLN(DBG_CONFIG, sMqttMsg + String(". Deep sleep in few seconds ..."));
   Serial.flush();           // Attend que le serial soit vide
   mbWakeFromDeepSleep = true;
   mulDateMiseEnSommeil = mDateTime->getAbsoluteSecondes();
   saveToNVS();
   // Envoie par MQTT de la durée de deep-sleep à venir
-  Serial.printf("void CConfig::enterDeepSleep() - topic_config_state : %s\n", topic_config_state.c_str());
+  DBG(DBG_CONFIG, "void CConfig::enterDeepSleep() - topic_config_state : %s\n", topic_config_state.c_str());
   if (onMqttPublish != nullptr)
     int ret = onMqttPublish(topic_config_state.c_str(), sMqttMsg.c_str());
   delay(1000);               // Sécurité
@@ -100,11 +114,11 @@ void CConfig::traiteReveil() {
   mulNbSecondesDeSommeil = mulDateReveil - mulDateMiseEnSommeil;
   sMqttMsg = nomEquipement + " REVEIL DEEPSLEEP " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(mulNbSecondesDeSommeil); 
   saveToNVS();
-  Serial.println(sMqttMsg+String(" seconde. Réveil avec Deep Sleep préalable ")); Serial.flush();
+  DBGLN(DBG_CONFIG, sMqttMsg+String(" seconde. Réveil avec Deep Sleep préalable ")); Serial.flush();
  }
  else {
-  sMqttMsg = nomEquipement + " REVEIL OFF " + mDateTime->getDate() + " " + mDateTime->getTime(); 
-  Serial.println(sMqttMsg+String(" Réveil sans Deep Sleep préalable ")); Serial.flush();
+  sMqttMsg = nomEquipement + " REVEIL OFF " + mDateTime->getDate() + " " + mDateTime->getTime();
+  DBGLN(DBG_CONFIG, sMqttMsg+String(" Réveil sans Deep Sleep préalable ")); Serial.flush();
  }
 
   #ifndef __LOCAL_MODE__
@@ -116,6 +130,18 @@ void CConfig::traiteReveil() {
 void CConfig::setonEquipementCallback(std::function<int(const String& nom, const String& ip)> onEqu) {
   onEquipement = onEqu;
 }      
+//
+// Entrée st en minutes
+// On convertit en secondes et on stocke dans le NVS
+// On stocke aussi dans la variable pour que ce soit pris en compte immédiatement
+//
+void CConfig::setWatchDogAlivePeriod(int32_t st) {
+  mulWatchDogAlivePeriod = st*60; // 
+  prefs.begin(nvs_namespace, false);
+  // Écriture timeout veille
+  prefs.putLong((mPrefixNVS+"wdog").c_str(), mulWatchDogAlivePeriod);
+  prefs.end(); 
+}
 
 int CConfig::remonteCYDInfoToEcran(const String & message) {
   ParsedMqttMessage msg;
@@ -124,13 +150,13 @@ int CConfig::remonteCYDInfoToEcran(const String & message) {
   
   String nom="";
   if (n > 0) {
-    Serial.printf("void CConfig::remonteCYDInfoToEcran()\n");
+    DBG(DBG_CONFIG, "void CConfig::remonteCYDInfoToEcran()\n");
     for(int i=0; i<msg.mvsMesure.size(); i++) {
       nom += msg.mvsMesure[i] + " ";
     }
     msg.printDebug();
     if (onEquipement == nullptr) {
-      Serial.printf("void CConfig::remonteCYDInfoToEcran() - Pas de callback pour %s()\n", nom.c_str());
+      DBG(DBG_CONFIG, "void CConfig::remonteCYDInfoToEcran() - Pas de callback pour %s()\n", nom.c_str());
       return -1;
     }
     onEquipement(nom, msg.msIp);
@@ -138,6 +164,8 @@ int CConfig::remonteCYDInfoToEcran(const String & message) {
   }
   return 0;
 }
+
+
 void CConfig::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
 
@@ -155,6 +183,8 @@ void CConfig::loadFromNVS() {
   mbWakeFromDeepSleep = prefs.getBool((mPrefixNVS+"wkFDS").c_str(), false);
   mulDateMiseEnSommeil = prefs.getLong((mPrefixNVS+"dtSom").c_str(), 0UL);
   mulDateReveil = prefs.getLong((mPrefixNVS+"dtRev").c_str(), 0UL);
+  mulWakeDuration = prefs.getLong((mPrefixNVS+"wakeI").c_str(), DEFAULT_WAKE_DURATION_SEC);
+  mulWatchDogAlivePeriod = prefs.getLong((mPrefixNVS+"wdog").c_str(), DEFAULT_WATCHDOG_ALIVE_PERIOD);
 
   prefs.end();
    
@@ -175,6 +205,7 @@ void CConfig::saveToNVS() {
   prefs.putBool((mPrefixNVS+"wkFDS").c_str(), mbWakeFromDeepSleep);
   prefs.putLong((mPrefixNVS+"dtSom").c_str(), mulDateMiseEnSommeil);
   prefs.putLong((mPrefixNVS+"dtRev").c_str(), mulDateReveil);
+  prefs.putLong((mPrefixNVS+"wdog").c_str(), mulWatchDogAlivePeriod);
 
   prefs.end();
 }
@@ -196,8 +227,10 @@ void CConfig::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"sleepA").c_str())) mbDeepSleepActive = true; else mbDeepSleepActive = false;
   if (server.hasArg((mPrefixNVS+"sleepI").c_str())) mulSleepDuration = server.arg((mPrefixNVS+"sleepI")).toInt();
   if (server.hasArg((mPrefixNVS+"wakeI").c_str())) mulWakeDuration = server.arg((mPrefixNVS+"wakeI")).toInt();
+  if (server.hasArg((mPrefixNVS+"wakeI").c_str())) mulWakeDuration = server.arg((mPrefixNVS+"wakeI")).toInt();
+  if (server.hasArg((mPrefixNVS+"wdog").c_str())) mulWatchDogAlivePeriod = server.arg((mPrefixNVS+"wdog")).toInt();
 
-  Serial.printf("CConfig::loadFromWebServer () - Nom equ : %s\n", nomEquipement.c_str());
+  DBG(DBG_CONFIG, "CConfig::loadFromWebServer () - Nom equ : %s\n", nomEquipement.c_str());
 }
 
 String CConfig::getHTML() {
@@ -213,6 +246,9 @@ String CConfig::getHTML() {
       "<div class=\"row\">"
         "<div><label>Préfixe domotique</label><input type=\"text\" name=" + (mPrefixNVS+"dom_pre") + " value=\"" + domotique_prefix + "\"></div>"
         "<div><label>Préfixe Configuration</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_pre") + " value=\"" + mqttConfigSubTopic + "\"></div>"
+      "</div>"
+      "<div class=\"row\">"
+        "<div><label>Intervalle de remontée Watchdog Alive (s)</label><input type=\"text\" name=" + (mPrefixNVS+"wdog") + " value=\"" + mulWatchDogAlivePeriod + "\"></div>"
       "</div>";
     #ifndef __LOCAL_MODE__
     html +=  "<div class=\"row\">"
@@ -223,15 +259,16 @@ String CConfig::getHTML() {
 }
 
 void CConfig::print() const {
-  Serial.println("[LOGICIEL]");
-  Serial.printf("  VERSION      : %s\n", String(VERSION).c_str());
-  Serial.printf("  Nom équipement         : %s\n", nomEquipement.c_str());
-  Serial.printf("  Deep Sleep             : %s\n", mbDeepSleepActive ? "ACTIF" : "INACTIF");
-  Serial.printf("  Intervalle Deep Sleep  : %ld min\n", mulSleepDuration);
-  Serial.printf("  Intervalle Entre Sleep : %ld min\n", mulWakeDuration);
-  Serial.printf("  Préfixe domotique      : %s\n", domotique_prefix.c_str());
-  Serial.printf("  Préfixe configuration  : %s\n", mqttConfigSubTopic.c_str());
+  DBG(DBG_CONFIG, "[LOGICIEL]\n");
+  DBG(DBG_CONFIG, "  VERSION      : %s\n", String(VERSION).c_str());
+  DBG(DBG_CONFIG, "  Nom équipement            : %s\n", nomEquipement.c_str());
+  DBG(DBG_CONFIG, "  Deep Sleep                : %s\n", mbDeepSleepActive ? "ACTIF" : "INACTIF");
+  DBG(DBG_CONFIG, "  Intervalle Deep Sleep     : %ld min\n", mulSleepDuration);
+  DBG(DBG_CONFIG, "  Intervalle Entre Sleep    : %ld min\n", mulWakeDuration);
+  DBG(DBG_CONFIG, "  Intervalle Watchdog Alive : %ld ms\n", mulWatchDogAlivePeriod);
+  DBG(DBG_CONFIG, "  Préfixe domotique         : %s\n", domotique_prefix.c_str());
+  DBG(DBG_CONFIG, "  Préfixe configuration     : %s\n", mqttConfigSubTopic.c_str());
   #ifndef __LOCAL_MODE__
-  Serial.printf("  Préfixe du Maître      : %s\n", mqttConfigMaitreSubTopic.c_str());
+  DBG(DBG_CONFIG, "  Préfixe du Maître         : %s\n", mqttConfigMaitreSubTopic.c_str());
   #endif
 }

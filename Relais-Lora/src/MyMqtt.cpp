@@ -49,6 +49,10 @@ void CMqtt::reconnect() {
 //      client.subscribe(mConfig.chaudiere->mqttSubTopicCommand.c_str());
       Serial.println("Abonnement à " + mConfig.topic_config_command);
       client.subscribe(mConfig.topic_config_command.c_str()); //, 1);
+      Serial.println("Abonnement à " + String("home/confthremise/command"));
+      client.subscribe("home/confthremise/command"); //, 1);
+      Serial.println("Abonnement à " + String("home/thermometre/command"));
+      client.subscribe("home/thermometre/command"); //, 1);
       // Ajouter ici tous les équipements relayés par Lora
 //      Serial.println("Abonnement à " + mConfig.mRemoteThCh1er->mqttSubTopicState);
 //      client.subscribe(mConfig.mRemoteThCh1er->mqttSubTopicState.c_str());
@@ -95,146 +99,50 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
 
   Serial.printf("void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
 
-  // Traiter tous les équipements Lora
-  /* 
-  if (String(topic) == mConfig.mRemoteChaudiere->mqttSubTopicCommand) { 
-    mConfig.mRemoteChaudiere->handleMqttCommand(messageOrg);
-  }
-  else if (String(topic) == mConfig.mRemoteProjecteur->mqttSubTopicCommand) { 
-    mConfig.mRemoteProjecteur->handleMqttCommand(messageOrg);
-  }
-  else if (String(topic) == mConfig.mRemoteGuirlande->mqttSubTopicCommand) { 
-    mConfig.mRemoteGuirlande->handleMqttCommand(messageOrg);
-  }
-  else if (String(topic) == mConfig.mRemoteChauffage->mqttSubTopicCommand) { 
-    mConfig.mRemoteChauffage->handleMqttCommand(messageOrg);
-  }
-  else if (String(topic) == mConfig.mRemoteThCh1er->mqttSubTopicState) {  // Tous les thermomètres utilisent le même canal que mRemoteThCh1er->mqttSubTopicState... ()"home/thermometre/state")
-    if (message.startsWith("THCHRDC")) {                                              // On les différencie par le nom. A améliorer ?
-      #ifdef __LOCAL_MODE__
-      // On est en local. Le thermomètre correspondant dialogue directement avec i'interface
-      #else
-      mConfig.mRemoteThMain->handleMqttState(messageOrg);
-      #endif
-    }
-
-    else if (message.startsWith("THSDB")) {
-      mConfig.mRemoteThSdb->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("BATSDB")) {
-      mConfig.mRemoteBatSdb->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("THCH1ER")) {
-      mConfig.mRemoteThCh1er->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("BATCH1ER")) {
-      mConfig.mRemoteBatThCh1er->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("THCAVE")) {
-      mConfig.mRemoteThCave->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("FLOTTEURNOMADE")) {
-      mConfig.mRemoteTor->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("BATCAVE")) {
-      mConfig.mRemoteBatCave->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("THNOMADE")) {
-      mConfig.mRemoteThNomade->handleMqttState(messageOrg);
-    }
-    else if (message.startsWith("BATNOMADE")) {
-      mConfig.mRemoteBatNomade->handleMqttState(messageOrg);
-    }
-    else {
-      Serial.printf("CMqtt::callback() message non traité ***%s*** : \n", message.c_str());
-    }
-    
-  } 
-  // Traitement des commandes de configuration
-  else if (String(topic) == mConfig.topic_config_command) {
-    message.trim();  // Supprime espaces début/fin
-    message.toUpperCase();
-    //mConfig.handleMqttCommand(message);
-
+  // Commandes de configuration
+  if (String(topic) == mConfig.topic_config_command) {
     Serial.println("Commande configuration reçue : " + message);
-  if (message == "STATUS") {
-      String statusMsg = "=== ÉTAT Home Assisstant "+ String(mConfig.nomEquipement) +" ===\n";
+    mConfig.handleMqttCommand(messageOrg);
+    if (message == "STATUS") {
+      String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
       statusMsg += String(mConfig.mDateTime->getDate()) + " " + String(mConfig.mDateTime->getTime()) + "\n";
-      #ifdef __LOCAL_MODE__
-      statusMsg += "Chaudière     : " + String(mConfig.chaudiere->active ? "ACTIVE" : "INACTIVE") + " - "  + mConfig.chaudiere->etatStr + "\n";
-      statusMsg += "Keep-alive    : " + String(mConfig.chaudiere->enableKeepAlive ? "ACTIVÉ" : "DÉSACtivé") + "\n";
-      statusMsg += "Projecteur    : " + String(mConfig.projecteur->active ? "ACTIF" : "INACTIF") + " - " + mConfig.projecteur->etatStr + "\n";
-      statusMsg += "Guirlande     : " + String(mConfig.guirlande->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.guirlande->etatStr + "\n";
-      statusMsg += "Salle de bain : " + String(mConfig.chauffageSb->active ? "ACTIF" : "INACTIF") + " - " + mConfig.chauffageSb->etatStr + "\n";
-      #else // Chaudière, thermomètre principal et équipements 433 MHz
-      statusMsg += "Chaudière     : " + String(mConfig.mRemoteChaudiere->active ? "ACTIVE" : "INACTIVE") + " - "  + mConfig.mRemoteChaudiere->etatStr + "\n";
-//      statusMsg += "Keep-alive    : " + String(mConfig.mRemoteChaudiere->enableKeepAlive ? "ACTIVÉ" : "DÉSACtivé") + "\n";
-      statusMsg += "Projecteur    : " + String(mConfig.mRemoteProjecteur->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteProjecteur->etatStr + "\n";
-      statusMsg += "Guirlande     : " + String(mConfig.mRemoteGuirlande->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.mRemoteGuirlande->etatStr + "\n";
-      statusMsg += "Salle de bain : " + String(mConfig.mRemoteChauffage->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteChauffage->etatStr + "\n";
-      #endif
-      #ifdef __CYD__
-      statusMsg += "Veille écran  : " + String(mEcran.sleep_timeout > 0 ? String(mEcran.sleep_timeout) + "s" : "Désactivée") + "\n";
-      #endif
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 
       client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
-      Serial.println("STATUS publié sur " + mConfig.topic_config_state + " :");
-      Serial.println(statusMsg);
-    }
-    else if (message.startsWith("VEILLE ")) {
-      #ifdef __CYD__
-      int32_t veilleTimeout = (int32_t)message.substring(6).toDouble();
-      mEcran.setSleepTimeout(veilleTimeout);
-      #endif
-    }
-    else if (message == "ECRAN SLEEP") {
-      #ifdef __CYD__
-      mEcran.forceSleep();  
-      #endif
-    }
-    else if (message == "ECRAN WAKE") {
-      #ifdef __CYD__
-      mEcran.forceWake();
-      #endif
-    }
-    else if (message.startsWith("ECRAN SERIE ")) {
-      #ifdef __CYD__
-      int serie = message.substring(12).toInt();
-      mEcran.setSerieAffichageEnCours(serie);
-      #endif
-    }
-    else if (message.startsWith("ECRAN ")) {
-      #ifdef __CYD__
-      int rotation = message.substring(6).toInt();
-      mEcran.setOrientationEcran(rotation);
-      #endif
-    }
-    else if (message.startsWith("DEVICE ")) { // Un nouveau module (CYD) vient d'apparaître sur le réseau, si on est en __LOCAL_MODE__, on lui envoie les états des appareils
-      #ifdef __LOCAL_MODE__
-      mConfig.chaudiere->remonteStatusParMqtt();
-      mConfig.projecteur->remonteStatusParMqtt();
-      mConfig.guirlande->remonteStatusParMqtt();
-      mConfig.chauffageSb->remonteStatusParMqtt();
-
-      mConfig.ds18b20->remonteStatusParMqtt();
-      mConfig.mRemoteThCh1er->remonteStatusParMqtt();
-      mConfig.mRemoteThSdb->remonteStatusParMqtt();
-      mConfig.mRemoteThCave->remonteStatusParMqtt();
-
-      mConfig.mRemoteTor->remonteStatusParMqtt();
-
-      mConfig.mRemoteBatThCh1er->remonteStatusParMqtt();
-      mConfig.mRemoteBatSdb->remonteStatusParMqtt();
-      mConfig.mRemoteBatCave->remonteStatusParMqtt();
-      #endif
+      Serial.println("STATUS publié sur " + mConfig.topic_config_state);
+      Serial.println(statusMsg); Serial.flush();
     }
     else if (message == "REBOOT") {
       ESP.restart();
     }
-    // Tu pourras ajouter d’autres commandes plus tard
-  }*/
+  } // if (String(topic) == mConfig.topic_config_command) { 
+  else if (String(topic) == "home/thermometre/command") {
+    if (message.startsWith("THREMISE") ||
+        message.startsWith("BATREMISE") ||
+        message.startsWith("FLOTTEURREMISE") ||
+        message.startsWith("THNOMADE") ||
+        message.startsWith("BATNOMADE") ||
+        message.startsWith("FLOTTEURNOMADE") ||
+        message.startsWith("THCAVE") ||
+        message.startsWith("BATCAVE")) {
+      Serial.println("Commande thermomètre reçue : " + message);
+      // Envoyer la trame par Lora
+      String s = "home/thermometre/command " + message;
+      Serial.println("Envoi de la commande par Lora : " + s);
+      mConfig.onLoraPublish("home/thermometre/command", messageOrg.c_str());
+    }
+    else {
+      Serial.printf("CMqtt::callback() - Equipement non traité ***%s*** : \n", message.c_str());
+      
+    }
+  }
+  else if (String(topic) == "home/confthremise/command") {
+    mConfig.onLoraPublish("home/confthremise/command", messageOrg.c_str());
+  }
+  else {
+    Serial.printf("CMqtt::callback() - Topic non traité ***%s*** : \n", topic);
+  }
   
 }
 

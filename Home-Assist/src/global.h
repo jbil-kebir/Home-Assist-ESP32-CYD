@@ -98,7 +98,30 @@
 
 
 // Version du logiciel
-#define VERSION "1.0"
+#define VERSION "2.8"
 
+
+//----------------------------------------------------------------------------
+// Système de debug par catégories (bitmask cumulatif)
+// Usage dans main.cpp : gDebugFlags = DBG_MQTT | DBG_CAPTEURS;
+//----------------------------------------------------------------------------
+#include <Arduino.h>
+
+constexpr uint32_t DBG_NONE        = 0;
+constexpr uint32_t DBG_MQTT        = 1 << 0;
+constexpr uint32_t DBG_CAPTEURS    = 1 << 1;
+constexpr uint32_t DBG_ACTIONNEURS = 1 << 2;
+constexpr uint32_t DBG_CHAUDIERE   = 1 << 3;
+constexpr uint32_t DBG_CONFIG      = 1 << 4;
+constexpr uint32_t DBG_RESEAU      = 1 << 5;
+constexpr uint32_t DBG_ECRAN       = 1 << 6;
+constexpr uint32_t DBG_ALL         = 0xFFFFFFFF;
+
+extern uint32_t gDebugFlags;
+
+// Macro principale (style printf)
+#define DBG(cat, ...)   do { if (gDebugFlags & (cat)) Serial.printf(__VA_ARGS__); } while(0)
+// Macro pour Serial.println(str) — ajoute \n automatiquement
+#define DBGLN(cat, msg) do { if (gDebugFlags & (cat)) { Serial.println(msg); } } while(0)
 
 #endif // __GLOBAL_H__

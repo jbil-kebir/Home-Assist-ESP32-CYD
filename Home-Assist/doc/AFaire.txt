@@ -1,3 +1,8 @@
+Lorsqu'un écran est affiché, les appuis sur les boutons des autres écrans doivent être ignorés. Exemple : dans l'écran 3, ilfaut ignorer l'appui sur le bouton projecteur.
+
+Envoyer aux CYD auxiliaires les infos NAS (Etat) en cas de changement, au démarrage du contrôleur principal ou sur demande (DEVICE)
+
+
 CEcran : implémenter mPrefixNVS pour les sauvegardes/récupérations NVS
 
 WiFi : Vérifier la connexion WiFi régulièrement. Si déconnecté, relancer une tentative de connexion.

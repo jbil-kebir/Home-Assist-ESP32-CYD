@@ -25,15 +25,15 @@ CRemoteRCDevice mRemoteChauffage(String("Chauffage"), ecran);
 void setup_chauffageSb() {
 #ifdef __LOCAL_MODE__
   config.chauffageSb = &chauffageSb;
-  chauffageSb.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-    return ptr->publish(topic, payload);
+  chauffageSb.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+    return mqtt.publish(topic, payload);
   });
   chauffageSb.setup("sb_");
 #else
   config.mRemoteChauffage = &mRemoteChauffage;
   mRemoteChauffage.setup("sb_");
-  mRemoteChauffage.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteChauffage.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
 #endif // __LOCAL_MODE__
 }

@@ -37,39 +37,40 @@ CZoneMesureCouleur::CZoneMesureCouleur(/*CConfig& cfg, */TFT_eSPI& tft, unsigned
 // Retour
 // -1 : Mesure invalide, on ne fait rien
 //
-int CZoneMesureCouleur::drawMesure(bool val, const String& nom/*=""*/) { 
+int CZoneMesureCouleur::drawMesure(int val, const String& nom/*=""*/) { 
 
 //  if (val == -1.0 && mfOldMesure == -1.0) return -1; // Evite de trop nombreux raffraichisssements;
   static bool firstTime = true;
 
-  Serial.printf("int CZoneMesureCouleur::drawMesure() - Nom = %s - val = %d\n", nom.c_str(), val);
-  //if (val == mbOldMesure && !firstTime) return 0;
+  //Serial.printf("int CZoneMesureCouleur::drawMesure() - Nom = %s - val = %d\n", nom.c_str(), val);
+  //if (val == miOldMesure && !firstTime) return 0;
   
   firstTime = false;
 
-  mbOldMesure = val;
+  miOldMesure = val;
+
+  //Serial.printf("int CZoneMesureCouleur::drawMesure() - Couleur %d = %s\n", val, val == 0 ? "Rouge" : (val == 1 ? "Vert" : "Gris"));
 
   //Serial.printf("int CZoneMesureCouleur::drawMesure() - OnOff %d = %s\n", val, val == 0 ? "Rouge" : "Vert");
   mTft.fillRect(muiPosX, muiPosY, muiWidth-20, muiHight, muiBgColor);  // TFT_BLACK Efface zone
-  mTft.fillRect(muiPosX+muiWidth-18, muiPosY+2, 18, muiHight-2, val ? TFT_GREEN : TFT_RED); // == 0 ? TFT_RED : TFT_GREEN);  // TFT_BLACK Efface zone
+
+  unsigned int couleur = (val == 0) ? TFT_RED : (val == 1) ? TFT_GREEN : COLOR_UNDEFINED_STATUS; // Si la valeur est autre que 0 ou 1, on affiche en gris
+  mTft.fillRect(muiPosX+muiWidth-18, muiPosY+2, 18, muiHight-2, couleur); 
 
   String sLabel = nom.substring(0, 8);
-  if (!val) {
-    Serial.printf("int CZoneMesureCouleur::drawMesure() - muiKOColorMesure\n");
+  if (val == 0) {
+    //Serial.printf("int CZoneMesureCouleur::drawMesure() - muiKOColorMesure\n");
     mTft.setTextColor(muiKOColorMesure);
     mTft.drawString(sLabel, muiLabelX, muiLabelY, muiLabelFont);
-    //mTft.drawString("KO", muiValMesureX, muiValMesureY, muiValMesureFont);
   } 
-  /*else if (val == -10.0) { // Watchdog Error
-    mTft.setTextColor(muiKOColorMesure);
-    mTft.drawString(sLabel, muiLabelX, muiLabelY, muiLabelFont);
-    //mTft.drawString("WDG", muiValMesureX, muiValMesureY, muiValMesureFont);
-  } */
-  else {
-    Serial.printf("int CZoneMesureCouleur::drawMesure() - muiOKColorMesure\n");
+  else if (val == 1) { // Watchdog Error
     mTft.setTextColor(muiOKColorMesure);
     mTft.drawString(sLabel, muiLabelX, muiLabelY, muiLabelFont);
-    //mTft.drawString(String(val), muiValMesureX, muiValMesureY, muiValMesureFont);
+  } 
+  else {
+    //Serial.printf("int CZoneMesureCouleur::drawMesure() - muiOKColorMesure\n");
+    mTft.setTextColor(COLOR_UNDEFINED_STATUS);
+    mTft.drawString(sLabel, muiLabelX, muiLabelY, muiLabelFont);
   }
 
 return 0;

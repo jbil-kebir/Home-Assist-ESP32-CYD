@@ -39,16 +39,18 @@ CZoneMesureOnOff::CZoneMesureOnOff(/*CConfig& cfg, */TFT_eSPI& tft, unsigned int
 //
 int CZoneMesureOnOff::drawMesure(int val, const String& nom/*=""*/) { 
 
-  if (val == -1.0 && mfOldMesure == -1.0) return -1; // Evite de trop nombreux raffraichisssements;
+  //if (val == -1.0 && mfOldMesure == -1.0) return -1; // Evite de trop nombreux raffraichisssements;
   mfOldMesure = val;
 
   //Serial.printf("int CZoneMesureOnOff::drawMesure() - OnOff %d = %s\n", val, val == 0 ? "Rouge" : "Vert");
   mTft.fillRect(muiPosX, muiPosY, muiWidth-20, muiHight, muiBgColor);  // TFT_BLACK Efface zone
-  mTft.fillRect(muiPosX+muiWidth-18, muiPosY+2, 18, muiHight-2, val == 0 ? TFT_RED : TFT_GREEN);  // TFT_BLACK Efface zone
+  
+  unsigned int couleur = (val == 0) ? TFT_RED : (val == 1) ? TFT_GREEN : COLOR_UNDEFINED_STATUS; // Si la valeur est autre que 0 ou 1, on affiche en gris
+  mTft.fillRect(muiPosX+muiWidth-18, muiPosY+2, 18, muiHight-2, couleur);  
 
   String sLabel = nom.substring(0, 8);
   if (val == -1.0) {
-    mTft.setTextColor(muiKOColorMesure);
+    mTft.setTextColor(COLOR_UNDEFINED_STATUS);
     mTft.drawString(sLabel, muiLabelX, muiLabelY, muiLabelFont);
     //mTft.drawString("KO", muiValMesureX, muiValMesureY, muiValMesureFont);
   } 

@@ -30,36 +30,36 @@ void setup_ThSdb() {
   config.mRemoteBatSdb = &mRemoteBatSdb; // Toujours remote
 
   // Thermomètre Salle de bain - affichage
-  mRemoteThSdb.setDisplayCallback([ptr = &ecran](const String& exp, float temp) {
-      ptr->updateRemoteDevice_ThSdb(exp, temp);
+  mRemoteThSdb.setDisplayCallback([](const String& exp, float temp) {
+      ecran.updateRemoteDevice_ThSdb(exp, temp);
   });
 
   // Thermomètre Salle de bain - publication MQTT
-  mRemoteThSdb.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteThSdb.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   // Couleur Salle de bain - affichage couleur
-  mRemoteCoulSdb.setDisplayCallbackCouleur([ptr = &ecran](const String& exp, unsigned long coul) {
-      ptr->updateRemoteDevice_ThSdbDel(exp, coul);
+  mRemoteCoulSdb.setDisplayCallbackCouleur([](const String& exp, unsigned long coul) {
+      ecran.updateRemoteDevice_ThSdbDel(exp, coul);
   });
   // Couleur Salle de bain - affichage luminosité
-  /*mRemoteCoulSdb.setDisplayCallbackCouleur([ptr = &ecran](const String& exp, unsigned long lum) {
-      ptr->updateRemoteDevice_ThSdbL(exp, lum);
+  /*mRemoteCoulSdb.setDisplayCallbackCouleur([](const String& exp, unsigned long lum) {
+      ecran.updateRemoteDevice_ThSdbL(exp, lum);
   });*/
 
   // Couleur Salle de bain - publication MQTT
-  mRemoteCoulSdb.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteCoulSdb.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
 
   // Batterie du thermomètre Salle de bain - affichage
-  mRemoteBatSdb.setDisplayCallback([ptr = &ecran](const String& exp, bool etatBatterie, float temp) {
-      ptr->updateRemoteBat_ThSdb(exp, etatBatterie, temp);
+  mRemoteBatSdb.setDisplayCallback([](const String& exp, bool etatBatterie, float temp) {
+      ecran.updateRemoteBat_ThSdb(exp, etatBatterie, temp);
   });
 
   // Batterie du thermomètre Salle de bain - publication MQTT
-  mRemoteBatSdb.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteBatSdb.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   mRemoteThSdb.setonEquipementCallback([](const String& nom, const String& ip) -> int {
       return ajouterControleur(nom, ip);
@@ -75,7 +75,7 @@ void loop_ThSdb() {
   }
   else if (retThSdb == -10) { // Watchdog error
     if (!bWdogThSdbErr) {
-      Serial.println("void loop()" + String(" - ") + " - " + mRemoteThSdb.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
+      DBGLN(DBG_CAPTEURS, "void loop()" + String(" - ") + " - " + mRemoteThSdb.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
       ecran.updateRemoteDevice_ThSdb(mRemoteThSdb.nomEquipement, -254.0);
       bWdogThSdbErr = true;
     }

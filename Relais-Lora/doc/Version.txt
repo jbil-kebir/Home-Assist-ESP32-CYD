@@ -1,0 +1,21 @@
+1.2
+Mise en place de MQTT ==> Lora
+On écoute sur MQTT les topics :
+  - home/thermometre/command
+  - home/confthremise/command
+On renvoie sur Lora : 
+  topic + " " + payload
+Ceci uniquement pour les équipements concernés : THREMISE, BATREMISE, FLOTTEURREMISE, THCAVE, BATCAVE
+On traite par exemple les commandes sur home/confthremise/command :
+- STATUS
+- SLEEP n (n en secondes, -1 pour désactiver le deep sleep)
+Et sur home/thermometre/command
+- ACK (Acquittement pour les mesures concernées)
+
+1.1
+Dans void setup(), remplacer while(!Serial) par
+  unsigned long start = millis();
+  while(!Serial && millis() - start < 3000); // Attend max 3 secondes
+Ceci afin de ne pas bloquer lorsque on alimente sans connecter au PC
+ 
+1.0

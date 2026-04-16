@@ -1,4 +1,5 @@
 
+#include "global.h"
 #include "RCSwitchCodeAnalyzer.h"
 
 
@@ -21,18 +22,18 @@ bool CRCSwitchCodeAnalyzer::decodeFooter(STRUCT_RCS_FOOTER& st, unsigned long co
     return ret;
 }
 void CRCSwitchCodeAnalyzer::printStructRCSMesure(STRUCT_RCS_MESURE stm) {
-    Serial.printf("=== MESURE ===\n");
-    Serial.printf("ID %d Num %d Type %d Val 0x%x = %d\n", stm.id, stm.numero, stm.type, stm.val, stm.val);
+    DBG(DBG_ACTIONNEURS, "=== MESURE ===\n");
+    DBG(DBG_ACTIONNEURS, "ID %d Num %d Type %d Val 0x%x = %d\n", stm.id, stm.numero, stm.type, stm.val, stm.val);
 
 }
 void CRCSwitchCodeAnalyzer::printStructSTSMesure(_ST_MESURE_ stm) {
-    Serial.printf("=== MESURE ===\n");
-    Serial.printf("Type %d Val %.2f\n", stm.type, stm.val);
+    DBG(DBG_ACTIONNEURS, "=== MESURE ===\n");
+    DBG(DBG_ACTIONNEURS, "Type %d Val %.2f\n", stm.type, stm.val);
 
 }
 void CRCSwitchCodeAnalyzer::printStructFooter(STRUCT_RCS_FOOTER &stf) {
-    Serial.printf("=== FOOTER ===\n");
-    Serial.printf("ID %d CRC 0x%x Reserved 0x%x\n", stf.id, stf.crc8, stf.reserved);
+    DBG(DBG_ACTIONNEURS, "=== FOOTER ===\n");
+    DBG(DBG_ACTIONNEURS, "ID %d CRC 0x%x Reserved 0x%x\n", stf.id, stf.crc8, stf.reserved);
 
 }
 
@@ -67,14 +68,14 @@ bool CRCSwitchCodeAnalyzer::decode(_ST_MESURE_ *st, unsigned long *tab, unsigned
         switch(st[i].type) {
             case 0: // Température 
             st[i].val = ((float)val / 10.0) - 20.0;
-            Serial.printf("CRCSwitchCodeAnalyzer::decode () - Mesure Température %.1f\n", st[i].val);
+            DBG(DBG_ACTIONNEURS, "CRCSwitchCodeAnalyzer::decode () - Mesure Température %.1f\n", st[i].val);
             break;
             case 1: // Humidité 
             st[i].val = (float)val;
-            Serial.printf("CRCSwitchCodeAnalyzer::decode () - Mesure Humidité %.0f\n", st[i].val);
+            DBG(DBG_ACTIONNEURS, "CRCSwitchCodeAnalyzer::decode () - Mesure Humidité %.0f\n", st[i].val);
             break;
             default: // Inconnue
-            Serial.printf("CRCSwitchCodeAnalyzer::decode () - Mesure %d : Type inconnu %d, valLsb %d, valMsb %d\n", stmLsb.numero, stmLsb.type, stmLsb.val, stmMsb.val);
+            DBG(DBG_ACTIONNEURS, "CRCSwitchCodeAnalyzer::decode () - Mesure %d : Type inconnu %d, valLsb %d, valMsb %d\n", stmLsb.numero, stmLsb.type, stmLsb.val, stmMsb.val);
             break;
         }
         

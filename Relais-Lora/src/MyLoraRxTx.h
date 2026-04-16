@@ -17,6 +17,7 @@ private:
   CConfig* mConfig;
 
   SX1262& mRadio; // C'est un pointeur
+  bool mbInitialized = false; // Mettre à true si tout le processus d'init s'est bien déroulé 
 
   // Flag pour savoir si une réception est terminée (set par la callback)
   volatile bool mbReceptionDone = false;
@@ -45,6 +46,7 @@ public:
   };
   int setup();
   int loop();
+  void startRx();
 
   // MQTT callback
   std::function<int(const char*, const char*)> onMqttPublish;    
@@ -59,7 +61,8 @@ public:
   int transmissionState = RADIOLIB_ERR_NONE;
   
   void receivePacket();
-  void sendPacket(const char* message);
+  int sendPacket(const char* topic, const char* pyload);
+  int sendPacket(const char* message);
   int validateParameters();
   int parseMessage(ParsedLoraP2PMessage& result, const String& input);
   int handleIncommingLoraP2PMessage(const String& inMessage);

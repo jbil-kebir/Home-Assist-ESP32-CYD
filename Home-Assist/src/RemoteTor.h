@@ -16,8 +16,8 @@ private:
   // On mémorise la Mesure pour n'afficher que les changements
   // La mesure est en int même si sa vraie valeur est booléenne.
   // Cela permet d'utiliser des valeurs pour indiquer des états autres que ON/OFF
-  int lastMesure = -1.0;  // Valeur invalide par défaut
-  int newMesure = -1.0;  // Valeur invalide par défaut
+  int lastMesure = -1;  // Valeur invalide par défaut
+  int newMesure = -1;  // Valeur invalide par défaut
   //====================== Commandes MQTT ======================
   String sMqttCommandMesure = "MESURE"; // Force une mesure
 

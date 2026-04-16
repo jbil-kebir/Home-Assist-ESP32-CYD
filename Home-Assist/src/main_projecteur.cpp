@@ -25,15 +25,15 @@ CRemoteRCDevice mRemoteProjecteur(String("Projecteur"), ecran);
 void setup_projecteur() {
 #ifdef __LOCAL_MODE__
   config.projecteur = &projecteur;
-  projecteur.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-    return ptr->publish(topic, payload);
+  projecteur.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+    return mqtt.publish(topic, payload);
   });
   projecteur.setup("proj_");
 #else
   config.mRemoteProjecteur = &mRemoteProjecteur;
   mRemoteProjecteur.setup("proj_");
-  mRemoteProjecteur.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteProjecteur.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
 #endif // __LOCAL_MODE__
 }

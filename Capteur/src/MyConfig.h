@@ -21,6 +21,7 @@
 #endif
 #include "MyBatterieAA.h"
 #include "MyWifi.h"
+#include "MyLoraRxTx.h"
 #include "MyDateTime.h"
 
 class CWifi;
@@ -54,18 +55,19 @@ public:
   CDetecteurRGB_TCS34725 *mCapteurRGB=nullptr;
   #endif
  CBatterieAA *mBatterieAA=nullptr;
-  String nomEquipement = "ThCh1er";
+  String nomEquipement = "ThCave";
   // === MQTT ===
   //MQTT_DEF  mqqtInfo;
   // === WIFI ===
   CWifi  *mWifi=nullptr;
   CMyDateTime *mDateTime=nullptr;
-
+#ifdef _LORA_P2P_MODE_
+  CMyLoraRxTx *mLoraRxTx=nullptr; 
+#endif
 
   // === PRÉFIXE DOMOTIQUE (pour projecteur, guirlande, sdb) ===
   const char* default_domotique_topic_prefix = "home/";
   String domotique_prefix;
-
 
 
 
@@ -74,9 +76,18 @@ public:
           topic_config_state; 
   // Temps entre deux mesures (en secondes)
   const unsigned int DEFAULT_SLEEP_DURATION_SEC = 120;   // 2 minutes par défaut  
+  const unsigned int DEFAULT_SLEEP_DURATIONS_SEC = 120;   // 2 minutes par défaut  
+  const unsigned int DEFAULT_SLEEP_DURATIONM_SEC = 350;   // 5 minutes par défaut  
+  const unsigned int DEFAULT_SLEEP_DURATIONL_SEC = 600;   // 10 minutes par défaut  
   const unsigned int DEFAULT_WAKE_DURATION_SEC = 20;   // 20 secondes par défaut  
-  unsigned int mulSleepDuration = 120;  // Durée deep-sleep
-  unsigned int mulWakeDuration = 20; // Durée avant un deep sleep. Permet de traiter d'éventuelles requêtes MQTT 
+  unsigned int mulSleepDuration = DEFAULT_SLEEP_DURATION_SEC;  // Durée deep-sleep
+  // Trois valeurs qui peuvent paramétrées en appelant un mot clé SLEEPS, SLEEPM ou SLEEPL suivi de la durée en secondes. Par exemple SLEEEPS 60 pour 1 minute de sommeil
+  // Pour les invoquer, il suffit de faire home/confthmesure/command SLEEPL par exemple 
+  unsigned int mulSleepDurationS = DEFAULT_SLEEP_DURATIONS_SEC;  // Durée deep-sleep
+  unsigned int mulSleepDurationM = DEFAULT_SLEEP_DURATIONM_SEC;  // Durée deep-sleep
+  unsigned int mulSleepDurationL = DEFAULT_SLEEP_DURATIONL_SEC;  // Durée deep-sleep
+
+  unsigned int mulWakeDuration = DEFAULT_WAKE_DURATION_SEC; // Durée avant un deep sleep. Permet de traiter d'éventuelles requêtes MQTT 
   bool mbDeepSleepActive = false;  
   bool mbWakeFromDeepSleep = false; // Variable qui indiquera qu'on s'est réveillé d'un deep sleep
   unsigned long mulDateMiseEnSommeil=0; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
@@ -98,6 +109,7 @@ public:
   void loadFromNVS();
   void saveToNVS();
   int parseSleepCommand(const String& msg);
+  int parseSleepCommandSML(const String& msg);
   int  handleMqttCommand(const String& payload);
   void setSleepIntervalle(unsigned long st);
   void setWakeIntervalle(unsigned long st);

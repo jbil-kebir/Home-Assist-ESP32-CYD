@@ -30,38 +30,38 @@ void setup_ThCave() {
   config.mRemoteBatCave = &mRemoteBatCave; // Toujours remote
   //--------------------------- Température et humidité ---------------------------
   // Thermomètre Cave - affichage température
-  mRemoteThCave.setDisplayCallbackTemperature([ptr = &ecran](const String& exp, float temp) {
-      ptr->updateRemoteDevice_ThCave(exp, temp);
+  mRemoteThCave.setDisplayCallbackTemperature([](const String& exp, float temp) {
+      ecran.updateRemoteDevice_ThCave(exp, temp);
   });
   // Thermomètre Cave - affichage humidité
-  mRemoteThCave.setDisplayCallbackHumidite([ptr = &ecran](const String& exp, float temp) {
-      ptr->updateRemoteDevice_ThCaveH(exp, temp);
+  mRemoteThCave.setDisplayCallbackHumidite([](const String& exp, float temp) {
+      ecran.updateRemoteDevice_ThCaveH(exp, temp);
   });
 
   // Thermomètre Cave - publication MQTT
-  mRemoteThCave.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteThCave.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   //--------------------------- Tout Ou Rien ---------------------------
     // Tor - affichage
-  mRemoteTor.setDisplayCallback([ptr = &ecran](const String& exp, int val) {
-      ptr->updateRemoteDevice_ThCaveTor(exp, val);
+  mRemoteTor.setDisplayCallback([](const String& exp, int val) {
+      ecran.updateRemoteDevice_ThCaveTor(exp, val);
   });
 
   // Tor - publication MQTT
-  mRemoteTor.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteTor.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
 
   //--------------------------- Batterie ---------------------------
     // Batterie du thermomètre Cave - affichage
-  mRemoteBatCave.setDisplayCallback([ptr = &ecran](const String& exp, bool etatBatterie, float temp) {
-      ptr->updateRemoteBat_ThCave(exp, etatBatterie, temp);
+  mRemoteBatCave.setDisplayCallback([](const String& exp, bool etatBatterie, float temp) {
+      ecran.updateRemoteBat_ThCave(exp, etatBatterie, temp);
   });
 
   // Batterie du thermomètre Cave - publication MQTT
-  mRemoteBatCave.setMqttPublishCallback([ptr = &mqtt](const char* topic, const char* payload) -> int {
-      return ptr->publish(topic, payload);
+  mRemoteBatCave.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
   });
   mRemoteThCave.setonEquipementCallback([](const String& nom, const String& ip) -> int {
       return ajouterControleur(nom, ip);
@@ -78,7 +78,7 @@ int retThCave = mRemoteThCave.loop();
   }
   else if (retThCave == -10) { // Watchdog error
     if (!bWdogThCaveErr) {
-      Serial.println("void loop()" + String(" - ") + " - " + mRemoteThCave.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
+      DBGLN(DBG_CAPTEURS, "void loop()" + String(" - ") + " - " + mRemoteThCave.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
       ecran.updateRemoteDevice_ThCave(mRemoteThCave.nomEquipement, -254.0);
       bWdogThCaveErr = true;
     }

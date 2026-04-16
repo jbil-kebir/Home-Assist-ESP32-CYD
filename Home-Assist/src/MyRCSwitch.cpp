@@ -10,14 +10,14 @@ void CMyRCSwitch::setup() {
 
 }
 void CMyRCSwitch::afficheDetailRCS() {
-    Serial.print("CMyRCSwitch::loop() - Reçu : ");
-    Serial.print(mySwitch.getReceivedValue(), HEX);
-    Serial.print(" / ");
-    Serial.print(mySwitch.getReceivedBitlength());
-    Serial.print(" bits / Protocol: ");
-    Serial.print(mySwitch.getReceivedProtocol());
-    Serial.print(" / RSSI approx: ");
-    Serial.println(ELECHOUSE_cc1101.getRssi());  // si tu as la lib chargée
+    DBG(DBG_ACTIONNEURS, "CMyRCSwitch::loop() - Reçu : ");
+    DBGLN(DBG_ACTIONNEURS, mySwitch.getReceivedValue());
+    DBG(DBG_ACTIONNEURS, " / ");
+    DBGLN(DBG_ACTIONNEURS, mySwitch.getReceivedBitlength());
+    DBG(DBG_ACTIONNEURS, " bits / Protocol: ");
+    DBGLN(DBG_ACTIONNEURS, mySwitch.getReceivedProtocol());
+    DBG(DBG_ACTIONNEURS, " / RSSI approx: ");
+    DBGLN(DBG_ACTIONNEURS, ELECHOUSE_cc1101.getRssi());  // si tu as la lib chargée
 
 }
 
@@ -44,18 +44,18 @@ int CMyRCSwitch::loop() {
 
     unsigned long code = mySwitch.getReceivedValue();
     
-    Serial.printf("int CMyRCSwitch::loop() - Code : 0x%lx\n", code);
+    DBG(DBG_ACTIONNEURS, "int CMyRCSwitch::loop() - Code : 0x%lx\n", code);
 
     unsigned char id = getIDFromRSCCode(code);
     switch (id) {
       case 1: // ThCave
         ret = config->mRemoteThCave->handleRCSwitchCode(code);
       break;
-      case 2: // ThNomade
-        ret = config->mRemoteThNomade->handleRCSwitchCode(code);
+      case 2: // ThRemise
+        ret = config->mRemoteThRemise->handleRCSwitchCode(code);
       break;
       default:
-        Serial.printf("Code : 0x%lx - Identifiant %d inconnu\n", code, id);
+        DBG(DBG_ACTIONNEURS, "Code : 0x%lx - Identifiant %d inconnu\n", code, id);
         ret = -10;
       break;
     }
@@ -70,7 +70,7 @@ int CMyRCSwitch::loop() {
 int CMyRCSwitch::toggleDevice() {
   int ret = 0;
     #ifdef DISABLE_EFFECTEUR
-    Serial.println("void CMyRCSwitch::toggleDevice() - Effecteur désactivé.");
+    DBG(DBG_ACTIONNEURS, "void CMyRCSwitch::toggleDevice() - Effecteur désactivé.\n");
     return ret;
     #endif
 
@@ -91,7 +91,7 @@ int CMyRCSwitch::toggleDevice() {
   mySwitch.setPulseLength(pulseLength);
   mySwitch.setRepeatTransmit(repeat);
   String s = String(frequency) + " MHz, " + String(code, HEX) + ", " + String(protocol) + ", " + String(pulseLength) + ", " + String(repeat);
-  Serial.printf("CMyRCSwitch::toggleDevice() - Envoi %s\n", s.c_str());
+  DBG(DBG_ACTIONNEURS, "CMyRCSwitch::toggleDevice() - Envoi %s\n", s.c_str());
   mySwitch.send(code, 24);
 
   mySwitch.disableTransmit();

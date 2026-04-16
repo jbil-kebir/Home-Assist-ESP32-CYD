@@ -12,12 +12,15 @@
 #define COLOR_OK_BATTERIE TFT_GREEN
 #define COLOR_KO_BATTERIE TFT_RED
 
+#define COLOR_UNDEFINED_STATUS TFT_LIGHTGREY
+
 class CZoneMesureCouleur {
     private:
         TFT_eSPI& mTft;
 
         String msNom="";
-        bool mbOldMesure = 0; //mfOldValBatterie = -1;
+//        bool miOldMesure = 0; //mfOldValBatterie = -1;
+        int miOldMesure = -1; //mfOldValBatterie = -1;
         //int miEtatBatterie = 0;
         // Valeurs déduites par tests
         unsigned int muiLabelX, muiLabelY, muiLabelFont; // Position et Police du texte (nom du capteur)
@@ -36,8 +39,8 @@ class CZoneMesureCouleur {
 
 
 
-        int drawMesure(bool val, const String& nom="");
-        //int drawEtatBatterie(float val, int iEtatBat, const String& nom="");
+        //int drawMesure(bool val, const String& nom="");
+        int drawMesure(int val, const String& nom="");
         
 
 };

@@ -331,7 +331,7 @@ bool DHT20Sensor::publieParCC1101(bool force/*=false*/) {
     // Affichage pour comparer avec la réception
     Serial.println("--- Valeurs DHT20 à envoyer ---");
     Serial.printf("Température : %.1f °C\n", temp);
-    Serial.printf("Humidité    : %.1f %% \n", hum);
+    Serial.printf("Humidité    : %.1f % \n", hum);
     Serial.println("---------------------------------");
 
     uint16_t temp_raw = constrain((int)((temp + 20.0f) * 10.0), 0, 799); // de -20°C à 60 °C à 0.1°C près ==> 81*10 = 810 valeurs. On mappe de 0 à 800
@@ -562,7 +562,7 @@ int DHT20Sensor::handleMqttCommand(const String& payload) {
     st.sExpediteur = cmd.substring(0, cmd.indexOf(' ', idx));
     String s = nomEquipement; s.toUpperCase();
     if (st.sExpediteur != s) {
-      Serial.println("Mavais nom d'équipement (" + nomEquipement + ") : " + st.sExpediteur);
+      Serial.println("Mauvais nom d'équipement (" + nomEquipement + ") : " + st.sExpediteur);
       return -1; // Mavais nom d'équipement
     }
     idx = cmd.indexOf(' ', idx) + 1;

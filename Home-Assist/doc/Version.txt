@@ -1,3 +1,35 @@
+2.8
+Ajout messages Mqtt à destination des actionneurs ON/OFF nécessitant un ENABLE/DISABLE
+topic : home/equipement/command
+Commandes : 
+    ON_FORCE ==> Effectue un ENABLE puis ON
+    OFF_FORCE ==> Effectue un ENABLE, un OFF puis un DISABLE
+Pour le moment (2.8) ce n'est implémenté que pour la chaudière
+Debug :
+    Dans main.cpp, modifier la variable gDebugFlags. Ex : gDebugFlags = DBG_CHAUDIERE|DBG_MQTT; 
+2.7
+Correction des Lambdas
+
+Correction et importation dans ./lib de la bibliothèque OneWire
+
+Ajout d'un écran pour l'affichage des états :
+    - CoulSdb (Chaudière)
+    - Flotteur
+    - NewNas
+    - BigNas
+Correction bug boucle MQTT chaudière :
+    CRemoteChaudiere::setEtatReelOnOff() ne publie plus sur home/chaudiere/command.
+    Le device CYD AUX (remote) ne doit pas corriger l'état via MQTT — rôle exclusif du LOCAL_MODE.
+Correction warnings C++ :
+    Lambdas : remplacement des captures initialisées (C++14) par captures directes C++11,
+    puis suppression des captures de variables globales (mqtt, ecran) inutiles.
+    OneWire : correction syntaxe #undef (copie locale dans lib/OneWire/).
+
+2.6
+Ajout du support HA
+    Ajout Intervalle Watchdog CYD, paramétrable par HTTP et HA
+    Remontée de l'état du CYD : Veille, Watchdog, série d'écran, Orientation 
+
 2.5
 Ajout de la classe CZoneMesure pour visualiser les mesures TOR
 

@@ -47,9 +47,9 @@ float CRemoteDHT20::getLastHumidite() const {
 
 void CRemoteDHT20::printMesures() const {
   if (lastTempC != -127.0 && lastHum != -1) {
-    Serial.printf("void CRemoteDHT20::printMesures() - Température : %.2f °C Humidité : %.2f\n", lastTempC, lastHum);
+    DBG(DBG_CAPTEURS, "void CRemoteDHT20::printMesures() - Température : %.2f °C Humidité : %.2f\n", lastTempC, lastHum);
   } else {
-    Serial.println("Aucune température valide");
+    DBG(DBG_CAPTEURS, "Aucune température valide\n");
   }
 }
 
@@ -81,14 +81,14 @@ void CRemoteDHT20::loadFromWebServer (WebServer& server) {
 
 void CRemoteDHT20::print() const {
 
-  Serial.printf("==========================================================\n");
-  Serial.printf("     Nom              : %s\n", nomEquipement);
-  Serial.printf("     ID                 : %d\n", mucCapteurID);
-  Serial.printf("     Actif            : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Watchdog         : %ld s\n", mulWatchdogIntervalle);
-  Serial.printf("     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState        : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_CAPTEURS, "==========================================================\n");
+  DBG(DBG_CAPTEURS, "     Nom              : %s\n", nomEquipement);
+  DBG(DBG_CAPTEURS, "     ID               : %d\n", mucCapteurID);
+  DBG(DBG_CAPTEURS, "     Actif            : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_CAPTEURS, "     Watchdog         : %ld s\n", mulWatchdogIntervalle);
+  DBG(DBG_CAPTEURS, "     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_CAPTEURS, "     MQTTState        : %s\n", mqttSubTopicState.c_str());
 }
 
 void CRemoteDHT20::setDisplayCallbackTemperature(std::function<void(const String&, float)> cb) {
@@ -107,7 +107,7 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
   static bool inactifAffiche = false;
   if (!active) {
     if (!inactifAffiche) {
-      Serial.printf("void CRemoteDHT20::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
+      DBG(DBG_CAPTEURS, "void CRemoteDHT20::handleMqttState (); - %s inactif\n", nomEquipement.c_str());
       inactifAffiche = true;
     }
     return;
@@ -121,14 +121,17 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
   
   if (n > 0) {
     //msg.printDebug();
+    if (onEquipement != nullptr) 
+      onEquipement(msg.msExpediteur, msg.msIp); // On ajoute à la liste d'équuipements si ça n'est pas déjà fait
+    else DBG(DBG_CAPTEURS, "void CRemoteDHT20::handleMqttState() - Pas de callback onEquipement() - %s\n", nomEquipement.c_str());
 
     if (msg.msExpediteur != getNomEquipement()) {
-      Serial.printf("void CRemoteThermo::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
+      DBG(DBG_CAPTEURS, "void CRemoteDHT20::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
       return; // pas pour nous
     }
 
     if (msg.mvsMesure.empty()) {
-      Serial.printf("void CRemoteThermo::handleMqttState() Equipement %s - Mesure vide. On sort.\n", getNomEquipement().c_str());
+      DBG(DBG_CAPTEURS, "void CRemoteDHT20::handleMqttState() Equipement %s - Mesure vide. On sort.\n", getNomEquipement().c_str());
       return;
     }
     // On réinitiallise le WatchDog
@@ -148,7 +151,7 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
         //remonteTemperatureParMqtt(); // Les CYD distants doivent être informés
       }
       else {
-        Serial.println("Aucun callback défini pour " + nomEquipement);
+        DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
     } 
     else if (premiereMesure == "HUM") {
@@ -160,7 +163,7 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
         //remonteHumiditeParMqtt(); // Les CYD distants doivent être informés
       }
       else {
-        Serial.println("Aucun callback défini pour " + nomEquipement);
+        DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
     } 
     #ifndef __LOCAL_MODE__
@@ -173,7 +176,7 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
         //remonteTemperatureParMqtt(); // Les CYD distants doivent être informés
       }
       else {
-        Serial.println("Aucun callback défini pour " + nomEquipement);
+        DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
     } 
     else if (premiereMesure == "HUMR") {
@@ -185,7 +188,7 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
         //remonteHumiditeParMqtt(); // Les CYD distants doivent être informés
       }
       else {
-        Serial.println("Aucun callback défini pour " + nomEquipement);
+        DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
     } 
     #endif
@@ -286,24 +289,24 @@ int CRemoteDHT20::handleRCSwitchCode(unsigned long code) {
     mulWatchDog = millis();
 
     if (sth.nbMesures != NB_CODES_RCS) {
-      Serial.printf("CRemoteDHT20::handleRCSwitchCode - mauvais nombre de mesures (%d). Attendues : %d\n", sth.nbMesures, NB_CODES_RCS);
+      DBG(DBG_CAPTEURS, "CRemoteDHT20::handleRCSwitchCode - mauvais nombre de mesures (%d). Attendues : %d\n", sth.nbMesures, NB_CODES_RCS);
       return -2;
     }
     receptionEnAttente = true; // On lance la réception des codes mesures
     mucNbCodesRecus = 0;
     tousLesCodes[mucNbCodesRecus] = code;
-    Serial.println("---------------------------------Réception début----------------------------------");
+    DBG(DBG_CAPTEURS, "---------------------------------Réception début----------------------------------\n");
   }
   else if (receptionEnAttente) { // Sinon, si la réception de mesures est en cours
     if (mucNbCodesRecus < NB_CODES_RCS) { // Si tous les codes mesures n'ont pas encore été reçus
       STRUCT_RCS_MESURE stm;
       decodeMesure(stm, code);
       if (stm.id != mucCapteurID) {
-        Serial.printf("CRemoteDHT20::handleRCSwitchCode - mauvais ID : %d vs capteurID : %d\n", sth.id, mucCapteurID);
+        DBG(DBG_CAPTEURS, "CRemoteDHT20::handleRCSwitchCode - mauvais ID : %d vs capteurID : %d\n", sth.id, mucCapteurID);
         receptionEnAttente = false; mucNbCodesRecus=0; // On annule la remontée
         return -1;
       }
-      Serial.printf("Mesure détectée N° %d === Type %d === Val 0x%x = %d\n", stm.numero, stm.type, stm.val, stm.val);
+      DBG(DBG_CAPTEURS, "Mesure détectée N° %d === Type %d === Val 0x%x = %d\n", stm.numero, stm.type, stm.val, stm.val);
       mulCodes[mucNbCodesRecus] = code;
       mucNbCodesRecus++;
       tousLesCodes[mucNbCodesRecus] = code;
@@ -319,11 +322,11 @@ int CRemoteDHT20::handleRCSwitchCode(unsigned long code) {
       //Serial.printf("CRemoteDHT20::handleRCSwitchCode - CRC calculé : 0x%x = %d\n", crc_calcule, crc_calcule);
       if (crc_calcule == stf.crc8) {
         //Serial.printf("CRemoteDHT20::handleRCSwitchCode - CRC 0x%x = %d valide.\n", stf.crc8, stf.crc8);
-        Serial.printf("================================================= MESURE VALIDEE =================================================\n");
+        DBG(DBG_CAPTEURS, "================================================= MESURE VALIDEE =================================================\n");
       }
       else {
-        Serial.printf("------------------------------------------------- CRC INVALIDE -------------------------------------------------\n");
-        Serial.printf("CRemoteDHT20::handleRCSwitchCode - Mauvais CRC. CRC calculé : 0x%x = %d CRC reçu : 0x%x = %d\n", crc_calcule, crc_calcule, stf.crc8, stf.crc8);
+        DBG(DBG_CAPTEURS, "------------------------------------------------- CRC INVALIDE -------------------------------------------------\n");
+        DBG(DBG_CAPTEURS, "CRemoteDHT20::handleRCSwitchCode - Mauvais CRC. CRC calculé : 0x%x = %d CRC reçu : 0x%x = %d\n", crc_calcule, crc_calcule, stf.crc8, stf.crc8);
         return -3; // A décommenter ultérieurement
       }
 
@@ -339,7 +342,7 @@ int CRemoteDHT20::handleRCSwitchCode(unsigned long code) {
               remonteTemperatureParMqtt(); // Les CYD distants doivent être informés
             }
             else {
-              Serial.println("Aucun callback défini pour " + nomEquipement);
+              DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
             }
 
           break;
@@ -351,7 +354,7 @@ int CRemoteDHT20::handleRCSwitchCode(unsigned long code) {
               remonteHumiditeParMqtt(); // Les CYD distants doivent être informés
             }
             else {
-              Serial.println("Aucun callback défini pour " + nomEquipement);
+              DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
             }
           break;
           case MESURE_TENSIOIN :

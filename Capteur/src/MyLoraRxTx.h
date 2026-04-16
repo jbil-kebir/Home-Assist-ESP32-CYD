@@ -1,11 +1,18 @@
 #ifndef __MY_LORA_RX_TX_H__
 #define __MY_LORA_RX_TX_H__
 
-#ifdef _LORA_P2P_MODE_
+//#ifdef _LORA_P2P_MODE_
 #include <RadioLib.h>
+#include <functional>
 class CConfig;
 
-
+struct ParsedLoraP2PMessage {
+    String topic;                    // toujours le 1er champ (ex: "home/thermometre/state")
+    std::vector<String> fields;      // TOUS les champs suivants, y compris le device
+                                     // ex: [ "ThNomade", "Temp", "DATE", "TIME", "23.0" ]
+                                     // ou [ "BatNomade", "Tension", "CHARGEE", "DATE", "TIME", "8.5", "FORCE" ]
+    bool   isValid = false;
+};
 
 class CMyLoraRxTx {
 private:
@@ -40,19 +47,24 @@ public:
   CMyLoraRxTx(CConfig& cfg/*, SX1262& radio*/);
   int setup();
   int loop();
+  void sleep(); // Via RadioLib pour deep-sleep;
+  bool isInitialized() const { return mbInitialized; }
   // Méthode pour récupérer le dernier message reçu
   String getLastMessage() const { return msLastReceivedMessage; }
 
+  // Callback MQTT (topic, payload) -> int
+  std::function<int(const char*, const char*)> onMqttPublish;
+  void setMqttPublishCallback(std::function<int(const char*, const char*)> cb) { onMqttPublish = cb; }
+
   //=========================================================================================
-  //bool transmitFlag = false;
-  //int transmissionState = RADIOLIB_ERR_NONE;
-  
+  int parseMessage(ParsedLoraP2PMessage& result, const String& input);
+  int handleIncommingLoraP2PMessage(const String& inMessage);
   void receivePacket();
   int sendPacket(const char* message);
   int validateParameters();
 
 
 };
-#endif // _LORA_P2P_MODE_
+//#endif // _LORA_P2P_MODE_
 
 #endif // __MY_LORA_RX_TX_H__

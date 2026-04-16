@@ -16,10 +16,8 @@ int CZoneTitle::drawTitle(const String& ip) {
 
   mTft.setTextColor(TITRE_MSG_C);
 
-  String title = mConfig->nomEquipement + String(" V") + String(VERSION);// + " - " + String(mConfig.wifiInfo->nomEquipement);
-  /*if (mConfig.mWifi != nullptr) {
-    title += " - " + String(mConfig.mWifi->nomEquipement);
-  }*/
+  String title = mConfig->nomEquipement + String(" V") + String(VERSION);
+  
   if (ip.length() > 0) {
     title += " - " + ip;
   } else {

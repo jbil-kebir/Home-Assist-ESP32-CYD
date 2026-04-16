@@ -33,7 +33,7 @@ class CRemoteTor;
 #define CONFIG_SUB_TOPIC "configuration/"
 #define CONFIG_SUB_TOPIC_MAITRE "configuration/"
 
-#define NOM_EQUIPEMENT "Home Assistant"
+#define NOM_EQUIPEMENT "CYD HA"
 
 class CConfig {
 private:
@@ -82,7 +82,14 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   CRemoteBatterieAA *mRemoteBatCave=nullptr;
 
   CRemoteDHT20 *mRemoteThNomade=nullptr;
+  CRemoteTor *mRemoteTorNomade=nullptr;
   CRemoteBatterieAA *mRemoteBatNomade=nullptr;
+
+  CRemoteDHT20 *mRemoteThRemise=nullptr;
+  CRemoteBatterieAA *mRemoteBatRemise=nullptr;
+
+  CRemoteTor *mRemoteNewNas=nullptr;  // État Home Assistant 1 (ex: NewNas)
+  CRemoteTor *mRemoteBigNas=nullptr;  // État Home Assistant 2 (ex: BigNas)
 
   // === MQTT ===
   //MQTT_DEF  mqqtInfo;
@@ -96,7 +103,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   const char* default_domotique_topic_prefix = "home/";
   String domotique_prefix; // "home/"
 
-  String nomEquipement = "Home Assistant";
+  String nomEquipement = "CYD HA";
 
   const bool default_boiler_state = false;
   const uint8_t default_enable_keep_alive = true;
@@ -125,6 +132,9 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   unsigned long mulDateReveil=0L; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
   unsigned long mulNbSecondesDeSommeil=0L; // Différence entre les deux précédents = durée du dernier sommeil
   
+  #define DEFAULT_WATCHDOG_ALIVE_PERIOD (5*60UL) // 5 minutes
+  unsigned long mulWatchDogAlivePeriod = DEFAULT_WATCHDOG_ALIVE_PERIOD; // Intervalle Watchdog. On envoie ALIVE par MQTT
+
   // MQTT callback pour le deep-sleep
   std::function<int(const char*, const char*)> onMqttPublish;    
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish) {onMqttPublish = cbMqttPublish;}; // Pour publication MQTT
@@ -134,7 +144,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   void setonEquipementCallback(std::function<int(const String& nom, const String& ip)> onEqu); 
 
   void setup(const String pref, std::vector<CIPModule> *ctrl, std::vector<CIPModule> *escl);
-  void loop();
+  int loop();
   void enterDeepSleep();
   void traiteReveil();
   void setWifi(CWifi  *wifiInfo) {mWifi = wifiInfo;}
@@ -142,7 +152,8 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   void loadFromNVS();
   void saveToNVS();
   void handleMqttCommand(const String& payload);
-  void setSleepTimeout(int32_t st);
+  //void setSleepTimeout(int32_t st);
+  void setWatchDogAlivePeriod(int32_t st);
   void print() const;
   int remonteCYDInfoToEcran(const String & message);
   String getHTML();

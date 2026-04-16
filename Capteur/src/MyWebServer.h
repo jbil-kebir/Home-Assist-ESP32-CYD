@@ -15,7 +15,9 @@ class MyWebServer {
 private:
   WebServer server;
   CConfig& config;
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   CMqtt&  mqtt;
+  #endif
   CWifi *mWifi = nullptr;
 
   void handleRoot();
@@ -23,8 +25,12 @@ private:
   void handleNotFound();
 
 public:
+  #ifndef __DESACTIVE_ENVOI_MQTT__
   MyWebServer(CConfig& cfg, CMqtt& mq, CWifi *wifi) : server(80), config(cfg), mqtt(mq), mWifi(wifi) {}
-
+  #else
+  MyWebServer(CConfig& cfg, CWifi *wifi) : server(80), config(cfg), mWifi(wifi) {}
+  #endif
+  
   void setup();
   void loop();
 };

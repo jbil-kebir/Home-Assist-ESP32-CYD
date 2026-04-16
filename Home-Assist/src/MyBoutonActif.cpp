@@ -19,7 +19,7 @@ void CMyBoutonActif::draw(unsigned int color) {
 
 void CMyBoutonActif::draw() { 
     if (mDevice == nullptr) {
-        Serial.printf("void CMyBoutonActif::draw() - %s - mDevice == nullptr\n", msNom.c_str());
+        DBG(DBG_ECRAN, "void CMyBoutonActif::draw() - %s - mDevice == nullptr\n", msNom.c_str());
         return;
     }
     // Test

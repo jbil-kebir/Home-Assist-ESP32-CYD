@@ -15,7 +15,7 @@ int CZoneStatus::drawStatus(const String& msg, bool memorise/*=false*/) {
   mTft.fillRect(muiPosX, muiPosY, muiWidth, muiHight, muiBgColor);
   mTft.setTextColor(TFT_CYAN, TFT_BLACK);
   mTft.drawString(msg.c_str(), muiStatusX, muiStatusY, muiStatusFont);
-  Serial.println(msg);
+  DBGLN(DBG_ECRAN, msg);
 
   return 0;
 
@@ -25,13 +25,13 @@ int CZoneStatus::drawStatus(const String& msg, bool memorise/*=false*/) {
 // Retour
 // -1 : Mesure invalide, on ne fait rien
 //
-int CZoneStatus::drawStatus() { 
+int CZoneStatus::drawStatus() {
 
   //Serial.printf("void CEcran::updateStatus()) - msg : %s - drawInterface : %d\n", msg.c_str(), drawInterface);
   mTft.fillRect(muiPosX, muiPosY, muiWidth, muiHight, muiBgColor);
   mTft.setTextColor(TFT_CYAN, TFT_BLACK);
   mTft.drawString(mstLastStatusMessage.c_str(), muiStatusX, muiStatusY, muiStatusFont);
-  Serial.println(mstLastStatusMessage);
+  DBGLN(DBG_ECRAN, mstLastStatusMessage);
 
   return 0;
 

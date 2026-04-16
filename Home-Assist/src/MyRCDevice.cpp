@@ -58,18 +58,18 @@ void CRCDevice::saveToNVS() {
 
 void CRCDevice::print() const {
 
-  Serial.printf("     Nom            : %s\n", nomEquipement);
-  Serial.printf("     Actif          : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Etat           : %s\n", etatStr);
-  Serial.printf("     ButtonName     : %s\n", buttonName.c_str());
-  Serial.printf("     Code RCSwitch  : 0x%x\n", code);
-  Serial.printf("     Protocole      : %d\n", protocol);
-  Serial.printf("     PulseLength    : %d\n", pulseLength);
-  Serial.printf("     Repeat         : %d\n", repeat);
-  Serial.printf("     Frequency      : %f\n", frequency);    
-  Serial.printf("     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
-  Serial.printf("     MQTTCmd        : %s\n", mqttSubTopicCommand.c_str());
-  Serial.printf("     MQTTState      : %s\n", mqttSubTopicState.c_str());
+  DBG(DBG_ACTIONNEURS, "     Nom            : %s\n", nomEquipement.c_str());
+  DBG(DBG_ACTIONNEURS, "     Actif          : %s\n", active ? "OUI" : "NON");
+  DBG(DBG_ACTIONNEURS, "     Etat           : %s\n", etatStr);
+  DBG(DBG_ACTIONNEURS, "     ButtonName     : %s\n", buttonName.c_str());
+  DBG(DBG_ACTIONNEURS, "     Code RCSwitch  : 0x%x\n", code);
+  DBG(DBG_ACTIONNEURS, "     Protocole      : %d\n", protocol);
+  DBG(DBG_ACTIONNEURS, "     PulseLength    : %d\n", pulseLength);
+  DBG(DBG_ACTIONNEURS, "     Repeat         : %d\n", repeat);
+  DBG(DBG_ACTIONNEURS, "     Frequency      : %f\n", frequency);
+  DBG(DBG_ACTIONNEURS, "     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
+  DBG(DBG_ACTIONNEURS, "     MQTTCmd        : %s\n", mqttSubTopicCommand.c_str());
+  DBG(DBG_ACTIONNEURS, "     MQTTState      : %s\n", mqttSubTopicState.c_str());
 }
 
 void CRCDevice::saveState(bool state) {
@@ -101,7 +101,7 @@ int CRCDevice::envoiOnOff() {
     String s = "L'equipement " + nomEquipement + " n'est pas actif";
     if (mEcran != nullptr)
       mEcran->updateStatus(s);
-    Serial.println(s);
+    DBGLN(DBG_ACTIONNEURS, s);
     return -1;
   }
   if (mEcran != nullptr)
@@ -129,7 +129,7 @@ void CRCDevice::handleMqttCommand(const String& payload) {
     if (this->active) {
       this->toggleDevice();
       this->etat = !this->etat;
-      Serial.printf("CRCDevice::handleMqttCommand() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
+      DBG(DBG_ACTIONNEURS, "CRCDevice::handleMqttCommand() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
       onMqttPublish(this->mqttSubTopicCommand.c_str(), this->etat ? "ONR" : "OFFR");
       this->saveState(this->etat);
       if (mEcran != nullptr) mEcran->updateAllStates();
@@ -137,7 +137,7 @@ void CRCDevice::handleMqttCommand(const String& payload) {
     else {
       String s = "L'equipement " + String(this->nomEquipement) + " n'est pas actif";
       if (mEcran != nullptr) mEcran->updateStatus(s);
-      Serial.println(s);
+      DBGLN(DBG_ACTIONNEURS, s);
     }
  }
  else if (cmd == "ENABLE") {
@@ -145,27 +145,27 @@ void CRCDevice::handleMqttCommand(const String& payload) {
     onMqttPublish(this->mqttSubTopicCommand.c_str(), "ENABLER");
     String s = nomEquipement + " : activé";
     if (mEcran != nullptr) mEcran->updateStatus(s, true);
-    Serial.println(s);
+    DBGLN(DBG_ACTIONNEURS, s);
   }
  else if (cmd == "DISABLE") {
     setActive(false);
     onMqttPublish(this->mqttSubTopicCommand.c_str(), "DISABLER");
     String s = nomEquipement + " : désactivé";
     if (mEcran != nullptr) mEcran->updateStatus(s, true);
-    Serial.println(s);
+    DBGLN(DBG_ACTIONNEURS, s);
   }
   else {
-    Serial.printf("CRCDevice::handleMqttCommand() message non traité ***%s*** : \n", cmd.c_str());
+    DBG(DBG_ACTIONNEURS, "CRCDevice::handleMqttCommand() message non traité ***%s*** : \n", cmd.c_str());
   }
 
 }
 // Envoie l'état actif/inactif ainsi que ON/OFF
 int CRCDevice::remonteStatusParMqtt() {
   int ret = 0;
-  Serial.printf("CRCDevice::remonteStatusParMqtt() - Envoi %s sur %s\n", this->active ? "ENABLER" : "DISABLER", this->mqttSubTopicCommand.c_str());
+  DBG(DBG_ACTIONNEURS, "CRCDevice::remonteStatusParMqtt() - Envoi %s sur %s\n", this->active ? "ENABLER" : "DISABLER", this->mqttSubTopicCommand.c_str());
   onMqttPublish(this->mqttSubTopicCommand.c_str(), this->active ? "ENABLER" : "DISABLER");
   delay(200);
-  Serial.printf("CRCDevice::remonteStatusParMqtt() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
+  DBG(DBG_ACTIONNEURS, "CRCDevice::remonteStatusParMqtt() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
   onMqttPublish(this->mqttSubTopicCommand.c_str(), this->etat ? "ONR" : "OFFR");
   delay(200);
   return ret;

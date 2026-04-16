@@ -19,10 +19,10 @@
 
   void CRadioTX::transmitPulses(const uint16_t* pulses, int nbPulses, const char* action) {
     #ifdef DISABLE_EFFECTEUR
-    Serial.println("void CRadioTX::transmitPulses() - Effecteur désactivé.");
+    DBG(DBG_ACTIONNEURS, "void CRadioTX::transmitPulses() - Effecteur désactivé.\n");
     return;
     #endif
-    Serial.printf("\n=== EMISSION %s : %d pulses ===\n", action, nbPulses);
+    DBG(DBG_ACTIONNEURS, "\n=== EMISSION %s : %d pulses ===\n", action, nbPulses);
     digitalWrite(LED_RED, LED_ON);
 
     ELECHOUSE_cc1101.setMHZ(FREQUENCE);
@@ -49,6 +49,6 @@
     ELECHOUSE_cc1101.SetRx();
 
     digitalWrite(LED_RED, LED_OFF);
-    Serial.println("Emission terminee\n");
+    DBG(DBG_ACTIONNEURS, "Emission terminee\n");
   }
 #endif // __LOCAL_MODE__

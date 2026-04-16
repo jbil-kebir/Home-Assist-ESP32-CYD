@@ -55,7 +55,6 @@ private:
   CMyDateTime *mDateTime=nullptr;
   unsigned char mucCapteurID=0;
   unsigned int mDelai_Inter_Envoi = 350; // A mettre dans NVS et page Web
-  
 
 public:
     CTor(CMyDateTime& dateTime,
@@ -70,6 +69,8 @@ public:
   String mqttSubTopic = "tor";
   bool active = false;
   bool mbMesureRemontee = false; // Permet d'empêcher le deep sleep tant qu'une mesure n'a pas été remontée
+  bool mbAckNeeded = false; // Indique si un ACK est nécessaire (dépend du capteur). A mettre dans NVS et page Web
+  bool mbAckReceived = false; // Pour le suivi des ACK en Lora P2P
   String mqttSubTopicCommand;
   String mqttSubTopicState;
   #ifdef _RCSWITCH_MODE_
@@ -87,6 +88,7 @@ public:
   void loadFromWebServer (WebServer& server);
   void saveToNVS();
   void setActive(bool state);
+  void setAck(bool state);
   void setpinMode(unsigned char mode = INPUT_PULLUP);
   void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}
   String getHTML();
