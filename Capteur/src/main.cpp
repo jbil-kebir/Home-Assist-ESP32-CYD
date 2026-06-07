@@ -33,7 +33,9 @@
 #include "DetecteurRGB_TCS34725.h"
 #endif
 
+#ifdef CAPTEUR_BATTERIE
 #include "MyBatterieAA.h"
+#endif
 #include "MyDateTime.h"
 
 
@@ -68,7 +70,9 @@ MyDS18B20 ds18b20(DS18B20_PIN, mDateTime);
 #ifdef CAPTEUR_DHT20
 DHT20Sensor dht20(mDateTime);  
 #endif
-CBatterieAA mBatterie(BATTERIE_PIN, mDateTime);  
+#ifdef CAPTEUR_BATTERIE
+CBatterieAA mBatterie(BATTERIE_PIN, mDateTime);
+#endif
 #ifdef FLOTTEUR_VERTICAL
 CTor mFlotteurVertical(mDateTime);  
 #endif
@@ -161,6 +165,7 @@ void setup() {
   #endif
   #endif // CAPTEUR_DS18B20
   //================================================== Batterie ==================================================
+  #ifdef CAPTEUR_BATTERIE
   mBatterie.setup("bat_");
   config.mBatterieAA = &mBatterie;
 
@@ -180,6 +185,7 @@ void setup() {
       return mLoraRxTx.sendPacket(payload);
   });
   #endif
+  #endif // CAPTEUR_BATTERIE
   //================================================== DHT20 ==================================================
   #ifdef CAPTEUR_DHT20
   Serial.println("Initialisation DHT20...");
@@ -333,7 +339,9 @@ void setup() {
   #ifdef CAPTEUR_DS18B20
   int retTemp = ds18b20.readAndPublish(true); // Force une première remontée
   #endif
+  #ifdef CAPTEUR_BATTERIE
   int retBatt = mBatterie.readAndPublish(true); // Force une première remontée
+  #endif
   #ifdef CAPTEUR_DHT20
   int retTempHum = dht20.readAndPublish(true, true); // Force une première remontée
   #endif
@@ -444,6 +452,7 @@ void loop() {
 
 
   
+  #ifdef CAPTEUR_BATTERIE
   int retTension = mBatterie.loop();
   static bool BatInactifDejaAffiche = false;
   String sDate = "DATE";
@@ -456,15 +465,15 @@ void loop() {
   if (retTension == -1) {
     Serial.println("mBatterie.readTension() - échec");
     BatInactifDejaAffiche = false;
-  } 
+  }
   else if (retTension == 0) {
     Serial.println(String(mBatterie.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V inchangé");
     BatInactifDejaAffiche = false;
-  } 
+  }
   else if (retTension == 1 && mBatterie.active) { // Température changée
     Serial.println(String(mBatterie.nomEquipement) + " - " + sDate + " - " + sHeure  + " - " + "Tension " + String(mBatterie.getLastTension(), 1) + " V changée");
     BatInactifDejaAffiche = false;
-  } 
+  }
   else if (retTension == -9) { // Inactif
     if (!BatInactifDejaAffiche) {
       String s = "[Main] Tension " + mBatterie.nomEquipement + " inactif";
@@ -472,6 +481,7 @@ void loop() {
       BatInactifDejaAffiche = true;
     }
   }
+  #endif // CAPTEUR_BATTERIE
 
   //------------------------------------------------------------------------------------
   // DHT20
@@ -598,8 +608,15 @@ void print() {
   mFlotteurVertical.print();
   #endif
 
+  #ifdef CAPTEUR_RGB_TCS34725
+  Serial.println("[CAPTEUR RGB]");
+  mCapteurRGB.print();
+  #endif
+
+  #ifdef CAPTEUR_BATTERIE
   Serial.println("[Batterie AA]");
   mBatterie.print();
+  #endif
 
   Serial.println("============================================\n");
   Serial.flush();

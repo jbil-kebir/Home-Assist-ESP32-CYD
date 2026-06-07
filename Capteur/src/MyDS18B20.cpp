@@ -62,7 +62,9 @@ bool MyDS18B20::publieSurMqtt(bool force/*=false*/) {
     if (onMqttPublish == nullptr) return false;
 
     float temp = getLastTemperature(); //round(10*ds18b20.getLastTemperature())/10.0; // On arrondit à une décimale
-    String sVal = nomEquipement + " Temp " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp, 1);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sVal = nomEquipement + " Temp " + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sVal += " FORCE";
     Serial.println("MyDS18B20::publieSurMqtt() : " + sVal);
     bool ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
@@ -77,9 +79,9 @@ bool MyDS18B20::publieParLoraP2P(bool force/*=false*/) {
     if (onLoraP2PPublish == nullptr) return false;
 
     float temp = getLastTemperature(); //round(10*ds18b20.getLastTemperature())/10.0; // On arrondit à une décimale
-//    String sVal = mqttSubTopicState + " " +  nomEquipement + " Temp " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp, 1);
-// Dans le cas de communication par RF on n'a pas d'horodatage. On met les mots DATE et TIME. Le relais Lora se chargera de les remplacer par la date et l'heure
-    String sVal = mqttSubTopicState + " " +  nomEquipement + " Temp " + "DATE TIME" + " " + String(temp, 1);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sVal = mqttSubTopicState + " " +  nomEquipement + " Temp " + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sVal += " FORCE";
     Serial.println("MyDS18B20::publieParLoraP2P() : " + sVal);
     bool ret = (onLoraP2PPublish(sVal.c_str()) == 0);
@@ -163,7 +165,11 @@ void MyDS18B20::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
 
   nomEquipement = prefs.getString((mPrefixNVS+"nom").c_str(), "Thermomètre");
-  mucPin = prefs.getUShort((mPrefixNVS+"pin").c_str(), BATTERIE_PIN);
+#ifdef CAPTEUR_DS18B20
+  mucPin = prefs.getUShort((mPrefixNVS+"pin").c_str(), DS18B20_PIN);
+#else
+  mucPin = prefs.getUShort((mPrefixNVS+"pin").c_str(), 0);
+#endif
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), "thermometre/");
   active = prefs.getBool((mPrefixNVS+"active").c_str(), true);
   mulIntervalleMesure = prefs.getLong((mPrefixNVS+"inter").c_str(), mulDefaultIntervalleMesure);
@@ -211,7 +217,7 @@ void MyDS18B20::loadFromWebServer (WebServer& server) {
 
 void MyDS18B20::print() const {
 
-  Serial.printf("     Nom                : %s\n", nomEquipement);
+  Serial.printf("     Nom                : %s\n", nomEquipement.c_str());
   Serial.printf("     GPIO               : %d\n", mucPin);
   Serial.printf("     Actif              : %s\n", active ? "OUI" : "NON");
   Serial.printf("     Intervalle mesures : %ld min\n", mulIntervalleMesure);

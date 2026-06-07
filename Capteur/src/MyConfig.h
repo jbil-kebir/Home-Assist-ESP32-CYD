@@ -19,7 +19,9 @@
 #include <Adafruit_TCS34725.h>
 #include "DetecteurRGB_TCS34725.h"
 #endif
+#ifdef CAPTEUR_BATTERIE
 #include "MyBatterieAA.h"
+#endif
 #include "MyWifi.h"
 #include "MyLoraRxTx.h"
 #include "MyDateTime.h"
@@ -54,7 +56,9 @@ public:
   #ifdef CAPTEUR_RGB_TCS34725
   CDetecteurRGB_TCS34725 *mCapteurRGB=nullptr;
   #endif
- CBatterieAA *mBatterieAA=nullptr;
+  #ifdef CAPTEUR_BATTERIE
+  CBatterieAA *mBatterieAA=nullptr;
+  #endif
   String nomEquipement = "ThCave";
   // === MQTT ===
   //MQTT_DEF  mqqtInfo;

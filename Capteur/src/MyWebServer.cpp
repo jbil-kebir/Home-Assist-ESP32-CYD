@@ -75,19 +75,21 @@ void MyWebServer::handleRoot() {
 
   // === Thermomètre local ===
   #ifdef CAPTEUR_DS18B20
-  html += config.ds18b20->getHTML();
+  if (config.ds18b20 != nullptr) html += config.ds18b20->getHTML();
   #endif
   #ifdef CAPTEUR_DHT20
-  html += config.dht20->getHTML();
+  if (config.dht20 != nullptr) html += config.dht20->getHTML();
   #endif
   #ifdef FLOTTEUR_VERTICAL
-  html += config.mFlotteurVertical->getHTML();
+  if (config.mFlotteurVertical != nullptr) html += config.mFlotteurVertical->getHTML();
   #endif
   #ifdef CAPTEUR_RGB_TCS34725
-  html += config.mCapteurRGB->getHTML();
+  if (config.mCapteurRGB != nullptr) html += config.mCapteurRGB->getHTML();
   #endif
   // === Batterie ===
-  html += config.mBatterieAA->getHTML();
+  #ifdef CAPTEUR_BATTERIE
+  if (config.mBatterieAA != nullptr) html += config.mBatterieAA->getHTML();
+  #endif
 
   html +=  "</div>";
 
@@ -118,18 +120,20 @@ void MyWebServer::handleSave() {
   #endif
 
   #ifdef CAPTEUR_DS18B20
-  config.ds18b20->loadFromWebServer(server);
+  if (config.ds18b20 != nullptr) config.ds18b20->loadFromWebServer(server);
   #endif
   #ifdef CAPTEUR_DHT20
-  config.dht20->loadFromWebServer(server);
+  if (config.dht20 != nullptr) config.dht20->loadFromWebServer(server);
   #endif
   #ifdef FLOTTEUR_VERTICAL
-  config.mFlotteurVertical->loadFromWebServer(server);
+  if (config.mFlotteurVertical != nullptr) config.mFlotteurVertical->loadFromWebServer(server);
   #endif
   #ifdef CAPTEUR_RGB_TCS34725
-  config.mCapteurRGB->loadFromWebServer(server);
+  if (config.mCapteurRGB != nullptr) config.mCapteurRGB->loadFromWebServer(server);
   #endif
-  config.mBatterieAA->loadFromWebServer(server);
+  #ifdef CAPTEUR_BATTERIE
+  if (config.mBatterieAA != nullptr) config.mBatterieAA->loadFromWebServer(server);
+  #endif
 
   // === SAUVEGARDE DES PARAMETRES GENERAUX ===
   config.saveToNVS();
@@ -144,18 +148,20 @@ void MyWebServer::handleSave() {
   
   // === SAUVEGARDE DU THERMOMETRE LOCAL ===
   #ifdef CAPTEUR_DS18B20
-  config.ds18b20->saveToNVS();
+  if (config.ds18b20 != nullptr) config.ds18b20->saveToNVS();
   #endif
   #ifdef CAPTEUR_DHT20
-  config.dht20->saveToNVS();
+  if (config.dht20 != nullptr) config.dht20->saveToNVS();
   #endif
   #ifdef FLOTTEUR_VERTICAL
-  config.mFlotteurVertical->saveToNVS();
+  if (config.mFlotteurVertical != nullptr) config.mFlotteurVertical->saveToNVS();
   #endif
   #ifdef CAPTEUR_RGB_TCS34725
-  config.mCapteurRGB->saveToNVS();
+  if (config.mCapteurRGB != nullptr) config.mCapteurRGB->saveToNVS();
   #endif
-  config.mBatterieAA->saveToNVS();
+  #ifdef CAPTEUR_BATTERIE
+  if (config.mBatterieAA != nullptr) config.mBatterieAA->saveToNVS();
+  #endif
 
   // Page de confirmation
   String html = F("<!DOCTYPE html>"

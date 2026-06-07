@@ -42,6 +42,8 @@ private:
   uint8_t mucSyncWord = LORA_SYNC_WORD;
   float mfOutputPower = LORA_OUTPUT_POWER;
   uint16_t muiPreambleLength = LORA_PREAMBLE_LENGTH;
+  String mPendingMessage;
+  bool mbPendingMessage = false;
 
 public:
   CMyLoraRxTx(CConfig& cfg/*, SX1262& radio*/);
@@ -49,7 +51,6 @@ public:
   int loop();
   void sleep(); // Via RadioLib pour deep-sleep;
   bool isInitialized() const { return mbInitialized; }
-  // Méthode pour récupérer le dernier message reçu
   String getLastMessage() const { return msLastReceivedMessage; }
 
   // Callback MQTT (topic, payload) -> int

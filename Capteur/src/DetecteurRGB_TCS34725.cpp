@@ -96,7 +96,7 @@ int CDetecteurRGB_TCS34725::loop() {
       }
     }
     else {
-      mbForce = false; lastForcageRemontee = millis(); 
+      mbForce = false; lastForcageRemontee = millis();
       bMesureNormale = false; lastRead = millis();
       bEnvoiEnCours = false;
     }
@@ -148,10 +148,10 @@ int CDetecteurRGB_TCS34725::readAndPublish(bool force/*=false*/, bool mesurer/*=
       //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
       #endif
       #ifdef _LORA_P2P_MODE_
-      mbMesureRemontee = publieParLoraP2POnOff(force); 
+      mbMesureRemontee = publieParLoraP2POnOff(force);
       if (remonterMesuresBrutes)
-        mbMesureRemontee = publieParLoraP2PBrut(force); 
-      //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
+        mbMesureRemontee = publieParLoraP2PBrut(force);
+      //if(publieParCC1101(force)) mucNbMesuresRemontees++;
       #endif
       #ifdef _WIFI_MODE_
       #ifndef __DESACTIVE_ENVOI_MQTT__
@@ -224,7 +224,13 @@ int CDetecteurRGB_TCS34725::readAndPublishTEST(float t, float h) {
   Serial.printf("Footer : 0x%lx\n", codes[5]);
   Serial.flush();
 
-  mRCSwitch->envoieCode(codes, 6);
+  if(mRCSwitch != nullptr ) {
+    mRCSwitch->envoieCode(codes, 6);
+  }
+  else {
+    Serial.printf("CDetecteurRGB_TCS34725::readAndPublishTEST() - mRCSwitch non initialisé\n");
+  }
+
 
 
   /*unsigned long codes[6] = {  0x014FFFUL, // ID 1, 4 codes de mesure, 0xFFF
@@ -274,13 +280,15 @@ int CDetecteurRGB_TCS34725::readAndPublishTEST(float t, float h) {
 bool CDetecteurRGB_TCS34725::publieSurMqttBrut(bool force/*=false*/) {
     if (onMqttPublish == nullptr) return false;
     bool ret = false;
-//    unsigned long rgb = lastRgb; 
-    //unsigned int lux = muiLastLux; 
-    //unsigned int luxBrut = muiLastBrutLux; 
-    String sValTemp = nomEquipement + " Coul " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(muiLastR) + " " + String(muiLastG) + " " + String(muiLastB) + " " + String(muiLastLux) +  + " " + String(muiLastBrutLux);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+//    unsigned long rgb = lastRgb;
+    //unsigned int lux = muiLastLux;
+    //unsigned int luxBrut = muiLastBrutLux;
+    String sValTemp = nomEquipement + " Coul " + sDate + " " + sTime + " " + String(muiLastR) + " " + String(muiLastG) + " " + String(muiLastB) + " " + String(muiLastLux) +  + " " + String(muiLastBrutLux);
     if (force) sValTemp += " FORCE";
     //lux = 0xFFFFFF00 | lux; // Pour permettre le contrôle à l'arrivée
-    String sValLux = nomEquipement + " Lux " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(muiLastLux);
+    String sValLux = nomEquipement + " Lux " + sDate + " " + sTime + " " + String(muiLastLux);
     //if (force) sValLux += " FORCE";
     Serial.println("CDetecteurRGB_TCS34725::publieSurMqttBrut() Coul : " + sValTemp);
     //Serial.println("CDetecteurRGB_TCS34725::publieSurMqttBrut() Lux  : " + sValLux);
@@ -315,13 +323,15 @@ bool CDetecteurRGB_TCS34725::publieSurMqttBrut(bool force/*=false*/) {
 bool CDetecteurRGB_TCS34725::publieParLoraP2PBrut(bool force/*=false*/) {
     if (onLoraP2PPublish == nullptr) return false;
     bool ret = false;
-//    unsigned long rgb = lastRgb; 
-    //unsigned long lux = lastLux; 
-    //unsigned long luxBrut = lastBrutLux; 
-    String sValTemp = nomEquipement + " Coul " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(muiLastR) + " " + String(muiLastG) + " " + String(muiLastB) + " " + String(muiLastLux) +  + " " + String(muiLastBrutLux);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+//    unsigned long rgb = lastRgb;
+    //unsigned long lux = lastLux;
+    //unsigned long luxBrut = lastBrutLux;
+    String sValTemp = mqttSubTopicState + " " + nomEquipement + " Coul " + sDate + " " + sTime + " " + String(muiLastR) + " " + String(muiLastG) + " " + String(muiLastB) + " " + String(muiLastLux) + " " + String(muiLastBrutLux);
     if (force) sValTemp += " FORCE";
     //lux = 0xFFFFFF00 | lux; // Pour permettre le contrôle à l'arrivée
-    String sValLux = nomEquipement + " Lux " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(muiLastLux);
+    String sValLux = mqttSubTopicState + " " + nomEquipement + " Lux " + sDate + " " + sTime + " " + String(muiLastLux);
     //if (force) sValLux += " FORCE";
     Serial.println("CDetecteurRGB_TCS34725::publieParLoraP2PBrut() Coul : " + sValTemp);
     //Serial.println("CDetecteurRGB_TCS34725::publieParLoraP2PBrut() Lux  : " + sValLux);
@@ -354,7 +364,9 @@ bool CDetecteurRGB_TCS34725::publieParLoraP2PBrut(bool force/*=false*/) {
 bool CDetecteurRGB_TCS34725::publieSurMqttOnOff(bool force/*=false*/) {
     if (onMqttPublish == nullptr) return false;
     bool ret = false;
-    String sValTemp = nomEquipement + " Del " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(mbLastEtatOnOff);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sValTemp = nomEquipement + " Del " + sDate + " " + sTime + " " + String(mbLastEtatOnOff);
     if (force) sValTemp += " FORCE";
     Serial.println("CDetecteurRGB_TCS34725::publieSurMqttOnOff() Del : " + sValTemp);
     if (onMqttPublish != nullptr) {
@@ -389,9 +401,11 @@ bool CDetecteurRGB_TCS34725::publieSurMqttOnOff(bool force/*=false*/) {
 bool CDetecteurRGB_TCS34725::publieParLoraP2POnOff(bool force/*=false*/) {
     if (onLoraP2PPublish == nullptr) return false;
     bool ret = false;
-    String sValTemp = nomEquipement + " Del " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(mbLastEtatOnOff);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sValTemp = mqttSubTopicState + " " + nomEquipement + " Del " + sDate + " " + sTime + " " + String(mbLastEtatOnOff);
     if (force) sValTemp += " FORCE";
-    Serial.println("CDetecteurRGB_TCS34725::publieParLoraP2POnOff() Coul : " + sValTemp);
+    Serial.println("CDetecteurRGB_TCS34725::publieParLoraP2POnOff() Del : " + sValTemp);
     if (onLoraP2PPublish != nullptr) {
       ret = (onLoraP2PPublish(sValTemp.c_str()) == 0);
     }

@@ -39,11 +39,12 @@
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
-#define CAPTEUR_DHT20 // Fonctionne en I2C
+//#define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
-#define FLOTTEUR_VERTICAL
-//#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
-//#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
+//#define FLOTTEUR_VERTICAL
+#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
+#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
+#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
@@ -96,10 +97,14 @@
   #ifdef CAPTEUR_DS18B20
     #define DS18B20_PIN 2 // Pin 111
     // Etat batterie
-    #define BATTERIE_PIN    3 // Pin 12
+    #ifdef CAPTEUR_BATTERIE
+      #define BATTERIE_PIN    3 // Pin 12
+    #endif
   #else
     // Etat batterie
-    #define BATTERIE_PIN    2 // Pin 111
+    #ifdef CAPTEUR_BATTERIE
+      #define BATTERIE_PIN    2 // Pin 111
+    #endif
   #endif // CAPTEUR_DS18B20
 
   #ifdef FLOTTEUR_VERTICAL
@@ -147,14 +152,25 @@
   #ifdef CAPTEUR_DS18B20
     #define DS18B20_PIN 2 // Pin 2
     // Etat batterie
-    #define BATTERIE_PIN    3 // Pin 3
+    #ifdef CAPTEUR_BATTERIE
+      #define BATTERIE_PIN    3 // Pin 3
+    #endif
   #else
     // Etat batterie
-    #define BATTERIE_PIN    2 // Pin 2
+    #ifdef CAPTEUR_BATTERIE
+      #define BATTERIE_PIN    2 // Pin 2
+    #endif
   #endif // CAPTEUR_DS18B20
 
   #ifdef FLOTTEUR_VERTICAL
     #define DEFAULT_TOR_PIN 1 // Pin 1
+  #endif
+
+  #ifdef CAPTEUR_RGB_TCS34725
+    #define CAPTEUR_RGB_TCS34725_INTERRUPT 43 // Optionnel
+    #ifdef LED_CAPTEUR_RGB
+      #define LED_CAPTEUR_RGB_PIN 44
+    #endif
   #endif
 
 

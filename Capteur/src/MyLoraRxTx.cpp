@@ -209,6 +209,7 @@ if (!msg.isValid || nbChamps < 0) {
 // Retour :
 // > 0  = nombre total de champs extraits (topic + fields)  
 // 0 = message non parsé (ex: message vide ou ne respectant pas le format de base)
+// -1 = Pb d'initialisation d'équipement 
 //
 int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
   Serial.println("int CMyLoraRxTx::handleIncommingLoraP2PMessage() - Reçu : " + inMessage);
@@ -221,6 +222,10 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
     return nb;
   }
 
+  if (mConfig == nullptr) {
+    Serial.println("handleIncommingLoraP2PMessage() - mConfig non initialisé");
+    return -1;
+  }
   // printParsed(msg, nb);
 
   String topic = msg.topic; // topic = 1er champ
@@ -234,15 +239,31 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
   String payloadUpper = payload; payloadUpper.toUpperCase();  
 
   #ifdef CAPTEUR_DS18B20
+  if (mConfig->ds18b20 == nullptr) {
+    Serial.println("handleIncommingLoraP2PMessage() - ds18b20 non initialisé");
+    return -1;
+  }
   String sDs18B20Equipement = mConfig->ds18b20->nomEquipement; sDs18B20Equipement.toUpperCase();
   #endif
   #ifdef CAPTEUR_DHT20  
+  if (mConfig->dht20 == nullptr) {
+    Serial.println("handleIncommingLoraP2PMessage() - dht20 non initialisé");
+    return -1;
+  }
   String sDht20Equipement = mConfig->dht20->nomEquipement; sDht20Equipement.toUpperCase();
   #endif
   #ifdef CAPTEUR_RGB_TCS34725
+  if (mConfig->mCapteurRGB == nullptr) {
+    Serial.println("handleIncommingLoraP2PMessage() - mCapteurRGB non initialisé");
+    return -1;
+  }
   String sRgbEquipement = mConfig->mCapteurRGB->nomEquipement; sRgbEquipement.toUpperCase();
   #endif
   #ifdef FLOTTEUR_VERTICAL
+  if (mConfig->mFlotteurVertical == nullptr) {
+    Serial.println("handleIncommingLoraP2PMessage() - mFlotteurVertical non initialisé");
+    return -1;
+  }
   String sFlotteurEquipement = mConfig->mFlotteurVertical->nomEquipement; sFlotteurEquipement.toUpperCase();
   #endif
 
@@ -252,7 +273,9 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
     mConfig->handleMqttCommand(payload);
     if (payloadUpper == "STATUS") {
       String statusMsg = "=== ÉTAT "+ String(mConfig->nomEquipement) +" ===\n";
-      statusMsg += String(mConfig->mDateTime->getDate()) + " " + String(mConfig->mDateTime->getTime()) + "\n";
+      String sDate = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getDate() : "DATE";
+      String sTime = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getTime() : "TIME";
+      statusMsg += sDate + " " + sTime + "\n";
       if (WiFi.status() == WL_CONNECTED) { // On peut être en Lora et avoir une adresse IP (voir commutateur _WIFI_MODE_ dans global.h)
         statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       }
@@ -324,8 +347,16 @@ int CMyLoraRxTx::loop() {
     if (currentMode == MODE_TX) {
       // C'était une émission
       radio.finishTransmit();
-      Serial.println(F("[LoRa] Envoi terminé, retour en écoute."));
-      startRx();
+      Serial.println(F("[LoRa] Envoi terminé."));
+      if (mbPendingMessage) {
+        mbPendingMessage = false;
+        Serial.printf("[SX1262] Envoi message en attente <%s> ... \n", mPendingMessage.c_str());
+        currentMode = MODE_TX;
+        operationDone = false;
+        radio.startTransmit(mPendingMessage.c_str());
+      } else {
+        startRx();
+      }
   
     } else {
       // C'était une réception
@@ -416,13 +447,21 @@ int CMyLoraRxTx::sendPacket(const char* message) {
   String sToSend = START_STOP + String(message);
   if (WiFi.status() == WL_CONNECTED) { // On peut être en Lora et avoir une adresse IP (voir commutateur _WIFI_MODE_ dans global.h)
     sToSend += String(" ") + WiFi.localIP().toString();
-  } 
+  }
   sToSend += START_STOP; // pour marquer la fin du message (utile pour le parsing côté réception)
+
+  if (currentMode == MODE_TX) {
+    // TX en cours : on mémorise le message pour l'envoyer après
+    mPendingMessage = sToSend;
+    mbPendingMessage = true;
+    Serial.printf("[SX1262] TX en cours, message mis en attente : <%s>\n", sToSend.c_str());
+    return 0;
+  }
+
   Serial.printf("[SX1262] Sending packet <%s> ... \n", sToSend.c_str());
   currentMode = MODE_TX;
   operationDone = false;   // efface l'interruption parasite de la transition d'état
-  /*transmissionState = */ret = radio.startTransmit(sToSend.c_str());
-  //transmitFlag = true;
+  ret = radio.startTransmit(sToSend.c_str());
   if (ret == RADIOLIB_ERR_NONE) ret = 0;
   return ret;
 }

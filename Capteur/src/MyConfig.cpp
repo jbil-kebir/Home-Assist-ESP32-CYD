@@ -15,6 +15,7 @@
 // Par conséquent, cette fonction est appelée plus tard que le setup, 
 // lorsque le wifi et le mqtt 
 //
+/*
 void CConfig::traiteReveil() {
  String sMqttMsg;
  // Si réveil après deep sleep
@@ -22,24 +23,56 @@ void CConfig::traiteReveil() {
   mbWakeFromDeepSleep = false;
   mulDateReveil = mDateTime->getAbsoluteSecondes();
   mulNbSecondesDeSommeil = mulDateReveil - mulDateMiseEnSommeil;
-  sMqttMsg = nomEquipement + " REVEIL DEEPSLEEP " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(mulNbSecondesDeSommeil); 
+  sMqttMsg = nomEquipement + " REVEIL DEEPSLEEP " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(mulNbSecondesDeSommeil);
   saveToNVS();
   Serial.println(sMqttMsg+String(" seconde. Réveil avec Deep Sleep préalable ")); Serial.flush();
  }
  else {
-  sMqttMsg = nomEquipement + " REVEIL OFF " + mDateTime->getDate() + " " + mDateTime->getTime(); 
+  sMqttMsg = nomEquipement + " REVEIL OFF " + mDateTime->getDate() + " " + mDateTime->getTime();
   Serial.println(sMqttMsg+String(" Réveil sans Deep Sleep préalable ")); Serial.flush();
  }
 
   #ifdef CAPTEUR_DS18B20
   if (onMqttPublish != nullptr)
     int ret = onMqttPublish(ds18b20->mqttSubTopicState.c_str(), sMqttMsg.c_str());
-  #endif  
+  #endif
   #ifdef CAPTEUR_DHT20
   if (onMqttPublish != nullptr)
     int retdht20 = onMqttPublish(dht20->mqttSubTopicState.c_str(), sMqttMsg.c_str());
-  #endif  
-  
+  #endif
+
+}
+*/
+void CConfig::traiteReveil() {
+ String sMqttMsg;
+ String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+ String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+ // Si réveil après deep sleep
+ if (mbWakeFromDeepSleep) {
+  mbWakeFromDeepSleep = false;
+  if (mDateTime != nullptr) {
+   mulDateReveil = mDateTime->getAbsoluteSecondes();
+   mulNbSecondesDeSommeil = mulDateReveil - mulDateMiseEnSommeil;
+  }
+  String sDuree = (mDateTime != nullptr) ? String(mulNbSecondesDeSommeil) : "DUREE INCONNUE";
+  sMqttMsg = nomEquipement + " REVEIL DEEPSLEEP " + sDate + " " + sTime + " " + sDuree;
+  saveToNVS();
+  Serial.println(sMqttMsg+String(" seconde. Réveil avec Deep Sleep préalable ")); Serial.flush();
+ }
+ else {
+  sMqttMsg = nomEquipement + " REVEIL OFF " + sDate + " " + sTime;
+  Serial.println(sMqttMsg+String(" Réveil sans Deep Sleep préalable ")); Serial.flush();
+ }
+
+  #ifdef CAPTEUR_DS18B20
+  if (onMqttPublish != nullptr && ds18b20 != nullptr)
+    int ret = onMqttPublish(ds18b20->mqttSubTopicState.c_str(), sMqttMsg.c_str());
+  #endif
+  #ifdef CAPTEUR_DHT20
+  if (onMqttPublish != nullptr && dht20 != nullptr)
+    int retdht20 = onMqttPublish(dht20->mqttSubTopicState.c_str(), sMqttMsg.c_str());
+  #endif
+
 }
 void CConfig::setup() {
 
@@ -64,8 +97,10 @@ if (dht20 != nullptr)
 if (mFlotteurVertical != nullptr)
   mFlotteurVertical->domotique_prefix = domotique_prefix;
 #endif  
+#ifdef CAPTEUR_BATTERIE
 if (mBatterieAA != nullptr)
   mBatterieAA->domotique_prefix = domotique_prefix;
+#endif
 
  Serial.printf("CConfig::setup() - Deep sleep : %d - Durée avant : %ld\n", mbDeepSleepActive, mulWakeDuration); Serial.flush();
 }
@@ -119,6 +154,15 @@ void CConfig::loop() {
       }
     }
     #endif
+
+    #ifdef CAPTEUR_RGB_TCS34725
+    if (mCapteurRGB != nullptr) {
+      if (mCapteurRGB->active && bLoraOk) {
+        bMesureRemontee = mCapteurRGB->mbMesureRemontee;
+        if (!bMesureRemontee) bDeepSleepPossible = false;
+      }
+    }   
+    #endif
     
     //Serial.printf("[Deep Sleep] CConfig::loop() - : mesure remontée : %d. ACK reçu (pour les capteurs qui en ont besoin) : %d. Deep sleep possible : %d\n", bMesureRemontee, mFlotteurVertical != nullptr ? mFlotteurVertical->mbAckReceived : 1, bDeepSleepPossible); Serial.flush();  
     if (bDeepSleepPossible) {
@@ -131,6 +175,7 @@ void CConfig::loop() {
   } // if (mbDeepSleepActive)
 }
 
+/*
 void CConfig::enterDeepSleep() {
   #ifdef DEBUG_NO_DEEP_SLEEP
    Serial.println("Entrée en deep sleep... Mode Deep Sleep Inactif (commutateur). On sort."); Serial.flush();
@@ -143,8 +188,10 @@ void CConfig::enterDeepSleep() {
   String sDate = "DATE";
   String sHeure = "HEURE";
   #ifdef __WIFI_MODE__
-  sDate = mDateTime.getDate();
-  sHeure = mDateTime.getTime();
+  if (mDateTime != nullptr) {
+    sDate = mDateTime->getDate();
+    sHeure = mDateTime->getTime();
+  }
   #endif
 
   unsigned int dureeEveil = 0; // A initialiser correctement par synchro avec le contrôleur principal
@@ -152,7 +199,7 @@ void CConfig::enterDeepSleep() {
   dureeEveil = mDateTime->getAbsoluteSecondes() - mulDateReveil; // Durée de réveil
   #endif
 
-  String sMqttMsg = nomEquipement + " DEEPSLEEP ON " + sDate + " " + sHeure + " " + String(mulSleepDuration) + " Durée éveil : " + String (dureeEveil); 
+  String sMqttMsg = nomEquipement + " DEEPSLEEP ON " + sDate + " " + sHeure + " " + String(mulSleepDuration) + " Durée éveil : " + String (dureeEveil);
   Serial.println(sMqttMsg + String(". Deep sleep in few seconds ..."));
   Serial.flush();           // Attend que le serial soit vide
   mbWakeFromDeepSleep = true;
@@ -160,24 +207,61 @@ void CConfig::enterDeepSleep() {
   #ifdef __WIFI_MODE__
   mulDateMiseEnSommeil = mDateTime->getAbsoluteSecondes();
   #endif
+*/
+void CConfig::enterDeepSleep() {
+  #ifdef DEBUG_NO_DEEP_SLEEP
+   Serial.println("Entrée en deep sleep... Mode Deep Sleep Inactif (commutateur). On sort."); Serial.flush();
+   return;
+  #endif
+  Serial.printf("Deep sleep pour %lu secondes...\n", mulSleepDuration);
+  Serial.flush();           // Attend que le serial soit vide
+  delay(100);               // Sécurité
+
+  String sDate = "DATE";
+  String sHeure = "HEURE";
+  #ifdef __WIFI_MODE__
+  if (mDateTime != nullptr) {
+    sDate = mDateTime->getDate();
+    sHeure = mDateTime->getTime();
+  }
+  #endif
+
+  unsigned int dureeEveil = 0;
+  String sDureeEveil = "Durée inconnue";
+  #ifdef __WIFI_MODE__
+  if (mDateTime != nullptr) {
+    dureeEveil = mDateTime->getAbsoluteSecondes() - mulDateReveil;
+    sDureeEveil = String(dureeEveil);
+  }
+  #endif
+
+  String sMqttMsg = nomEquipement + " DEEPSLEEP ON " + sDate + " " + sHeure + " " + String(mulSleepDuration) + " Durée éveil : " + sDureeEveil;
+  Serial.println(sMqttMsg + String(". Deep sleep in few seconds ..."));
+  Serial.flush();           // Attend que le serial soit vide
+  mbWakeFromDeepSleep = true;
+  mulDateMiseEnSommeil = 0;
+  #ifdef __WIFI_MODE__
+  if (mDateTime != nullptr)
+    mulDateMiseEnSommeil = mDateTime->getAbsoluteSecondes();
+  #endif
   saveToNVS();
   // Envoie par MQTT de la durée de deep-sleep à venir
   #ifdef CAPTEUR_DS18B20
   #ifdef _WIFI_MODE_
-  if (onMqttPublish != nullptr)
+  if (onMqttPublish != nullptr && ds18b20 != nullptr)
     int ret = onMqttPublish(ds18b20->mqttSubTopicState.c_str(), sMqttMsg.c_str());
   #endif
   #endif
   #ifdef CAPTEUR_DHT20
   #ifdef _WIFI_MODE_
-  if (onMqttPublish != nullptr)
+  if (onMqttPublish != nullptr && dht20 != nullptr)
     int ret = onMqttPublish(dht20->mqttSubTopicState.c_str(), sMqttMsg.c_str());
   #endif
   #endif
 
   #ifdef FLOTTEUR_VERTICAL
   #ifdef _WIFI_MODE_
-  if (onMqttPublish != nullptr)
+  if (onMqttPublish != nullptr && mFlotteurVertical != nullptr)
     int ret = onMqttPublish(mFlotteurVertical->mqttSubTopicState.c_str(), sMqttMsg.c_str());
   #endif
   #endif
