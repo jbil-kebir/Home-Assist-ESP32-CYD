@@ -21,6 +21,7 @@ void CMqtt::begin(String sserv/*=""*/, uint16_t uiport/*=0*/, String user/*=""*/
     mqtt_password = passwd;
   }
   //Serial.printf("void CMqtt::begin() %s %ld\n", mqtt_server.c_str(), mqtt_port);
+  client.setBufferSize(1024);
   client.setServer(mqtt_server.c_str(), mqtt_port);
   client.setCallback([this](char* t, byte* p, unsigned int l) { this->callback(t, p, l); });
 

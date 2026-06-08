@@ -30,7 +30,7 @@ void print();
 void setup() {
   Serial.begin(115200);
   unsigned long start = millis();
-  while(!Serial && millis() - start < 3000); // Attend max 3 secondes
+  while(!Serial && millis() - start < 10000); // Attend max 10 secondes
 
   Serial.printf("\n=== %s %s ===\n", config.nomEquipement.c_str(), VERSION);
 

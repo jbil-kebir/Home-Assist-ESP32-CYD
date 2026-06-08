@@ -41,36 +41,63 @@ static constexpr int VAL_DY   = 28;
 static constexpr int VAL_IP_Y = VAL_Y0 + 5 * VAL_DY + 6;  // 186
 
 // ─── Configuration (NVS) ─────────────────────────────────────────────────────
+struct WifiConfig {
+  String ssid;
+  String passwd;
+  bool   active = false;
+};
+
 struct Config {
-  String   wifiSsid   = DEFAULT_WIFI_SSID;
-  String   wifiPasswd = DEFAULT_WIFI_PASSWD;
-  String   mqttServer = DEFAULT_MQTT_SERVER;
-  uint16_t mqttPort   = DEFAULT_MQTT_PORT;
-  String   mqttUser   = DEFAULT_MQTT_USER;
-  String   mqttPasswd = DEFAULT_MQTT_PASSWD;
+  WifiConfig wifi[3];
+  String   mqttServer  = DEFAULT_MQTT_SERVER;
+  uint16_t mqttPort    = DEFAULT_MQTT_PORT;
+  String   mqttUser    = DEFAULT_MQTT_USER;
+  String   mqttPasswd  = DEFAULT_MQTT_PASSWD;
+  uint16_t watchdogSec = 60;
 } gConfig;
 
 void loadConfig() {
   Preferences p;
+  // Migration one-shot : anciens noms de clés → nouveau schéma w0_*
+  p.begin(NVS_NS, false);
+  if (p.isKey("wifi_ssid") && !p.isKey("w0_ssid")) {
+    p.putString("w0_ssid",   p.getString("wifi_ssid", DEFAULT_WIFI_SSID));
+    p.putString("w0_pass",   p.getString("wifi_pass",  DEFAULT_WIFI_PASSWD));
+    p.putBool  ("w0_active", true);
+    p.remove("wifi_ssid");
+    p.remove("wifi_pass");
+  }
+  p.end();
+
   p.begin(NVS_NS, true);
-  gConfig.wifiSsid   = p.getString("wifi_ssid",  DEFAULT_WIFI_SSID);
-  gConfig.wifiPasswd = p.getString("wifi_pass",  DEFAULT_WIFI_PASSWD);
-  gConfig.mqttServer = p.getString("mqtt_srv",   DEFAULT_MQTT_SERVER);
-  gConfig.mqttPort   = p.getUShort("mqtt_port",  DEFAULT_MQTT_PORT);
-  gConfig.mqttUser   = p.getString("mqtt_user",  DEFAULT_MQTT_USER);
-  gConfig.mqttPasswd = p.getString("mqtt_pass",  DEFAULT_MQTT_PASSWD);
+  for (int i = 0; i < 3; i++) {
+    String pre = "w" + String(i) + "_";
+    gConfig.wifi[i].ssid   = p.getString((pre + "ssid").c_str(),   i == 0 ? DEFAULT_WIFI_SSID   : "");
+    gConfig.wifi[i].passwd = p.getString((pre + "pass").c_str(),   i == 0 ? DEFAULT_WIFI_PASSWD : "");
+    gConfig.wifi[i].active = p.getBool  ((pre + "active").c_str(), i == 0);
+  }
+  gConfig.mqttServer  = p.getString("mqtt_srv",   DEFAULT_MQTT_SERVER);
+  gConfig.mqttPort    = p.getUShort("mqtt_port",  DEFAULT_MQTT_PORT);
+  gConfig.mqttUser    = p.getString("mqtt_user",  DEFAULT_MQTT_USER);
+  gConfig.mqttPasswd  = p.getString("mqtt_pass",  DEFAULT_MQTT_PASSWD);
+  gConfig.watchdogSec = p.getUShort("watchdog",   60);
   p.end();
 }
 
 void saveConfig() {
   Preferences p;
   p.begin(NVS_NS, false);
-  p.putString("wifi_ssid", gConfig.wifiSsid);
-  p.putString("wifi_pass", gConfig.wifiPasswd);
+  for (int i = 0; i < 3; i++) {
+    String pre = "w" + String(i) + "_";
+    p.putString((pre + "ssid").c_str(),   gConfig.wifi[i].ssid);
+    p.putString((pre + "pass").c_str(),   gConfig.wifi[i].passwd);
+    p.putBool  ((pre + "active").c_str(), gConfig.wifi[i].active);
+  }
   p.putString("mqtt_srv",  gConfig.mqttServer);
   p.putUShort("mqtt_port", gConfig.mqttPort);
   p.putString("mqtt_user", gConfig.mqttUser);
   p.putString("mqtt_pass", gConfig.mqttPasswd);
+  p.putUShort("watchdog",  gConfig.watchdogSec);
   p.end();
 }
 
@@ -86,9 +113,10 @@ struct {
   bool fresh = false;
 } gCoul;
 
-bool gRedrawMain = false;
-bool gMqttOk     = false;
-bool gApMode     = false;
+bool          gRedrawMain   = false;
+bool          gMqttOk       = false;
+bool          gApMode       = false;
+unsigned long gLastDelMsg   = 0;
 
 // ─── Globaux ──────────────────────────────────────────────────────────────────
 TFT_eSPI     tft;
@@ -132,6 +160,7 @@ void onMqtt(char* topic, byte* payload, unsigned int len) {
   String type = tok(msg, 1);
 
   if (type == "Del") {
+    gLastDelMsg = millis();
     bool newState = (tok(msg, 4) == "1");
     if (!gDel.fresh || newState != gDel.on)
       nowStr(gDel.lastChange, sizeof(gDel.lastChange));
@@ -167,11 +196,27 @@ void updateTitleClock() {
   tft.drawString(String(timeBuf) + "  ", 314, TITLE_H / 2);
 }
 
+static bool watchdogExpired() {
+  if (gConfig.watchdogSec == 0) return false;
+  if (gLastDelMsg == 0) return true;
+  return (millis() - gLastDelMsg) > (unsigned long)gConfig.watchdogSec * 1000;
+}
+
 void drawDisk() {
   tft.fillRect(0, MAIN_Y, DIV_X, MAIN_H, TFT_BLACK);
-  uint16_t dc = gDel.on ? TFT_GREEN : 0x4208;
-  tft.fillCircle(DISK_CX, DISK_CY, DISK_R, dc);
-  tft.drawCircle(DISK_CX, DISK_CY, DISK_R, TFT_WHITE);
+  if (watchdogExpired()) {
+    tft.fillCircle(DISK_CX, DISK_CY, DISK_R, TFT_DARKGREY);
+    tft.drawCircle(DISK_CX, DISK_CY, DISK_R, TFT_WHITE);
+    tft.setTextFont(2);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
+    tft.drawString("Ne repond", DISK_CX, DISK_CY - 9);
+    tft.drawString("pas", DISK_CX, DISK_CY + 9);
+  } else {
+    uint16_t dc = gDel.on ? TFT_GREEN : 0x4208;
+    tft.fillCircle(DISK_CX, DISK_CY, DISK_R, dc);
+    tft.drawCircle(DISK_CX, DISK_CY, DISK_R, TFT_WHITE);
+  }
 }
 
 void drawValues() {
@@ -275,6 +320,8 @@ static const char HTML_PAGE[] = R"html(
   h2{color:#555;font-size:.9em;border-bottom:1px solid #ccc;padding-bottom:3px;margin-top:18px}
   label{display:block;margin-top:8px;font-size:.85em;font-weight:bold;color:#444}
   input{width:100%;padding:7px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px}
+  .chk{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:.85em;font-weight:bold;color:#444}
+  .chk input{width:auto;padding:0}
   button{margin-top:22px;width:100%;padding:11px;background:#003366;color:#fff;
          border:none;border-radius:4px;font-size:1em;cursor:pointer}
   button:hover{background:#0055aa}
@@ -283,11 +330,27 @@ static const char HTML_PAGE[] = R"html(
 <h1>CydMonitor</h1>
 <p class="ip">IP : %IP%</p>
 <form method="POST" action="/save">
-  <h2>WiFi</h2>
+  <h2>WiFi 1</h2>
+  <label class="chk"><input type="checkbox" name="w0_active" %W0_ACTIVE%> Actif</label>
   <label>SSID</label>
-  <input name="wifi_ssid" value="%WIFI_SSID%">
+  <input name="w0_ssid" value="%W0_SSID%">
   <label>Mot de passe</label>
-  <input name="wifi_pass" type="password" value="%WIFI_PASS%">
+  <input name="w0_pass" type="password" value="%W0_PASS%">
+  <h2>WiFi 2</h2>
+  <label class="chk"><input type="checkbox" name="w1_active" %W1_ACTIVE%> Actif</label>
+  <label>SSID</label>
+  <input name="w1_ssid" value="%W1_SSID%">
+  <label>Mot de passe</label>
+  <input name="w1_pass" type="password" value="%W1_PASS%">
+  <h2>WiFi 3</h2>
+  <label class="chk"><input type="checkbox" name="w2_active" %W2_ACTIVE%> Actif</label>
+  <label>SSID</label>
+  <input name="w2_ssid" value="%W2_SSID%">
+  <label>Mot de passe</label>
+  <input name="w2_pass" type="password" value="%W2_PASS%">
+  <h2>Watchdog</h2>
+  <label>Délai sans ThNomade Del (s, 0=désactivé)</label>
+  <input name="watchdog" type="number" min="0" value="%WATCHDOG%">
   <h2>MQTT</h2>
   <label>Serveur</label>
   <input name="mqtt_srv" value="%MQTT_SRV%">
@@ -304,9 +367,14 @@ static const char HTML_PAGE[] = R"html(
 
 void handleRoot() {
   String page = HTML_PAGE;
-  page.replace("%IP%",        gApMode ? "192.168.4.1" : WiFi.localIP().toString());
-  page.replace("%WIFI_SSID%", gConfig.wifiSsid);
-  page.replace("%WIFI_PASS%", gConfig.wifiPasswd);
+  page.replace("%IP%", gApMode ? "192.168.4.1" : WiFi.localIP().toString());
+  for (int i = 0; i < 3; i++) {
+    String pre = "%W" + String(i);
+    page.replace(pre + "_SSID%",   gConfig.wifi[i].ssid);
+    page.replace(pre + "_PASS%",   gConfig.wifi[i].passwd);
+    page.replace(pre + "_ACTIVE%", gConfig.wifi[i].active ? "checked" : "");
+  }
+  page.replace("%WATCHDOG%",  String(gConfig.watchdogSec));
   page.replace("%MQTT_SRV%",  gConfig.mqttServer);
   page.replace("%MQTT_PORT%", String(gConfig.mqttPort));
   page.replace("%MQTT_USER%", gConfig.mqttUser);
@@ -315,8 +383,13 @@ void handleRoot() {
 }
 
 void handleSave() {
-  if (webServer.hasArg("wifi_ssid")) gConfig.wifiSsid   = webServer.arg("wifi_ssid");
-  if (webServer.hasArg("wifi_pass")) gConfig.wifiPasswd = webServer.arg("wifi_pass");
+  for (int i = 0; i < 3; i++) {
+    String pre = "w" + String(i);
+    if (webServer.hasArg(pre + "_ssid")) gConfig.wifi[i].ssid   = webServer.arg(pre + "_ssid");
+    if (webServer.hasArg(pre + "_pass")) gConfig.wifi[i].passwd = webServer.arg(pre + "_pass");
+    gConfig.wifi[i].active = webServer.hasArg(pre + "_active");
+  }
+  if (webServer.hasArg("watchdog"))  gConfig.watchdogSec = (uint16_t)webServer.arg("watchdog").toInt();
   if (webServer.hasArg("mqtt_srv"))  gConfig.mqttServer = webServer.arg("mqtt_srv");
   if (webServer.hasArg("mqtt_port")) gConfig.mqttPort   = (uint16_t)webServer.arg("mqtt_port").toInt();
   if (webServer.hasArg("mqtt_user")) gConfig.mqttUser   = webServer.arg("mqtt_user");
@@ -336,36 +409,42 @@ bool connectWifi() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextFont(2);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString("Connexion WiFi : " + gConfig.wifiSsid, 160, 100);
-
   WiFi.mode(WIFI_STA);
-  WiFi.begin(gConfig.wifiSsid.c_str(), gConfig.wifiPasswd.c_str());
 
-  unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) delay(300);
+  for (int i = 0; i < 3; i++) {
+    if (!gConfig.wifi[i].active || gConfig.wifi[i].ssid.isEmpty()) continue;
 
-  if (WiFi.status() != WL_CONNECTED) {
+    tft.fillRect(0, 90, 320, 80, TFT_BLACK);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString("WiFi " + String(i + 1) + " : " + gConfig.wifi[i].ssid, 160, 100);
+
+    WiFi.disconnect(true);
+    WiFi.begin(gConfig.wifi[i].ssid.c_str(), gConfig.wifi[i].passwd.c_str());
+    unsigned long t0 = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) delay(300);
+
+    if (WiFi.status() == WL_CONNECTED) {
+      tft.setTextColor(TFT_GREEN, TFT_BLACK);
+      tft.drawString("WiFi OK  " + WiFi.localIP().toString(), 160, 125);
+
+      configTime(0, 0, NTP_SERVER);
+      setenv("TZ", TZ_STRING, 1);
+      tzset();
+      tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+      tft.drawString("Synchronisation NTP...", 160, 150);
+      struct tm t;
+      t0 = millis();
+      while (!getLocalTime(&t) && millis() - t0 < 5000) delay(200);
+      delay(800);
+      return true;
+    }
+
     tft.setTextColor(TFT_RED, TFT_BLACK);
-    tft.drawString("WiFi ECHEC", 160, 125);
-    delay(1200);
-    return false;
+    tft.drawString("Echec WiFi " + String(i + 1), 160, 125);
+    WiFi.disconnect(true);
+    delay(800);
   }
-
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.drawString("WiFi OK  " + WiFi.localIP().toString(), 160, 125);
-
-  configTime(0, 0, NTP_SERVER);
-  setenv("TZ", TZ_STRING, 1);
-  tzset();
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.drawString("Synchronisation NTP...", 160, 150);
-  struct tm t;
-  t0 = millis();
-  while (!getLocalTime(&t) && millis() - t0 < 5000) delay(200);
-
-  delay(800);
-  return true;
+  return false;
 }
 
 void startApMode() {
@@ -435,10 +514,16 @@ void loop() {
   reconnectMqtt();
   mqtt.loop();
 
-  static unsigned long lastClock = 0;
+  static unsigned long lastClock    = 0;
+  static bool          prevExpired  = false;
   if (millis() - lastClock >= 1000) {
     lastClock = millis();
     updateTitleClock();
+    bool expired = watchdogExpired();
+    if (expired != prevExpired) {
+      prevExpired = expired;
+      gRedrawMain = true;
+    }
   }
 
   if (gRedrawMain) {

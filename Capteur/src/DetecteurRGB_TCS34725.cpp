@@ -96,7 +96,7 @@ int CDetecteurRGB_TCS34725::loop() {
       }
     }
     else {
-      mbForce = false; lastForcageRemontee = millis();
+      mbForce = false;
       bMesureNormale = false; lastRead = millis();
       bEnvoiEnCours = false;
     }
