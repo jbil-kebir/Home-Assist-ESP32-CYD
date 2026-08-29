@@ -1,7 +1,6 @@
 #include "global.h"
 #include "MyConfig.h"
-// Test : on initialise Lora pour l'endormir si pas utilisé
-//#ifdef _LORA_P2P_MODE_
+#ifdef _LORA_P2P_MODE_
 
 #include "MyLoraRxTx.h"
 
@@ -451,11 +450,24 @@ int CMyLoraRxTx::sendPacket(const char* message) {
   sToSend += START_STOP; // pour marquer la fin du message (utile pour le parsing côté réception)
 
   if (currentMode == MODE_TX) {
-    // TX en cours : on mémorise le message pour l'envoyer après
-    mPendingMessage = sToSend;
-    mbPendingMessage = true;
-    Serial.printf("[SX1262] TX en cours, message mis en attente : <%s>\n", sToSend.c_str());
-    return 0;
+    // Attendre la fin du TX en cours (max 2 secondes) pour ne pas écraser le message précédent
+    unsigned long tWait = millis();
+    while (!operationDone && (millis() - tWait < 2000)) {
+      delay(5);
+    }
+    if (operationDone) {
+      operationDone = false;
+      radio.finishTransmit();
+      mbPendingMessage = false;
+      Serial.println(F("[SX1262] TX précédent terminé, envoi suivant."));
+      // On laisse tomber pour démarrer le nouveau TX
+    } else {
+      // Timeout : mise en attente classique (peut écraser un message précédent)
+      mPendingMessage = sToSend;
+      mbPendingMessage = true;
+      Serial.printf("[SX1262] TX timeout, message mis en attente : <%s>\n", sToSend.c_str());
+      return 0;
+    }
   }
 
   Serial.printf("[SX1262] Sending packet <%s> ... \n", sToSend.c_str());
@@ -486,4 +498,4 @@ void CMyLoraRxTx::receivePacket() {
   }
 }
 
-//#endif // #ifdef _LORA_P2P_MODE_
+#endif // _LORA_P2P_MODE_

@@ -211,8 +211,12 @@ int DHT20Sensor::readAndPublishTEST(float t, float h) {
   Serial.printf("Footer : 0x%lx\n", codes[5]);
   Serial.flush();
 
-  mRCSwitch->envoieCode(codes, 6);
-
+  if(mRCSwitch != nullptr ) {
+    mRCSwitch->envoieCode(codes, 6);
+  }
+  else {
+    Serial.printf("DHT20Sensor::readAndPublishTEST() - mRCSwitch non initialisé\n");
+  }
 
   /*unsigned long codes[6] = {  0x014FFFUL, // ID 1, 4 codes de mesure, 0xFFF
                               0x011001UL, // ID 1, N° Mesure (1), Type Mesure (0), MSB 18.5 °C (1)
@@ -251,11 +255,13 @@ int DHT20Sensor::readAndPublishTEST(float t, float h) {
 bool DHT20Sensor::publieSurMqtt(bool force/*=false*/) {
     if (onMqttPublish == nullptr) return false;
     bool ret = false;
-    float temp = lastTempC; 
-    float hum = lastHum; 
-    String sValTemp = nomEquipement + " Temp " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp, 1);
+    float temp = lastTempC;
+    float hum = lastHum;
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sValTemp = nomEquipement + " Temp " + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sValTemp += " FORCE";
-    String sValHum = nomEquipement + " Hum " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(hum, 1);
+    String sValHum = nomEquipement + " Hum " + sDate + " " + sTime + " " + String(hum, 1);
     if (force) sValHum += " FORCE";
     Serial.println("DHT20Sensor::publieSurMqtt() Temp : " + sValTemp);
     Serial.println("DHT20Sensor::publieSurMqtt() Hum  : " + sValHum);
@@ -276,13 +282,13 @@ bool DHT20Sensor::publieSurMqtt(bool force/*=false*/) {
 bool DHT20Sensor::publieParLoraP2P(bool force/*=false*/) {
     if (onLoraP2PPublish == nullptr) return false;
     bool ret = false;
-    float temp = lastTempC; 
-    float hum = lastHum; 
-//    String sValTemp = mqttSubTopicState + " " +  nomEquipement + " Temp " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp, 1);
-    String sValTemp = mqttSubTopicState + " " +  nomEquipement + " Temp " + "DATE TIME" + " " + String(temp, 1);
+    float temp = lastTempC;
+    float hum = lastHum;
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sValTemp = mqttSubTopicState + " " +  nomEquipement + " Temp " + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sValTemp += " FORCE";
-//    String sValHum = mqttSubTopicState + " " + nomEquipement + " Hum " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(hum, 1);
-    String sValHum = mqttSubTopicState + " " + nomEquipement + " Hum " + "DATE TIME" + " " + String(hum, 1);
+    String sValHum = mqttSubTopicState + " " + nomEquipement + " Hum " + sDate + " " + sTime + " " + String(hum, 1);
     if (force) sValHum += " FORCE";
     Serial.println("DHT20Sensor::publieParLoraP2P() Temp : " + sValTemp);
     Serial.println("DHT20Sensor::publieParLoraP2P() Hum  : " + sValHum);
@@ -381,7 +387,12 @@ bool DHT20Sensor::publieParCC1101(bool force/*=false*/) {
   //  delay(mDelai_Inter_Envoi);
     Serial.println("---------------------------------");
     #ifdef _RCSWITCH_MODE_
-    mRCSwitch->envoieCode(codes, 6);
+    if(mRCSwitch != nullptr ) {
+      mRCSwitch->envoieCode(codes, 6);
+    }
+    else {
+      Serial.printf("DHT20Sensor::publieParCC1101() - mRCSwitch non initialisé\n");
+    }
     #endif
     
     ret = true;

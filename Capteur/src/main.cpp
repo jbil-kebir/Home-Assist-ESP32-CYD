@@ -14,10 +14,9 @@
 #include "MyRCSwitch.h"
 #include "MyCC1101.h"
 #endif
-//#ifdef _LORA_P2P_MODE_
-// Test : on initialise Lora pour l'endormir si pas utilisé
+#ifdef _LORA_P2P_MODE_
 #include "MyLoraRxTx.h"
-//#endif
+#endif
 #ifdef CAPTEUR_DS18B20
 #include "MyDS18B20.h"
 #endif
@@ -60,10 +59,9 @@ MyWebServer webServer(config, mWifi);
 CCC1101 mCC1101;
 CMyRCSwitch mRCSwitch(config);
 #endif
-//#ifdef _LORA_P2P_MODE_
-// Test : on initialise Lora pour l'endormir si pas utilisé
+#ifdef _LORA_P2P_MODE_
 CMyLoraRxTx mLoraRxTx(config); //, radio);
-//#endif
+#endif
 #ifdef CAPTEUR_DS18B20
 MyDS18B20 ds18b20(DS18B20_PIN, mDateTime);  
 #endif
@@ -102,6 +100,82 @@ void setup() {
   randomSeed(esp_random());  // Initialisation aléatoire (esp_random = RNG matériel)
   printBoardInfo();  // affiche "Carte détectée : ESP32-C3 Super Mini" ou S3
 
+  //--------------------------------------------------------------------------------------------
+  // Neutralisation des broches des capteurs/actionneurs non utilisés
+  //--------------------------------------------------------------------------------------------
+  // But : un capteur/actionneur désactivé en commentant son #define dans global.h (ex :
+  // CAPTEUR_DS18B20) ne doit pas rester "alimenté" via une broche flottante ou tirée par une
+  // pull-up externe. On la repasse en INPUT_PULLDOWN (comme le fait déjà le nettoyage GPIO avant
+  // deep-sleep dans MyConfig.cpp) plutôt qu'en OUTPUT/LOW : ça évite tout conflit si la broche
+  // est en réalité câblée à autre chose, tout en la ramenant à un niveau bas défini.
+  //
+  // Certaines broches sont réutilisées d'une fonctionnalité à l'autre selon la config active
+  // (ex : DS18B20_PIN et BATTERIE_PIN partagent la broche 2 quand CAPTEUR_DS18B20 est désactivé ;
+  // LED_CAPTEUR_RGB_PIN et DEFAULT_TOR_PIN partagent la broche 1 sur ESP32-C3). On ne peut donc
+  // pas neutraliser "la broche du capteur X" seulement parce que X est désactivé : il faut
+  // vérifier qu'aucune fonctionnalité active ne la réclame. D'où l'approche par listes : on
+  // recense les broches réellement utilisées (usedPins, dépend des #ifdef actifs) et on neutralise
+  // toute broche candidate (candidatePins, toujours définie quelle que soit la config) qui n'y
+  // figure pas.
+  {
+    // Broches réellement utilisées par les fonctionnalités actives.
+    // Sentinelle 255 en fin de tableau : garantit un tableau non vide (donc valide en C++) même
+    // si aucun capteur/actionneur n'est actif ; 255 n'est jamais une broche GPIO valide sur ces cartes.
+    const uint8_t usedPins[] = {
+      #ifdef CAPTEUR_DS18B20
+      DS18B20_PIN,
+      #endif
+      #ifdef CAPTEUR_BATTERIE
+      BATTERIE_PIN,
+      #endif
+      #ifdef FLOTTEUR_VERTICAL
+      DEFAULT_TOR_PIN,
+      #endif
+      #if defined(CAPTEUR_DHT20) || defined(CAPTEUR_RGB_TCS34725)
+      DEFAULT_SDA_PIN, DEFAULT_SCL_PIN, // bus I2C partagé entre DHT20 et le capteur RGB
+      #endif
+      #ifdef CAPTEUR_RGB_TCS34725
+      CAPTEUR_RGB_TCS34725_INTERRUPT,
+      #ifdef LED_CAPTEUR_RGB
+      LED_CAPTEUR_RGB_PIN,
+      #endif
+      #endif
+      #if IS_ESP32_C3 && defined(_RCSWITCH_MODE_)
+      CC1101_GDO0, CC1101_CS, CC1101_MOSI, CC1101_MISO, CC1101_SCK, CC1101_POWER_GND_GPIO,
+      #endif
+      #if IS_ESP32_S3 && defined(_LORA_P2P_MODE_)
+      LORA_MISO_PIN, LORA_SCK_PIN, LORA_MOSI_PIN, LORA_CS_PIN,
+      LORA_DIO2_PIN, LORA_DIO1_PIN, LORA_RESET_PIN, LORA_BUSY_PIN,
+      #endif
+      255
+    };
+
+    // Toutes les broches candidates du montage (capteurs + actionneurs prévus sur cette carte),
+    // utilisées ou non par la config active.
+    const uint8_t candidatePins[] = {
+      DS18B20_PIN, BATTERIE_PIN, DEFAULT_TOR_PIN,
+      DEFAULT_SDA_PIN, DEFAULT_SCL_PIN,
+      CAPTEUR_RGB_TCS34725_INTERRUPT, LED_CAPTEUR_RGB_PIN,
+      #if IS_ESP32_C3
+      CC1101_GDO0, CC1101_CS, CC1101_MOSI, CC1101_MISO, CC1101_SCK, CC1101_POWER_GND_GPIO,
+      #endif
+      #if IS_ESP32_S3
+      LORA_MISO_PIN, LORA_SCK_PIN, LORA_MOSI_PIN, LORA_CS_PIN,
+      LORA_DIO2_PIN, LORA_DIO1_PIN, LORA_RESET_PIN, LORA_BUSY_PIN,
+      #endif
+    };
+
+    for (uint8_t candidate : candidatePins) {
+      bool used = false;
+      for (uint8_t u : usedPins) {
+        if (u == candidate) { used = true; break; }
+      }
+      if (!used) {
+        pinMode(candidate, INPUT_PULLDOWN);
+      }
+    }
+  }
+
   #ifdef _RCSWITCH_MODE_
   pinMode(CC1101_POWER_GND_GPIO, OUTPUT);
   digitalWrite(CC1101_POWER_GND_GPIO, CC1101_ON);  // Allume le CC1101
@@ -110,20 +184,15 @@ void setup() {
   
   config.setPrefixNVS("cfg_");
 
-//  #ifdef _LORA_P2P_MODE_
-  // Test : on initialise Lora pour l'endormir si pas utilisé
+  #ifdef _LORA_P2P_MODE_
   int ret = mLoraRxTx.setup();
   if (ret != 0) {
     Serial.println("Erreur init LoRa RX/TX : " + String(ret));
   }
-//  #endif
-  // Si Lora pas utilisé, on met le module en sleep
-  #ifndef _LORA_P2P_MODE_ 
-  mLoraRxTx.sleep(); // Via RadioLib 
   #endif
 
 
-  #ifdef _LORA_P2P_MODE_ 
+  #ifdef _LORA_P2P_MODE_
   #ifdef _WIFI_MODE_
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mLoraRxTx.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
@@ -422,6 +491,13 @@ void loop() {
   }
   #endif
 
+  String sDate = "DATE";
+  String sHeure = "HEURE";
+  #ifdef _WIFI_MODE_
+  sDate = mDateTime.getDate();
+  sHeure = mDateTime.getTime();
+  #endif
+
   //------------------------------------------------------------------------------------
   // DS18B20
   //------------------------------------------------------------------------------------
@@ -455,12 +531,6 @@ void loop() {
   #ifdef CAPTEUR_BATTERIE
   int retTension = mBatterie.loop();
   static bool BatInactifDejaAffiche = false;
-  String sDate = "DATE";
-  String sHeure = "HEURE";
-  #ifdef __WIFI_MODE__
-  sDate = mDateTime.getDate();
-  sHeure = mDateTime.getTime();
-  #endif
 
   if (retTension == -1) {
     Serial.println("mBatterie.readTension() - échec");

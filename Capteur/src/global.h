@@ -31,20 +31,20 @@
 //#define TEST_EMISSION_RCS
 
 
-//#define DEBUG_NO_DEEP_SLEEP
+#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
 #define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
-#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
-#define _LORA_P2P_MODE_ // Envoi par LORA
+//#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
+//#define _LORA_P2P_MODE_ // Envoi par LORA
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
-//#define CAPTEUR_DHT20 // Fonctionne en I2C
+#define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
 //#define FLOTTEUR_VERTICAL
-#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
-#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
-#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
+//#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
+//#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
+//#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
@@ -85,38 +85,39 @@
     #define DEFAULT_SDA_PIN 8   // Pin 4 // DHT20 entre autre
     #define DEFAULT_SCL_PIN 9   // Pin 5 // DHT20 entre autre
 
-  #ifdef _RCSWITCH_MODE_
+  // Broches CC1101 (RCSwitch) : toujours définies, même si _RCSWITCH_MODE_ est désactivé,
+  // pour que setup() puisse les repasser en INPUT_PULLDOWN quand l'actionneur RF n'est pas utilisé.
   #define CC1101_GDO0       3
   #define CC1101_CS         7
   #define CC1101_MOSI       6
   #define CC1101_MISO       5
   #define CC1101_SCK        4
   #define CC1101_POWER_GND_GPIO 20
-  #endif
+
+  // Toujours définie (même si CAPTEUR_DS18B20 est désactivé) pour pouvoir neutraliser
+  // cette broche en setup() quand le capteur n'est pas câblé.
+  #define DS18B20_PIN 2 // Pin 111
 
   #ifdef CAPTEUR_DS18B20
-    #define DS18B20_PIN 2 // Pin 111
-    // Etat batterie
-    #ifdef CAPTEUR_BATTERIE
-      #define BATTERIE_PIN    3 // Pin 12
-    #endif
+    // Etat batterie (défini même si CAPTEUR_BATTERIE est désactivé : sert de valeur
+    // par défaut dans CBatterieAA::loadFromNVS(), toujours compilé)
+    #define BATTERIE_PIN    3 // Pin 12
   #else
     // Etat batterie
-    #ifdef CAPTEUR_BATTERIE
-      #define BATTERIE_PIN    2 // Pin 111
-    #endif
+    // Partage la broche du DS18B20 (2) quand celui-ci est désactivé : voir la neutralisation
+    // des broches inutilisées dans setup() (main.cpp), qui tient compte de ce partage.
+    #define BATTERIE_PIN    2 // Pin 111
   #endif // CAPTEUR_DS18B20
 
-  #ifdef FLOTTEUR_VERTICAL
-    #define DEFAULT_TOR_PIN 1 // Pin 10
-  #endif
+  // Toujours définie (même si FLOTTEUR_VERTICAL est désactivé) pour pouvoir neutraliser
+  // cette broche en setup() quand le flotteur n'est pas câblé.
+  #define DEFAULT_TOR_PIN 1 // Pin 10
 
-  #ifdef CAPTEUR_RGB_TCS34725
-    #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // Optionnel
-    #ifdef LED_CAPTEUR_RGB
-      #define LED_CAPTEUR_RGB_PIN 1
-    #endif
-  #endif
+  // Toujours définies (même si CAPTEUR_RGB_TCS34725 / LED_CAPTEUR_RGB sont désactivés) pour
+  // pouvoir neutraliser ces broches en setup(). LED_CAPTEUR_RGB_PIN (1) partage la broche de
+  // DEFAULT_TOR_PIN sur cette carte : la neutralisation dans setup() tient compte de ce partage.
+  #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // Optionnel
+  #define LED_CAPTEUR_RGB_PIN 1
 
 #elif defined(__ESP32_S3__)
   #define IS_ESP32_C3       0
@@ -149,29 +150,29 @@
     #define DEFAULT_SDA_PIN   5   // Pin 5 // DHT20 entre autre
     #define DEFAULT_SCL_PIN   6   // Pin 6 // DHT20 entre autre
 
+  // Toujours définie (même si CAPTEUR_DS18B20 est désactivé) pour pouvoir neutraliser
+  // cette broche en setup() quand le capteur n'est pas câblé.
+  #define DS18B20_PIN 2 // Pin 2
+
   #ifdef CAPTEUR_DS18B20
-    #define DS18B20_PIN 2 // Pin 2
-    // Etat batterie
-    #ifdef CAPTEUR_BATTERIE
-      #define BATTERIE_PIN    3 // Pin 3
-    #endif
+    // Etat batterie (défini même si CAPTEUR_BATTERIE est désactivé : sert de valeur
+    // par défaut dans CBatterieAA::loadFromNVS(), toujours compilé)
+    #define BATTERIE_PIN    3 // Pin 3
   #else
     // Etat batterie
-    #ifdef CAPTEUR_BATTERIE
-      #define BATTERIE_PIN    2 // Pin 2
-    #endif
+    // Partage la broche du DS18B20 (2) quand celui-ci est désactivé : voir la neutralisation
+    // des broches inutilisées dans setup() (main.cpp), qui tient compte de ce partage.
+    #define BATTERIE_PIN    2 // Pin 2
   #endif // CAPTEUR_DS18B20
 
-  #ifdef FLOTTEUR_VERTICAL
-    #define DEFAULT_TOR_PIN 1 // Pin 1
-  #endif
+  // Toujours définie (même si FLOTTEUR_VERTICAL est désactivé) pour pouvoir neutraliser
+  // cette broche en setup() quand le flotteur n'est pas câblé.
+  #define DEFAULT_TOR_PIN 1 // Pin 1
 
-  #ifdef CAPTEUR_RGB_TCS34725
-    #define CAPTEUR_RGB_TCS34725_INTERRUPT 43 // Optionnel
-    #ifdef LED_CAPTEUR_RGB
-      #define LED_CAPTEUR_RGB_PIN 44
-    #endif
-  #endif
+  // Toujours définies (même si CAPTEUR_RGB_TCS34725 / LED_CAPTEUR_RGB sont désactivés) pour
+  // pouvoir neutraliser ces broches en setup().
+  #define CAPTEUR_RGB_TCS34725_INTERRUPT 43 // Optionnel
+  #define LED_CAPTEUR_RGB_PIN 44
 
 
 #else

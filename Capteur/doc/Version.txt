@@ -1,7 +1,38 @@
 1.9
+Ajout SLEEPS, SLEEPM et SLEEPL
+home/confthremise/command SLEEPM programme un deep-sleep égal à la valeur paramétrée par Web
+Réception MQTT
+  Sur home/confEquipement/command Exemple home/confthemise/command
+  - REBOOT
+  - STATUS
+  - SLEEP n (n en s. -1 pour désactiver le deep-sleep)
+  Sur home/thermometre/command
+  - EQUIPEMENT ACK (Exemple FlotteurRemise ACK)
+
+Réception Lora
+Mise en place de MQTT ==> Lora
+On écoute sur MQTT les topics :
+  - home/thermometre/command
+  - home/confthremise/command
+On renvoie sur Lora : 
+  topic + " " + payload
+Ceci uniquement pour les équipements concernés : THREMISE, BATREMISE, FLOTTEURREMISE, THCAVE, BATCAVE
+On traite par exemple les commandes sur home/confthremise/command :
+- STATUS
+- SLEEP n (n en secondes, -1 pour désactiver le deep sleep)
+- REBOOT
+Et sur home/thermometre/command
+- ACK (Acquittement pour les mesures concernées)
+
 Ajout capteur RGB TCS34725
+
 Ajout led signalant l'état du capteur (ON/OFF)
 
+Dans void setup(), remplacer while(!Serial) par
+  unsigned long start = millis();
+  while(!Serial && millis() - start < 3000); // Attend max 3 secondes
+Ceci afin de ne pas bloquer lorsque on alimente sans connecter au PC
+ 
 1.8
 Ajout Tout Ou Rien
 Implémentation de la remontée de mesure par Lora P2P

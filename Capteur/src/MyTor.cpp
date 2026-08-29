@@ -200,7 +200,12 @@ int CTor::readAndPublishTEST(float t, float h) {
   Serial.flush();
 
   #ifdef _RCSWITCH_MODE_
-  mRCSwitch->envoieCode(codes, 6);
+  if (mRCSwitch != nullptr) {
+    mRCSwitch->envoieCode(codes, 6);
+  }
+  else {
+    Serial.println("CTor::readAndPublishTEST() - mRCSwitch non initialisé");
+  }
   #endif
 
   
@@ -217,9 +222,11 @@ int CTor::readAndPublishTEST(float t, float h) {
 bool CTor::publieSurMqtt(bool force/*=false*/) {
     if (onMqttPublish == nullptr) return false;
     bool ret = false;
-    float temp = miLastVal; 
-    //float hum = lastHum; 
-    String sValTemp = nomEquipement + " OnOff " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp);
+    float temp = miLastVal;
+    //float hum = lastHum;
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sValTemp = nomEquipement + " OnOff " + sDate + " " + sTime + " " + String(temp);
     if (force) sValTemp += " FORCE";
     //String sValHum = nomEquipement + " Hum " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(hum, 1);
     //if (force) sValHum += " FORCE";
@@ -237,10 +244,11 @@ bool CTor::publieSurMqtt(bool force/*=false*/) {
 bool CTor::publieParLoraP2P(bool force/*=false*/) {
     if (onLoraP2PPublish == nullptr) return false;
     bool ret = false;
-    float temp = miLastVal; 
-    //float hum = lastHum; 
-//    String sValTemp = mqttSubTopicState + " " +  nomEquipement + " OnOff " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp);
-    String sValTemp = mqttSubTopicState + " " +  nomEquipement + " OnOff " + "DATE TIME" + " " + String(temp);
+    float temp = miLastVal;
+    //float hum = lastHum;
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sValTemp = mqttSubTopicState + " " +  nomEquipement + " OnOff " + sDate + " " + sTime + " " + String(temp);
     if (force) sValTemp += " FORCE";
     //String sValHum = nomEquipement + " Hum " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(hum, 1);
     //if (force) sValHum += " FORCE";

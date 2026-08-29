@@ -34,14 +34,18 @@ void CMqtt::reconnect() {
 
       // === ABONNEMENTS FORCÉS À CHAQUE CONNEXION ===
       #ifdef CAPTEUR_DS18B20
-      client.subscribe(mConfig.ds18b20->mqttSubTopicCommand.c_str(), 1);
-      Serial.println("Abonnement à : " + mConfig.ds18b20->mqttSubTopicCommand);
+      if (mConfig.ds18b20 != nullptr) {
+        client.subscribe(mConfig.ds18b20->mqttSubTopicCommand.c_str(), 1);
+        Serial.println("Abonnement à : " + mConfig.ds18b20->mqttSubTopicCommand);
+      }
       //client.subscribe(mConfig.ds18b20->mqttSubTopicState.c_str(), 1);
       //Serial.println("Abonnement à : " + mConfig.ds18b20->mqttSubTopicState);
       #endif
       #ifdef CAPTEUR_DHT20
-      client.subscribe(mConfig.dht20->mqttSubTopicCommand.c_str(), 1);
-      Serial.println("Abonnement à : " + mConfig.dht20->mqttSubTopicCommand);
+      if (mConfig.dht20 != nullptr) {
+        client.subscribe(mConfig.dht20->mqttSubTopicCommand.c_str(), 1);
+        Serial.println("Abonnement à : " + mConfig.dht20->mqttSubTopicCommand);
+      }
       //client.subscribe(mConfig.dht20->mqttSubTopicState.c_str(), 1);
       //Serial.println("Abonnement à : " + mConfig.dht20->mqttSubTopicState);
       #endif
@@ -51,13 +55,17 @@ void CMqtt::reconnect() {
       Serial.println("Abonnement à : " + mConfig.topic_config_command);
  
  
-      sPayload = mConfig.nomEquipement + String(" ") + String("online") + " le " + mConfig.mDateTime->getDate() + " à " + mConfig.mDateTime->getTime() + String(" ") + WiFi.localIP().toString();
+      String sDate = (mConfig.mDateTime != nullptr) ? mConfig.mDateTime->getDate() : "DATE";
+      String sTime = (mConfig.mDateTime != nullptr) ? mConfig.mDateTime->getTime() : "TIME";
+      sPayload = mConfig.nomEquipement + String(" ") + String("online") + " le " + sDate + " à " + sTime + String(" ") + WiFi.localIP().toString();
       // Publication des états retained
       #ifdef CAPTEUR_DS18B20
-      client.publish(mConfig.ds18b20->mqttSubTopicState.c_str(), sPayload.c_str(), false);
+      if (mConfig.ds18b20 != nullptr)
+        client.publish(mConfig.ds18b20->mqttSubTopicState.c_str(), sPayload.c_str(), false);
       #endif
       #ifdef CAPTEUR_DHT20
-      client.publish(mConfig.dht20->mqttSubTopicState.c_str(), sPayload.c_str(), false);
+      if (mConfig.dht20 != nullptr)
+        client.publish(mConfig.dht20->mqttSubTopicState.c_str(), sPayload.c_str(), false);
       #endif
       //publishState(currentState);
 
@@ -79,10 +87,12 @@ void CMqtt::reconnect() {
     if (!active) return -1;
     currentState = state;
     #ifdef CAPTEUR_DS18B20
-    client.publish(mConfig.ds18b20->mqttSubTopicState.c_str(), state ? "ON" : "OFF", false);
+    if (mConfig.ds18b20 != nullptr)
+      client.publish(mConfig.ds18b20->mqttSubTopicState.c_str(), state ? "ON" : "OFF", false);
     #endif
     #ifdef CAPTEUR_DHT20
-    client.publish(mConfig.dht20->mqttSubTopicState.c_str(), state ? "ON" : "OFF", false);
+    if (mConfig.dht20 != nullptr)
+      client.publish(mConfig.dht20->mqttSubTopicState.c_str(), state ? "ON" : "OFF", false);
     #endif
     return 0;
   }
@@ -130,16 +140,16 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   message.toUpperCase();
 
   #ifdef CAPTEUR_DS18B20
-  String sDs18B20Equipement = mConfig.ds18b20->nomEquipement; sDs18B20Equipement.toUpperCase();
+  String sDs18B20Equipement = (mConfig.ds18b20 != nullptr) ? mConfig.ds18b20->nomEquipement : ""; sDs18B20Equipement.toUpperCase();
   #endif
-  #ifdef CAPTEUR_DHT20  
-  String sDht20Equipement = mConfig.dht20->nomEquipement; sDht20Equipement.toUpperCase();
+  #ifdef CAPTEUR_DHT20
+  String sDht20Equipement = (mConfig.dht20 != nullptr) ? mConfig.dht20->nomEquipement : ""; sDht20Equipement.toUpperCase();
   #endif
   #ifdef CAPTEUR_RGB_TCS34725
-  String sRgbEquipement = mConfig.mCapteurRGB->nomEquipement; sRgbEquipement.toUpperCase();
+  String sRgbEquipement = (mConfig.mCapteurRGB != nullptr) ? mConfig.mCapteurRGB->nomEquipement : ""; sRgbEquipement.toUpperCase();
   #endif
   #ifdef FLOTTEUR_VERTICAL
-  String sFlotteurEquipement = mConfig.mFlotteurVertical->nomEquipement; sFlotteurEquipement.toUpperCase();
+  String sFlotteurEquipement = (mConfig.mFlotteurVertical != nullptr) ? mConfig.mFlotteurVertical->nomEquipement : ""; sFlotteurEquipement.toUpperCase();
   #endif
 
   Serial.printf("[MQTT] void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
@@ -150,7 +160,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     mConfig.handleMqttCommand(messageOrg);
     if (message == "STATUS") {
       String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
-      statusMsg += String(mConfig.mDateTime->getDate()) + " " + String(mConfig.mDateTime->getTime()) + "\n";
+      statusMsg += String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getDate() : "DATE") + " " + String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getTime() : "TIME") + "\n";
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 
@@ -168,23 +178,23 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     }
     #ifdef CAPTEUR_DS18B20
     else if (message.startsWith(sDs18B20Equipement)) {
-      mConfig.ds18b20->handleMqttCommand(messageOrg);
+      if (mConfig.ds18b20 != nullptr) mConfig.ds18b20->handleMqttCommand(messageOrg);
     }
     #endif
     #ifdef CAPTEUR_DHT20
     else if (message.startsWith(sDht20Equipement)) {
-      mConfig.dht20->handleMqttCommand(messageOrg);
+      if (mConfig.dht20 != nullptr) mConfig.dht20->handleMqttCommand(messageOrg);
     }
     #endif
     #ifdef CAPTEUR_RGB_TCS34725
     else if (message.startsWith(sRgbEquipement)) {
-      mConfig.mCapteurRGB->handleMqttCommand(messageOrg);
+      if (mConfig.mCapteurRGB != nullptr) mConfig.mCapteurRGB->handleMqttCommand(messageOrg);
     }
     #endif
     #ifdef FLOTTEUR_VERTICAL
     else if (message.startsWith(sFlotteurEquipement)) {
-      mConfig.mFlotteurVertical->handleMqttCommand(messageOrg);
-    } 
+      if (mConfig.mFlotteurVertical != nullptr) mConfig.mFlotteurVertical->handleMqttCommand(messageOrg);
+    }
     #endif
     else {
       Serial.println("void CMqtt::callback() - Non traité " + String(topic) + " : " + message);
@@ -257,7 +267,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     mConfig.handleMqttCommand(message);
   if (message == "STATUS") {
       String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
-      statusMsg += String(mConfig.mDateTime->getDate()) + " " + String(mConfig.mDateTime->getTime()) + "\n";
+      statusMsg += String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getDate() : "DATE") + " " + String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getTime() : "TIME") + "\n";
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 

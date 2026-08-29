@@ -1,7 +1,7 @@
 #ifndef __MY_LORA_RX_TX_H__
 #define __MY_LORA_RX_TX_H__
 
-//#ifdef _LORA_P2P_MODE_
+#ifdef _LORA_P2P_MODE_
 #include <RadioLib.h>
 #include <functional>
 class CConfig;
@@ -66,6 +66,6 @@ public:
 
 
 };
-//#endif // _LORA_P2P_MODE_
+#endif // _LORA_P2P_MODE_
 
 #endif // __MY_LORA_RX_TX_H__

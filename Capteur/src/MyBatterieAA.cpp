@@ -64,7 +64,9 @@ bool CBatterieAA::publieSurMqtt(bool force/*=false*/) {
     String sEtatBatterie;
     if (temp < mfTensionMin) sEtatBatterie = "DECHARGEE " ;
     else sEtatBatterie = "CHARGEE ";
-    String sVal = nomEquipement + " Tension " + sEtatBatterie + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp, 1);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sVal = nomEquipement + " Tension " + sEtatBatterie + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sVal += " FORCE";
     Serial.println("CBatterieAA::publieSurMqtt() : " + sVal);
     bool ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
@@ -81,8 +83,9 @@ bool CBatterieAA::publieParLoraP2P(bool force/*=false*/) {
     String sEtatBatterie;
     if (temp < mfTensionMin) sEtatBatterie = "DECHARGEE " ;
     else sEtatBatterie = "CHARGEE ";
-//    String sVal = mqttSubTopicState + " " +  nomEquipement + " Tension " + sEtatBatterie + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(temp, 1);
-    String sVal = mqttSubTopicState + " " +  nomEquipement + " Tension " + sEtatBatterie + "DATE TIME" + " " + String(temp, 1);
+    String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+    String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+    String sVal = mqttSubTopicState + " " +  nomEquipement + " Tension " + sEtatBatterie + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sVal += " FORCE";
     Serial.println("CBatterieAA::publieParLoraP2P() : " + sVal);
     bool ret = (onLoraP2PPublish(sVal.c_str()) == 0);
