@@ -79,6 +79,7 @@ void CMqtt::reconnect() {
 }
 
   void CMqtt::loop() {
+    if (WiFi.status() != WL_CONNECTED) return; // Le WiFi est down : reconnect() bloquerait indéfiniment en essayant de joindre le broker
     if (!client.connected()) reconnect();
     client.loop();
   }

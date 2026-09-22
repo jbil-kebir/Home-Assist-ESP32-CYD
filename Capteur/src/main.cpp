@@ -471,9 +471,39 @@ void loop() {
   
   config.loop();
   #ifdef _WIFI_MODE_
+  // Pas de deep sleep entre deux tours de loop() (DEBUG_NO_DEEP_SLEEP force mbDeepSleepActive à false
+  // dans CConfig::setup(), ou désactivé dynamiquement via NVS/web/MQTT) : le WiFi peut rester up
+  // indéfiniment et se couper sans qu'aucun redémarrage ne vienne le reconnecter. On surveille donc
+  // la connexion ici et on retente le profil actuellement utilisé.
+  static unsigned long wifiDownSince = 0; // 0 = pas de coupure en cours
+  if (!config.mbDeepSleepActive) {
+    static unsigned long lastWifiReconnectAttempt = 0;
+    const unsigned long WIFI_RECONNECT_INTERVAL_MS = 30000;
+    if (WiFi.status() != WL_CONNECTED) {
+      if (wifiDownSince == 0) wifiDownSince = millis(); // 1ère détection de la coupure
+      if (millis() - lastWifiReconnectAttempt > WIFI_RECONNECT_INTERVAL_MS) {
+        lastWifiReconnectAttempt = millis();
+        Serial.println("WiFi déconnecté - tentative de reconnexion...");
+        if (config.mWifi != nullptr) config.mWifi->begin();
+      }
+    }
+  }
   #ifndef __DESACTIVE_ENVOI_MQTT__
-  mqtt.loop();  // Toujours actif, même écran éteint
+  mqtt.loop();  // Toujours actif, même écran éteint. Reconnecte le MQTT une fois le WiFi revenu (voir CMqtt::loop()).
   #endif
+
+  // WiFi revenu après une coupure détectée ci-dessus : on publie la durée approximative de la coupure.
+  // Placé après mqtt.loop() pour laisser le temps au client MQTT de se reconnecter avant d'envoyer le message.
+  if (wifiDownSince != 0 && WiFi.status() == WL_CONNECTED) {
+    unsigned long dureeSec = (millis() - wifiDownSince) / 1000;
+    String msg = config.nomEquipement + " WIFI RECONNECTE apres coupure d'environ " + String(dureeSec) + " s";
+    Serial.println(msg);
+    #ifndef __DESACTIVE_ENVOI_MQTT__
+    mqtt.publish(config.topic_config_state.c_str(), msg.c_str());
+    #endif
+    wifiDownSince = 0;
+  }
+
   webServer.loop();
   #endif
  
