@@ -119,6 +119,18 @@ Chaque sous-dossier ESP32 est autonome et contient son propre `platformio.ini`.
    ```
 5. Au premier lancement, saisir l'adresse IP et le port du broker MQTT.
 
+## Workflow de développement (mainteneur)
+
+Le développement se fait dans une copie locale sans git (`D:\Developpement\Pilotage_Maison`). Le dépôt git de référence est sur le NAS (`\\newnas\Kebir\Info-Developpement\GitHub\Pilotage_Maison`), relié à GitHub (`origin`, branche `main`).
+
+Avant chaque commit :
+1. Comparer tout le dossier du projet entre D: et le NAS (les deux copies peuvent avoir divergé), en ignorant `.pio`, `.vscode`, `~$*.docx`, `*.bak.docx`.
+2. Copier les fichiers modifiés de D: vers le NAS, avec les mêmes exclusions.
+3. Faire `git add` / `git commit` / `git push origin main` depuis le dossier du NAS.
+4. Pour un capteur, vérifier que `platformio.ini` et `global.h` sont en réglages PRODUCTION (et pas DEBUG) si le firmware est destiné à fonctionner sur batterie.
+
+Le détail (commandes, correspondance des dossiers) est dans [CLAUDE.md](CLAUDE.md).
+
 ## Firmwares pré-compilés (v1.0)
 
 Téléchargez les binaires prêts à flasher depuis la release :
