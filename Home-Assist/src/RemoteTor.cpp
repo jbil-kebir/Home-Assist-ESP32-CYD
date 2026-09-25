@@ -230,7 +230,7 @@ void CRemoteTor::handleMqttCommand(const String& payload) {
 
 String CRemoteTor::getHTML() {
   String html = "";
-  html =  "<h2>Configuration de la batterie AA " + nomEquipement + "</h2>"
+  html =  "<h2>Configuration TOR " + nomEquipement + "</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active").c_str() + " value=\"1\"" + String(active ? " checked" : "") + "></div>"

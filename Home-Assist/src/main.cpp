@@ -80,13 +80,25 @@ extern CRemoteTor mRemoteBigNas;
 extern CRemoteDHT20 mRemoteThRemise;
 extern CRemoteBatterieAA mRemoteBatRemise;
 
+extern CRemoteDHT20 mRemoteThChRdc;
+extern CRemoteBatterieAA mRemoteBatChRdc;
 
-// DBG_NONE, 
-// DBG_MQTT, _CAPTEURS, DBG_ACTIONNEURS, DBG_CHAUDIERE, DBG_CONFIG, DBG_RESEAU, DBG_ECRAN, 
-// DBG_ALL         
-uint32_t gDebugFlags = DBG_CHAUDIERE|DBG_MQTT;
+
+// DBG_NONE,
+// DBG_MQTT, _CAPTEURS, DBG_ACTIONNEURS, DBG_CHAUDIERE, DBG_CONFIG, DBG_RESEAU, DBG_ECRAN,
+// DBG_ALL
+//uint32_t gDebugFlags = DBG_CHAUDIERE|DBG_MQTT;
+uint32_t gDebugFlags = DBG_ALL;
 
 CMyDateTime mDateTime;
+
+static void mqttLogPublish(const char* msg) {
+    mqtt.publish("home/log", msg, false);
+}
+
+static String getLogTime() {
+    return mDateTime.getTime();
+}
 
 
 std::vector<CIPModule> mvsControleurs; // Liste des controleurs du réseau
@@ -149,6 +161,7 @@ extern void setup_ThNomade();
 extern void setup_ThSdb();
 extern void setup_ThCh1er();
 extern void setup_ThRemise();
+extern void setup_ThChRdc();
 extern void setup_homeassistant();
 
 extern void loop_ds18b20();
@@ -157,6 +170,7 @@ extern void loop_ThNomade();
 extern void loop_ThSdb();
 extern void loop_ThCh1er();
 extern void loop_ThRemise();
+extern void loop_ThChRdc();
 
 extern void loop_homeassistant();
 
@@ -198,6 +212,7 @@ void setup() {
   setup_ThCave();
   setup_ThNomade();
   setup_ThRemise();
+  setup_ThChRdc();
   setup_homeassistant();
   
   config.setup("cfg_", &mvsControleurs, &mvsEsclaves);
@@ -270,8 +285,8 @@ void setup() {
   //Serial.println("\nSynchronisation de l'heure...");
   ecran.updateStatus("Synchronisation de l'heure...");
   mDateTime.setup();
-  
-  
+  gLogger.setTimeCallback(getLogTime);
+
   // Afficher la date et l'heure
   Serial.println("\n========== DATE ET HEURE ==========");
   Serial.print("DateTime: "); Serial.println(mDateTime.getDateTime());
@@ -292,7 +307,7 @@ void setup() {
     Serial.println("...Serveur Web OK");
   }
   
-  #ifdef DISABLE_EFFECTEUR
+  #if defined(DISABLE_EFFECTEUR_CHAUDIERE) || defined(DISABLE_EFFECTEUR_RC_SWITCH)
   #ifndef __LOCAL_MODE__
   String sWarning = "WARNING : DISABLE_EFFECTEUR défini sans __LOCAL_MODE__";
   Serial.println(sWarning);
@@ -307,6 +322,7 @@ void setup() {
   mqtt.begin();
   #endif
   mqtt.reconnect(); // KJ
+  gLogger.setPublishCallback(mqttLogPublish);
   ecran.updateStatus("...MQTT OK !");
 
   #ifndef __LOCAL_MODE__
@@ -389,6 +405,7 @@ void loop() {
   loop_ThCh1er();
   loop_ThSdb();
   loop_ThRemise();
+  loop_ThChRdc();
   loop_homeassistant();
   
   #ifdef __CYD__  
@@ -608,6 +625,9 @@ void print() {
 
   mRemoteThRemise.print();
   mRemoteBatRemise.print();
+
+  mRemoteThChRdc.print();
+  mRemoteBatChRdc.print();
 
   printControleurs();
   printEsclaves();

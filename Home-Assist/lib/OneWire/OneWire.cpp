@@ -596,16 +596,8 @@ uint16_t OneWire::crc16(const uint8_t* input, uint16_t len, uint16_t crc)
 
 // undef defines for no particular reason
 #ifdef ARDUINO_ARCH_ESP32
-#undef noInterrupts
-#define noInterrupts() do { \
-    portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED; \
-    portENTER_CRITICAL(&mux); \
-} while (0)
-
-#undef interrupts
-#define interrupts() do { \
-    portEXIT_CRITICAL(&mux); \
-} while (0)
+#  undef noInterrupts
+#  undef interrupts
 #endif
 // for info on this, search "IRAM_ATTR" at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/general-notes.html 
 #undef CRIT_TIMING 

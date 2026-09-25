@@ -18,7 +18,7 @@
   }
 
   void CRadioTX::transmitPulses(const uint16_t* pulses, int nbPulses, const char* action) {
-    #ifdef DISABLE_EFFECTEUR
+    #ifdef DISABLE_EFFECTEUR_CHAUDIERE
     DBG(DBG_ACTIONNEURS, "void CRadioTX::transmitPulses() - Effecteur désactivé.\n");
     return;
     #endif

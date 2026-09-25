@@ -16,8 +16,12 @@
 // Si ce commutateur n'est pas commenté, il n'y a pas d'émission RF mais 
 // tout le processus de commande est exécuté.
 // Ce commutateur ne devrait pas être actif si __LOCAL_MODE__ ne l'est pas.
+//
+// Modif : un commutateur active les émissions pour la chaudière, l'autre pour les RCSwitch. 
+// Cela permet de n'avoir que la chaudière ou que les RCS désactivés, selon les besoins.
 //----------------------------------------------------------------------------
-//#define DISABLE_EFFECTEUR
+//#define DISABLE_EFFECTEUR_CHAUDIERE
+//#define DISABLE_EFFECTEUR_RC_SWITCH
 
 //----------------------------------------------------------------------------
 // Switch pour le DS18B20 local. Voir plus loin la Pin
@@ -98,7 +102,7 @@
 
 
 // Version du logiciel
-#define VERSION "2.8"
+#define VERSION "2.9"
 
 
 //----------------------------------------------------------------------------
@@ -106,6 +110,7 @@
 // Usage dans main.cpp : gDebugFlags = DBG_MQTT | DBG_CAPTEURS;
 //----------------------------------------------------------------------------
 #include <Arduino.h>
+#include "MyLogger.h"
 
 constexpr uint32_t DBG_NONE        = 0;
 constexpr uint32_t DBG_MQTT        = 1 << 0;
@@ -120,8 +125,8 @@ constexpr uint32_t DBG_ALL         = 0xFFFFFFFF;
 extern uint32_t gDebugFlags;
 
 // Macro principale (style printf)
-#define DBG(cat, ...)   do { if (gDebugFlags & (cat)) Serial.printf(__VA_ARGS__); } while(0)
+#define DBG(cat, ...)   do { if (gDebugFlags & (cat)) { Serial.printf(__VA_ARGS__); gLogger.addf(__VA_ARGS__); } } while(0)
 // Macro pour Serial.println(str) — ajoute \n automatiquement
-#define DBGLN(cat, msg) do { if (gDebugFlags & (cat)) { Serial.println(msg); } } while(0)
+#define DBGLN(cat, msg) do { if (gDebugFlags & (cat)) { Serial.println(msg); gLogger.add(String(msg).c_str()); } } while(0)
 
 #endif // __GLOBAL_H__

@@ -144,12 +144,9 @@ void CRemoteTCS34725::handleMqttState(const String& payload) {
   ParsedMqttMessage msg;
   msg.parse(payload);
   int n = msg.miTailleMesure;
-  //Serial.printf("void CRemoteTCS34725::handleMqttState(const String& payload) - paylod = %s - Nb de champs = %d\n", payload.c_str(), n);
-  
-  if (n > 0) {
-    //msg.printDebug();
 
-    if (msg.msExpediteur != getNomEquipement()) {
+  if (n > 0) {
+    if (!msg.msExpediteur.equalsIgnoreCase(getNomEquipement())) {
       DBG(DBG_CAPTEURS, "void CRemoteThermo::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
       return; // pas pour nous
     }
@@ -161,7 +158,7 @@ void CRemoteTCS34725::handleMqttState(const String& payload) {
     // On réinitiallise le WatchDog
     mulWatchDog = millis();
 
-    if (!msg.msIp.isEmpty()) mIP = msg.msIp.isEmpty();
+    if (!msg.msIp.isEmpty()) mIP = msg.msIp;
 
     String premiereMesure = msg.mvsMesure[0];
     premiereMesure.toUpperCase();
@@ -243,6 +240,7 @@ void CRemoteTCS34725::handleMqttState(const String& payload) {
       if (onCouleurChanged != nullptr) {
         String valStr = msg.mvsMesure.back();
         mbLastEtatOnOff = valStr.toInt();
+        DBGLN(DBG_CAPTEURS, nomEquipement + String(" DEL : ") + valStr);
         onCouleurChanged(msg.msExpediteur, mbLastEtatOnOff);// ? TFT_RED : TFT_GREEN);
         //Serial.printf("void CRemoteTCS34725::handleMqttState() - mbLastEtatOnOff : %d\n", mbLastEtatOnOff);
         //remonteLuminositeParMqtt(); // Les CYD distants doivent être informés

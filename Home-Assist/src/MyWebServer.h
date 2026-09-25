@@ -27,6 +27,9 @@ private:
   void handleRoot();
   void handleSave();
   void handleNotFound();
+  void handleLogs();
+  void handleLogsData();
+  void handleLogsClear();
 
 public:
   MyWebServer(CConfig& cfg, CEcran& ecr, CMqtt& mq, CWifi *wifi) : server(80), config(cfg), ecran(ecr), mqtt(mq), mWifi(wifi)/*, rcSwitch(rc)*/ {}

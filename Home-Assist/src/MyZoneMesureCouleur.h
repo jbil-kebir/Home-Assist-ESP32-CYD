@@ -33,6 +33,7 @@ class CZoneMesureCouleur {
     public:
         unsigned int muiPosX, muiPosY, muiWidth, muiHight, muiBgColor; // Cadre contenant le nom et la mesure. Initialisées par le constructeur
         unsigned int muiValMesureX, muiValMesureY, muiValMesureFont; // Position et Police de la mesure (On/Off, ...)
+        bool mbModeFond = false; // true : pas de carré d'état, c'est le fond de la zone qui prend la couleur de l'état
 
         void calculeCoordonnees();
         CZoneMesureCouleur(TFT_eSPI& tft, unsigned int x, unsigned int y, unsigned int w, unsigned int h, unsigned int bgcolor, String name=""); 

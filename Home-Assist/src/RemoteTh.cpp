@@ -41,8 +41,12 @@ bool CRemoteThermo::readTemperature() {
   return true;
 }
 
-float CRemoteThermo::getLastTemperature() const { 
-  return lastTempC; 
+float CRemoteThermo::getLastTemperature() const {
+  return lastTempC;
+}
+
+float CRemoteThermo::getLastHumidite() const {
+  return lastHum;
 }
 
 void CRemoteThermo::printTemperature() const {
@@ -95,6 +99,9 @@ void CRemoteThermo::print() const {
 
 void CRemoteThermo::setDisplayCallback(std::function<void(const String&, float)> cb) {
   onTemperatureChanged = cb;
+}
+void CRemoteThermo::setDisplayCallbackHumidite(std::function<void(const String&, float)> cb) {
+  onHumiditeChanged = cb;
 }
 void CRemoteThermo::setMqttPublishCallback(std::function<int(const char*, const char*)> cb) {
   onMqttPublish = cb;
@@ -150,7 +157,17 @@ void CRemoteThermo::handleMqttState(const String& payload) {
       else {
         DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
-    } 
+    }
+    else if (premiereMesure == "HUM") {
+      String valStr = msg.mvsMesure.back();
+      lastHum = valStr.toFloat();
+      if (onHumiditeChanged != nullptr) {
+        onHumiditeChanged(msg.msExpediteur, lastHum);
+      }
+      else {
+        DBGLN(DBG_CAPTEURS, "Aucun callback humidité défini pour " + nomEquipement);
+      }
+    }
     #ifndef __LOCAL_MODE__ // Les CYD auxiliaires peuvent recevoir des infos température à leur demande
     else if (premiereMesure == "TEMPR") {
       // Lorsqu'on reçoit une mesure, cela indique que le capteur est actif
@@ -165,6 +182,19 @@ void CRemoteThermo::handleMqttState(const String& payload) {
         DBGLN(DBG_CAPTEURS, "Aucun callback défini pour " + nomEquipement);
       }
     } 
+    else if (premiereMesure == "HUMR") {
+      // Lorsqu'on reçoit une mesure, cela indique que le capteur est actif
+      setActive(true);
+
+      String valStr = msg.mvsMesure.back();
+      lastHum = valStr.toFloat();
+      if (onHumiditeChanged != nullptr) {
+        onHumiditeChanged(msg.msExpediteur, lastHum);
+      }
+      else {
+        DBGLN(DBG_CAPTEURS, "Aucun callback humidité défini pour " + nomEquipement);
+      }
+    }
     else if (premiereMesure == "INACTIFR") {
       setActive(false);
     } 
@@ -190,6 +220,14 @@ bool CRemoteThermo::remonteStatusParMqtt() {
   }
   DBGLN(DBG_CAPTEURS, "CRemoteThermo::remonteStatusParMqtt() : " + sVal);
   bool ret = onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str());
+
+  // Humidité : uniquement si le capteur en fournit une (ThCh1er n'en envoie pas)
+  if (active && lastHum != -1.0) {
+    String sValHum = nomEquipement + " HUMR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(lastHum, 1);
+    sValHum += " FORCE";
+    DBGLN(DBG_CAPTEURS, "CRemoteThermo::remonteStatusParMqtt() : " + sValHum);
+    onMqttPublish(mqttSubTopicState.c_str(), sValHum.c_str());
+  }
   return ret;
 } 
 

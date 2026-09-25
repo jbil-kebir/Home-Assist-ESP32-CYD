@@ -33,6 +33,10 @@ void setup_ThSdb() {
   mRemoteThSdb.setDisplayCallback([](const String& exp, float temp) {
       ecran.updateRemoteDevice_ThSdb(exp, temp);
   });
+  // Thermomètre Salle de bain - affichage humidité
+  mRemoteThSdb.setDisplayCallbackHumidite([](const String& exp, float hum) {
+      ecran.updateRemoteDevice_ThSdbH(exp, hum);
+  });
 
   // Thermomètre Salle de bain - publication MQTT
   mRemoteThSdb.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
@@ -77,6 +81,7 @@ void loop_ThSdb() {
     if (!bWdogThSdbErr) {
       DBGLN(DBG_CAPTEURS, "void loop()" + String(" - ") + " - " + mRemoteThSdb.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
       ecran.updateRemoteDevice_ThSdb(mRemoteThSdb.nomEquipement, -254.0);
+      ecran.updateRemoteDevice_ThSdbH(mRemoteThSdb.nomEquipement, -254.0);
       bWdogThSdbErr = true;
     }
   }

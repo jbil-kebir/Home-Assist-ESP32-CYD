@@ -42,6 +42,17 @@ int CZoneMesureOnOff::drawMesure(int val, const String& nom/*=""*/) {
   //if (val == -1.0 && mfOldMesure == -1.0) return -1; // Evite de trop nombreux raffraichisssements;
   mfOldMesure = val;
 
+  if (mbModeFond) { // Zone étroite : le fond reflète l'état, le libellé est centré dessus
+    unsigned int couleurFond = (val == 0) ? TFT_RED : (val == 1) ? TFT_GREEN : COLOR_UNDEFINED_STATUS;
+    String sLabelFond = nom.substring(0, 8);
+    mTft.fillRect(muiPosX, muiPosY, muiWidth, muiHight, couleurFond);
+    mTft.setTextColor(val == -10 ? muiKOColorMesure : (val == 0 ? TFT_WHITE : TFT_BLACK)); // Watchdog : texte rouge sur fond gris
+    int x = muiPosX + ((int)muiWidth - mTft.textWidth(sLabelFond, muiLabelFont)) / 2;
+    int y = muiPosY + ((int)muiHight - mTft.fontHeight(muiLabelFont)) / 2;
+    mTft.drawString(sLabelFond, x < (int)muiPosX ? muiPosX : x, y, muiLabelFont);
+    return 0;
+  }
+
   //Serial.printf("int CZoneMesureOnOff::drawMesure() - OnOff %d = %s\n", val, val == 0 ? "Rouge" : "Vert");
   mTft.fillRect(muiPosX, muiPosY, muiWidth-20, muiHight, muiBgColor);  // TFT_BLACK Efface zone
   

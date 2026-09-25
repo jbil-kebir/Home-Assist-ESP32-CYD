@@ -155,55 +155,56 @@ int CMqtt::publishWithIP(const char* topic, const char* payload) {
 }*/
 void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   if (!active) return;
+  String topicStr = String(topic); // Copie avant tout DBG qui pourrait corrompre le buffer PubSubClient
   String message, messageOrg;
   for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
   message.trim();
   messageOrg = message;
   message.toUpperCase();
 
-  DBG(DBG_MQTT, "void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
+  DBG(DBG_MQTT, "void CMqtt::callback() - reçu : %s :  %s\n", topicStr.c_str(), message.c_str());
 
   #ifdef __LOCAL_MODE__
-  if (String(topic) == mConfig.chaudiere->mqttSubTopicCommand) {
-    DBGLN(DBG_MQTT, "CMqtt::callback() - Chaudière - Topic : " + String(topic) + " - Msg : " + message);
+  if (topicStr == mConfig.chaudiere->mqttSubTopicCommand) {
+    DBGLN(DBG_MQTT, "CMqtt::callback() - Chaudière - Topic : " + topicStr + " - Msg : " + message);
     mConfig.chaudiere->handleMqttCommand(messageOrg);
   } // Projecteur
-  else if (String(topic) == mConfig.projecteur->mqttSubTopicCommand) {
-    //Serial.println("CMqtt::callback() - Projecteur - Topic : " + String(topic) + " - Msg : " + message);
+  else if (topicStr == mConfig.projecteur->mqttSubTopicCommand) {
+    //Serial.println("CMqtt::callback() - Projecteur - Topic : " + topicStr + " - Msg : " + message);
     mConfig.projecteur->handleMqttCommand(messageOrg);
-  } 
-  else if (String(topic) == mConfig.guirlande->mqttSubTopicCommand) {
-    //Serial.println("CMqtt::callback() - Guirlande - Topic : " + String(topic) + " - Msg : " + message);
+  }
+  else if (topicStr == mConfig.guirlande->mqttSubTopicCommand) {
+    //Serial.println("CMqtt::callback() - Guirlande - Topic : " + topicStr + " - Msg : " + message);
     mConfig.guirlande->handleMqttCommand(messageOrg);
-  } 
-  else if (String(topic) == mConfig.chauffageSb->mqttSubTopicCommand) {
-    //Serial.println("CMqtt::callback() - Chauffage - Topic : " + String(topic) + " - Msg : " + message);
+  }
+  else if (topicStr == mConfig.chauffageSb->mqttSubTopicCommand) {
+    //Serial.println("CMqtt::callback() - Chauffage - Topic : " + topicStr + " - Msg : " + message);
 
     mConfig.chauffageSb->handleMqttCommand(messageOrg);
-  } 
+  }
 
   #else // Mettre ici les tests pour équipements remote
-  if (String(topic) == mConfig.mRemoteChaudiere->mqttSubTopicCommand) { 
+  if (topicStr == mConfig.mRemoteChaudiere->mqttSubTopicCommand) {
     mConfig.mRemoteChaudiere->handleMqttCommand(messageOrg);
   }
-  else if (String(topic) == mConfig.mRemoteProjecteur->mqttSubTopicCommand) { 
+  else if (topicStr == mConfig.mRemoteProjecteur->mqttSubTopicCommand) {
     mConfig.mRemoteProjecteur->handleMqttCommand(messageOrg);
   }
-  else if (String(topic) == mConfig.mRemoteGuirlande->mqttSubTopicCommand) { 
+  else if (topicStr == mConfig.mRemoteGuirlande->mqttSubTopicCommand) {
     mConfig.mRemoteGuirlande->handleMqttCommand(messageOrg);
   }
-  else if (String(topic) == mConfig.mRemoteChauffage->mqttSubTopicCommand) { 
+  else if (topicStr == mConfig.mRemoteChauffage->mqttSubTopicCommand) {
     mConfig.mRemoteChauffage->handleMqttCommand(messageOrg);
   }
   /*else if (String(topic) == mConfig.mRemoteThCh1er->mqttSubTopicState) {  // Tous les thermomètres utilisent le même canal que mRemoteThCh1er->mqttSubTopicState...
-    if (message.startsWith("THCHRDC")) {                                  // On les différencie par le nom. A améliorer ?
+    if (message.startsWith("THCYD")) {                                  // On les différencie par le nom. A améliorer ?
       mConfig.mRemoteThMain->handleMqttState(message);
     }
     
   }*/ 
   #endif
-  else if (String(topic) == mConfig.mRemoteThCh1er->mqttSubTopicState) {  // Tous les thermomètres utilisent le même canal que mRemoteThCh1er->mqttSubTopicState... ()"home/thermometre/state")
-    if (message.startsWith("THCHRDC")) {                                              // On les différencie par le nom. A améliorer ?
+  else if (topicStr == mConfig.mRemoteThCh1er->mqttSubTopicState) {  // Tous les thermomètres utilisent le même canal que mRemoteThCh1er->mqttSubTopicState... ()"home/thermometre/state")
+    if (message.startsWith("THCYD")) {                                              // On les différencie par le nom. A améliorer ?
       #ifdef __LOCAL_MODE__
       // On est en local. Le thermomètre correspondant dialogue directement avec i'interface
       #else
@@ -250,12 +251,18 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     else if (message.startsWith("BATREMISE")) {
       mConfig.mRemoteBatRemise->handleMqttState(messageOrg);
     }
+    else if (message.startsWith("THCHRDC")) {
+      mConfig.mRemoteThChRdc->handleMqttState(messageOrg);
+    }
+    else if (message.startsWith("BATCHRDC")) {
+      mConfig.mRemoteBatChRdc->handleMqttState(messageOrg);
+    }
     else {
       DBG(DBG_MQTT, "CMqtt::callback() message non traité ***%s*** : \n", message.c_str());
     }
 
   }
-  else if (mConfig.mRemoteNewNas && String(topic) == mConfig.mRemoteNewNas->mqttSubTopicState) { // Messages provenant de Home Assistant (via MQTT)
+  else if (mConfig.mRemoteNewNas && topicStr == mConfig.mRemoteNewNas->mqttSubTopicState) { // Messages provenant de Home Assistant (via MQTT)
     if (message.startsWith("NEWNAS")) {
       mConfig.mRemoteNewNas->handleMqttState(messageOrg);
     }
@@ -267,7 +274,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     }
   }
   // Traitement des commandes de configuration
-  else if (String(topic) == mConfig.topic_config_command) {
+  else if (topicStr == mConfig.topic_config_command) {
     message.trim();  // Supprime espaces début/fin
     message.toUpperCase();
     //mConfig.handleMqttCommand(message);
@@ -369,6 +376,8 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
 
       mConfig.mRemoteThRemise->remonteStatusParMqtt();
       mConfig.mRemoteBatRemise->remonteStatusParMqtt();
+      mConfig.mRemoteThChRdc->remonteStatusParMqtt();
+      mConfig.mRemoteBatChRdc->remonteStatusParMqtt();
       mConfig.mRemoteTor->remonteStatusParMqtt();
 
       mConfig.mRemoteNewNas->remonteStatusParMqtt();

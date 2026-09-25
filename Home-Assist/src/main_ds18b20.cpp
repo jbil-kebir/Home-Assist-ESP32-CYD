@@ -24,7 +24,7 @@ extern CMyDateTime mDateTime;
 MyDS18B20 ds18b20(DEFAULT_DS18B20_PIN);  
 #endif
 #else
-CRemoteThermo mRemoteThMain(String("ThMain"), &ecran); // ds18b20 distant sur la carte de commande
+CRemoteThermo mRemoteThMain(String("ThMain"), &ecran); // ds18b20 distant sur la carte de commande (ThCYD)
 CRemoteBatterieAA mRemoteBatMain(String("BatMain"), &ecran); // Sera désactivé car la carte est alimentée en permanence par le secteur
 #endif
 

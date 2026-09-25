@@ -35,6 +35,7 @@ void MyWebServer::handleRoot() {
         ".btn-orange { background: #fd7e14; }"
         ".btn-yellow { background: #ffc107; color: #212529; }"
         ".btn-cyan { background: #17a2b8; }"
+        ".btn-gray { background: #6c757d; }"
         ".status { font-size: 18px; text-align: center; margin: 15px 0; font-weight: bold; }"
         ".row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: center; }"
         ".row > div { flex: 1; min-width: 200px; }"
@@ -59,6 +60,7 @@ void MyWebServer::handleRoot() {
         "<form action=\"/force_off\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-off\">Forcer OFF</button></form>"
         "<form action=\"/toggle_p\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-orange\">Projecteur</button></form>"
         "<form action=\"/toggle_g\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-yellow\">Guirlande</button></form>"
+        "<form action=\"/logs\" method=\"GET\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-gray\">Logs</button></form>"
       "</div>"
 
       "<hr style=\"margin: 40px 0;\">"
@@ -124,7 +126,6 @@ void MyWebServer::handleRoot() {
 
   html += config.mRemoteThCave->getHTML();
   html += config.mRemoteBatCave->getHTML();
-  html += config.mRemoteTor->getHTML();
 
   html += config.mRemoteThNomade->getHTML();
   html += config.mRemoteBatNomade->getHTML();
@@ -132,6 +133,10 @@ void MyWebServer::handleRoot() {
 
   html += config.mRemoteThRemise->getHTML();
   html += config.mRemoteBatRemise->getHTML();
+  html += config.mRemoteTor->getHTML();
+
+  html += config.mRemoteThChRdc->getHTML();
+  html += config.mRemoteBatChRdc->getHTML();
 
   html += config.mRemoteNewNas->getHTML();
   html += config.mRemoteBigNas->getHTML();
@@ -199,6 +204,9 @@ void MyWebServer::handleSave() {
   config.mRemoteThRemise->loadFromWebServer(server);
   config.mRemoteBatRemise->loadFromWebServer(server);
 
+  config.mRemoteThChRdc->loadFromWebServer(server);
+  config.mRemoteBatChRdc->loadFromWebServer(server);
+
   config.mRemoteNewNas->loadFromWebServer(server);
   config.mRemoteBigNas->loadFromWebServer(server);
 
@@ -252,6 +260,9 @@ void MyWebServer::handleSave() {
 
   config.mRemoteThRemise->saveToNVS();
   config.mRemoteBatRemise->saveToNVS();
+
+  config.mRemoteThChRdc->saveToNVS();
+  config.mRemoteBatChRdc->saveToNVS();
 
   config.mRemoteNewNas->saveToNVS();
   config.mRemoteBigNas->saveToNVS();
@@ -522,6 +533,60 @@ void MyWebServer::handleForceOff() {
   server.send(200, "text/html", html);
 }
 
+void MyWebServer::handleLogs() {
+  String html = F(
+    "<!DOCTYPE html><html lang=\"fr\"><head>"
+    "<meta charset=\"UTF-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+    "<title>Logs</title>"
+    "<style>"
+    "body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:20px;background:#f0f0f0;}"
+    "h1{text-align:center;color:#333;}"
+    ".controls{display:flex;gap:10px;margin-bottom:15px;align-items:center;flex-wrap:wrap;}"
+    ".btn{padding:10px 22px;font-size:15px;color:white;border:none;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-block;}"
+    ".btn-gray{background:#6c757d;}.btn-red{background:#dc3545;}"
+    "#logbox{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:13px;"
+    "padding:15px;border-radius:8px;height:500px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}"
+    "#status{font-size:12px;color:#888;margin-top:6px;text-align:right;}"
+    "label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:15px;}"
+    "</style></head><body>"
+    "<h1>Journal de logs</h1>"
+    "<div class=\"controls\">"
+    "<a href=\"/\" class=\"btn btn-gray\">Retour</a>"
+    "<form action=\"/logs/clear\" method=\"POST\" style=\"margin:0\">"
+    "<button type=\"submit\" class=\"btn btn-red\">Vider</button></form>"
+    "<label><input type=\"checkbox\" id=\"autoscroll\" checked> Auto-scroll</label>"
+    "</div>"
+    "<div id=\"logbox\">(chargement...)</div>"
+    "<div id=\"status\"></div>"
+    "<script>"
+    "const box=document.getElementById('logbox');"
+    "const status=document.getElementById('status');"
+    "const as=document.getElementById('autoscroll');"
+    "async function refresh(){"
+    "try{"
+    "const r=await fetch('/logs/data');"
+    "box.textContent=await r.text();"
+    "if(as.checked)box.scrollTop=box.scrollHeight;"
+    "status.textContent='Mis à jour : '+new Date().toLocaleTimeString();"
+    "}catch(e){status.textContent='Erreur de connexion';}"
+    "}"
+    "refresh();setInterval(refresh,3000);"
+    "</script></body></html>"
+  );
+  server.send(200, "text/html", html);
+}
+
+void MyWebServer::handleLogsData() {
+  server.send(200, "text/plain; charset=utf-8", gLogger.getContent());
+}
+
+void MyWebServer::handleLogsClear() {
+  gLogger.clear();
+  server.send(200, "text/html",
+    F("<html><head><meta http-equiv='refresh' content='0;url=/logs'></head><body></body></html>"));
+}
+
 void MyWebServer::handleNotFound() {
   server.send(404, "text/plain", "Not found");
 }
@@ -535,6 +600,9 @@ void MyWebServer::setup() {
   server.on("/toggle_g", HTTP_POST, [this]() { handleToggleG(); });  
   server.on("/chauffage_sb_on", HTTP_POST, [this]() { handleChauffageSbOn(); });
   server.on("/chauffage_sb_off", HTTP_POST, [this]() { handleChauffageSbOff(); });
+  server.on("/logs",       HTTP_GET,  [this]() { handleLogs(); });
+  server.on("/logs/data",  HTTP_GET,  [this]() { handleLogsData(); });
+  server.on("/logs/clear", HTTP_POST, [this]() { handleLogsClear(); });
   server.onNotFound([this]() { handleNotFound(); });
   server.begin();
   DBG(DBG_RESEAU, "Serveur web démarré\n");

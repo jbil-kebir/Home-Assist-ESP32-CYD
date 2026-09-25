@@ -52,12 +52,21 @@ int CZoneMesureCouleur::drawMesure(int val, const String& nom/*=""*/) {
   //Serial.printf("int CZoneMesureCouleur::drawMesure() - Couleur %d = %s\n", val, val == 0 ? "Rouge" : (val == 1 ? "Vert" : "Gris"));
 
   //Serial.printf("int CZoneMesureCouleur::drawMesure() - OnOff %d = %s\n", val, val == 0 ? "Rouge" : "Vert");
-  mTft.fillRect(muiPosX, muiPosY, muiWidth-20, muiHight, muiBgColor);  // TFT_BLACK Efface zone
-
   unsigned int couleur = (val == 0) ? TFT_RED : (val == 1) ? TFT_GREEN : COLOR_UNDEFINED_STATUS; // Si la valeur est autre que 0 ou 1, on affiche en gris
+  String sLabel = nom.substring(0, 8);
+
+  if (mbModeFond) { // Zone étroite : le fond reflète l'état, le libellé est centré dessus
+    mTft.fillRect(muiPosX, muiPosY, muiWidth, muiHight, couleur);
+    mTft.setTextColor(val == 0 ? TFT_WHITE : TFT_BLACK);
+    int x = muiPosX + ((int)muiWidth - mTft.textWidth(sLabel, muiLabelFont)) / 2;
+    int y = muiPosY + ((int)muiHight - mTft.fontHeight(muiLabelFont)) / 2;
+    mTft.drawString(sLabel, x < (int)muiPosX ? muiPosX : x, y, muiLabelFont);
+    return 0;
+  }
+
+  mTft.fillRect(muiPosX, muiPosY, muiWidth-20, muiHight, muiBgColor);  // TFT_BLACK Efface zone
   mTft.fillRect(muiPosX+muiWidth-18, muiPosY+2, 18, muiHight-2, couleur); 
 
-  String sLabel = nom.substring(0, 8);
   if (val == 0) {
     //Serial.printf("int CZoneMesureCouleur::drawMesure() - muiKOColorMesure\n");
     mTft.setTextColor(muiKOColorMesure);

@@ -64,12 +64,13 @@ private:
   CMyBoutonSerie mBtnSeries;
 
   CZoneMesure mZoneMesureOuest,
-              mZoneMesureCentre,
               mZoneMesureEst;
+  CZoneMesureDouble mZoneMesureCentre;  // ThSdb : température + humidité + batterie
 
   CZoneMesureDouble mZoneMesureDoubleOuest;
   CZoneMesureDouble mZoneMesureDoubleCentre;
   CZoneMesureDouble mZoneMesureDoubleEst;
+  CZoneMesureDouble mZoneMesureDoubleBas;  // Série 4 : ThNomade (emplacement OUEST bas)
 
   CZoneMesureOnOff  mZoneFlotteur;
   CZoneMesureOnOff  mZoneTorNomade;
@@ -165,6 +166,7 @@ public:
   void updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float val);
 
   void updateRemoteDevice_ThSdb(const String& nom, float val);
+  void updateRemoteDevice_ThSdbH(const String& nom, float val);
   void updateRemoteDevice_ThSdbDel(const String& nom, int val);
   void updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float val);
 
@@ -186,6 +188,10 @@ public:
   void updateRemoteDevice_ThRemise(const String& nom, float val);
   void updateRemoteDevice_ThRemiseH(const String& nom, float val);
   void updateRemoteBat_ThRemise(const String& nom, int etatBatterie, float val);
+
+  void updateRemoteDevice_ThChRdc(const String& nom, float val);
+  void updateRemoteDevice_ThChRdcH(const String& nom, float val);
+  void updateRemoteBat_ThChRdc(const String& nom, int etatBatterie, float val);
 
   void updateDateHeure(const String& date, const String& heure);
   void updateDateHeure();

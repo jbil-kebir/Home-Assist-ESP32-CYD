@@ -6,7 +6,7 @@
 
 int MyDS18B20::begin(const String pref) {
   // Dû à CEquipementBase 2 lignes
-  nomEquipement = "ThChRdc";
+  nomEquipement = "ThCYD";
   mqttSubTopic = "thermometre";
   
   mPrefixNVS = pref;

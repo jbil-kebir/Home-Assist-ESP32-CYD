@@ -88,6 +88,9 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   CRemoteDHT20 *mRemoteThRemise=nullptr;
   CRemoteBatterieAA *mRemoteBatRemise=nullptr;
 
+  CRemoteDHT20 *mRemoteThChRdc=nullptr;
+  CRemoteBatterieAA *mRemoteBatChRdc=nullptr;
+
   CRemoteTor *mRemoteNewNas=nullptr;  // État Home Assistant 1 (ex: NewNas)
   CRemoteTor *mRemoteBigNas=nullptr;  // État Home Assistant 2 (ex: BigNas)
 

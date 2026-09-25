@@ -69,7 +69,7 @@ int CMyRCSwitch::loop() {
 
 int CMyRCSwitch::toggleDevice() {
   int ret = 0;
-    #ifdef DISABLE_EFFECTEUR
+    #ifdef DISABLE_EFFECTEUR_RC_SWITCH
     DBG(DBG_ACTIONNEURS, "void CMyRCSwitch::toggleDevice() - Effecteur désactivé.\n");
     return ret;
     #endif
