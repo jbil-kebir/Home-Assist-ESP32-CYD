@@ -31,7 +31,7 @@
 //#define TEST_EMISSION_RCS
 
 
-#define DEBUG_NO_DEEP_SLEEP
+//#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
 #define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
 //#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
@@ -44,7 +44,7 @@
 //#define FLOTTEUR_VERTICAL
 //#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
-//#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
+#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
