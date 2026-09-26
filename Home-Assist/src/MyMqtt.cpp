@@ -380,6 +380,10 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.mRemoteBatChRdc->remonteStatusParMqtt();
       mConfig.mRemoteTor->remonteStatusParMqtt();
 
+      mConfig.mRemoteThNomade->remonteStatusParMqtt();
+      mConfig.mRemoteTorNomade->remonteStatusParMqtt();
+      mConfig.mRemoteBatNomade->remonteStatusParMqtt();
+
       mConfig.mRemoteNewNas->remonteStatusParMqtt();
       mConfig.mRemoteBigNas->remonteStatusParMqtt();
 

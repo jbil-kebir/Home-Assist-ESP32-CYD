@@ -202,9 +202,10 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
 // mesure arrive par RF
 bool CRemoteDHT20::remonteTemperatureParMqtt() {
     if (onMqttPublish == nullptr) return false;
+    if (lastTempC == -127.0) return false; // Aucune température reçue : on n'envoie pas la valeur par défaut
     bool ret = false;
     CMyDateTime mDateTime;
-    float temp = lastTempC; 
+    float temp = lastTempC;
     String sValTemp = nomEquipement + " TEMPR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(temp, 1);
     sValTemp += " FORCE";
     //Serial.println("CRemoteDHT20::publieSurMqtt() Temp : " + sValTemp);
@@ -218,9 +219,10 @@ bool CRemoteDHT20::remonteTemperatureParMqtt() {
 // mesure arrive par RF
 bool CRemoteDHT20::remonteHumiditeParMqtt() {
     if (onMqttPublish == nullptr) return false;
+    if (lastHum == -1.0) return false; // Aucune humidité reçue : on n'envoie pas la valeur par défaut
     bool ret = false;
     CMyDateTime mDateTime;
-    float hum = lastHum; 
+    float hum = lastHum;
     String sValHum = nomEquipement + " HUMR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(hum, 1);
     sValHum += " FORCE";
     //Serial.println("CRemoteDHT20::publieSurMqtt() Hum  : " + sValHum);
@@ -235,8 +237,9 @@ bool CRemoteDHT20::remonteHumiditeParMqtt() {
 bool CRemoteDHT20::remonteStatusParMqtt() {
     if (onMqttPublish == nullptr) return false;
     bool ret = false;
+    // Indépendants : l'une des deux mesures peut être encore inconnue
     ret = remonteTemperatureParMqtt();
-    if (ret) ret = remonteHumiditeParMqtt();
+    ret = remonteHumiditeParMqtt() && ret;
     /*CMyDateTime mDateTime;
     float temp = lastTempC; 
     float hum = lastHum; 

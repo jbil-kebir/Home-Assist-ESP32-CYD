@@ -1,3 +1,8 @@
+2.9
+ThCh1er : remplacement du DS18B20 par un DHT20 (température + humidité)
+    Colonne Ouest (séries 1 à 3) : zone double température / humidité / batterie
+    CoulSdb : série 1 déplacé dans la colonne Est (sous la batterie ThMain), plus affiché en série 2
+    Flotteur : plus affiché en série 2 (chevauchait la batterie ThRemise)
 2.8
 Ajout messages Mqtt à destination des actionneurs ON/OFF nécessitant un ENABLE/DISABLE
 topic : home/equipement/command

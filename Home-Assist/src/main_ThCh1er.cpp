@@ -27,6 +27,10 @@ void setup_ThCh1er() {
   mRemoteThCh1er.setDisplayCallback([](const String& exp, float temp) {
       ecran.updateRemoteDevice_ThCh1er(exp, temp);
   });
+  // Thermomètre Chambre 1er (DHT20) - affichage humidité
+  mRemoteThCh1er.setDisplayCallbackHumidite([](const String& exp, float hum) {
+      ecran.updateRemoteDevice_ThCh1erH(exp, hum);
+  });
 
   // Thermomètre Chambre 1er - publication MQTT
   mRemoteThCh1er.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
@@ -58,6 +62,7 @@ void loop_ThCh1er() {
     if (!bWdogThCh1erErr) {
       DBGLN(DBG_CAPTEURS, "void loop()" + String(" - ") + " - " + mRemoteThCh1er.nomEquipement+" n'a pas répondu depuis longtemps ==> KO " + mDateTime.getDate() + " " + mDateTime.getTime());
       ecran.updateRemoteDevice_ThCh1er(mRemoteThCh1er.nomEquipement, -254.0);
+      ecran.updateRemoteDevice_ThCh1erH(mRemoteThCh1er.nomEquipement, -254.0);
       bWdogThCh1erErr = true;
     }
   }

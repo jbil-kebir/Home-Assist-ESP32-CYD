@@ -208,6 +208,9 @@ void CRemoteThermo::handleMqttState(const String& payload) {
 // Méthode appelée par main lorsqu'un
 // nouveau CYD se signale
 bool CRemoteThermo::remonteStatusParMqtt() {
+  // Aucune température reçue depuis le démarrage : on n'envoie pas une valeur par défaut
+  // (l'humidité ne peut pas être connue sans la température)
+  if (active && lastTempC == -127.0) return false;
   float temp = getLastTemperature(); //round(10*ds18b20.getLastTemperature())/10.0; // On arrondit à une décimale
   CMyDateTime mDateTime;
   String sVal="";
@@ -221,7 +224,7 @@ bool CRemoteThermo::remonteStatusParMqtt() {
   DBGLN(DBG_CAPTEURS, "CRemoteThermo::remonteStatusParMqtt() : " + sVal);
   bool ret = onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str());
 
-  // Humidité : uniquement si le capteur en fournit une (ThCh1er n'en envoie pas)
+  // Humidité : uniquement si le capteur en fournit une (DHT20 : ThSdb, ThCh1er)
   if (active && lastHum != -1.0) {
     String sValHum = nomEquipement + " HUMR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(lastHum, 1);
     sValHum += " FORCE";

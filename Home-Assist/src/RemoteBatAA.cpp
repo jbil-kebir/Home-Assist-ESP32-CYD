@@ -165,11 +165,14 @@ void CRemoteBatterieAA::handleMqttState(const String& payload) {
 // nouveau CYD se signale
 bool CRemoteBatterieAA::remonteStatusParMqtt() {
   if (onMqttPublish == nullptr) return false;
+  // Aucune tension reçue depuis le démarrage : on n'envoie pas une valeur par défaut
+  if (active && lastTension == -1.0) return false;
   float temp = getLastTension(); //round(10*ds18b20.getLastTension())/10.0; // On arrondit à une décimale
   CMyDateTime mDateTime;
   String sEtatBatterie;
-  if (miLastEtatBatterie) sEtatBatterie = "CHARGEE " ;
-  else sEtatBatterie = "DECHARGEE ";
+  if (miLastEtatBatterie == 1) sEtatBatterie = "CHARGEE " ;
+  else if (miLastEtatBatterie == 0) sEtatBatterie = "DECHARGEE ";
+  else sEtatBatterie = "INCONNU "; // Reçu par l'auxiliaire comme état -1
   String sVal;
   if (active) {
     sVal = nomEquipement + " TENSIONR " + sEtatBatterie + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(temp, 1);

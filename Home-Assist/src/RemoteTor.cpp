@@ -196,7 +196,9 @@ void CRemoteTor::handleMqttState(const String& payload) {
 // nouveau CYD se signale
 bool CRemoteTor::remonteStatusParMqtt() {
   if (onMqttPublish == nullptr) return false;
-  int temp = getLastMesure(); 
+  // Aucune mesure reçue depuis le démarrage : on n'envoie pas une valeur par défaut
+  if (active && lastMesure == -1) return false;
+  int temp = getLastMesure();
   CMyDateTime mDateTime;
   String sVal;
   if (active) {

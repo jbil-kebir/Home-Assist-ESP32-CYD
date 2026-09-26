@@ -306,9 +306,10 @@ void CRemoteTCS34725::handleMqttState(const String& payload) {
 // mesure arrive par RF
 bool CRemoteTCS34725::remonteCouleurParMqtt() {
     if (onMqttPublish == nullptr) return false;
+    if (lastRgb == 0x0UL) return false; // Couleur invalide (valeur par défaut) : on ne l'envoie pas
     bool ret = false;
     CMyDateTime mDateTime;
-    float temp = lastRgb; 
+    float temp = lastRgb;
     String sValTemp = nomEquipement + " COULR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(temp, 1);
     sValTemp += " FORCE";
     //Serial.println("CRemoteTCS34725::publieSurMqtt() Temp : " + sValTemp);
@@ -322,9 +323,10 @@ bool CRemoteTCS34725::remonteCouleurParMqtt() {
 // mesure arrive par RF
 bool CRemoteTCS34725::remonteLuminositeParMqtt() {
     if (onMqttPublish == nullptr) return false;
+    if (muiLastLux == 0x0) return false; // Luminosité invalide (valeur par défaut) : on ne l'envoie pas
     bool ret = false;
     CMyDateTime mDateTime;
-    //unsigned int lux = lastLux; 
+    //unsigned int lux = lastLux;
     String sValLux = nomEquipement + " LUXR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(muiLastLux);
     sValLux += " FORCE";
     //Serial.println("CRemoteTCS34725::publieSurMqtt() Lux  : " + sValLux);
@@ -339,8 +341,9 @@ bool CRemoteTCS34725::remonteLuminositeParMqtt() {
 bool CRemoteTCS34725::remonteStatusParMqtt() {
     if (onMqttPublish == nullptr) return false;
     bool ret = false;
+    // Indépendants : l'une des deux mesures peut être encore inconnue
     ret = remonteCouleurParMqtt();
-    if (ret) ret = remonteLuminositeParMqtt();
+    ret = remonteLuminositeParMqtt() && ret;
     /*CMyDateTime mDateTime;
     float temp = lastRgb; 
     float hum = lastLux; 

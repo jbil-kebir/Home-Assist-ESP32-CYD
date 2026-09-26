@@ -108,6 +108,8 @@ void MyDS18B20::setMqttPublishCallback(std::function<int(const char*, const char
 // Méthode appelée par main lorsqu'un
 // nouveau CYD se signale
 bool MyDS18B20::remonteStatusParMqtt() {
+  // Aucune température lue depuis le démarrage : on n'envoie pas une valeur par défaut
+  if (active && lastTempC == -127.0) return false;
   float temp = getLastTemperature(); //round(10*ds18b20.getLastTemperature())/10.0; // On arrondit à une décimale
   CMyDateTime mDateTime;
   String sVal;

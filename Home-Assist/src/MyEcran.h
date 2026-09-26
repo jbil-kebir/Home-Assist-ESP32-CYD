@@ -63,8 +63,8 @@ private:
 
   CMyBoutonSerie mBtnSeries;
 
-  CZoneMesure mZoneMesureOuest,
-              mZoneMesureEst;
+  CZoneMesureDouble mZoneMesureOuest;   // ThCh1er (DHT20) : température + humidité + batterie
+  CZoneMesure mZoneMesureEst;
   CZoneMesureDouble mZoneMesureCentre;  // ThSdb : température + humidité + batterie
 
   CZoneMesureDouble mZoneMesureDoubleOuest;
@@ -163,6 +163,7 @@ public:
   void updateRemoteBat_DS18B20(const String& nom, int etatBatterie, float val);
 
   void updateRemoteDevice_ThCh1er(const String& nom, float val);
+  void updateRemoteDevice_ThCh1erH(const String& nom, float val);
   void updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float val);
 
   void updateRemoteDevice_ThSdb(const String& nom, float val);

@@ -505,6 +505,7 @@ void CEcran::updateAppareilsDeMesure() {
   updateRemoteBat_DS18B20(mConfig.mRemoteBatMain->nomEquipement, mConfig.mRemoteBatMain->miLastEtatBatterie, mConfig.mRemoteBatMain->getLastTension());
   #endif
   updateRemoteDevice_ThCh1er(mConfig.mRemoteThCh1er->nomEquipement, mConfig.mRemoteThCh1er->getLastTemperature());
+  updateRemoteDevice_ThCh1erH(mConfig.mRemoteThCh1er->nomEquipement, mConfig.mRemoteThCh1er->getLastHumidite());
   updateRemoteBat_ThCh1er(mConfig.mRemoteBatThCh1er->nomEquipement, mConfig.mRemoteBatThCh1er->miLastEtatBatterie, mConfig.mRemoteBatThCh1er->getLastTension());
 
   updateRemoteDevice_ThSdb(mConfig.mRemoteThSdb->nomEquipement, mConfig.mRemoteThSdb->getLastTemperature());
@@ -566,8 +567,14 @@ void CEcran::updateRemoteBat_DS18B20(const String& nom, int etatBatterie, float 
 //-------------------------------------- ThCh1er --------------------------------------
 void CEcran::updateRemoteDevice_ThCh1er(const String& nom, float val) {
   if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
-  mZoneMesureOuest.drawMesure(val, nom);
+  mZoneMesureOuest.drawMesure1(val, nom);
 }
+// Humidité
+void CEcran::updateRemoteDevice_ThCh1erH(const String& nom, float val) {
+  if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
+  mZoneMesureOuest.drawMesure2(val, nom);
+}
+// Batterie du thermomètre Chambre 1er
 void CEcran::updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
   mZoneMesureOuest.drawEtatBatterie(val, etatBatterie, nom);
@@ -601,7 +608,8 @@ void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, int val) {
   mConfig.mRemoteChaudiere->setEtatReelOnOff(val);
   #endif
   //updateAllStates();
-  if (mucSerieAffichageEnCours > 4) return;
+  // Série 2 : pas de place (ThCh1er, ThRemise et ThCave en zones doubles)
+  if (mucSerieAffichageEnCours > 4 || mucSerieAffichageEnCours == 2) return;
   if (mucSerieAffichageEnCours == 4) {
     mZoneCouleurSdb.muiPosX = SERIE4_COL_LEFT_X;
     mZoneCouleurSdb.muiPosY = SERIE4_ROW1_Y;
@@ -616,12 +624,12 @@ void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, int val) {
     mZoneCouleurSdb.muiHight = SERIE3_COULSDB_H;
     mZoneCouleurSdb.mbModeFond = true;
     mZoneCouleurSdb.calculeCoordonnees();
-  } else {
+  } else { // Série 1 : colonne Est, sous la batterie ThMain
     mZoneCouleurSdb.mbModeFond = false;
-    mZoneCouleurSdb.muiPosX = REMOTE_1_X;
-    mZoneCouleurSdb.muiPosY = (REMOTE_1_Y + REMOTE_1_H + 2 + MESURE_2_HAUTEUR + 2);
-    mZoneCouleurSdb.muiWidth = REMOTE_1_W;
-    mZoneCouleurSdb.muiHight = REMOTE_1_H;
+    mZoneCouleurSdb.muiPosX = LOCAL_1_X;
+    mZoneCouleurSdb.muiPosY = (LOCAL_1_Y + LOCAL_1_H + 2 + MESURE_2_HAUTEUR + 2);
+    mZoneCouleurSdb.muiWidth = LOCAL_1_W;
+    mZoneCouleurSdb.muiHight = REMOTE_B_1_H;
     mZoneCouleurSdb.calculeCoordonnees();
   }
   mZoneCouleurSdb.drawMesure(val, nom);
@@ -657,8 +665,8 @@ void CEcran::updateRemoteDevice_ThCaveH(const String& nom, float val) {
 }
 // Tout ou Rien
 void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
-  // Série 1 : la place est prise par l'humidité / la batterie ThSdb. Série 3 : sous CoulSdb, à droite de ThCave
-  if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3 && mucSerieAffichageEnCours != 4) return;
+  // Séries 1 et 2 : pas de place (zones doubles). Série 3 : sous CoulSdb, à droite de ThCave
+  if (mucSerieAffichageEnCours != 3 && mucSerieAffichageEnCours != 4) return;
   //Serial.printf("void CEcran::updateRemoteDevice_ThCaveTor(nom, val) = (%s, %d)\n", nom.c_str(), val);
   if (mucSerieAffichageEnCours == 4) {
     mZoneFlotteur.muiPosX = SERIE4_COL_LEFT_X;
@@ -667,19 +675,12 @@ void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
     mZoneFlotteur.muiHight = REMOTE_B_1_H; //SERIE4_ROW_H;
     mZoneFlotteur.mbModeFond = false;
     mZoneFlotteur.calculeCoordonnees();
-  } else if (mucSerieAffichageEnCours == 3) { // Pas assez de place pour le carré : le fond porte l'état
+  } else { // Série 3 - Pas assez de place pour le carré : le fond porte l'état
     mZoneFlotteur.muiPosX = SERIE3_FLOTTEUR_X;
     mZoneFlotteur.muiPosY = SERIE3_FLOTTEUR_Y;
     mZoneFlotteur.muiWidth = SERIE3_FLOTTEUR_W;
     mZoneFlotteur.muiHight = SERIE3_FLOTTEUR_H;
     mZoneFlotteur.mbModeFond = true;
-    mZoneFlotteur.calculeCoordonnees();
-  } else {
-    mZoneFlotteur.mbModeFond = false;
-    mZoneFlotteur.muiPosX = REMOTE_2_X;
-    mZoneFlotteur.muiPosY = (REMOTE_2_Y + REMOTE_2_H + 2 + MESURE_2_HAUTEUR + 2);
-    mZoneFlotteur.muiWidth = REMOTE_2_W;
-    mZoneFlotteur.muiHight = REMOTE_2_H;
     mZoneFlotteur.calculeCoordonnees();
   }
   mZoneFlotteur.drawMesure(val, nom);
