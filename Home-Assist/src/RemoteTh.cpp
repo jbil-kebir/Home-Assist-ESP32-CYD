@@ -131,7 +131,7 @@ void CRemoteThermo::handleMqttState(const String& payload) {
       onEquipement(msg.msExpediteur, msg.msIp); // On ajoute à la liste d'équuipements si ça n'est pas déjà fait
     else DBG(DBG_CAPTEURS, "void CRemoteThermo::handleMqttState() - Pas de callback onEquipement() - %s\n", nomEquipement.c_str());
     
-    if (msg.msExpediteur != getNomEquipement()) {
+    if (!msg.msExpediteur.equalsIgnoreCase(getNomEquipement())) {
       DBG(DBG_CAPTEURS, "void CRemoteThermo::handleMqttState() - Message pour %s, pas pour nous (%s). On sort.\n", msg.msExpediteur.c_str(), getNomEquipement().c_str());
       return; // pas pour nous
     }

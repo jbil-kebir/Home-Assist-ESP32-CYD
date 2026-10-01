@@ -11,7 +11,7 @@
 class CEcran;  // Forward declaration
 
 class CRemoteRCDevice : public CEquipementBase {
-private:
+protected:
   CEcran* mEcran = nullptr;
 
 public:

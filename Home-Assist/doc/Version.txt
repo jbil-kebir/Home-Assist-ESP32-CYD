@@ -3,6 +3,10 @@ ThCh1er : remplacement du DS18B20 par un DHT20 (température + humidité)
     Colonne Ouest (séries 1 à 3) : zone double température / humidité / batterie
     CoulSdb : série 1 déplacé dans la colonne Est (sous la batterie ThMain), plus affiché en série 2
     Flotteur : plus affiché en série 2 (chevauchait la batterie ThRemise)
+ThCYD (thermomètre local) : DHT20 possible à la place du DS18B20
+    global.h : commenter __LOCAL_DS18B20__ active __LOCAL_DHT20__ (SDA = GPIO 5, SCL = GPIO 26)
+    Classe MyDHT20 (même interface que MyDS18B20) ; seule la température est remontée, l'humidité est lue mais pas exploitée
+    Pins SDA/SCL modifiables par la page web (NVS th_sda / th_scl)
 2.8
 Ajout messages Mqtt à destination des actionneurs ON/OFF nécessitant un ENABLE/DISABLE
 topic : home/equipement/command

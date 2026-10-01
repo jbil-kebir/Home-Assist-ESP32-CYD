@@ -11,7 +11,7 @@
 class CEcran;  // Forward declaration
 
 class CRCDevice : public CMyRCSwitch, public CEquipementBase  {
-private:
+protected:
   CEcran* mEcran = nullptr;
 
 public:
@@ -46,7 +46,7 @@ public:
   int remonteStatusParMqtt(); // Envoie l'état actif/inactif ainsi que ON/OFF
   void print() const;
   String getHTML();
-  int envoiOnOff();
+  virtual int envoiOnOff();
   int activeEquipement();
 };
 

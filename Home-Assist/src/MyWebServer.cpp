@@ -107,6 +107,9 @@ void MyWebServer::handleRoot() {
   #ifdef __LOCAL_DS18B20__
   // === Thermomètre local ===
   html += config.ds18b20->getHTML();
+  #elif defined(__LOCAL_DHT20__)
+  // === Thermomètre local ===
+  html += config.dht20->getHTML();
   #endif
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   html += config.mRemoteProjecteur->getHTML();
@@ -130,6 +133,8 @@ void MyWebServer::handleRoot() {
   html += config.mRemoteThNomade->getHTML();
   html += config.mRemoteBatNomade->getHTML();
   html += config.mRemoteTorNomade->getHTML();
+
+  html += config.mRemoteTorChauffageSb->getHTML();
 
   html += config.mRemoteThRemise->getHTML();
   html += config.mRemoteBatRemise->getHTML();
@@ -176,6 +181,8 @@ void MyWebServer::handleSave() {
   config.chauffageSb->loadFromWebServer(server);
   #ifdef __LOCAL_DS18B20__
   config.ds18b20->loadFromWebServer(server);
+  #elif defined(__LOCAL_DHT20__)
+  config.dht20->loadFromWebServer(server);
   #endif
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   config.mRemoteChaudiere->loadFromWebServer(server);
@@ -200,6 +207,8 @@ void MyWebServer::handleSave() {
   config.mRemoteThNomade->loadFromWebServer(server);
   config.mRemoteTorNomade->loadFromWebServer(server);
   config.mRemoteBatNomade->loadFromWebServer(server);
+
+  config.mRemoteTorChauffageSb->loadFromWebServer(server);
 
   config.mRemoteThRemise->loadFromWebServer(server);
   config.mRemoteBatRemise->loadFromWebServer(server);
@@ -232,6 +241,9 @@ void MyWebServer::handleSave() {
   #ifdef __LOCAL_DS18B20__
   // === SAUVEGARDE DU THERMOMETRE LOCAL ===
   config.ds18b20->saveToNVS();
+  #elif defined(__LOCAL_DHT20__)
+  // === SAUVEGARDE DU THERMOMETRE LOCAL ===
+  config.dht20->saveToNVS();
   #endif
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   config.mRemoteChaudiere->saveToNVS();
@@ -257,6 +269,8 @@ void MyWebServer::handleSave() {
   config.mRemoteThNomade->saveToNVS();
   config.mRemoteTorNomade->saveToNVS();
   config.mRemoteBatNomade->saveToNVS();
+
+  config.mRemoteTorChauffageSb->saveToNVS();
 
   config.mRemoteThRemise->saveToNVS();
   config.mRemoteBatRemise->saveToNVS();

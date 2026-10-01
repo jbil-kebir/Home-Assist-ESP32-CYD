@@ -169,6 +169,7 @@ public:
   void updateRemoteDevice_ThSdb(const String& nom, float val);
   void updateRemoteDevice_ThSdbH(const String& nom, float val);
   void updateRemoteDevice_ThSdbDel(const String& nom, int val);
+  void updateRemoteDevice_ChauffageSb(const String& nom, int val);
   void updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float val);
 
   void updateRemoteDevice_ThCave(const String& nom, float val);

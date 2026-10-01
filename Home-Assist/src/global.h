@@ -25,9 +25,14 @@
 
 //----------------------------------------------------------------------------
 // Switch pour le DS18B20 local. Voir plus loin la Pin
-// Ne l'activer qu'en mode __LOCAL_MODE__ 
+// Ne l'activer qu'en mode __LOCAL_MODE__
+// Si la ligne est commentée en mode __LOCAL_MODE__, le thermomètre local
+// est un DHT20 (I2C). Voir plus loin les pins SDA/SCL.
 //----------------------------------------------------------------------------
 #define __LOCAL_DS18B20__
+#if defined(__LOCAL_MODE__) && !defined(__LOCAL_DS18B20__)
+#define __LOCAL_DHT20__
+#endif
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
@@ -73,9 +78,12 @@
 #define CC1101_SCK 18
 
 
-// Thermomètre DS18B20
+// Thermomètre local : DS18B20 ou DHT20
 #ifdef __LOCAL_DS18B20__
 #define DEFAULT_DS18B20_PIN 5
+#else
+#define DEFAULT_DHT20_SDA_PIN 5
+#define DEFAULT_DHT20_SCL_PIN 26
 #endif
 
 #define FREQUENCE 434.038
@@ -102,7 +110,7 @@
 
 
 // Version du logiciel
-#define VERSION "2.9"
+#define VERSION "3.0"
 
 
 //----------------------------------------------------------------------------

@@ -10,7 +10,7 @@ void CMyRCSwitch::setup() {
 
 }
 void CMyRCSwitch::afficheDetailRCS() {
-    DBG(DBG_ACTIONNEURS, "CMyRCSwitch::loop() - Reçu : ");
+    DBG(DBG_ACTIONNEURS, "CMyRCSwitch::afficheDetailRCS() - Reçu : ");
     DBGLN(DBG_ACTIONNEURS, mySwitch.getReceivedValue());
     DBG(DBG_ACTIONNEURS, " / ");
     DBGLN(DBG_ACTIONNEURS, mySwitch.getReceivedBitlength());
@@ -95,12 +95,6 @@ int CMyRCSwitch::toggleDevice() {
   mySwitch.send(code, 24);
 
   mySwitch.disableTransmit();
-// Test Grok
-/*ELECHOUSE_cc1101.setMHZ(433.92);
-ELECHOUSE_cc1101.setModulation(2);     
-ELECHOUSE_cc1101.setDeviation(47.607); // Deviation standard pour bonne portée
-ELECHOUSE_cc1101.setDRate(4.8);        // Débit bas = meilleure sensibilité
-ELECHOUSE_cc1101.setPA(12);*/            // Max puissance
   pinMode(CC1101_GDO0, INPUT);
   ELECHOUSE_cc1101.SetRx();
   mySwitch.enableReceive(CC1101_GDO0);

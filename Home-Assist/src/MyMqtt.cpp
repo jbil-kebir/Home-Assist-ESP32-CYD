@@ -82,6 +82,8 @@ client.publish("home/chaudiere/status",  "", true);*/
       client.subscribe(mConfig.topic_config_state.c_str()); //, 1);
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteThCh1er->mqttSubTopicState);
       client.subscribe(mConfig.mRemoteThCh1er->mqttSubTopicState.c_str());
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteTorChauffageSb->mqttSubTopicState);
+      client.subscribe(mConfig.mRemoteTorChauffageSb->mqttSubTopicState.c_str());
       if (mConfig.mRemoteNewNas) {
         DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteNewNas->mqttSubTopicState);
         client.subscribe(mConfig.mRemoteNewNas->mqttSubTopicState.c_str());
@@ -262,6 +264,14 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     }
 
   }
+  else if (topicStr == mConfig.mRemoteTorChauffageSb->mqttSubTopicState) { // Messages des noeuds ("home/noeud/state")
+    if (message.startsWith("NOEUDCHAUFFAGESB")) {
+      mConfig.mRemoteTorChauffageSb->handleMqttState(messageOrg);
+    }
+    else {
+      DBG(DBG_MQTT, "CMqtt::callback() noeud message non traité ***%s*** : \n", message.c_str());
+    }
+  }
   else if (mConfig.mRemoteNewNas && topicStr == mConfig.mRemoteNewNas->mqttSubTopicState) { // Messages provenant de Home Assistant (via MQTT)
     if (message.startsWith("NEWNAS")) {
       mConfig.mRemoteNewNas->handleMqttState(messageOrg);
@@ -362,7 +372,11 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.guirlande->remonteStatusParMqtt();
       mConfig.chauffageSb->remonteStatusParMqtt();
 
+      #ifdef __LOCAL_DS18B20__
       mConfig.ds18b20->remonteStatusParMqtt();
+      #elif defined(__LOCAL_DHT20__)
+      mConfig.dht20->remonteStatusParMqtt();
+      #endif
 
       mConfig.mRemoteThCh1er->remonteStatusParMqtt();
       mConfig.mRemoteBatThCh1er->remonteStatusParMqtt();
@@ -383,6 +397,8 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.mRemoteThNomade->remonteStatusParMqtt();
       mConfig.mRemoteTorNomade->remonteStatusParMqtt();
       mConfig.mRemoteBatNomade->remonteStatusParMqtt();
+
+      mConfig.mRemoteTorChauffageSb->remonteStatusParMqtt();
 
       mConfig.mRemoteNewNas->remonteStatusParMqtt();
       mConfig.mRemoteBigNas->remonteStatusParMqtt();

@@ -8,7 +8,9 @@
 #include "MyRCDevice.h"
 #ifdef __LOCAL_MODE__
 #include "MyChaudiere.h"
+#include "MyNoeudChauffageIRSound.h"
 #include "MyDS18B20.h"
+#include "MyDHT20.h"
 #else
 #include "RemoteChaudiere.h"
 #include "RemoteRCDevice.h"
@@ -54,17 +56,22 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   // === APPAREILS 433 MHz ===
   CRCDevice *projecteur=nullptr;
   CRCDevice  *guirlande=nullptr;
-  CRCDevice  *chauffageSb=nullptr;
+//  CRCDevice  *chauffageSb=nullptr;
+  CNoeudChauffageIRSound  *chauffageSb=nullptr;
 
   #ifdef __LOCAL_DS18B20__
   // Thermomètre
   MyDS18B20 *ds18b20=nullptr;
+  #elif defined(__LOCAL_DHT20__)
+  // Thermomètre
+  MyDHT20 *dht20=nullptr;
   #endif
 #else // Chaudière, thermomètre principal et équipements 433 MHz distants
   CRemoteChaudiere *mRemoteChaudiere=nullptr;
   CRemoteRCDevice *mRemoteProjecteur=nullptr;
   CRemoteRCDevice *mRemoteGuirlande=nullptr;
-  CRemoteRCDevice *mRemoteChauffage=nullptr;
+  CRemoteNoeudChauffageIRSound *mRemoteChauffage=nullptr;
+//  CRemoteRCDevice *mRemoteChauffage=nullptr;
   CRemoteThermo *mRemoteThMain=nullptr;
   CRemoteBatterieAA *mRemoteBatMain=nullptr;
 #endif
@@ -84,6 +91,8 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   CRemoteDHT20 *mRemoteThNomade=nullptr;
   CRemoteTor *mRemoteTorNomade=nullptr;
   CRemoteBatterieAA *mRemoteBatNomade=nullptr;
+
+  CRemoteTor *mRemoteTorChauffageSb=nullptr; // Etat réel du chauffage SdB (noeud IR/son)
 
   CRemoteDHT20 *mRemoteThRemise=nullptr;
   CRemoteBatterieAA *mRemoteBatRemise=nullptr;

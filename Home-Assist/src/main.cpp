@@ -18,6 +18,7 @@
 #include "MyCC1101.h"
 #include "MyRCSwitch.h"
 #include "MyDS18B20.h"
+#include "MyDHT20.h"
 //#include "MyRadioTherm.h"
 #else
 #include "RemoteChaudiere.h"
@@ -46,18 +47,20 @@ CMyRCSwitch mGeneralRCSwitch(config); // Pourrait faire doublon avec l'héritage
 CCC1101 mCC1101;
 #ifdef __LOCAL_DS18B20__
 extern MyDS18B20 ds18b20;
+#elif defined(__LOCAL_DHT20__)
+extern MyDHT20 dht20;
 #endif
 extern CChaudiere chaudiere;
 extern CRCDevice projecteur;
 extern CRCDevice guirlande;
-extern CRCDevice  chauffageSb;
+extern CNoeudChauffageIRSound  chauffageSb;
 #else // Chaudière, thermomètre principal et équipements 433 MHz distants
 extern CRemoteChaudiere mRemoteChaudiere;
 extern CRemoteThermo mRemoteThMain;
 extern CRemoteBatterieAA mRemoteBatMain;
 extern CRemoteRCDevice mRemoteProjecteur;
 extern CRemoteRCDevice mRemoteGuirlande;
-extern CRemoteRCDevice mRemoteChauffage;
+extern CRemoteNoeudChauffageIRSound mRemoteChauffage;
 #endif // __LOCAL_MODE__
 
 extern CRemoteThermo mRemoteThCh1er;
@@ -73,6 +76,8 @@ extern CRemoteBatterieAA mRemoteBatCave;
 extern CRemoteDHT20 mRemoteThNomade;
 extern CRemoteTor mRemoteTorNomade;
 extern CRemoteBatterieAA mRemoteBatNomade;
+
+extern CRemoteTor mRemoteTorChauffageSb;
 
 extern CRemoteTor mRemoteNewNas;
 extern CRemoteTor mRemoteBigNas;
@@ -151,6 +156,7 @@ void printEsclaves();
 void print();
 
 extern void setup_chaudiere();
+extern void setup_chauffageSDB();
 extern void setup_ds18b20();
 extern void setup_projecteur();
 extern void setup_guirlande();
@@ -197,12 +203,9 @@ void setup() {
   setup_projecteur();
   setup_guirlande();
   setup_chauffageSb();
-  //ecran.mvsControleurs = &mvsControleurs;
-  //ecran.mvsEsclaves = &mvsEsclaves;
   
   #ifdef __LOCAL_MODE__
 
-  //therm.setup();
   mGeneralRCSwitch.setup();
 
   #else // Chaudière, thermomètre principal et équipements 433 MHz
@@ -256,18 +259,7 @@ void setup() {
   
   ecran.updateStatus("Initialisation WiFi...");
   int i = connecte_wifi();
-  /*while(true) {
-    Serial.printf("WiFi %d : %s\n", i, mWifi[i].nomEquipement);
-    if (mWifi[i].active) {
-      mWifi[i].begin();
-      if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("\nEchec de la connexion");
-      }
-      else break;
-    }
-    i = (i + 1) % MAX_WIFI_NETS;
-  }*/
- if (i == -1) { // Ne devrait jamais arriver car on boucle dans connecte_wifi() jusqu'à trouver une connexion, mais on gère le cas au cas où
+  if (i == -1) { // Ne devrait jamais arriver car on boucle dans connecte_wifi() jusqu'à trouver une connexion, mais on gère le cas au cas où
     String sError = "ERREUR : Impossible de se connecter à un réseau WiFi. Vérifiez la configuration.";
     Serial.println(sError);
     ecran.updateStatus(sError);
@@ -586,6 +578,9 @@ void print() {
   #ifdef __LOCAL_DS18B20__
   DBG(DBG_CONFIG, "[DS18B20]\n");
   ds18b20.print();
+  #elif defined(__LOCAL_DHT20__)
+  DBG(DBG_CONFIG, "[DHT20]\n");
+  dht20.print();
   #endif
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   mRemoteChaudiere.print();
@@ -622,6 +617,8 @@ void print() {
   mRemoteThNomade.print();
   mRemoteTorNomade.print();
   mRemoteBatNomade.print();
+
+  mRemoteTorChauffageSb.print();
 
   mRemoteThRemise.print();
   mRemoteBatRemise.print();

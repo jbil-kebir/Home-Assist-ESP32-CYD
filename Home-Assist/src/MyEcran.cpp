@@ -541,6 +541,9 @@ void CEcran::updateThermometreLocal() {
   #ifdef __LOCAL_DS18B20__
   nom = mConfig.ds18b20->nomEquipement;
   temp = mConfig.ds18b20->getLastTemperature();
+  #elif defined(__LOCAL_DHT20__)
+  nom = mConfig.dht20->nomEquipement;
+  temp = mConfig.dht20->getLastTemperature();
   #else
   nom = "";
   temp = -127.0;
@@ -633,6 +636,14 @@ void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, int val) {
     mZoneCouleurSdb.calculeCoordonnees();
   }
   mZoneCouleurSdb.drawMesure(val, nom);
+}
+// Etat réel du chauffage SdB (noeud IR/son)
+void CEcran::updateRemoteDevice_ChauffageSb(const String& nom, int val) {
+  #ifdef __LOCAL_MODE__
+  mConfig.chauffageSb->setEtatReelOnOff(val);
+  #else
+  mConfig.mRemoteChauffage->setEtatReelOnOff(val);
+  #endif
 }
 
 //-------------------------------------- ThRemise --------------------------------------

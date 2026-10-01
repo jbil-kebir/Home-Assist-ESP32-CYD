@@ -22,6 +22,8 @@ extern CMyDateTime mDateTime;
 #ifdef __LOCAL_MODE__
 #ifdef __LOCAL_DS18B20__
 MyDS18B20 ds18b20(DEFAULT_DS18B20_PIN);  
+#elif defined(__LOCAL_DHT20__)
+MyDHT20 dht20(DEFAULT_DHT20_SDA_PIN, DEFAULT_DHT20_SCL_PIN);
 #endif
 #else
 CRemoteThermo mRemoteThMain(String("ThMain"), &ecran); // ds18b20 distant sur la carte de commande (ThCYD)
@@ -36,6 +38,13 @@ void setup_ds18b20() {
   ds18b20.begin("th_");
   config.ds18b20 = &ds18b20;
   ds18b20.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+    return mqtt.publishWithIP(topic, payload);
+  });
+  #elif defined(__LOCAL_DHT20__)
+  DBG(DBG_CAPTEURS, "Initialisation DHT20...\n");
+  dht20.begin("th_");
+  config.dht20 = &dht20;
+  dht20.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
     return mqtt.publishWithIP(topic, payload);
   });
   #endif
@@ -90,6 +99,29 @@ void loop_ds18b20() {
 
   if (ret != -9) inactifAffiche = false;
 
-  #endif // __LOCAL_DS18B20__
+  #elif defined(__LOCAL_DHT20__)
+  static bool inactifAffiche = false;
+  int ret = dht20.loop();
+  if (ret == -1) {
+    DBG(DBG_CAPTEURS, "dht20.readTemperature() - échec\n");
+  }
+  else if (ret == 0) {
+    DBGLN(DBG_CAPTEURS, String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C inchangé");
+  }
+  else if (ret == 1 && dht20.active) { // Température changée
+    DBGLN(DBG_CAPTEURS, String(dht20.nomEquipement) + " - " + mDateTime.getDate() + " - " + mDateTime.getTime() + " - " + "Température " + String(dht20.getLastTemperature(), 1) + " °C changée");
+    ecran.updateThermometreLocal();
+  }
+  else if (ret == -9) { // Inactif
+    if (!inactifAffiche) {
+      String s = "Thermomètre " + dht20.nomEquipement + " inactif";
+      DBGLN(DBG_CAPTEURS, s);
+      inactifAffiche = true;
+    }
+  }
+
+  if (ret != -9) inactifAffiche = false;
+
+  #endif // __LOCAL_DS18B20__ / __LOCAL_DHT20__
   
 }
