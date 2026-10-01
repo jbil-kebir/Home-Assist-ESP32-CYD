@@ -131,11 +131,11 @@
   #define CAPTEUR_MICRO_MAX4466_PIN 1  // Pin 10 (ADC1_CH1)
 
   #ifdef ACTIONNEUR_IR
-    // Broches partagées avec d'autres fonctionnalités (2 : DS18B20 / batterie, 20 : alim CC1101) :
-    // voir le contrôle de compatibilité après la détection de carte.
+    // ACTIONNEUR_IR_PIN partage la broche du DS18B20 / batterie (2) : voir le contrôle de
+    // compatibilité après la détection de carte.
     // GPIO2 est une broche de strapping du C3 : ne pas la tirer à la masse au démarrage.
     #define ACTIONNEUR_IR_PIN 2          // Pin 11
-    #define ACTIONNEUR_IR_LED_PIN 20     // RX UART0
+    #define ACTIONNEUR_IR_LED_PIN 10     // LED témoin (bip valide détecté)
   #endif
 
 #elif defined(__ESP32_S3__)
@@ -215,9 +215,6 @@
 #ifdef ACTIONNEUR_IR
   #if defined(CAPTEUR_DS18B20) || defined(CAPTEUR_BATTERIE)
     #error "ACTIONNEUR_IR : GPIO2 déjà utilisée par CAPTEUR_DS18B20 ou CAPTEUR_BATTERIE"
-  #endif
-  #ifdef _RCSWITCH_MODE_
-    #error "ACTIONNEUR_IR : GPIO20 déjà utilisée par l'alimentation du CC1101 (_RCSWITCH_MODE_)"
   #endif
 #endif // ACTIONNEUR_IR
 

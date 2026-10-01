@@ -83,6 +83,8 @@ int CMax4466::loop() {
   if (!_initialized) return -1;
   int ret = -2;
 
+  gereLed(); // Extinction de la LED témoin après MAX4466_DUREE_FLASH_LED
+
   // Forçage périodique de la remontée (seulement si l'état est connu)
   if (miLastVal >= 0 && millis() - mulLastForcage > mulIntervalleForcageRemonteeMesure * 1000UL) {
     publie(true);
@@ -114,6 +116,7 @@ int CMax4466::loop() {
     Serial.printf("CMax4466::loop() - Bip fin | durée=%lums\n", dur);
 
     if (dur >= muiCourtMin && dur <= muiCourtMax) {
+      flashLed(); // Bip valide (y compris répétition RF)
       if (now - mulLastOnMs >= muiSilenceMin || mulLastOnMs == 0L) {
         mulLastOnMs = now;
         Serial.println("CMax4466::loop() - Bip COURT → ON");
@@ -123,6 +126,7 @@ int CMax4466::loop() {
       else Serial.println("CMax4466::loop() - Bip COURT ignoré (répétition RF)");
     }
     else if (dur >= muiLongMin && dur <= muiLongMax) {
+      flashLed(); // Bip valide (y compris répétition RF)
       if (now - mulLastOffMs >= muiSilenceMin || mulLastOffMs == 0L) {
         mulLastOffMs = now;
         Serial.println("CMax4466::loop() - Bip LONG → OFF");
@@ -137,6 +141,28 @@ int CMax4466::loop() {
   }
 
   return ret;
+}
+
+void CMax4466::setLedPin(int pin) {
+  miLedPin = pin;
+  if (miLedPin < 0) return;
+  pinMode(miLedPin, OUTPUT);
+  digitalWrite(miLedPin, LOW);
+  mbLedAllumee = false;
+}
+
+void CMax4466::flashLed() {
+  if (miLedPin < 0) return;
+  digitalWrite(miLedPin, HIGH);
+  mbLedAllumee = true;
+  mulLedAllumeeDepuis = millis();
+}
+
+void CMax4466::gereLed() {
+  if (mbLedAllumee && millis() - mulLedAllumeeDepuis >= MAX4466_DUREE_FLASH_LED) {
+    digitalWrite(miLedPin, LOW);
+    mbLedAllumee = false;
+  }
 }
 
 int CMax4466::getLastMesure() const {

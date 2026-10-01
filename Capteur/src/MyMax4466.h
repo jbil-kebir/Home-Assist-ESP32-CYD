@@ -39,6 +39,7 @@
 #define MAX4466_DEFAULT_LONG_MIN      300      // ms
 #define MAX4466_DEFAULT_LONG_MAX      750      // ms → OFF
 #define MAX4466_DEFAULT_SILENCE_MIN   4000     // ms entre deux bips de même type (la télécommande RF répète ~3x le code)
+#define MAX4466_DUREE_FLASH_LED       150      // ms d'allumage de la LED témoin sur un bip valide
 
 // Structure utilisée par handleMqttCommand()
 struct MQTT_COMMAND_5 {
@@ -78,6 +79,13 @@ private:
   unsigned long mulLastOffMs = 0L;
   unsigned long mulLastForcage = 0L;
 
+  // LED témoin (optionnelle) : allumée brièvement à chaque bip valide
+  int miLedPin = -1;                    // -1 = pas de LED
+  unsigned long mulLedAllumeeDepuis = 0L;
+  bool mbLedAllumee = false;
+  void flashLed();
+  void gereLed();
+
   int miLastVal = -1; // -1 = état inconnu (aucun bip reçu), 0 = OFF, 1 = ON
   int miNewVal = -1;
   const char* default_domotique_topic_prefix = "home/";
@@ -113,6 +121,7 @@ public:
   void saveToNVS();
   void setActive(bool state);
   void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}
+  void setLedPin(int pin); // LED témoin de détection, initialisée à l'état bas
   String getHTML();
 
   bool setup(const String pref);
