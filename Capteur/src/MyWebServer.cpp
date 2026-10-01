@@ -86,6 +86,9 @@ void MyWebServer::handleRoot() {
   #ifdef CAPTEUR_RGB_TCS34725
   if (config.mCapteurRGB != nullptr) html += config.mCapteurRGB->getHTML();
   #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+  if (config.mMicro != nullptr) html += config.mMicro->getHTML();
+  #endif
   // === Batterie ===
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) html += config.mBatterieAA->getHTML();
@@ -131,6 +134,9 @@ void MyWebServer::handleSave() {
   #ifdef CAPTEUR_RGB_TCS34725
   if (config.mCapteurRGB != nullptr) config.mCapteurRGB->loadFromWebServer(server);
   #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+  if (config.mMicro != nullptr) config.mMicro->loadFromWebServer(server);
+  #endif
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) config.mBatterieAA->loadFromWebServer(server);
   #endif
@@ -158,6 +164,9 @@ void MyWebServer::handleSave() {
   #endif
   #ifdef CAPTEUR_RGB_TCS34725
   if (config.mCapteurRGB != nullptr) config.mCapteurRGB->saveToNVS();
+  #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+  if (config.mMicro != nullptr) config.mMicro->saveToNVS();
   #endif
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) config.mBatterieAA->saveToNVS();
@@ -192,4 +201,4 @@ void MyWebServer::setup() {
 
 void MyWebServer::loop() {
   server.handleClient();
-}
+}

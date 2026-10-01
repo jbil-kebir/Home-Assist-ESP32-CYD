@@ -49,6 +49,12 @@ void CMqtt::reconnect() {
       //client.subscribe(mConfig.dht20->mqttSubTopicState.c_str(), 1);
       //Serial.println("Abonnement à : " + mConfig.dht20->mqttSubTopicState);
       #endif
+      #ifdef CAPTEUR_MICRO_MAX4466
+      if (mConfig.mMicro != nullptr) {
+        client.subscribe(mConfig.mMicro->mqttSubTopicCommand.c_str(), 1);
+        Serial.println("Abonnement à : " + mConfig.mMicro->mqttSubTopicCommand);
+      }
+      #endif
 
 
       client.subscribe(mConfig.topic_config_command.c_str(), 1);
@@ -203,6 +209,12 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     }
 
   } // if (String(topic) == "home/thermometre/command") {
+  #ifdef CAPTEUR_MICRO_MAX4466
+  else if (mConfig.mMicro != nullptr && String(topic) == mConfig.mMicro->mqttSubTopicCommand) {
+    // Seules les commandes adressées au micro (ex : "<nom> MESURE") sont traitées, les autres sont ignorées
+    mConfig.mMicro->handleMqttCommand(messageOrg);
+  }
+  #endif
   else {
     Serial.printf("void CMqtt::callback() - Topic non pris en charge - %s : %s\n", topic, message.c_str());
   }

@@ -164,6 +164,11 @@ void CConfig::loop() {
     }   
     #endif
     
+    // Micro : l'écoute des bips est continue, pas de deep sleep tant qu'il est actif
+    #ifdef CAPTEUR_MICRO_MAX4466
+    if (mMicro != nullptr && mMicro->active) bDeepSleepPossible = false;
+    #endif
+
     //Serial.printf("[Deep Sleep] CConfig::loop() - : mesure remontée : %d. ACK reçu (pour les capteurs qui en ont besoin) : %d. Deep sleep possible : %d\n", bMesureRemontee, mFlotteurVertical != nullptr ? mFlotteurVertical->mbAckReceived : 1, bDeepSleepPossible); Serial.flush();  
     if (bDeepSleepPossible) {
       enterDeepSleep();
@@ -328,6 +333,17 @@ void CConfig::enterDeepSleep() {
   // Flotteur vertical : supprime le pull-up interne (économise ~70 µA si pin connecté à GND)
   #ifdef FLOTTEUR_VERTICAL
   pinMode(DEFAULT_TOR_PIN, INPUT_PULLDOWN);
+  #endif
+
+  // Micro MAX4466 : libère l'entrée ADC
+  #ifdef CAPTEUR_MICRO_MAX4466
+  pinMode(CAPTEUR_MICRO_MAX4466_PIN, INPUT_PULLDOWN);
+  #endif
+
+  // Actionneur IR : coupe les LED
+  #ifdef ACTIONNEUR_IR
+  pinMode(ACTIONNEUR_IR_PIN,         INPUT_PULLDOWN);
+  pinMode(ACTIONNEUR_IR_LED_PIN,     INPUT_PULLDOWN);
   #endif
 
   // ADC : libère le power domain (~20 µA)

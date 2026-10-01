@@ -22,6 +22,9 @@
 #ifdef CAPTEUR_BATTERIE
 #include "MyBatterieAA.h"
 #endif
+#ifdef CAPTEUR_MICRO_MAX4466
+#include "MyMax4466.h"
+#endif
 #include "MyWifi.h"
 #include "MyLoraRxTx.h"
 #include "MyDateTime.h"
@@ -58,6 +61,9 @@ public:
   #endif
   #ifdef CAPTEUR_BATTERIE
   CBatterieAA *mBatterieAA=nullptr;
+  #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+  CMax4466 *mMicro=nullptr;
   #endif
   String nomEquipement = "ThCave";
   // === MQTT ===

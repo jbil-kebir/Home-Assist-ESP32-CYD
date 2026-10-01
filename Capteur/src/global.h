@@ -39,12 +39,18 @@
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
-#define CAPTEUR_DHT20 // Fonctionne en I2C
+//#define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
 //#define FLOTTEUR_VERTICAL
 //#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
-#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
+//#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
+#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
+
+//----------------------------------------------------------------------------
+// Décommenter en fonction des actionneurs installés
+//----------------------------------------------------------------------------
+#define ACTIONNEUR_IR
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
@@ -56,12 +62,12 @@
 //#define FORCE_CONNEXION_WIFI
 
 #ifdef FORCE_CONNEXION_WIFI
-#define FORCE_WIFI_SSID  "Simpson"
-#define FORCE_WIFI_PASSWD "al177SOLO$*"
+#define FORCE_WIFI_SSID  "Sin"
+#define FORCE_WIFI_PASSWD "al-------$*"
 #define FORCE_MQTT_SERVER "19.77.244.51"
 #define FORCE_MQTT_PORT 1883
 #define FORCE_MQTT_USER "ubuntu"
-#define FORCE_MQTT_PWD "al177SOLO$**"
+#define FORCE_MQTT_PWD "al-------$**"
 #endif
 
 // -----------------------------------------------------------------------------
@@ -119,6 +125,19 @@
   #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // Optionnel
   #define LED_CAPTEUR_RGB_PIN 1
 
+  // Toujours définie (même si CAPTEUR_MICRO_MAX4466 est désactivé) pour pouvoir neutraliser
+  // cette broche en setup(). Partage la broche de DEFAULT_TOR_PIN / LED_CAPTEUR_RGB_PIN :
+  // voir le contrôle de compatibilité après la détection de carte.
+  #define CAPTEUR_MICRO_MAX4466_PIN 1  // Pin 10 (ADC1_CH1)
+
+  #ifdef ACTIONNEUR_IR
+    // Broches partagées avec d'autres fonctionnalités (2 : DS18B20 / batterie, 20 : alim CC1101) :
+    // voir le contrôle de compatibilité après la détection de carte.
+    // GPIO2 est une broche de strapping du C3 : ne pas la tirer à la masse au démarrage.
+    #define ACTIONNEUR_IR_PIN 2          // Pin 11
+    #define ACTIONNEUR_IR_LED_PIN 20     // RX UART0
+  #endif
+
 #elif defined(__ESP32_S3__)
   #define IS_ESP32_C3       0
   #define IS_ESP32_S3       1
@@ -174,10 +193,33 @@
   #define CAPTEUR_RGB_TCS34725_INTERRUPT 43 // Optionnel
   #define LED_CAPTEUR_RGB_PIN 44
 
+  #ifdef ACTIONNEUR_IR
+    #error "ACTIONNEUR_IR : broches non définies pour l'ESP32-S3"
+  #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+    #error "CAPTEUR_MICRO_MAX4466 : broche non définie pour l'ESP32-S3"
+  #endif
 
 #else
   #error "Carte non supportée : ni ESP32-C3 ni ESP32-S3 détectée"
 #endif // #if defined(__ESP32_C3__)
+
+// -----------------------------------------------------------------------------
+// Contrôle des conflits de broches du micro MAX4466 et de l'actionneur IR (ESP32-C3)
+// -----------------------------------------------------------------------------
+#ifdef CAPTEUR_MICRO_MAX4466
+  #if defined(FLOTTEUR_VERTICAL) || (defined(CAPTEUR_RGB_TCS34725) && defined(LED_CAPTEUR_RGB))
+    #error "CAPTEUR_MICRO_MAX4466 : GPIO1 déjà utilisée par FLOTTEUR_VERTICAL ou LED_CAPTEUR_RGB"
+  #endif
+#endif // CAPTEUR_MICRO_MAX4466
+#ifdef ACTIONNEUR_IR
+  #if defined(CAPTEUR_DS18B20) || defined(CAPTEUR_BATTERIE)
+    #error "ACTIONNEUR_IR : GPIO2 déjà utilisée par CAPTEUR_DS18B20 ou CAPTEUR_BATTERIE"
+  #endif
+  #ifdef _RCSWITCH_MODE_
+    #error "ACTIONNEUR_IR : GPIO20 déjà utilisée par l'alimentation du CC1101 (_RCSWITCH_MODE_)"
+  #endif
+#endif // ACTIONNEUR_IR
 
 #ifdef _RCSWITCH_MODE_
     #define CC1101_ON   HIGH 
@@ -202,6 +244,6 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "1.9"
+#define VERSION "2.0"
 
 #endif // __GLOBAL_H__

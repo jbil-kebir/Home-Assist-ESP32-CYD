@@ -35,6 +35,9 @@
 #ifdef CAPTEUR_BATTERIE
 #include "MyBatterieAA.h"
 #endif
+#ifdef CAPTEUR_MICRO_MAX4466
+#include "MyMax4466.h"
+#endif
 #include "MyDateTime.h"
 
 
@@ -76,6 +79,9 @@ CTor mFlotteurVertical(mDateTime);
 #endif
 #ifdef CAPTEUR_RGB_TCS34725
 CDetecteurRGB_TCS34725 mCapteurRGB(mDateTime);
+#endif
+#ifdef CAPTEUR_MICRO_MAX4466
+CMax4466 mMicro(mDateTime);
 #endif
 
 
@@ -143,6 +149,12 @@ void setup() {
       #if IS_ESP32_C3 && defined(_RCSWITCH_MODE_)
       CC1101_GDO0, CC1101_CS, CC1101_MOSI, CC1101_MISO, CC1101_SCK, CC1101_POWER_GND_GPIO,
       #endif
+      #ifdef CAPTEUR_MICRO_MAX4466
+      CAPTEUR_MICRO_MAX4466_PIN,
+      #endif
+      #ifdef ACTIONNEUR_IR
+      ACTIONNEUR_IR_PIN, ACTIONNEUR_IR_LED_PIN,
+      #endif
       #if IS_ESP32_S3 && defined(_LORA_P2P_MODE_)
       LORA_MISO_PIN, LORA_SCK_PIN, LORA_MOSI_PIN, LORA_CS_PIN,
       LORA_DIO2_PIN, LORA_DIO1_PIN, LORA_RESET_PIN, LORA_BUSY_PIN,
@@ -158,6 +170,7 @@ void setup() {
       CAPTEUR_RGB_TCS34725_INTERRUPT, LED_CAPTEUR_RGB_PIN,
       #if IS_ESP32_C3
       CC1101_GDO0, CC1101_CS, CC1101_MOSI, CC1101_MISO, CC1101_SCK, CC1101_POWER_GND_GPIO,
+      CAPTEUR_MICRO_MAX4466_PIN,
       #endif
       #if IS_ESP32_S3
       LORA_MISO_PIN, LORA_SCK_PIN, LORA_MOSI_PIN, LORA_CS_PIN,
@@ -303,7 +316,7 @@ void setup() {
 //================================================== Capteur RGB ==================================================
   #ifdef CAPTEUR_RGB_TCS34725
   Serial.println("Initialisation CAPTEUR_RGB_TCS34725...");
-  mCapteurRGB.begin("thhum_"); 
+  mCapteurRGB.begin("rgb_");
   config.mCapteurRGB = &mCapteurRGB;
   mCapteurRGB.domotique_prefix = "home/";
   Serial.printf("void loop() - mCapteurRGB.domotique_prefix : %s\n", mCapteurRGB.domotique_prefix.c_str()); Serial.flush();
@@ -323,8 +336,21 @@ void setup() {
   });
   #endif
   #endif // CAPTEUR_RGB_TCS34725
+//================================================== Micro MAX4466 ==================================================
+  #ifdef CAPTEUR_MICRO_MAX4466
+  Serial.println("Initialisation CAPTEUR_MICRO_MAX4466...");
+  mMicro.setup("mic_");
+  config.mMicro = &mMicro;
+  #ifdef _WIFI_MODE_
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mMicro.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
+  });
+  #endif
+  #endif // _WIFI_MODE_
+  #endif // CAPTEUR_MICRO_MAX4466
 
-  
+
   config.setup();
 
   #ifdef _RCSWITCH_MODE_
@@ -667,7 +693,25 @@ void loop() {
       RGBInactifDejaAffiche = true;
     }
   }
-  #endif  
+  #endif
+
+  //------------------------------------------------------------------------------------
+  // Micro MAX4466 (bloc d'acquisition de 16 ms à chaque tour)
+  //------------------------------------------------------------------------------------
+  #ifdef CAPTEUR_MICRO_MAX4466
+  static bool MicInactifDejaAffiche = false;
+  int retMic = mMicro.loop();
+  if (retMic == 0 || retMic == 1) {
+    Serial.println("[Main] " + String(mMicro.nomEquipement) + " - " + sDate + " - " + sHeure + " - " + "Etat " + String(mMicro.getLastMesure()) + (retMic == 1 ? " changé" : " inchangé"));
+    MicInactifDejaAffiche = false;
+  }
+  else if (retMic == -9) { // Inactif
+    if (!MicInactifDejaAffiche) {
+      Serial.println("[Main] Capteur " + mMicro.nomEquipement + " inactif");
+      MicInactifDejaAffiche = true;
+    }
+  }
+  #endif
 
     delay(10);
 }
@@ -711,6 +755,11 @@ void print() {
   #ifdef CAPTEUR_RGB_TCS34725
   Serial.println("[CAPTEUR RGB]");
   mCapteurRGB.print();
+  #endif
+
+  #ifdef CAPTEUR_MICRO_MAX4466
+  Serial.println("[MICRO MAX4466]");
+  mMicro.print();
   #endif
 
   #ifdef CAPTEUR_BATTERIE
