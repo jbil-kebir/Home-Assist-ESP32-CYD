@@ -397,10 +397,7 @@ void MyWebServer::handleChauffageSbOn() {
   #endif // __LOCAL_MODE__
   if (proc) {
     #ifdef __LOCAL_MODE__
-    config.chauffageSb->toggleDevice();
-    // KJ mqtt.publish(config.chauffageSb->mqttSubTopicState.c_str(), "ON", false);
-    config.chauffageSb->etat = true;
-    config.chauffageSb->saveState(true);
+    config.chauffageSb->demandeOn(); // Code relais ou commande IR (l'état suit le retour du noeud)
     #else
     #endif
     #ifdef __CYD__
@@ -442,10 +439,7 @@ void MyWebServer::handleChauffageSbOff() {
   #endif // __LOCAL_MODE__
   if (proc) {
     #ifdef __LOCAL_MODE__
-    config.chauffageSb->toggleDevice();
-    // KJ mqtt.publish(config.chauffageSb->mqttSubTopicState.c_str(), "OFF", false);
-    config.chauffageSb->etat = false;
-    config.chauffageSb->saveState(false);
+    config.chauffageSb->demandeOff(); // Arrêt par IR puis coupure du relais (l'état suit le retour du noeud)
     #else
     #endif
     #ifdef __CYD__

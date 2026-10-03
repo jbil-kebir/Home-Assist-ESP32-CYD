@@ -26,6 +26,7 @@ private:
   unsigned long mulWatchdogIntervalle = 60UL; 
   unsigned long mulWatchdogDefaultIntervalle = 60UL; 
   unsigned long mulWatchDog;
+  bool mbMessageRecu = false; // Au moins un message reçu depuis le démarrage (voir estPresent())
 
 public:
   CRemoteTor(const String& nomEqu, CEcran* ecran, 
@@ -39,6 +40,9 @@ public:
   std::function<void(const String&, int)> onMesureChanged;    
   // MQTT
   std::function<int(const char*, const char*)> onMqttPublish;    
+
+  // Callback : échec de l'actionneur IR du noeud ("<nom> IRKO <date> <heure>")
+  std::function<void()> onIrko;
 
   void setDisplayCallback(std::function<void(const String&, int)> cb); // Pour mise à jour de l'affichage
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
@@ -60,6 +64,8 @@ public:
   void handleMqttCommand(const String& payload);
   void handleMqttState(const String& payload);
   bool remonteStatusParMqtt();
+  bool estPresent() const; // Message reçu depuis le démarrage et watchdog non expiré
+  unsigned long getWatchdogIntervalle() const { return mulWatchdogIntervalle; } // en secondes
 };
 
 #endif // __REMOTE_TOR_H__

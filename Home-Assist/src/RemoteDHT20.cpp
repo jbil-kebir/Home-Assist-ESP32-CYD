@@ -137,7 +137,7 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
     // On réinitiallise le WatchDog
     mulWatchDog = millis();
 
-    if (!msg.msIp.isEmpty()) mIP = msg.msIp.isEmpty();
+    if (!msg.msIp.isEmpty()) mIP = msg.msIp;
 
     String premiereMesure = msg.mvsMesure[0];
     premiereMesure.toUpperCase();

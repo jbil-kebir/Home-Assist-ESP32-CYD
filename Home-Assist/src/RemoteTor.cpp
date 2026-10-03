@@ -13,6 +13,17 @@ int CRemoteTor::setup(const String pref) {
 }
 
 //--------------------------------------------------------------------------
+//  CRemoteTor::estPresent()
+//
+// Présent : au moins un message reçu depuis le démarrage du CYD et watchdog non expiré.
+// Avant le premier message, l'équipement est considéré absent (et non présent pendant
+// le premier intervalle de watchdog, comme le laisse supposer loop()).
+//--------------------------------------------------------------------------
+bool CRemoteTor::estPresent() const {
+  return active && mbMessageRecu && (millis() - mulWatchDog) < mulWatchdogIntervalle*1000;
+}
+
+//--------------------------------------------------------------------------
 //  CRemoteTor::loop()
 //
 // Retour
@@ -139,8 +150,9 @@ void CRemoteTor::handleMqttState(const String& payload) {
     }
     // On réinitiallise le WatchDog
     mulWatchDog = millis();
+    mbMessageRecu = true;
 
-    if (!msg.msIp.isEmpty()) mIP = msg.msIp.isEmpty();
+    if (!msg.msIp.isEmpty()) mIP = msg.msIp;
 
     String premiereMesure = msg.mvsMesure[0];
     premiereMesure.toUpperCase();
@@ -165,6 +177,13 @@ void CRemoteTor::handleMqttState(const String& payload) {
       else {
         DBGLN(DBG_ACTIONNEURS, "Aucun callback défini pour " + nomEquipement);
       }
+    }
+    else if (premiereMesure == "ALIVE") {
+      // Watchdog ALIVE du capteur : rien d'autre à faire, le watchdog a été réinitialisé ci-dessus
+    }
+    else if (premiereMesure == "IRKO") {
+      // Echec de l'actionneur IR du noeud : l'état du chauffage n'a pas pu être obtenu
+      if (onIrko != nullptr) onIrko();
     }
     #ifndef __LOCAL_MODE__
     else if (premiereMesure == "ONOFFR") {

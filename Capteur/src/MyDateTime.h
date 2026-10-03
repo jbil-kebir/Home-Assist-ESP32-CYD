@@ -17,6 +17,8 @@ class CMyDateTime {
         String getTime();
         String getDateTimeISO();
         unsigned long getAbsoluteSecondes() {return time(NULL);} // Retourne le nb de secondes depuis le 01/01/1970 00:00
+        // Heure synchronisée (NTP) ? Timeout 0 : ne bloque pas, contrairement à getDate()/getTime() (5 s si pas d'heure)
+        bool isTimeValid() { struct tm timeinfo; return getLocalTime(&timeinfo, 0); }
 
 };
 #endif // __MYDATETIME_H__

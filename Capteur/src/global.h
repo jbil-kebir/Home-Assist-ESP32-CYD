@@ -1,6 +1,16 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+//------------------------------------------------------------------------------
+// Journal web (http://<IP>/logs) : Serial est redirigé vers gSerialJournal, qui écrit
+// sur le port série ET dans le journal (voir MyJournal.h).
+// Arduino.h doit être inclus avant le #define (il déclare le vrai Serial).
+// Les fichiers qui n'incluent pas global.h écrivent seulement sur le port série.
+//------------------------------------------------------------------------------
+#include <Arduino.h>
+#include "MyJournal.h"
+#define Serial gSerialJournal
+
 //================ ESP32C3 ================
 //          MISO - GPIO5   ||   5V
 //          MOSI - GPIO6   ||   GND
@@ -62,12 +72,12 @@
 //#define FORCE_CONNEXION_WIFI
 
 #ifdef FORCE_CONNEXION_WIFI
-#define FORCE_WIFI_SSID  "Sin"
-#define FORCE_WIFI_PASSWD "al-------$*"
-#define FORCE_MQTT_SERVER "19.77.244.51"
+#define FORCE_WIFI_SSID  "xxxxxxxx"
+#define FORCE_WIFI_PASSWD "xxxxxxxx"
+#define FORCE_MQTT_SERVER "xxx.xxx.xxx.xxx"
 #define FORCE_MQTT_PORT 1883
-#define FORCE_MQTT_USER "ubuntu"
-#define FORCE_MQTT_PWD "al-------$**"
+#define FORCE_MQTT_USER "xxxxxxxx"
+#define FORCE_MQTT_PWD "xxxxxxxx"
 #endif
 
 // -----------------------------------------------------------------------------

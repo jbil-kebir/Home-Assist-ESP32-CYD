@@ -112,6 +112,10 @@ public:
   String mqttSubTopicCommand;
   String mqttSubTopicState;
 
+  // Callback appelé à chaque bip valide (1 = court/ON, 0 = long/OFF), avant le filtre anti-répétition.
+  // S'il renvoie true, le bip est pris en charge (séquence de l'actionneur IR) : le micro ne le publie pas.
+  std::function<bool(int)> onBip;
+
   // MQTT callback
   std::function<int(const char*, const char*)> onMqttPublish;
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
@@ -133,6 +137,8 @@ public:
   int handleMqttCommand(const String& payload);
   bool publieSurMqtt(bool force=false);
   int publie(bool force=false);
+  bool publieEtat(int val);   // Publie un état décidé par l'actionneur IR. true si la publication MQTT a abouti
+  void setEtatInconnu();      // Oublie l'état mémorisé en NVS (noeud alimenté par relais : état inconnu au démarrage)
 };
 #endif // CAPTEUR_MICRO_MAX4466
 #endif // __CMAX4466_H__

@@ -23,6 +23,9 @@ private:
   void handleRoot();
   void handleSave();
   void handleNotFound();
+  void handleLogs();      // Journal (voir MyJournal.h)
+  void handleLogsData();
+  void handleLogsClear();
 
 public:
   #ifndef __DESACTIVE_ENVOI_MQTT__

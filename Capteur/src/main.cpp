@@ -83,6 +83,9 @@ CDetecteurRGB_TCS34725 mCapteurRGB(mDateTime);
 #ifdef CAPTEUR_MICRO_MAX4466
 CMax4466 mMicro(mDateTime);
 #endif
+#ifdef ACTIONNEUR_IR
+CActionneurIR mActionneurIR(mDateTime);
+#endif
 
 
 
@@ -352,11 +355,30 @@ void setup() {
   #ifdef _WIFI_MODE_
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mMicro.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
-      return mqtt.publish(topic, payload);
+      return mqtt.publish(topic, payload, false); // Version qui renvoie le vrai résultat (-3 si MQTT non connecté) : voir CActionneurIR
   });
   #endif
   #endif // _WIFI_MODE_
   #endif // CAPTEUR_MICRO_MAX4466
+//================================================== Actionneur IR ==================================================
+  #ifdef ACTIONNEUR_IR
+  Serial.println("Initialisation ACTIONNEUR_IR...");
+  mActionneurIR.setup("ir_", ACTIONNEUR_IR_LED_PIN); // LED témoin allumée pendant l'émission
+  config.mActionneurIR = &mActionneurIR;
+  #ifdef _WIFI_MODE_
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mActionneurIR.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload, false);
+  });
+  #endif
+  #endif // _WIFI_MODE_
+  #ifdef CAPTEUR_MICRO_MAX4466
+  mActionneurIR.mMicro = &mMicro;
+  mMicro.onBip = [](int val) -> bool { return mActionneurIR.onBip(val); };
+  // Noeud alimenté par le relais 433 MHz : l'état mémorisé en NVS ne veut plus rien dire au démarrage
+  if (mActionneurIR.active) mMicro.setEtatInconnu();
+  #endif
+  #endif // ACTIONNEUR_IR
 
 
   config.setup();
@@ -395,7 +417,7 @@ void setup() {
   #ifdef _WIFI_MODE_
   int i = 0;
   while(true) {
-    Serial.printf("WiFi %d : %s\n", i, mWifi[i].nomEquipement); Serial.flush();
+    Serial.printf("WiFi %d : %s\n", i, mWifi[i].nomEquipement.c_str()); Serial.flush();
     if (mWifi[i].active) {
 //      mWifi[i].setup();
       mWifi[i].begin();
@@ -452,6 +474,11 @@ void setup() {
   int retRGBLux = mCapteurRGB.readAndPublish(true, true); // Force une première remontée
   #endif
   #endif // TEST_EMISSION_RCS
+
+  #ifdef ACTIONNEUR_IR
+  // Le noeud n'est alimenté que lorsque le relais 433 MHz est fermé : la mise sous tension vaut demande ON
+  mActionneurIR.demandeEtat(1);
+  #endif
 
 
 }
@@ -721,6 +748,13 @@ void loop() {
   }
   #endif
 
+  //------------------------------------------------------------------------------------
+  // Actionneur IR (attente du bip après émission, publication du résultat)
+  //------------------------------------------------------------------------------------
+  #ifdef ACTIONNEUR_IR
+  mActionneurIR.loop();
+  #endif
+
     delay(10);
 }
 
@@ -768,6 +802,11 @@ void print() {
   #ifdef CAPTEUR_MICRO_MAX4466
   Serial.println("[MICRO MAX4466]");
   mMicro.print();
+  #endif
+
+  #ifdef ACTIONNEUR_IR
+  Serial.println("[ACTIONNEUR IR]");
+  mActionneurIR.print();
   #endif
 
   #ifdef CAPTEUR_BATTERIE

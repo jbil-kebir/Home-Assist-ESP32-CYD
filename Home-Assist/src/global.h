@@ -128,6 +128,7 @@ constexpr uint32_t DBG_CHAUDIERE   = 1 << 3;
 constexpr uint32_t DBG_CONFIG      = 1 << 4;
 constexpr uint32_t DBG_RESEAU      = 1 << 5;
 constexpr uint32_t DBG_ECRAN       = 1 << 6;
+constexpr uint32_t DBG_NOEUD       = 1 << 7; // Noeud chauffage SdB : séquence ON/OFF, présence
 constexpr uint32_t DBG_ALL         = 0xFFFFFFFF;
 
 extern uint32_t gDebugFlags;

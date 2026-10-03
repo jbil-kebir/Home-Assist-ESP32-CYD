@@ -117,7 +117,10 @@ int CMax4466::loop() {
 
     if (dur >= muiCourtMin && dur <= muiCourtMax) {
       flashLed(); // Bip valide (y compris répétition RF)
-      if (now - mulLastOnMs >= muiSilenceMin || mulLastOnMs == 0L) {
+      if (onBip != nullptr && onBip(1)) {
+        Serial.println("CMax4466::loop() - Bip COURT pris en charge par l'actionneur IR");
+      }
+      else if (now - mulLastOnMs >= muiSilenceMin || mulLastOnMs == 0L) {
         mulLastOnMs = now;
         Serial.println("CMax4466::loop() - Bip COURT → ON");
         miNewVal = 1;
@@ -127,7 +130,10 @@ int CMax4466::loop() {
     }
     else if (dur >= muiLongMin && dur <= muiLongMax) {
       flashLed(); // Bip valide (y compris répétition RF)
-      if (now - mulLastOffMs >= muiSilenceMin || mulLastOffMs == 0L) {
+      if (onBip != nullptr && onBip(0)) {
+        Serial.println("CMax4466::loop() - Bip LONG pris en charge par l'actionneur IR");
+      }
+      else if (now - mulLastOffMs >= muiSilenceMin || mulLastOffMs == 0L) {
         mulLastOffMs = now;
         Serial.println("CMax4466::loop() - Bip LONG → OFF");
         miNewVal = 0;
@@ -198,6 +204,24 @@ int CMax4466::publie(bool force/*=false*/) {
   return ret;
 }
 
+//--------------------------------------------------------------------------
+//  CMax4466::publieEtat()
+//
+// Publie un état décidé par l'actionneur IR (bip conforme à la consigne).
+// Retour : true si la publication MQTT a abouti (false si MQTT pas encore connecté)
+//--------------------------------------------------------------------------
+bool CMax4466::publieEtat(int val) {
+  miNewVal = val;
+  mbMesureRemontee = false;
+  publie(false);
+  return mbMesureRemontee;
+}
+
+void CMax4466::setEtatInconnu() {
+  miLastVal = -1;
+  miNewVal = -1;
+}
+
 //
 // L'argument force n'est utile que pour le debug. Ca permet de voir
 // quand le message MQTT provient d'un forçage de mesure.
@@ -209,6 +233,8 @@ bool CMax4466::publieSurMqtt(bool force/*=false*/) {
     String sVal = nomEquipement + " OnOff " + sDate + " " + sTime + " " + String(miLastVal);
     if (force) sVal += " FORCE";
     Serial.println("CMax4466::publieSurMqtt() : " + sVal);
+    // OnOff 0 : le CYD va couper le relais qui alimente le noeud, on sauvegarde le journal avant
+    if (miLastVal == 0 && !force) gJournal.sauvegarde("OnOff 0");
     return (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
 }
 

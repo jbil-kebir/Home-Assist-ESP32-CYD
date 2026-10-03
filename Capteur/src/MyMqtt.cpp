@@ -117,6 +117,7 @@ int CMqtt::publish(const char* topic, const char* payload, bool retained) {
   if (client.connected()) {
     if (client.publish(topic, s.c_str(), retained)) {
       Serial.printf("MQTT publié (retained=%d) sur %s : %s\n", retained, topic, s.c_str());
+      mConfig.noteEmission(payload); // Remet à zéro le décompte du watchdog ALIVE de l'expéditeur
       ret = 0;
     }
     else {
@@ -169,6 +170,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
       statusMsg += String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getDate() : "DATE") + " " + String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getTime() : "TIME") + "\n";
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
+      statusMsg += mConfig.getWatchdogStatus();
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 
       client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
@@ -213,6 +215,10 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   else if (mConfig.mMicro != nullptr && String(topic) == mConfig.mMicro->mqttSubTopicCommand) {
     // Seules les commandes adressées au micro (ex : "<nom> MESURE") sont traitées, les autres sont ignorées
     mConfig.mMicro->handleMqttCommand(messageOrg);
+    #ifdef ACTIONNEUR_IR
+    // "<nom> OFF|ON" : extinction / allumage du chauffage par IR (voir CActionneurIR)
+    if (mConfig.mActionneurIR != nullptr) mConfig.mActionneurIR->handleMqttCommand(messageOrg);
+    #endif
   }
   #endif
   else {
@@ -282,6 +288,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
       statusMsg += String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getDate() : "DATE") + " " + String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getTime() : "TIME") + "\n";
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
+      statusMsg += mConfig.getWatchdogStatus();
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 
       client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);

@@ -1,3 +1,4 @@
+#include "global.h" // Serial -> journal web (voir MyJournal.h)
 #include <Arduino.h>
 #include <WiFi.h>
 #include "MyWifi.h"
@@ -10,6 +11,11 @@ void CWifi::setup(const String pref) { //const String pref) {
 
 void CWifi::begin() {
   WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+  #ifdef __ESP32_C3__
+  // ESP32-C3 Super Mini : antenne mal adaptée, la connexion échoue souvent à pleine puissance
+  // (démarrages de 15 s à plus de 90 s constatés). Puissance réduite après WiFi.begin().
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);
+  #endif
   Serial.printf("Connexion au WiFi %s", wifi_ssid.c_str()); Serial.flush();
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
@@ -18,10 +24,10 @@ void CWifi::begin() {
   }
   if (WiFi.status() == WL_CONNECTED) {
     //Serial.println("\nWiFi connecté - IP : " + WiFi.localIP().toString()); Serial.flush();
-    Serial.printf("\nWiFi connecté - IP : %s\n", WiFi.localIP().toString().c_str()); Serial.flush();
+    Serial.printf("\nWiFi connecté en %lu ms - IP : %s - RSSI : %d dBm\n", millis() - start, WiFi.localIP().toString().c_str(), WiFi.RSSI()); Serial.flush();
   } else {
     //Serial.println("\nÉchec connexion WiFi\n"); Serial.flush();
-    Serial.printf("\nÉchec connexion WiFi\n"); Serial.flush();
+    Serial.printf("\nÉchec connexion WiFi après %lu ms (statut %d)\n", millis() - start, (int)WiFi.status()); Serial.flush();
   }
   Serial.flush();
 }

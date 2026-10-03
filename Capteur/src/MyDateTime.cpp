@@ -1,3 +1,4 @@
+#include "global.h" // Serial -> journal web (voir MyJournal.h)
 //#include <Arduino.h>
 #include "MyDateTime.h"
 

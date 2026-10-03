@@ -43,6 +43,7 @@ void MyWebServer::handleRoot() {
     "</head>"
     "<body>"
       "<h1>Configuration " + config.nomEquipement + "</h1>"
+      "<div class=\"control\"><a href=\"/logs\" class=\"btn btn-cyan\" style=\"text-decoration:none;\">Journal</a></div>"
 
       "<hr style=\"margin: 40px 0;\">"
 
@@ -88,6 +89,9 @@ void MyWebServer::handleRoot() {
   #endif
   #ifdef CAPTEUR_MICRO_MAX4466
   if (config.mMicro != nullptr) html += config.mMicro->getHTML();
+  #endif
+  #ifdef ACTIONNEUR_IR
+  if (config.mActionneurIR != nullptr) html += config.mActionneurIR->getHTML();
   #endif
   // === Batterie ===
   #ifdef CAPTEUR_BATTERIE
@@ -137,6 +141,9 @@ void MyWebServer::handleSave() {
   #ifdef CAPTEUR_MICRO_MAX4466
   if (config.mMicro != nullptr) config.mMicro->loadFromWebServer(server);
   #endif
+  #ifdef ACTIONNEUR_IR
+  if (config.mActionneurIR != nullptr) config.mActionneurIR->loadFromWebServer(server);
+  #endif
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) config.mBatterieAA->loadFromWebServer(server);
   #endif
@@ -168,6 +175,9 @@ void MyWebServer::handleSave() {
   #ifdef CAPTEUR_MICRO_MAX4466
   if (config.mMicro != nullptr) config.mMicro->saveToNVS();
   #endif
+  #ifdef ACTIONNEUR_IR
+  if (config.mActionneurIR != nullptr) config.mActionneurIR->saveToNVS();
+  #endif
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) config.mBatterieAA->saveToNVS();
   #endif
@@ -191,9 +201,69 @@ void MyWebServer::handleNotFound() {
   server.send(404, "text/plain", "Not found");
 }
 
+//------------------------------------------------------------------------------
+// Journal : page /logs, rafraîchie toutes les 3 s depuis /logs/data (voir MyJournal.h)
+//------------------------------------------------------------------------------
+void MyWebServer::handleLogs() {
+  String html = F(
+    "<!DOCTYPE html><html lang=\"fr\"><head>"
+    "<meta charset=\"UTF-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+    "<title>Journal</title>"
+    "<style>"
+    "body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:20px;background:#f0f0f0;}"
+    "h1{text-align:center;color:#333;}"
+    ".controls{display:flex;gap:10px;margin-bottom:15px;align-items:center;flex-wrap:wrap;}"
+    ".btn{padding:10px 22px;font-size:15px;color:white;border:none;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-block;}"
+    ".btn-gray{background:#6c757d;}.btn-red{background:#dc3545;}"
+    "#logbox{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:13px;"
+    "padding:15px;border-radius:8px;height:500px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}"
+    "#status{font-size:12px;color:#888;margin-top:6px;text-align:right;}"
+    "label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:15px;}"
+    "</style></head><body>"
+    "<h1>Journal</h1>"
+    "<div class=\"controls\">"
+    "<a href=\"/\" class=\"btn btn-gray\">Retour</a>"
+    "<form action=\"/logs/clear\" method=\"POST\" style=\"margin:0\">"
+    "<button type=\"submit\" class=\"btn btn-red\">Vider</button></form>"
+    "<label><input type=\"checkbox\" id=\"autoscroll\" checked> Auto-scroll</label>"
+    "</div>"
+    "<div id=\"logbox\">(chargement...)</div>"
+    "<div id=\"status\"></div>"
+    "<script>"
+    "const box=document.getElementById('logbox');"
+    "const status=document.getElementById('status');"
+    "const as=document.getElementById('autoscroll');"
+    "async function refresh(){"
+    "try{"
+    "const r=await fetch('/logs/data');"
+    "box.textContent=await r.text();"
+    "if(as.checked)box.scrollTop=box.scrollHeight;"
+    "status.textContent='Mis à jour : '+new Date().toLocaleTimeString();"
+    "}catch(e){status.textContent='Erreur de connexion';}"
+    "}"
+    "refresh();setInterval(refresh,3000);"
+    "</script></body></html>"
+  );
+  server.send(200, "text/html", html);
+}
+
+void MyWebServer::handleLogsData() {
+  server.send(200, "text/plain; charset=utf-8", gJournal.getContenu());
+}
+
+void MyWebServer::handleLogsClear() {
+  gJournal.vide();
+  server.send(200, "text/html",
+    F("<html><head><meta http-equiv='refresh' content='0;url=/logs'></head><body></body></html>"));
+}
+
 void MyWebServer::setup() {
   server.on("/", HTTP_GET, [this]() { handleRoot(); });
   server.on("/save", HTTP_POST, [this]() { handleSave(); });
+  server.on("/logs",       HTTP_GET,  [this]() { handleLogs(); });
+  server.on("/logs/data",  HTTP_GET,  [this]() { handleLogsData(); });
+  server.on("/logs/clear", HTTP_POST, [this]() { handleLogsClear(); });
   server.onNotFound([this]() { handleNotFound(); });
   server.begin();
   Serial.printf("Serveur web démarré sur %s\n", WiFi.localIP().toString().c_str()); Serial.flush();

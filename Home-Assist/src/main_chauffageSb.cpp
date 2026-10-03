@@ -16,6 +16,7 @@
 extern CConfig config;
 extern CEcran ecran;
 extern CMqtt mqtt;
+extern CMyDateTime mDateTime;
 
 extern int ajouterControleur(const String& nom, const String& ip);
 
@@ -70,4 +71,45 @@ void setup_chauffageSb() {
   mRemoteTorChauffageSb.setonEquipementCallback([](const String& nom, const String& ip) -> int {
       return ajouterControleur(nom, ip);
   });
+  // Echec de l'actionneur IR du noeud
+  mRemoteTorChauffageSb.onIrko = []() {
+    #ifdef __LOCAL_MODE__
+    chauffageSb.signaleIrko();
+    #else
+    ecran.updateStatus(mRemoteTorChauffageSb.nomEquipement + " : échec IR");
+    #endif
+  };
+  #ifdef __LOCAL_MODE__
+  chauffageSb.mNoeud = &mRemoteTorChauffageSb; // Présence du noeud et commande OFF
+  #endif
+}
+
+//--------------------------------------------------------------------------
+// Watchdog du noeud chauffage SdB
+// Le noeud n'est alimenté que lorsque le relais 433 MHz est fermé : il est présent
+// tant que ses messages (mesures ou ALIVE) arrivent avant l'expiration du watchdog.
+// Le -10 ne doit pas passer par le callback d'affichage : setEtatReelOnOff(bool) le prendrait pour ON.
+//--------------------------------------------------------------------------
+void loop_chauffageSb() {
+  int retChauffageSb = mRemoteTorChauffageSb.loop();
+  static bool bWdogChauffageSbErr = false;
+  if (retChauffageSb == -10) { // Watchdog error
+    if (!bWdogChauffageSbErr) {
+      String s = mRemoteTorChauffageSb.nomEquipement + " absent " + mDateTime.getTime();
+      DBG(DBG_NOEUD, "[%lu s] %s\n", millis() / 1000, s.c_str());
+      ecran.updateStatus(s);
+      bWdogChauffageSbErr = true;
+    }
+  }
+  else if (retChauffageSb != -2 && bWdogChauffageSbErr) { // -2 : inactif
+    String s = mRemoteTorChauffageSb.nomEquipement + " present " + mDateTime.getTime();
+    DBG(DBG_NOEUD, "[%lu s] %s\n", millis() / 1000, s.c_str());
+    ecran.updateStatus(s);
+    bWdogChauffageSbErr = false;
+  }
+  #ifdef __LOCAL_MODE__
+  // Séquences marche/arrêt et disparition du noeud, après les messages du watchdog
+  // pour que les messages de la séquence ne soient pas écrasés à l'écran
+  chauffageSb.loop();
+  #endif
 }

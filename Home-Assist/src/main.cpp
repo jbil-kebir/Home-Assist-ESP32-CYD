@@ -93,7 +93,8 @@ extern CRemoteBatterieAA mRemoteBatChRdc;
 // DBG_MQTT, _CAPTEURS, DBG_ACTIONNEURS, DBG_CHAUDIERE, DBG_CONFIG, DBG_RESEAU, DBG_ECRAN,
 // DBG_ALL
 //uint32_t gDebugFlags = DBG_CHAUDIERE|DBG_MQTT;
-uint32_t gDebugFlags = DBG_ALL;
+//uint32_t gDebugFlags = DBG_ALL;
+uint32_t gDebugFlags = DBG_NOEUD;
 
 CMyDateTime mDateTime;
 
@@ -179,6 +180,7 @@ extern void loop_ThRemise();
 extern void loop_ThChRdc();
 
 extern void loop_homeassistant();
+extern void loop_chauffageSb();
 
 
 //#define NOM_EQUIPEMENT  "CYD HA"
@@ -399,6 +401,7 @@ void loop() {
   loop_ThRemise();
   loop_ThChRdc();
   loop_homeassistant();
+  loop_chauffageSb();
   
   #ifdef __CYD__  
   int btnNum = ecran.getPressedButton();

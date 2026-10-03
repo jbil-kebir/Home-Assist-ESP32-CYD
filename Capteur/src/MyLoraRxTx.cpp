@@ -278,6 +278,7 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
       if (WiFi.status() == WL_CONNECTED) { // On peut être en Lora et avoir une adresse IP (voir commutateur _WIFI_MODE_ dans global.h)
         statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       }
+      statusMsg += mConfig->getWatchdogStatus();
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 
       sendPacket((mConfig->topic_config_state + " " + statusMsg).c_str());
@@ -443,6 +444,7 @@ int CMyLoraRxTx::validateParameters() { //float mfFrequency, float mfBandwidth, 
 int CMyLoraRxTx::sendPacket(const char* message) {
   int ret = 0;//RADIOLIB_ERR_NONE;
   if (!mbInitialized) return -9;
+  mConfig->noteEmission(message, true); // Remet à zéro le décompte du watchdog ALIVE de l'expéditeur
   String sToSend = START_STOP + String(message);
   if (WiFi.status() == WL_CONNECTED) { // On peut être en Lora et avoir une adresse IP (voir commutateur _WIFI_MODE_ dans global.h)
     sToSend += String(" ") + WiFi.localIP().toString();

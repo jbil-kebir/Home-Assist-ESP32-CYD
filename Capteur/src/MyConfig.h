@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include <Arduino.h>
 #include <WebServer.h>
+#include <map>
 #ifdef CAPTEUR_DS18B20
 #include "MyDS18B20.h"
 #endif
@@ -24,6 +25,9 @@
 #endif
 #ifdef CAPTEUR_MICRO_MAX4466
 #include "MyMax4466.h"
+#endif
+#ifdef ACTIONNEUR_IR
+#include "MyActionneurIR.h"
 #endif
 #include "MyWifi.h"
 #include "MyLoraRxTx.h"
@@ -65,6 +69,9 @@ public:
   #ifdef CAPTEUR_MICRO_MAX4466
   CMax4466 *mMicro=nullptr;
   #endif
+  #ifdef ACTIONNEUR_IR
+  CActionneurIR *mActionneurIR=nullptr;
+  #endif
   String nomEquipement = "ThCave";
   // === MQTT ===
   //MQTT_DEF  mqqtInfo;
@@ -103,7 +110,25 @@ public:
   unsigned long mulDateMiseEnSommeil=0; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
   unsigned long mulDateReveil=0L; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
   unsigned long mulNbSecondesDeSommeil=0L; // Différence entre les deux précédents = durée du dernier sommeil
- 
+
+  // === WATCHDOG ALIVE ===
+  // Pour chaque capteur actif resté silencieux pendant mulWatchdogPeriod secondes, on publie (MQTT et LoRa)
+  // "<nomEquipement> ALIVE <date> <heure>" (ou "ALIVE UPTIME <s>" si l'heure n'est pas synchronisée) sur son topic d'état.
+  // Côté CYD, tout message reçu d'un équipement remet son watchdog à zéro.
+  // Commandes (topic de configuration) : WDOG ENABLE, WDOG DISABLE, WDOG <s> (fixe la période et active)
+  const unsigned int DEFAULT_WATCHDOG_PERIOD_SEC = 20;
+  bool mbWatchdogActive = false; // Désactivé par défaut : inutile pour un capteur qui publie régulièrement. Ignoré en deep sleep.
+  unsigned int mulWatchdogPeriod = DEFAULT_WATCHDOG_PERIOD_SEC; // en secondes
+  // Sauvegarde du journal web en NVS avant une coupure annoncée (OnOff 0, IRKO) : voir MyJournal.h
+  bool mbJournalSauvegarde = true;
+  struct EtatWatchdog {
+    unsigned long ulDerniereEmission = 0;   // millis() de la dernière publication de l'équipement
+    bool bAliveDemarrageEnvoye = false;     // ALIVE de démarrage publié avec succès (MQTT connecté ou LoRa)
+    bool bAliveDemarrageTente = false;
+    unsigned long ulDerniereTentative = 0;  // millis() de la dernière tentative d'ALIVE de démarrage
+  };
+  std::map<String, EtatWatchdog> mEtatsWatchdog; // nomEquipement → état de son watchdog
+
   // MQTT callback pour le deep-sleep
   std::function<int(const char*, const char*)> onMqttPublish;    
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
@@ -125,6 +150,14 @@ public:
   void setWakeIntervalle(unsigned long st);
   void setDeepSleep(bool active);
   void enterDeepSleep();
+  int  parseWdogCommand(const String& msg);
+  void setWatchdog(bool active);
+  void setWatchdogPeriod(unsigned long st);
+  void noteEmission(const String& message, bool bAvecTopic = false);
+  String getWatchdogStatus() const;
+  bool loopWatchdog();
+  bool verifieWatchdog(const String& nom, const String& topic);
+  void envoieAlive(const String& nom, const String& topic);
   String getHTML();
   void print() const;
 };

@@ -2,27 +2,31 @@
 #include "MyConfig.h"
 #include "MyEcran.h"
 #include "MyNoeudChauffageIRSound.h"
+#include "RemoteTor.h"
 
 //----------------------------------------------------------------------------------
 // CNoeudChauffageIRSound::envoiOnOff()
 //
-// Envoi trame ONOFF
-// Contrairement à CRCDevice::envoiOnOff(), l'état (etat) n'est pas basculé ici :
-// c'est fait dans setEtatReelOnOff(), au retour de l'état réel.
+// Bouton ON/OFF (écran, CYD auxiliaires, Home Assistant) :
+//  - chauffage ON  : séquence d'arrêt (demandeOff())
+//  - chauffage OFF : séquence de marche (demandeOn())
+// L'état (etat) n'est pas basculé ici : c'est fait dans setEtatReelOnOff(), au retour de l'état réel.
 // Retour :
 // 0 : RAS
 // -1 : Equipement inactif
+// -2 : Séquence en cours
+// -3 : Pas de noeud ou pas de MQTT
 //----------------------------------------------------------------------------------
 int CNoeudChauffageIRSound::envoiOnOff() {
   if (!active) {
-    String s = "L'equipement " + nomEquipement + " n'est pas actif";
-    if (mEcran != nullptr)
-      mEcran->updateStatus(s);
-    DBGLN(DBG_ACTIONNEURS, s);
+    message(nomEquipement + ": inactif");
     return -1;
   }
-  toggleDevice();
-  return 0;
+  if (mEtatSequence != SEQ_REPOS) {
+    message(nomEquipement + ": ignore: " + etapeSequence());
+    return -2;
+  }
+  return etat ? demandeOff() : demandeOn();
 }
 
 //----------------------------------------------------------------------------------
@@ -33,6 +37,67 @@ int CNoeudChauffageIRSound::envoiOnOff() {
 //  Allumé : 1
 //----------------------------------------------------------------------------------
 void CNoeudChauffageIRSound::setEtatReelOnOff(bool state) {
+  DBG(DBG_NOEUD, "[%lu s] %s : OnOff %d reçu (état affiché %s)\n", millis() / 1000, nomEquipement.c_str(), state, etat ? "ON" : "OFF");
+  // Arrêt en cours : le noeud a éteint le chauffage (OFF émis par IR et confirmé par le bip).
+  //  - vérification avant coupure différée (voir loop()) : coupure immédiate du relais ;
+  //  - sinon fin de la séquence, coupure différée (voir ci-dessous).
+  bool bOffConfirme = false;
+  if (!state && mEtatSequence == ARRET_ATTENTE_ETAT0) {
+    if (mbCoupureImmediate) {
+      mbCoupureImmediate = false;
+      message(nomEquipement + ": OFF confirme, coupure prise");
+      muiEnvoisCode = 0;
+      coupeRelais();
+    }
+    else {
+      mEtatSequence = SEQ_REPOS;
+      mbCoupureDiffereeArmee = false; // Délai relancé à partir de maintenant
+      bOffConfirme = true;
+    }
+  }
+
+  // Chauffage éteint (fin d'arrêt, télécommande IR, republication périodique du noeud,
+  // redémarrage du CYD...) : coupure du relais programmée dans mulDelaiCoupureApresOff min,
+  // si elle ne l'est pas déjà (les republications périodiques ne la repoussent pas).
+  // D'ici là, un ON rallume par IR, sans code relais ni redémarrage du C3.
+  // Un OnOff 0 spontané (bip hors séquence) peut être un parasite alors que le chauffage est
+  // allumé : il n'est pas confirmé, et la coupure sera précédée d'un arrêt par IR (voir loop()).
+  if (!state && mEtatSequence == SEQ_REPOS && !mbCoupureDiffereeArmee) {
+    mbCoupureDiffereeArmee = true;
+    mbOffConfirme = bOffConfirme;
+    mulDebutCoupureDifferee = millis();
+    message(nomEquipement + ": eteint, coupure prise ds " + String(mulDelaiCoupureApresOff) + "min");
+  }
+  if (state) mbCoupureDiffereeArmee = false; // Chauffage rallumé : plus de coupure prévue
+
+  // Attente de l'arrêt : le noeud signale le chauffage allumé (redémarrage du C3, qui allume
+  // le chauffage à la mise sous tension, ou commande OFF perdue) : on renvoie la commande OFF
+  if (state && mEtatSequence == ARRET_ATTENTE_ETAT0) {
+    if (muiRenvoisOff < muiNbEnvoisCode) {
+      muiRenvoisOff++;
+      message(nomEquipement + ": ON recu, renvoi OFF");
+      publieCommandeNoeud("OFF");
+    }
+  }
+
+  // Coupure du relais en cours : un ON du noeud est un bip parasite (bruit, sonnette du banc de test).
+  // Le chauffage a été éteint par IR, on garde OFF.
+  if (state && mEtatSequence == ARRET_ATTENTE_DISPARITION) {
+    message(nomEquipement + ": ON ignore (coupure relais)");
+    return;
+  }
+
+  // Marche en cours : le noeud a allumé le chauffage (OnOff 1 peut précéder la détection de présence)
+  if (state && (mEtatSequence == MARCHE_ATTENTE_APPARITION || mEtatSequence == MARCHE_ATTENTE_ETAT1)) {
+    message(nomEquipement + ": ON confirme");
+    mEtatSequence = SEQ_REPOS;
+  }
+
+  appliqueEtat(state);
+}
+
+// Mise à jour de l'état affiché (écran, CYD auxiliaires), sans effet sur les séquences
+void CNoeudChauffageIRSound::appliqueEtat(bool state) {
   if (etat == state) return;
 
   saveState(state); // Bascule de etat et sauvegarde NVS
@@ -42,6 +107,406 @@ void CNoeudChauffageIRSound::setEtatReelOnOff(bool state) {
   // Mise à jour de l'IHM des CYD auxiliaires
   if (onMqttPublish != nullptr)
     onMqttPublish(mqttSubTopicCommand.c_str(), etat ? "ONR" : "OFFR");
+}
+
+//----------------------------------------------------------------------------------
+// CNoeudChauffageIRSound::demandeOff()
+//
+// Séquence d'arrêt :
+// 1. Noeud absent : le relais est déjà coupé, rien à faire.
+// 2. Publication de "<noeud> OFF" sur le topic commande du noeud, qui éteint le chauffage par IR
+//    et publie "OnOff 0" (ou IRKO en cas d'échec).
+// 3. A réception de OnOff 0 : fin de la séquence, coupure du relais différée de
+//    mulDelaiCoupureApresOff min (voir setEtatReelOnOff() et loop()) ; un ON dans ce délai
+//    rallume par IR sans redémarrer le C3.
+//    Sans OnOff 0 après mulDelaiCoupureForcee minutes : envoi immédiat du code relais.
+//    IRKO ne coupe pas le relais tout de suite : couper le noeud ferait perdre le seul moyen
+//    d'éteindre un chauffage resté allumé.
+// 4. Vérification de la disparition du noeud (watchdog expiré) dans mulDelaiVerification s.
+//    Sinon le code n'a pas été reçu : renvoi, jusqu'à muiNbEnvoisCode envois.
+//    Le relais n'a qu'un code qui bascule : on ne renvoie jamais avant d'être sûr que
+//    le précédent n'a pas été reçu (sinon le second annulerait le premier).
+//
+// Retour :
+// 0 : RAS (séquence lancée ou rien à faire)
+// -1 : Equipement inactif
+// -2 : Arrêt déjà en cours
+// -3 : Pas de noeud ou pas de MQTT
+//----------------------------------------------------------------------------------
+int CNoeudChauffageIRSound::demandeOff() {
+  if (!active) {
+    message(nomEquipement + ": inactif");
+    return -1;
+  }
+  if (mEtatSequence != SEQ_REPOS) {
+    message(nomEquipement + ": ignore: " + etapeSequence());
+    return -2;
+  }
+  if (mNoeud == nullptr || onMqttPublish == nullptr) {
+    message(nomEquipement + ": arret impossible (MQTT)");
+    return -3;
+  }
+  if (!noeudPresent()) {
+    message(nomEquipement + ": noeud absent, relais coupe");
+    appliqueEtat(false); // Sinon le bouton resterait à ON (nœud disparu sans OnOff 0)
+    return 0;
+  }
+  lanceArret(false);
+  message(nomEquipement + ": arret demande");
+  return 0;
+}
+
+// Publication de "<noeud> OFF" et attente de OnOff 0 (voir demandeOff())
+// bCoupureImmediate : coupure du relais dès OnOff 0 (vérification avant coupure différée),
+// sinon coupure différée de mulDelaiCoupureApresOff min
+void CNoeudChauffageIRSound::lanceArret(bool bCoupureImmediate) {
+  publieCommandeNoeud("OFF");
+  mEtatSequence = ARRET_ATTENTE_ETAT0;
+  mulDebutEtape = millis();
+  muiEnvoisCode = 0;
+  muiRenvoisOff = 0;
+  mbNoeudPerdu = false;
+  mbCoupureImmediate = bCoupureImmediate;
+  mbCoupureDiffereeArmee = false;
+}
+
+// Commande "<noeud> ON|OFF" sur le topic commande du noeud (jamais retain)
+void CNoeudChauffageIRSound::publieCommandeNoeud(const char* cmd) {
+  if (mNoeud == nullptr || onMqttPublish == nullptr) return;
+  String sCmd = mNoeud->nomEquipement + " " + cmd;
+  onMqttPublish(mNoeud->mqttSubTopicCommand.c_str(), sCmd.c_str());
+}
+
+//----------------------------------------------------------------------------------
+// CNoeudChauffageIRSound::demandeOn()
+//
+// Séquence de marche :
+// 1. Noeud présent (relais déjà fermé, chauffage éteint après un IRKO ou à la main) :
+//    publication de "<noeud> ON" sur le topic commande du noeud, puis étape 3.
+// 2. Noeud absent : envoi du code relais. A la mise sous tension, le noeud allume
+//    le chauffage par IR de lui-même. On attend son apparition (premier message)
+//    pendant mulDelaiApparition s. Sinon le code n'a pas été reçu : renvoi, jusqu'à
+//    muiNbEnvoisCode envois. Ce délai doit dépasser la durée de démarrage du C3 :
+//    un renvoi alors que le premier code a été reçu couperait le noeud.
+// 3. Attente de OnOff 1 pendant mulDelaiConfirmationOn s.
+//    IRKO ou pas de réponse : message, le relais reste fermé (un nouvel ON passe par 1.).
+//
+// Retour :
+// 0 : RAS (séquence lancée)
+// -1 : Equipement inactif
+// -2 : Séquence déjà en cours
+// -3 : Pas de noeud ou pas de MQTT
+//----------------------------------------------------------------------------------
+int CNoeudChauffageIRSound::demandeOn() {
+  if (!active) {
+    message(nomEquipement + ": inactif");
+    return -1;
+  }
+  if (mEtatSequence != SEQ_REPOS) {
+    message(nomEquipement + ": ignore: " + etapeSequence());
+    return -2;
+  }
+  if (mNoeud == nullptr || onMqttPublish == nullptr) {
+    message(nomEquipement + ": marche impossible (MQTT)");
+    return -3;
+  }
+  if (noeudPresent()) {
+    mbCoupureDiffereeArmee = false; // Rallumage pendant le délai de coupure après OFF
+    publieCommandeNoeud("ON");
+    mEtatSequence = MARCHE_ATTENTE_ETAT1;
+    mulDebutEtape = millis();
+    message(nomEquipement + ": marche demandee (IR)");
+    return 0;
+  }
+  message(nomEquipement + ": marche demandee");
+  muiEnvoisCode = 0;
+  fermeRelais();
+  return 0;
+}
+
+//----------------------------------------------------------------------------------
+// CNoeudChauffageIRSound::loop()
+//
+// Déroulement des séquences de marche et d'arrêt (voir demandeOn() et demandeOff())
+//
+// Disparition du noeud (watchdog expiré) : l'état affiché passe à OFF.
+// Hors séquence (prise coupée par sa télécommande, C3 débranché...), l'état réel du chauffage
+// est inconnu (la prise n'alimente que le C3) ; OFF reste sûr : un ON relance le C3, qui
+// vérifie l'état par le bip et réémet l'IR si besoin.
+//----------------------------------------------------------------------------------
+void CNoeudChauffageIRSound::loop() {
+  bool bPresent = noeudPresent();
+  bool bDisparition = mbNoeudPresent && !bPresent;
+  mbNoeudPresent = bPresent;
+  EtatSequence etatAvant = mEtatSequence;
+
+  switch (mEtatSequence) {
+    case SEQ_REPOS:
+      // Coupure du relais différée après un OFF (voir setEtatReelOnOff())
+      if (mbCoupureDiffereeArmee) {
+        if (!bPresent) mbCoupureDiffereeArmee = false; // Relais déjà coupé, ou noeud perdu
+        else if (millis() - mulDebutCoupureDifferee >= mulDelaiCoupureApresOff * 60000UL) {
+          mbCoupureDiffereeArmee = false;
+          if (!etat) {
+            if (mbOffConfirme) {
+              message(nomEquipement + ": OFF depuis " + String(mulDelaiCoupureApresOff) + "min, coupure prise");
+              muiEnvoisCode = 0;
+              coupeRelais();
+            }
+            else {
+              // OFF non confirmé (bip hors séquence, peut-être un parasite) : on ne coupe pas
+              // le relais avant d'avoir éteint le chauffage par IR, avec vérification par le bip
+              message(nomEquipement + ": verif OFF avant coupure");
+              lanceArret(true);
+            }
+          }
+        }
+      }
+      break;
+
+    case ARRET_ATTENTE_ETAT0:
+      // Le code relais n'a pas encore été envoyé : une disparition du noeud n'est pas une
+      // coupure du relais, mais un C3 planté ou déconnecté (chauffage peut-être encore allumé).
+      // On continue d'attendre OnOff 0, jusqu'à la coupure forcée.
+      if (!bPresent) {
+        if (!mbNoeudPerdu) {
+          mbNoeudPerdu = true;
+          message(nomEquipement + ": noeud perdu, attente OnOff 0");
+        }
+      }
+      else if (mbNoeudPerdu) {
+        // Retour du noeud : la commande OFF a pu être perdue, on la renvoie
+        mbNoeudPerdu = false;
+        if (muiRenvoisOff < muiNbEnvoisCode) {
+          muiRenvoisOff++;
+          message(nomEquipement + ": noeud revenu, renvoi OFF");
+          publieCommandeNoeud("OFF");
+        }
+      }
+      if (millis() - mulDebutEtape >= mulDelaiCoupureForcee * 60000UL) {
+        message(nomEquipement + ": pas de OnOff 0, coupure forcee");
+        muiEnvoisCode = 0;
+        coupeRelais();
+      }
+      break;
+
+    case ARRET_ATTENTE_DISPARITION:
+      if (!noeudPresent()) {
+        message(nomEquipement + ": relais coupe");
+        mEtatSequence = SEQ_REPOS;
+      }
+      else if (millis() - mulDebutEtape >= mulDelaiVerification * 1000UL) {
+        if (muiEnvoisCode < muiNbEnvoisCode) {
+          message(nomEquipement + ": renvoi code " + String(muiEnvoisCode + 1) + "/" + String(muiNbEnvoisCode));
+          coupeRelais();
+        }
+        else {
+          message(nomEquipement + ": ECHEC coupure relais");
+          mEtatSequence = SEQ_REPOS;
+        }
+      }
+      break;
+
+    case MARCHE_ATTENTE_APPARITION:
+      if (noeudPresent()) {
+        message(nomEquipement + ": noeud present, attente IR");
+        mEtatSequence = MARCHE_ATTENTE_ETAT1;
+        mulDebutEtape = millis();
+      }
+      else if (millis() - mulDebutEtape >= mulDelaiApparition * 1000UL) {
+        if (muiEnvoisCode < muiNbEnvoisCode) {
+          message(nomEquipement + ": renvoi code " + String(muiEnvoisCode + 1) + "/" + String(muiNbEnvoisCode));
+          fermeRelais();
+        }
+        else {
+          message(nomEquipement + ": ECHEC marche, noeud absent");
+          mEtatSequence = SEQ_REPOS;
+        }
+      }
+      break;
+
+    case MARCHE_ATTENTE_ETAT1:
+      if (!noeudPresent()) {
+        message(nomEquipement + ": noeud disparu");
+        mEtatSequence = SEQ_REPOS;
+      }
+      else if (millis() - mulDebutEtape >= mulDelaiConfirmationOn * 1000UL) {
+        message(nomEquipement + ": pas de confirmation ON");
+        mEtatSequence = SEQ_REPOS;
+        armeCoupureNonConfirmee();
+      }
+      break;
+  }
+
+  // Pendant l'attente de l'arrêt, le noeud perdu n'est pas un relais coupé : l'état affiché reste
+  if (bDisparition && etatAvant != ARRET_ATTENTE_ETAT0) {
+    if (etatAvant == SEQ_REPOS && etat)
+      message(nomEquipement + ": noeud absent, chauffage inconnu");
+    appliqueEtat(false);
+  }
+}
+
+void CNoeudChauffageIRSound::coupeRelais() {
+  muiEnvoisCode++;
+  DBG(DBG_NOEUD, "[%lu s] %s : envoi du code relais %u/%u\n", millis() / 1000, nomEquipement.c_str(), muiEnvoisCode, muiNbEnvoisCode);
+  toggleDevice();
+  mulDebutEtape = millis();
+  mEtatSequence = ARRET_ATTENTE_DISPARITION;
+}
+
+void CNoeudChauffageIRSound::fermeRelais() {
+  muiEnvoisCode++;
+  DBG(DBG_NOEUD, "[%lu s] %s : envoi du code relais %u/%u (marche)\n", millis() / 1000, nomEquipement.c_str(), muiEnvoisCode, muiNbEnvoisCode);
+  toggleDevice();
+  mulDebutEtape = millis();
+  mEtatSequence = MARCHE_ATTENTE_APPARITION;
+}
+
+// Appelée à réception de "<noeud> IRKO"
+//  - arrêt : le relais n'est pas coupé, on attend la coupure forcée (voir demandeOff())
+//  - marche : le relais reste fermé (un nouvel ON rallume par IR sans redémarrer le C3),
+//    fin de la séquence, coupure non confirmée programmée (voir armeCoupureNonConfirmee())
+void CNoeudChauffageIRSound::signaleIrko() {
+  if (mEtatSequence == MARCHE_ATTENTE_APPARITION || mEtatSequence == MARCHE_ATTENTE_ETAT1) {
+    message(nomEquipement + ": echec IR, relais reste ferme");
+    mEtatSequence = SEQ_REPOS;
+    armeCoupureNonConfirmee();
+  }
+  else if (mEtatSequence == ARRET_ATTENTE_ETAT0) {
+    unsigned long resteMin = (mulDelaiCoupureForcee * 60000UL - (millis() - mulDebutEtape)) / 60000UL;
+    message(nomEquipement + ": echec IR, coupure ds " + String(resteMin) + "min");
+  }
+  else
+    message(nomEquipement + ": echec IR");
+}
+
+// Etape de la séquence en cours et temps restant, pour la barre d'état
+String CNoeudChauffageIRSound::etapeSequence() const {
+  unsigned long ecoule = millis() - mulDebutEtape;
+  switch (mEtatSequence) {
+    case ARRET_ATTENTE_ETAT0: {
+      if (mbNoeudPerdu) {
+        unsigned long delai = mulDelaiCoupureForcee * 60000UL;
+        unsigned long resteMin = ecoule < delai ? (delai - ecoule + 59999UL) / 60000UL : 0;
+        return "noeud perdu, coupure ds " + String(resteMin) + "min";
+      }
+      return "arret IR en cours";
+    }
+    case ARRET_ATTENTE_DISPARITION: {
+      unsigned long delai = mulDelaiVerification * 1000UL;
+      unsigned long resteS = ecoule < delai ? (delai - ecoule + 999UL) / 1000UL : 0;
+      return "coupure prise, verif " + String(resteS) + "s";
+    }
+    case MARCHE_ATTENTE_APPARITION: {
+      unsigned long delai = mulDelaiApparition * 1000UL;
+      unsigned long resteS = ecoule < delai ? (delai - ecoule + 999UL) / 1000UL : 0;
+      return "demarrage noeud, " + String(resteS) + "s";
+    }
+    case MARCHE_ATTENTE_ETAT1: {
+      return "allumage IR en cours";
+    }
+    default:
+      return "sequence en cours";
+  }
+}
+
+// Marche non confirmée (IRKO, pas de OnOff 1) : état du chauffage inconnu, le C3 reste alimenté.
+// Sans nouvel ON, coupure dans mulDelaiCoupureApresOff min, précédée d'un arrêt par IR vérifié
+// (comme pour un OFF spontané, voir loop()) : le C3 ne reste pas alimenté indéfiniment.
+void CNoeudChauffageIRSound::armeCoupureNonConfirmee() {
+  if (etat || mbCoupureDiffereeArmee) return;
+  mbCoupureDiffereeArmee = true;
+  mbOffConfirme = false;
+  mulDebutCoupureDifferee = millis();
+  DBG(DBG_NOEUD, "[%lu s] %s : coupure non confirmee programmee dans %lu min\n", millis() / 1000, nomEquipement.c_str(), mulDelaiCoupureApresOff);
+}
+
+bool CNoeudChauffageIRSound::noeudPresent() const {
+  return mNoeud != nullptr && mNoeud->estPresent();
+}
+
+void CNoeudChauffageIRSound::message(const String& s) {
+  DBG(DBG_NOEUD, "[%lu s] %s\n", millis() / 1000, s.c_str());
+  if (mEcran != nullptr)
+    mEcran->updateStatus(s);
+}
+
+//----------------------------------------------------------------------------------
+// Commandes MQTT : ON/OFF (CYD auxiliaires, Home Assistant) passent par envoiOnOff()
+//----------------------------------------------------------------------------------
+void CNoeudChauffageIRSound::handleMqttCommand(const String& payload) {
+  String cmd = payload;
+  cmd.toUpperCase();
+  cmd.trim();
+  if (cmd == "ON" || cmd == "OFF") {
+    envoiOnOff();
+    return;
+  }
+  CRCDevice::handleMqttCommand(payload);
+}
+
+void CNoeudChauffageIRSound::setup(const String pref) {
+  CRCDevice::setup(pref);
+  loadFromNVS();
+  // L'état mémorisé en NVS n'est pas fiable au démarrage du CYD (nœud absent, ou présent sans
+  // avoir encore publié OnOff) : OFF jusqu'au retour du nœud (voir loop())
+  saveState(false);
+}
+
+void CNoeudChauffageIRSound::loadFromNVS() {
+  CRCDevice::loadFromNVS();
+  prefs.begin(nvs_namespace, true);
+  mulDelaiCoupureForcee = prefs.getULong((mPrefixNVS+"offforc").c_str(), 20);
+  mulDelaiCoupureApresOff = prefs.getULong((mPrefixNVS+"offdiff").c_str(), 15);
+  mulDelaiVerification = prefs.getULong((mPrefixNVS+"offverif").c_str(), 90);
+  mulDelaiApparition = prefs.getULong((mPrefixNVS+"onappar").c_str(), 90);
+  mulDelaiConfirmationOn = prefs.getULong((mPrefixNVS+"onconf").c_str(), 60);
+  muiNbEnvoisCode = prefs.getUInt((mPrefixNVS+"offnbcod").c_str(), 3);
+  prefs.end();
+}
+
+void CNoeudChauffageIRSound::saveToNVS() {
+  CRCDevice::saveToNVS();
+  prefs.begin(nvs_namespace, false);
+  prefs.putULong((mPrefixNVS+"offforc").c_str(), mulDelaiCoupureForcee);
+  prefs.putULong((mPrefixNVS+"offdiff").c_str(), mulDelaiCoupureApresOff);
+  prefs.putULong((mPrefixNVS+"offverif").c_str(), mulDelaiVerification);
+  prefs.putULong((mPrefixNVS+"onappar").c_str(), mulDelaiApparition);
+  prefs.putULong((mPrefixNVS+"onconf").c_str(), mulDelaiConfirmationOn);
+  prefs.putUInt((mPrefixNVS+"offnbcod").c_str(), muiNbEnvoisCode);
+  prefs.end();
+}
+
+void CNoeudChauffageIRSound::loadFromWebServer (WebServer& server) {
+  CRCDevice::loadFromWebServer(server);
+  if (server.hasArg((mPrefixNVS+"offforc").c_str())) mulDelaiCoupureForcee = server.arg((mPrefixNVS+"offforc")).toInt();
+  if (server.hasArg((mPrefixNVS+"offdiff").c_str())) mulDelaiCoupureApresOff = server.arg((mPrefixNVS+"offdiff")).toInt();
+  if (server.hasArg((mPrefixNVS+"offverif").c_str())) mulDelaiVerification = server.arg((mPrefixNVS+"offverif")).toInt();
+  if (server.hasArg((mPrefixNVS+"onappar").c_str())) mulDelaiApparition = server.arg((mPrefixNVS+"onappar")).toInt();
+  if (server.hasArg((mPrefixNVS+"onconf").c_str())) mulDelaiConfirmationOn = server.arg((mPrefixNVS+"onconf")).toInt();
+  if (server.hasArg((mPrefixNVS+"offnbcod").c_str())) muiNbEnvoisCode = server.arg((mPrefixNVS+"offnbcod")).toInt();
+  if (muiNbEnvoisCode == 0) muiNbEnvoisCode = 1;
+}
+
+String CNoeudChauffageIRSound::getHTML() {
+  String html = CRCDevice::getHTML();
+  // Insertion avant le "</div>" final de CRCDevice::getHTML()
+  int pos = html.lastIndexOf("</div>");
+  String fin = (pos >= 0) ? html.substring(pos) : "";
+  if (pos >= 0) html = html.substring(0, pos);
+  String sWdog = (mNoeud != nullptr) ? String(mNoeud->getWatchdogIntervalle()) : "?";
+  html += "<div class=\"row\">"
+            "<div><label>Coupure du relais après OFF (min, rallumage rapide par IR d'ici là)</label><input type=\"number\" name=" + (mPrefixNVS+"offdiff") + " value=\"" + String(mulDelaiCoupureApresOff) + "\"></div>"
+            "<div><label>Coupure forcée si pas d'arrêt confirmé (min)</label><input type=\"number\" name=" + (mPrefixNVS+"offforc") + " value=\"" + String(mulDelaiCoupureForcee) + "\"></div>"
+            "<div><label>Renvoi du code si le noeud répond encore après (s, &gt; watchdog noeud " + sWdog + " s)</label><input type=\"number\" name=" + (mPrefixNVS+"offverif") + " value=\"" + String(mulDelaiVerification) + "\"></div>"
+          "</div>"
+          "<div class=\"row\">"
+            "<div><label>Renvoi du code si le noeud n'apparaît pas après (s, &gt; démarrage du noeud)</label><input type=\"number\" name=" + (mPrefixNVS+"onappar") + " value=\"" + String(mulDelaiApparition) + "\"></div>"
+            "<div><label>Attente confirmation ON après apparition du noeud (s)</label><input type=\"number\" name=" + (mPrefixNVS+"onconf") + " value=\"" + String(mulDelaiConfirmationOn) + "\"></div>"
+            "<div><label>Nb max d'envois du code relais</label><input type=\"number\" name=" + (mPrefixNVS+"offnbcod") + " value=\"" + String(muiNbEnvoisCode) + "\"></div>"
+          "</div>";
+  html += fin;
+  return html;
 }
 
 

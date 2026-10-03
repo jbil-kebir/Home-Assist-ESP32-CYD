@@ -107,6 +107,9 @@ if (mBatterieAA != nullptr)
 
 void CConfig::loop() {
 
+  // ==================================== Watchdog ALIVE ====================================
+  loopWatchdog();
+
   // ==================================== Deep sleep ====================================
   // S'il est actif, on n'entre en deep sleep que si le délai avant deep sleep est écoulé et qu'une mesure a été remontée (pour tous les capteurs)
   // Pour les capteurs qui ont besoin d'un ACK, on n'entre en deep-sleep que si l'ACK a été reçu
@@ -389,6 +392,10 @@ void CConfig::loadFromNVS() {
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), CONFIG_SUB_TOPIC);
   // Topics domotique
   domotique_prefix = prefs.getString((mPrefixNVS+"domo_pref").c_str(), default_domotique_topic_prefix);
+  mbWatchdogActive = prefs.getBool((mPrefixNVS+"wdogA").c_str(), false);
+  mulWatchdogPeriod = prefs.getLong((mPrefixNVS+"wdogP").c_str(), DEFAULT_WATCHDOG_PERIOD_SEC);
+  mbJournalSauvegarde = prefs.getBool((mPrefixNVS+"jrnSv").c_str(), true);
+  gJournal.setSauvegardeActive(mbJournalSauvegarde);
 
   prefs.end();
 
@@ -417,6 +424,9 @@ void CConfig::saveToNVS() {
   prefs.putBool((mPrefixNVS+"wkFDS").c_str(), mbWakeFromDeepSleep);
   prefs.putLong((mPrefixNVS+"dtSom").c_str(), mulDateMiseEnSommeil);
   prefs.putLong((mPrefixNVS+"dtRev").c_str(), mulDateReveil);
+  prefs.putBool((mPrefixNVS+"wdogA").c_str(), mbWatchdogActive);
+  prefs.putLong((mPrefixNVS+"wdogP").c_str(), mulWatchdogPeriod);
+  prefs.putBool((mPrefixNVS+"jrnSv").c_str(), mbJournalSauvegarde);
 
   prefs.end();
 }
@@ -434,6 +444,10 @@ void CConfig::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"sleepM").c_str())) mulSleepDurationM = server.arg((mPrefixNVS+"sleepM")).toInt();
   if (server.hasArg((mPrefixNVS+"sleepL").c_str())) mulSleepDurationL = server.arg((mPrefixNVS+"sleepL")).toInt();
   if (server.hasArg((mPrefixNVS+"wakeI").c_str())) mulWakeDuration = server.arg((mPrefixNVS+"wakeI")).toInt();
+  if (server.hasArg((mPrefixNVS+"wdogA").c_str())) mbWatchdogActive = true; else mbWatchdogActive = false;
+  if (server.hasArg((mPrefixNVS+"wdogP").c_str())) mulWatchdogPeriod = server.arg((mPrefixNVS+"wdogP")).toInt();
+  mbJournalSauvegarde = server.hasArg((mPrefixNVS+"jrnSv").c_str());
+  gJournal.setSauvegardeActive(mbJournalSauvegarde);
 }
 
 void CConfig::print() const {
@@ -445,6 +459,9 @@ void CConfig::print() const {
   Serial.printf("  Intervalle Deep SleepM  : %ld s\n", mulSleepDurationM);
   Serial.printf("  Intervalle Deep SleepL  : %ld s\n", mulSleepDurationL);
   Serial.printf("  Intervalle Entre Sleep  : %ld s\n", mulWakeDuration);
+  Serial.printf("  Watchdog ALIVE          : %s\n", mbWatchdogActive ? "ACTIF" : "INACTIF");
+  Serial.printf("  Période Watchdog ALIVE  : %ld s\n", mulWatchdogPeriod);
+  Serial.printf("  Sauvegarde journal      : %s\n", mbJournalSauvegarde ? "ACTIVE" : "INACTIVE");
   Serial.printf("  Préfixe domotique       : %s\n", domotique_prefix.c_str());
   Serial.printf("  Préfixe configuration   : %s\n", mqttSubTopic.c_str());
 
@@ -471,6 +488,13 @@ String CConfig::getHTML() {
       "</div>"
       "<div class=\"row\">"
         "<div><label>Intervalle entre Sleep</label><input type=\"text\" name=" + (mPrefixNVS+"wakeI") + " value=\"" + mulWakeDuration + "\"></div>"
+      "</div>"
+      "<div class=\"row\">"
+        "<div class=\"checkbox-row\"><label>Watchdog ALIVE</label><input type=\"checkbox\" name=" + (mPrefixNVS+"wdogA") + " value=\"1\"" + String(mbWatchdogActive ? " checked" : "") + "></div>"
+        "<div><label>Période Watchdog ALIVE (s)</label><input type=\"text\" name=" + (mPrefixNVS+"wdogP") + " value=\"" + mulWatchdogPeriod + "\"></div>"
+      "</div>"
+      "<div class=\"row\">"
+        "<div class=\"checkbox-row\"><label>Sauvegarde du journal avant coupure (OnOff 0, IRKO)</label><input type=\"checkbox\" name=" + (mPrefixNVS+"jrnSv") + " value=\"1\"" + String(mbJournalSauvegarde ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Préfixe domotique</label><input type=\"text\" name=" + (mPrefixNVS+"domo_pref") + " value=\"" + domotique_prefix + "\"></div>"
@@ -651,12 +675,175 @@ int CConfig::handleMqttCommand(const String& payload) {
     Serial.println("CConfig::handleMqttCommand - Commande SLEEP détectée : " + cmd); Serial.flush();
     parseSleepCommand(cmd);
   }
+  else if (cmd.startsWith("WDOG")) {
+    Serial.println("CConfig::handleMqttCommand - Commande WDOG détectée : " + cmd); Serial.flush();
+    parseWdogCommand(cmd);
+  }
   else {
     Serial.println("CConfig::handleMqttCommand - Commande inconnue : " + cmd); Serial.flush();
     ret = -1; // Commande inconnue
   }
 
   return ret;
+}
+
+//
+// WDOG ENABLE  : active le watchdog ALIVE
+// WDOG DISABLE : désactive le watchdog ALIVE
+// WDOG <s>     : fixe la période (en secondes) et active le watchdog
+//
+// Retour
+// 0 : commande traitée avec succès
+// -2 : commande mal formée
+//
+int CConfig::parseWdogCommand(const String& msg) {
+  String reste = msg.substring(4);
+  reste.trim();
+  reste.toUpperCase();
+
+  if (reste == "ENABLE") {
+    setWatchdog(true);
+    return 0;
+  }
+  if (reste == "DISABLE") {
+    setWatchdog(false);
+    return 0;
+  }
+
+  // Vérification stricte : tout doit être un nombre
+  bool isNumber = reste.length() > 0;
+  for (char c : reste) {
+    if (!isdigit(c)) {
+      isNumber = false;
+      break;
+    }
+  }
+  if (!isNumber || reste.toInt() <= 0) {
+    Serial.println("CConfig::parseWdogCommand() - Commande mal formée : " + msg);
+    return -2;
+  }
+  setWatchdogPeriod(reste.toInt());
+  setWatchdog(true);
+  return 0;
+}
+
+void CConfig::setWatchdog(bool active) {
+  mbWatchdogActive = active;
+  prefs.begin(nvs_namespace, false);
+  prefs.putBool((mPrefixNVS+"wdogA").c_str(), mbWatchdogActive);
+  prefs.end();
+  Serial.println(String("Watchdog ALIVE ") + (mbWatchdogActive ? "activé" : "désactivé"));
+}
+
+void CConfig::setWatchdogPeriod(unsigned long st) {
+  mulWatchdogPeriod = st;
+  prefs.begin(nvs_namespace, false);
+  prefs.putLong((mPrefixNVS+"wdogP").c_str(), mulWatchdogPeriod);
+  prefs.end();
+  Serial.println("Watchdog ALIVE - Nouvelle période : " + String(mulWatchdogPeriod) + " s");
+}
+
+// Ligne ajoutée aux messages STATUS (MQTT et LoRa)
+String CConfig::getWatchdogStatus() const {
+  return "Wdog   : " + String(mbWatchdogActive ? "ACTIF " : "INACTIF ") + String(mulWatchdogPeriod) + "s" + String(mbDeepSleepActive ? " (ignoré : deep sleep)" : "") + "\n";
+}
+
+//
+// Appelée à chaque publication (MQTT ou LoRa) : remet à zéro le décompte ALIVE de l'équipement expéditeur.
+// message : "<nomEquipement> ..." en MQTT, "<topic> <nomEquipement> ..." en LoRa (bAvecTopic = true)
+//
+void CConfig::noteEmission(const String& message, bool bAvecTopic/*=false*/) {
+  String s = message;
+  s.trim();
+  if (bAvecTopic) {
+    int i = s.indexOf(' ');
+    if (i < 0) return;
+    s = s.substring(i + 1);
+    s.trim();
+  }
+  int i = s.indexOf(' ');
+  String nom = (i < 0) ? s : s.substring(0, i);
+  auto it = mEtatsWatchdog.find(nom);
+  if (it == mEtatsWatchdog.end()) return;
+  it->second.ulDerniereEmission = millis();
+  if (i >= 0 && s.substring(i + 1).startsWith("ALIVE"))
+    it->second.bAliveDemarrageEnvoye = true;
+}
+
+//
+// Retour : true si un ALIVE a été envoyé (un seul par appel, pour étaler les émissions LoRa)
+//
+bool CConfig::loopWatchdog() {
+  if (!mbWatchdogActive || mbDeepSleepActive || mulWatchdogPeriod == 0) return false;
+
+  #ifdef CAPTEUR_DS18B20
+  if (ds18b20 != nullptr && ds18b20->active)
+    if (verifieWatchdog(ds18b20->nomEquipement, ds18b20->mqttSubTopicState)) return true;
+  #endif
+  #ifdef CAPTEUR_DHT20
+  if (dht20 != nullptr && dht20->active)
+    if (verifieWatchdog(dht20->nomEquipement, dht20->mqttSubTopicState)) return true;
+  #endif
+  #ifdef FLOTTEUR_VERTICAL
+  if (mFlotteurVertical != nullptr && mFlotteurVertical->active)
+    if (verifieWatchdog(mFlotteurVertical->nomEquipement, mFlotteurVertical->mqttSubTopicState)) return true;
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  if (mCapteurRGB != nullptr && mCapteurRGB->active)
+    if (verifieWatchdog(mCapteurRGB->nomEquipement, mCapteurRGB->mqttSubTopicState)) return true;
+  #endif
+  #ifdef CAPTEUR_BATTERIE
+  if (mBatterieAA != nullptr && mBatterieAA->active)
+    if (verifieWatchdog(mBatterieAA->nomEquipement, mBatterieAA->mqttSubTopicState)) return true;
+  #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+  if (mMicro != nullptr && mMicro->active)
+    if (verifieWatchdog(mMicro->nomEquipement, mMicro->mqttSubTopicState)) return true;
+  #endif
+
+  return false;
+}
+
+//
+// Retour : true si un ALIVE a été envoyé pour cet équipement
+//
+bool CConfig::verifieWatchdog(const String& nom, const String& topic) {
+  unsigned long now = millis();
+  EtatWatchdog& etat = mEtatsWatchdog[nom]; // Créé au premier passage
+
+  // ALIVE de démarrage (ou d'activation du watchdog) : envoyé tout de suite, puis retenté toutes les 2 s
+  // tant qu'il n'a pas été publié avec succès (WiFi / MQTT pas encore connectés). Voir noteEmission().
+  if (!etat.bAliveDemarrageEnvoye) {
+    if (etat.bAliveDemarrageTente && now - etat.ulDerniereTentative < 2000UL) return false;
+    etat.bAliveDemarrageTente = true;
+    etat.ulDerniereTentative = now;
+    envoieAlive(nom, topic);
+    return true;
+  }
+
+  if (now - etat.ulDerniereEmission < mulWatchdogPeriod * 1000UL) return false;
+
+  envoieAlive(nom, topic);
+  etat.ulDerniereEmission = now; // Au cas où aucune publication n'a abouti (noteEmission() non appelée)
+  return true;
+}
+
+void CConfig::envoieAlive(const String& nom, const String& topic) {
+  String sHorodatage;
+  if (mDateTime != nullptr && mDateTime->isTimeValid())
+    sHorodatage = mDateTime->getDate() + " " + mDateTime->getTime();
+  else
+    sHorodatage = "UPTIME " + String(millis() / 1000);
+  String sMsg = nom + " ALIVE " + sHorodatage;
+  Serial.println("CConfig::envoieAlive() - " + sMsg);
+
+  if (onMqttPublish != nullptr)
+    onMqttPublish(topic.c_str(), sMsg.c_str());
+
+  #ifdef _LORA_P2P_MODE_
+  if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized())
+    mLoraRxTx->sendPacket((topic + " " + sMsg).c_str());
+  #endif
 }
 
 

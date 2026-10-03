@@ -1,3 +1,4 @@
+#include "global.h" // Serial -> journal web (voir MyJournal.h)
 #include "MyBatterieAA.h"
 //#include "MyDateTime.h"
 
