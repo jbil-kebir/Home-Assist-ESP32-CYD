@@ -3,6 +3,7 @@
 
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
+#include <functional>
 
 #include "MyBoutonBase.h"
 
@@ -30,6 +31,11 @@ class CMyBouton : public CMyBoutonBase {
          }
 
         //CEquipementBase *mDevice=nullptr;
+
+        // Pastille d'état dans le coin haut droit (optionnelle) :
+        // 1 : vert, 0 : rouge, -1 : gris (inconnu). Non définie : pas de pastille.
+        std::function<int()> mfEtatPastille = nullptr;
+        void drawPastille();
 
         void draw();
         void draw(unsigned int color);

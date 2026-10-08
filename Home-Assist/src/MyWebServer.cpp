@@ -51,11 +51,17 @@ void MyWebServer::handleRoot() {
       "<div class=\"status\">Salle de bain : <strong>" + config.chauffageSb->etatStr + "</strong></div>";
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   html +=  "<div class=\"status\">Chaudière : <strong>" + config.mRemoteChaudiere->etatStr + "</strong></div>"
-      "<div class=\"status\">Salle de bain : <strong>" + config.mRemoteChaudiere->etatStr + "</strong></div>";
+      "<div class=\"status\">Salle de bain : <strong>" + config.mRemoteChauffage->etatStr + "</strong></div>";
   #endif // __LOCAL_MODE__
+  // Bouton SB coloré comme sur le CYD : gris si inactif, vert si allumé, rouge si éteint
+  #ifdef __LOCAL_MODE__
+  CEquipementBase* pChauffageSb = config.chauffageSb;
+  #else // Equipement distant
+  CEquipementBase* pChauffageSb = config.mRemoteChauffage;
+  #endif // __LOCAL_MODE__
+  String sClasseSb = !pChauffageSb->active ? "btn-gray" : (pChauffageSb->etat ? "btn-on" : "btn-off");
   html +=  "<div class=\"control\">"
-        "<form action=\"/chauffage_sb_on\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-cyan\">SB ON</button></form>"
-        "<form action=\"/chauffage_sb_off\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-red\">SB OFF</button></form>"
+        "<form action=\"/chauffage_sb\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn " + sClasseSb + "\">SB</button></form>"
         "<form action=\"/force_on\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-on\">Forcer ON</button></form>"
         "<form action=\"/force_off\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-off\">Forcer OFF</button></form>"
         "<form action=\"/toggle_p\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-orange\">Projecteur</button></form>"
@@ -209,6 +215,9 @@ void MyWebServer::handleSave() {
   config.mRemoteBatNomade->loadFromWebServer(server);
 
   config.mRemoteTorChauffageSb->loadFromWebServer(server);
+  #ifdef __LOCAL_MODE__
+  config.chauffageSb->verifieParametres(); // Après le watchdog du noeud, dont dépendent les bornes
+  #endif
 
   config.mRemoteThRemise->loadFromWebServer(server);
   config.mRemoteBatRemise->loadFromWebServer(server);
@@ -388,90 +397,41 @@ void MyWebServer::handleToggleG() {
 
   }
 }
-void MyWebServer::handleChauffageSbOn() {
+//----------------------------------------------------------------------------------
+// Bouton SB : marche ou arrêt selon l'état, comme le bouton SB du CYD (envoiOnOff())
+//----------------------------------------------------------------------------------
+void MyWebServer::handleChauffageSb() {
+  int ret;
   #ifdef __LOCAL_MODE__
-  bool proc = config.chauffageSb->active;
-  #else // Chaudière, thermomètre principal et équipements 433 MHz
-  bool proc = true;
-
+  ret = config.chauffageSb->envoiOnOff(); // 0 : RAS, -1 : inactif, -2 : séquence en cours, -3 : pas de noeud ou pas de MQTT
+  #else // Equipement distant
+  if (!config.mRemoteChauffage->active) ret = -1;
+  else ret = (config.mRemoteChauffage->envoiOnOff() == 0) ? 0 : -3;
   #endif // __LOCAL_MODE__
-  if (proc) {
-    #ifdef __LOCAL_MODE__
-    config.chauffageSb->demandeOn(); // Code relais ou commande IR (l'état suit le retour du noeud)
-    #else
-    #endif
-    #ifdef __CYD__
-    ecran.updateAllStates();
-    #endif
-    // Page de confirmation
-    String html = F("<!DOCTYPE html>"
+  #ifdef __CYD__
+  ecran.updateAllStates();
+  #endif
+
+  String sTitre = (ret == 0) ? "✓ Requête acceptée" : "✗ Requête refusée";
+  String sMessage;
+  switch (ret) {
+    case 0:  sMessage = "Envoi en cours..."; break;
+    case -1: sMessage = "Equipement inactif..."; break;
+    case -2: sMessage = "Séquence marche/arrêt en cours..."; break;
+    default: sMessage = "Noeud ou MQTT absent..."; break;
+  }
+  // Page de confirmation
+  String html = "<!DOCTYPE html>"
     "<html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/\">"
     "<title>Chauffage SDB</title>"
     "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
     "h1{color:#007BFF;font-size:48px;}p{font-size:24px;}</style></head>"
-    "<body><h1>✓ Requête ON acceptée</h1>"
-    "<p>Envoi en cours...<br>Retour à la page principale dans un instant.</p></body></html>");
-    server.send(200, "text/html", html);
-    delay(1000);
-  }
-  else {
-    // Page de confirmation
-    String html = F("<!DOCTYPE html>"
-    "<html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/\">"
-    "<title>Chauffage SDB</title>"
-    "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
-    "h1{color:#007BFF;font-size:48px;}p{font-size:24px;}</style></head>"
-    "<body><h1>✓ Requête ON refusée</h1>"
-    "<p>Equipement inactif...<br>Retour à la page principale dans un instant.</p></body></html>");
-
-    server.send(200, "text/html", html);
-    delay(1000);
-
-  }
+    "<body><h1>" + sTitre + "</h1>"
+    "<p>" + sMessage + "<br>Retour à la page principale dans un instant.</p></body></html>";
+  server.send(200, "text/html", html);
+  delay(1000);
 }
 
-void MyWebServer::handleChauffageSbOff() {
-  #ifdef __LOCAL_MODE__
-  bool proc = config.chauffageSb->active;
-  #else // Chaudière, thermomètre principal et équipements 433 MHz
-  bool proc = true;
-
-  #endif // __LOCAL_MODE__
-  if (proc) {
-    #ifdef __LOCAL_MODE__
-    config.chauffageSb->demandeOff(); // Arrêt par IR puis coupure du relais (l'état suit le retour du noeud)
-    #else
-    #endif
-    #ifdef __CYD__
-    ecran.updateAllStates();
-    #endif
-    // Page de confirmation
-    String html = F("<!DOCTYPE html>"
-    "<html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/\">"
-    "<title>Chauffage SDB</title>"
-    "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
-    "h1{color:#007BFF;font-size:48px;}p{font-size:24px;}</style></head>"
-    "<body><h1>✓ Requête OFF acceptée</h1>"
-    "<p>Envoi en cours...<br>Retour à la page principale dans un instant.</p></body></html>");
-    server.send(200, "text/html", html);
-    delay(1000);
-  }
-  else {
-    // Page de confirmation
-    String html = F("<!DOCTYPE html>"
-    "<html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/\">"
-    "<title>Chauffage SDB</title>"
-    "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
-    "h1{color:#007BFF;font-size:48px;}p{font-size:24px;}</style></head>"
-    "<body><h1>✓ Requête OFF refusée</h1>"
-    "<p>Equipement inactif...<br>Retour à la page principale dans un instant.</p></body></html>");
-
-    server.send(200, "text/html", html);
-    delay(1000);
-
-  }
-
-}
 
 
 
@@ -606,8 +566,7 @@ void MyWebServer::setup() {
   server.on("/force_off", HTTP_POST, [this]() { handleForceOff(); });
   server.on("/toggle_p", HTTP_POST, [this]() { handleToggleP(); });
   server.on("/toggle_g", HTTP_POST, [this]() { handleToggleG(); });  
-  server.on("/chauffage_sb_on", HTTP_POST, [this]() { handleChauffageSbOn(); });
-  server.on("/chauffage_sb_off", HTTP_POST, [this]() { handleChauffageSbOff(); });
+  server.on("/chauffage_sb", HTTP_POST, [this]() { handleChauffageSb(); });
   server.on("/logs",       HTTP_GET,  [this]() { handleLogs(); });
   server.on("/logs/data",  HTTP_GET,  [this]() { handleLogsData(); });
   server.on("/logs/clear", HTTP_POST, [this]() { handleLogsClear(); });

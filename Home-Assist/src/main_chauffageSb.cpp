@@ -81,7 +81,12 @@ void setup_chauffageSb() {
   };
   #ifdef __LOCAL_MODE__
   chauffageSb.mNoeud = &mRemoteTorChauffageSb; // Présence du noeud et commande OFF
+  chauffageSb.verifieParametres(); // Valeurs NVS antérieures aux bornes (dépend du watchdog du noeud)
   #endif
+  // Pastille du bouton SB : présence du noeud (C3), d'après son watchdog
+  ecran.setEtatPastilleChauffageSb([]() -> int {
+    return mRemoteTorChauffageSb.etatPresence();
+  });
 }
 
 //--------------------------------------------------------------------------
@@ -96,16 +101,23 @@ void loop_chauffageSb() {
   if (retChauffageSb == -10) { // Watchdog error
     if (!bWdogChauffageSbErr) {
       String s = mRemoteTorChauffageSb.nomEquipement + " absent " + mDateTime.getTime();
-      DBG(DBG_NOEUD, "[%lu s] %s\n", millis() / 1000, s.c_str());
+      DBG(DBG_NOEUD, "[%s] %s\n", mDateTime.getTime().c_str(), s.c_str());
       ecran.updateStatus(s);
       bWdogChauffageSbErr = true;
     }
   }
   else if (retChauffageSb != -2 && bWdogChauffageSbErr) { // -2 : inactif
     String s = mRemoteTorChauffageSb.nomEquipement + " present " + mDateTime.getTime();
-    DBG(DBG_NOEUD, "[%lu s] %s\n", millis() / 1000, s.c_str());
+    DBG(DBG_NOEUD, "[%s] %s\n", mDateTime.getTime().c_str(), s.c_str());
     ecran.updateStatus(s);
     bWdogChauffageSbErr = false;
+  }
+  // Pastille du bouton SB redessinée à chaque changement de présence du noeud
+  static int iDernierePresence = -2; // Force le premier dessin
+  int iPresence = mRemoteTorChauffageSb.etatPresence();
+  if (iPresence != iDernierePresence) {
+    iDernierePresence = iPresence;
+    ecran.updatePastilleChauffageSb();
   }
   #ifdef __LOCAL_MODE__
   // Séquences marche/arrêt et disparition du noeud, après les messages du watchdog

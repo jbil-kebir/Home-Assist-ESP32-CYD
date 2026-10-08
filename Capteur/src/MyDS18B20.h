@@ -43,7 +43,7 @@ public:
   String domotique_prefix;
   String nomEquipement = "ThCh1er";
   String mqttSubTopic = "thermometre";
-  bool active = true;
+  bool active = false; // Voir loadFromNVS()
   bool mbMesureRemontee = false; // Permet d'empêcher le deep sleep tant qu'une mesure n'a pas été remontée
   //bool bLocal = true; // true : Equipement local, commandé par l'ESP32. False : distant, commandé par Mqtt
   String mqttSubTopicCommand;

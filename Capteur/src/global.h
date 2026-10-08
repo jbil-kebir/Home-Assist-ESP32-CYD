@@ -135,17 +135,24 @@
   #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // Optionnel
   #define LED_CAPTEUR_RGB_PIN 1
 
+  // Noeud chauffage SdB sur XIAO ESP32C3 (GPIO0 et GPIO1 non sortis sur cette carte).
+  // Broches micro et IR : valeurs par défaut, modifiables par la page Web (NVS).
+  // Broches des LED : uniquement ici.
+
   // Toujours définie (même si CAPTEUR_MICRO_MAX4466 est désactivé) pour pouvoir neutraliser
-  // cette broche en setup(). Partage la broche de DEFAULT_TOR_PIN / LED_CAPTEUR_RGB_PIN :
-  // voir le contrôle de compatibilité après la détection de carte.
-  #define CAPTEUR_MICRO_MAX4466_PIN 1  // Pin 10 (ADC1_CH1)
+  // cette broche en setup(). Entrée analogique obligatoire : GPIO0 à 4 (ADC1) seulement sur le C3.
+  // Partage CC1101_GDO0 (3) : la neutralisation dans setup() ne touche pas une broche utilisée.
+  #define CAPTEUR_MICRO_MAX4466_PIN 3  // XIAO D1 (ADC1_CH3)
+  #define CAPTEUR_MICRO_MAX4466_LED_PIN 7 // XIAO D5. LED bleue : flash à chaque bip valide détecté
 
   #ifdef ACTIONNEUR_IR
-    // ACTIONNEUR_IR_PIN partage la broche du DS18B20 / batterie (2) : voir le contrôle de
-    // compatibilité après la détection de carte.
-    // GPIO2 est une broche de strapping du C3 : ne pas la tirer à la masse au démarrage.
-    #define ACTIONNEUR_IR_PIN 2          // Pin 11
-    #define ACTIONNEUR_IR_LED_PIN 10     // LED témoin (bip valide détecté)
+    // GPIO20 (U0RXD) : aucun rôle au démarrage, UART0 inutilisé (moniteur sur l'USB, ARDUINO_USB_CDC_ON_BOOT).
+    // Pas GPIO8 (strapping : l'émetteur l'empêchait d'entrer en mode téléchargement) ni GPIO21
+    // (U0TXD : messages du ROM au démarrage, l'émetteur clignoterait).
+    // Partage CC1101_POWER_GND_GPIO (20) : la neutralisation dans setup() ne touche pas une broche utilisée.
+    #define ACTIONNEUR_IR_PIN 20         // XIAO D7
+    // LED témoin IR : allumée pendant l'émission
+    #define ACTIONNEUR_IR_LED_PIN 10     // XIAO D10. LED rouge
   #endif
 
 #elif defined(__ESP32_S3__)
@@ -217,16 +224,22 @@
 // -----------------------------------------------------------------------------
 // Contrôle des conflits de broches du micro MAX4466 et de l'actionneur IR (ESP32-C3)
 // -----------------------------------------------------------------------------
+// Câblage XIAO : micro GPIO3, LED bleue GPIO7, IR GPIO20, LED rouge GPIO10 (sans conflit).
+#if defined(__ESP32_C3__)
 #ifdef CAPTEUR_MICRO_MAX4466
-  #if defined(FLOTTEUR_VERTICAL) || (defined(CAPTEUR_RGB_TCS34725) && defined(LED_CAPTEUR_RGB))
-    #error "CAPTEUR_MICRO_MAX4466 : GPIO1 déjà utilisée par FLOTTEUR_VERTICAL ou LED_CAPTEUR_RGB"
+  #ifdef _RCSWITCH_MODE_
+    #error "CAPTEUR_MICRO_MAX4466 : GPIO3 (micro) et GPIO7 (LED bleue) déjà utilisées par le CC1101 (GDO0, CS)"
+  #endif
+  #if defined(CAPTEUR_BATTERIE) && defined(CAPTEUR_DS18B20)
+    #error "CAPTEUR_MICRO_MAX4466 : GPIO3 déjà utilisée par CAPTEUR_BATTERIE (BATTERIE_PIN = 3 avec CAPTEUR_DS18B20)"
   #endif
 #endif // CAPTEUR_MICRO_MAX4466
 #ifdef ACTIONNEUR_IR
-  #if defined(CAPTEUR_DS18B20) || defined(CAPTEUR_BATTERIE)
-    #error "ACTIONNEUR_IR : GPIO2 déjà utilisée par CAPTEUR_DS18B20 ou CAPTEUR_BATTERIE"
+  #ifdef _RCSWITCH_MODE_
+    #error "ACTIONNEUR_IR : GPIO20 déjà utilisée par l'alimentation du CC1101 (CC1101_POWER_GND_GPIO)"
   #endif
 #endif // ACTIONNEUR_IR
+#endif // __ESP32_C3__
 
 #ifdef _RCSWITCH_MODE_
     #define CC1101_ON   HIGH 

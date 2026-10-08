@@ -3,6 +3,9 @@
 #include "MyEcran.h"
 #include "MyNoeudChauffageIRSound.h"
 #include "RemoteTor.h"
+#include "MyDateTime.h"
+
+extern CMyDateTime mDateTime; // Heure dans les traces DBG_NOEUD
 
 //----------------------------------------------------------------------------------
 // CNoeudChauffageIRSound::envoiOnOff()
@@ -37,7 +40,14 @@ int CNoeudChauffageIRSound::envoiOnOff() {
 //  Allumé : 1
 //----------------------------------------------------------------------------------
 void CNoeudChauffageIRSound::setEtatReelOnOff(bool state) {
-  DBG(DBG_NOEUD, "[%lu s] %s : OnOff %d reçu (état affiché %s)\n", millis() / 1000, nomEquipement.c_str(), state, etat ? "ON" : "OFF");
+  DBG(DBG_NOEUD, "[%s] %s : OnOff %d reçu (état affiché %s)\n", mDateTime.getTime().c_str(), nomEquipement.c_str(), state, etat ? "ON" : "OFF");
+  // Chauffage désactivé (procédure : OFF puis DISABLE) : un ON est un bip parasite du micro.
+  // Il ne doit ni annuler la coupure programmée, ni changer l'état affiché.
+  // Les OnOff 0 restent traités (fin d'une séquence d'arrêt lancée juste avant le DISABLE).
+  if (state && !active) {
+    message(nomEquipement + ": ON ignore (inactif)");
+    return;
+  }
   // Arrêt en cours : le noeud a éteint le chauffage (OFF émis par IR et confirmé par le bip).
   //  - vérification avant coupure différée (voir loop()) : coupure immédiate du relais ;
   //  - sinon fin de la séquence, coupure différée (voir ci-dessous).
@@ -219,6 +229,7 @@ int CNoeudChauffageIRSound::demandeOn() {
     return 0;
   }
   message(nomEquipement + ": marche demandee");
+  mbCoupureDiffereeArmee = false; // Coupure restée armée pendant l'absence du noeud
   muiEnvoisCode = 0;
   fermeRelais();
   return 0;
@@ -237,15 +248,22 @@ int CNoeudChauffageIRSound::demandeOn() {
 void CNoeudChauffageIRSound::loop() {
   bool bPresent = noeudPresent();
   bool bDisparition = mbNoeudPresent && !bPresent;
+  bool bApparition = !mbNoeudPresent && bPresent;
   mbNoeudPresent = bPresent;
   EtatSequence etatAvant = mEtatSequence;
 
   switch (mEtatSequence) {
     case SEQ_REPOS:
       // Coupure du relais différée après un OFF (voir setEtatReelOnOff())
+      // Une absence du noeud (trou MQTT, relais coupé par sa télécommande...) ne l'annule pas :
+      // le code n'est envoyé que noeud présent (il bascule : noeud absent, il rallumerait le relais).
+      // Au retour du noeud, le délai repart de zéro (un C3 qui redémarre publie OnOff 1 après son ALIVE).
       if (mbCoupureDiffereeArmee) {
-        if (!bPresent) mbCoupureDiffereeArmee = false; // Relais déjà coupé, ou noeud perdu
-        else if (millis() - mulDebutCoupureDifferee >= mulDelaiCoupureApresOff * 60000UL) {
+        if (bApparition) {
+          mulDebutCoupureDifferee = millis();
+          message(nomEquipement + ": noeud revenu, coupure ds " + String(mulDelaiCoupureApresOff) + "min");
+        }
+        if (bPresent && millis() - mulDebutCoupureDifferee >= mulDelaiCoupureApresOff * 60000UL) {
           mbCoupureDiffereeArmee = false;
           if (!etat) {
             if (mbOffConfirme) {
@@ -348,7 +366,7 @@ void CNoeudChauffageIRSound::loop() {
 
 void CNoeudChauffageIRSound::coupeRelais() {
   muiEnvoisCode++;
-  DBG(DBG_NOEUD, "[%lu s] %s : envoi du code relais %u/%u\n", millis() / 1000, nomEquipement.c_str(), muiEnvoisCode, muiNbEnvoisCode);
+  DBG(DBG_NOEUD, "[%s] %s : envoi du code relais %u/%u\n", mDateTime.getTime().c_str(), nomEquipement.c_str(), muiEnvoisCode, muiNbEnvoisCode);
   toggleDevice();
   mulDebutEtape = millis();
   mEtatSequence = ARRET_ATTENTE_DISPARITION;
@@ -356,7 +374,7 @@ void CNoeudChauffageIRSound::coupeRelais() {
 
 void CNoeudChauffageIRSound::fermeRelais() {
   muiEnvoisCode++;
-  DBG(DBG_NOEUD, "[%lu s] %s : envoi du code relais %u/%u (marche)\n", millis() / 1000, nomEquipement.c_str(), muiEnvoisCode, muiNbEnvoisCode);
+  DBG(DBG_NOEUD, "[%s] %s : envoi du code relais %u/%u (marche)\n", mDateTime.getTime().c_str(), nomEquipement.c_str(), muiEnvoisCode, muiNbEnvoisCode);
   toggleDevice();
   mulDebutEtape = millis();
   mEtatSequence = MARCHE_ATTENTE_APPARITION;
@@ -418,7 +436,7 @@ void CNoeudChauffageIRSound::armeCoupureNonConfirmee() {
   mbCoupureDiffereeArmee = true;
   mbOffConfirme = false;
   mulDebutCoupureDifferee = millis();
-  DBG(DBG_NOEUD, "[%lu s] %s : coupure non confirmee programmee dans %lu min\n", millis() / 1000, nomEquipement.c_str(), mulDelaiCoupureApresOff);
+  DBG(DBG_NOEUD, "[%s] %s : coupure non confirmee programmee dans %lu min\n", mDateTime.getTime().c_str(), nomEquipement.c_str(), mulDelaiCoupureApresOff);
 }
 
 bool CNoeudChauffageIRSound::noeudPresent() const {
@@ -426,7 +444,7 @@ bool CNoeudChauffageIRSound::noeudPresent() const {
 }
 
 void CNoeudChauffageIRSound::message(const String& s) {
-  DBG(DBG_NOEUD, "[%lu s] %s\n", millis() / 1000, s.c_str());
+  DBG(DBG_NOEUD, "[%s] %s\n", mDateTime.getTime().c_str(), s.c_str());
   if (mEcran != nullptr)
     mEcran->updateStatus(s);
 }
@@ -477,15 +495,68 @@ void CNoeudChauffageIRSound::saveToNVS() {
   prefs.end();
 }
 
+// Bornes des paramètres (voir verifieParametres())
+static const unsigned long DELAI_MAX_MIN = 1440;          // min : 24 h (et pas de débordement de x 60000UL)
+static const unsigned long DELAI_MAX_S = 3600;            // s : 1 h
+static const unsigned long MARGE_WATCHDOG_S = 30;         // s : marge au-delà du watchdog du noeud
+static const unsigned long DELAI_MIN_CONFIRMATION_S = 30; // s : > séquence IR du noeud (3 x 3 s) + connexion MQTT
+static const unsigned int NB_ENVOIS_CODE_MAX = 10;
+
+// Valeur saisie ignorée si négative ou non numérique (toInt() renvoie 0 : rejeté sauf "0" explicite)
+static void lireArgPositif(WebServer& server, const String& nom, unsigned long& val) {
+  if (!server.hasArg(nom.c_str())) return;
+  String s = server.arg(nom);
+  s.trim();
+  long v = s.toInt();
+  if (v < 0 || (v == 0 && s != "0")) {
+    DBG(DBG_NOEUD, "%s : valeur \"%s\" ignorée\n", nom.c_str(), s.c_str());
+    return;
+  }
+  val = (unsigned long)v;
+}
+
 void CNoeudChauffageIRSound::loadFromWebServer (WebServer& server) {
   CRCDevice::loadFromWebServer(server);
-  if (server.hasArg((mPrefixNVS+"offforc").c_str())) mulDelaiCoupureForcee = server.arg((mPrefixNVS+"offforc")).toInt();
-  if (server.hasArg((mPrefixNVS+"offdiff").c_str())) mulDelaiCoupureApresOff = server.arg((mPrefixNVS+"offdiff")).toInt();
-  if (server.hasArg((mPrefixNVS+"offverif").c_str())) mulDelaiVerification = server.arg((mPrefixNVS+"offverif")).toInt();
-  if (server.hasArg((mPrefixNVS+"onappar").c_str())) mulDelaiApparition = server.arg((mPrefixNVS+"onappar")).toInt();
-  if (server.hasArg((mPrefixNVS+"onconf").c_str())) mulDelaiConfirmationOn = server.arg((mPrefixNVS+"onconf")).toInt();
-  if (server.hasArg((mPrefixNVS+"offnbcod").c_str())) muiNbEnvoisCode = server.arg((mPrefixNVS+"offnbcod")).toInt();
-  if (muiNbEnvoisCode == 0) muiNbEnvoisCode = 1;
+  lireArgPositif(server, mPrefixNVS+"offforc", mulDelaiCoupureForcee);
+  lireArgPositif(server, mPrefixNVS+"offdiff", mulDelaiCoupureApresOff);
+  lireArgPositif(server, mPrefixNVS+"offverif", mulDelaiVerification);
+  lireArgPositif(server, mPrefixNVS+"onappar", mulDelaiApparition);
+  lireArgPositif(server, mPrefixNVS+"onconf", mulDelaiConfirmationOn);
+  unsigned long ulNbEnvoisCode = muiNbEnvoisCode;
+  lireArgPositif(server, mPrefixNVS+"offnbcod", ulNbEnvoisCode);
+  muiNbEnvoisCode = ulNbEnvoisCode;
+  // Les bornes dépendant du watchdog du noeud, chargé après : voir verifieParametres() dans MyWebServer::handleSave()
+}
+
+//----------------------------------------------------------------------------------
+// CNoeudChauffageIRSound::verifieParametres()
+//
+// Ramène les délais dans leurs bornes. Le relais n'a qu'un code, qui bascule : un code
+// renvoyé alors que le précédent a été reçu l'annule.
+//  - mulDelaiVerification > watchdog du noeud : la coupure n'est constatée qu'à l'expiration
+//    du watchdog ; renvoyer avant rallumerait le relais, et le C3 rallumerait le chauffage.
+//  - mulDelaiApparition > watchdog du noeud : au démarrage, le premier message (OnOff/IRKO,
+//    sinon ALIVE, dont la période est inférieure au watchdog) doit arriver avant le renvoi,
+//    qui couperait le noeud.
+//  - mulDelaiCoupureForcee >= 1 min : 0 couperait le noeud avant l'extinction par IR.
+// Appelée une fois mNoeud et son watchdog chargés (setup_chauffageSb(), handleSave()).
+//----------------------------------------------------------------------------------
+void CNoeudChauffageIRSound::verifieParametres() {
+  auto borne = [this](const char* nom, unsigned long& val, unsigned long vmin, unsigned long vmax) {
+    unsigned long v = constrain(val, vmin, vmax);
+    if (v == val) return;
+    message(nomEquipement + ": " + nom + " " + String(val) + " -> " + String(v));
+    val = v;
+  };
+  unsigned long minWdog = (mNoeud != nullptr) ? mNoeud->getWatchdogIntervalle() + MARGE_WATCHDOG_S : 0;
+  borne("coupure forcee", mulDelaiCoupureForcee, 1, DELAI_MAX_MIN);
+  borne("coupure apres OFF", mulDelaiCoupureApresOff, 0, DELAI_MAX_MIN);
+  borne("verif coupure", mulDelaiVerification, minWdog, max(minWdog, DELAI_MAX_S));
+  borne("attente apparition", mulDelaiApparition, minWdog, max(minWdog, DELAI_MAX_S));
+  borne("confirmation ON", mulDelaiConfirmationOn, DELAI_MIN_CONFIRMATION_S, DELAI_MAX_S);
+  unsigned long ulNbEnvoisCode = muiNbEnvoisCode;
+  borne("nb envois code", ulNbEnvoisCode, 1, NB_ENVOIS_CODE_MAX);
+  muiNbEnvoisCode = ulNbEnvoisCode;
 }
 
 String CNoeudChauffageIRSound::getHTML() {
@@ -494,16 +565,17 @@ String CNoeudChauffageIRSound::getHTML() {
   int pos = html.lastIndexOf("</div>");
   String fin = (pos >= 0) ? html.substring(pos) : "";
   if (pos >= 0) html = html.substring(0, pos);
-  String sWdog = (mNoeud != nullptr) ? String(mNoeud->getWatchdogIntervalle()) : "?";
+  // Minimum des délais de renvoi du code : watchdog du noeud + marge (voir verifieParametres())
+  String sMinWdog = (mNoeud != nullptr) ? String(mNoeud->getWatchdogIntervalle() + MARGE_WATCHDOG_S) : "?";
   html += "<div class=\"row\">"
-            "<div><label>Coupure du relais après OFF (min, rallumage rapide par IR d'ici là)</label><input type=\"number\" name=" + (mPrefixNVS+"offdiff") + " value=\"" + String(mulDelaiCoupureApresOff) + "\"></div>"
-            "<div><label>Coupure forcée si pas d'arrêt confirmé (min)</label><input type=\"number\" name=" + (mPrefixNVS+"offforc") + " value=\"" + String(mulDelaiCoupureForcee) + "\"></div>"
-            "<div><label>Renvoi du code si le noeud répond encore après (s, &gt; watchdog noeud " + sWdog + " s)</label><input type=\"number\" name=" + (mPrefixNVS+"offverif") + " value=\"" + String(mulDelaiVerification) + "\"></div>"
+            "<div><label>Coupure du relais après OFF (min, 0-" + String(DELAI_MAX_MIN) + ", rallumage rapide par IR d'ici là)</label><input type=\"number\" min=\"0\" name=" + (mPrefixNVS+"offdiff") + " value=\"" + String(mulDelaiCoupureApresOff) + "\"></div>"
+            "<div><label>Coupure forcée si pas d'arrêt confirmé (min, 1-" + String(DELAI_MAX_MIN) + ")</label><input type=\"number\" min=\"1\" name=" + (mPrefixNVS+"offforc") + " value=\"" + String(mulDelaiCoupureForcee) + "\"></div>"
+            "<div><label>Renvoi du code si le noeud répond encore après (s, &ge; watchdog noeud + " + String(MARGE_WATCHDOG_S) + " = " + sMinWdog + " s)</label><input type=\"number\" min=\"0\" name=" + (mPrefixNVS+"offverif") + " value=\"" + String(mulDelaiVerification) + "\"></div>"
           "</div>"
           "<div class=\"row\">"
-            "<div><label>Renvoi du code si le noeud n'apparaît pas après (s, &gt; démarrage du noeud)</label><input type=\"number\" name=" + (mPrefixNVS+"onappar") + " value=\"" + String(mulDelaiApparition) + "\"></div>"
-            "<div><label>Attente confirmation ON après apparition du noeud (s)</label><input type=\"number\" name=" + (mPrefixNVS+"onconf") + " value=\"" + String(mulDelaiConfirmationOn) + "\"></div>"
-            "<div><label>Nb max d'envois du code relais</label><input type=\"number\" name=" + (mPrefixNVS+"offnbcod") + " value=\"" + String(muiNbEnvoisCode) + "\"></div>"
+            "<div><label>Renvoi du code si le noeud n'apparaît pas après (s, &ge; watchdog noeud + " + String(MARGE_WATCHDOG_S) + " = " + sMinWdog + " s)</label><input type=\"number\" min=\"0\" name=" + (mPrefixNVS+"onappar") + " value=\"" + String(mulDelaiApparition) + "\"></div>"
+            "<div><label>Attente confirmation ON après apparition du noeud (s, " + String(DELAI_MIN_CONFIRMATION_S) + "-" + String(DELAI_MAX_S) + ")</label><input type=\"number\" min=\"" + String(DELAI_MIN_CONFIRMATION_S) + "\" name=" + (mPrefixNVS+"onconf") + " value=\"" + String(mulDelaiConfirmationOn) + "\"></div>"
+            "<div><label>Nb max d'envois du code relais (1-" + String(NB_ENVOIS_CODE_MAX) + ")</label><input type=\"number\" min=\"1\" max=\"" + String(NB_ENVOIS_CODE_MAX) + "\" name=" + (mPrefixNVS+"offnbcod") + " value=\"" + String(muiNbEnvoisCode) + "\"></div>"
           "</div>";
   html += fin;
   return html;

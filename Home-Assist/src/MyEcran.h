@@ -135,6 +135,8 @@ public:
   void activeGuirlande(bool activ=true, bool bDrawInterface=true);
   void desactiveChauffageSb(bool bDrawInterface=true);
   void activeChauffageSb(bool activ=true, bool bDrawInterface=true);
+  void setEtatPastilleChauffageSb(std::function<int()> f) { mBtnChauffageON.mfEtatPastille = f; } // Présence du C3
+  void updatePastilleChauffageSb();
   void updateSleepTimeout(int32_t st);
   //String setLastStatusMessage(String& s);
   //String getLastStatusMessage();

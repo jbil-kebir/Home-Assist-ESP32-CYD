@@ -9,6 +9,7 @@
 #include "MyWifi.h"
 #include "MyEcran.h"
 #include "MyMqtt.h"
+#include "ParsedMqttMessage.h"
 
 void CMqtt::setup(const String pref) {
   mPrefixNVS = pref;
@@ -404,6 +405,17 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.mRemoteBigNas->remonteStatusParMqtt();
 
       mConfig.remonteCYDInfoToEcran(messageOrg);
+      #endif
+    }
+    else if (message.startsWith("NONCONFIGURE ")) { // Puce capteur neuve : "NONCONFIGURE <modèle>-<fin MAC> [<date> <heure>] <IP>"
+      mConfig.remonteCYDInfoToEcran(messageOrg); // Liste de la série 5
+      ParsedMqttMessage msg;
+      msg.parse(messageOrg);
+      String sId = (msg.miTailleMesure > 0) ? msg.mvsMesure[0] : String("?");
+      String s = "Non configure " + sId + " : " + msg.msIp;
+      DBG(DBG_MQTT, "CMqtt::callback() - %s\n", s.c_str());
+      #ifdef __CYD__
+      mEcran.updateStatus(s);
       #endif
     }
     else if (message == "REBOOT") {

@@ -168,7 +168,7 @@ void CBatterieAA::loadFromNVS() {
   nomEquipement = prefs.getString((mPrefixNVS+"nom").c_str(), "Batterie");
   mucPin = prefs.getUShort((mPrefixNVS+"pin").c_str(), BATTERIE_PIN);
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), "batt/");
-  active = prefs.getBool((mPrefixNVS+"active").c_str(), true);
+  active = prefs.getBool((mPrefixNVS+"active").c_str(), false); // Désactivé tant que non configuré (puce neuve muette)
   mLastTension = prefs.getFloat((mPrefixNVS + "u").c_str(), 0.0);
   mfTensionMin = prefs.getFloat((mPrefixNVS + "umin").c_str(), 0.0);
   mCalibre = prefs.getFloat((mPrefixNVS + "cal").c_str(), mDefaultCalibre);

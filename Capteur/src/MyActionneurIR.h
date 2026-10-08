@@ -37,6 +37,11 @@
 #define IR_DEFAULT_ATTENTE_BIP      3000    // ms
 #define IR_DEFAULT_NB_TENTATIVES    3
 #define IR_INTERVALLE_REPUBLICATION 2000    // ms entre deux tentatives de publication (MQTT pas encore connecté)
+// Bornes (voir bornesParametres())
+#define IR_MIN_ATTENTE_BIP          1000    // ms : > durée max d'un bip long (MAX4466_DEFAULT_LONG_MAX, 750 ms) + réaction du chauffage
+#define IR_MAX_ATTENTE_BIP          10000   // ms
+#define IR_MIN_NB_TENTATIVES        2       // Code bascule : si le chauffage est déjà dans l'état demandé, la 1re émission l'inverse
+#define IR_MAX_NB_TENTATIVES        10
 
 class CActionneurIR {
 private:
@@ -70,6 +75,7 @@ private:
   void finSequence(int etatObtenu); // -1 = échec
   void gerePublications();
   bool publieIrko();
+  void bornesParametres();
 
 public:
   CActionneurIR(CMyDateTime& dateTime) : mDateTime(&dateTime) {}

@@ -22,8 +22,7 @@ private:
   void handleForceOff();
   void handleToggleP();
   void handleToggleG();
-  void handleChauffageSbOn();
-  void handleChauffageSbOff();
+  void handleChauffageSb();
   void handleRoot();
   void handleSave();
   void handleNotFound();

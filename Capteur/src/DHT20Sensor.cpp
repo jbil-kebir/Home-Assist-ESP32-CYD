@@ -449,7 +449,7 @@ void DHT20Sensor::loadFromNVS() {
   mucSdaPin = prefs.getUShort((mPrefixNVS+"sda").c_str(), DEFAULT_SDA_PIN);
   mucSclPin = prefs.getUShort((mPrefixNVS+"scl").c_str(), DEFAULT_SCL_PIN);
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), "thermometre/");
-  active = prefs.getBool((mPrefixNVS+"active").c_str(), true);
+  active = prefs.getBool((mPrefixNVS+"active").c_str(), false); // Désactivé tant que non configuré (puce neuve muette)
   mulIntervalleMesure = prefs.getLong((mPrefixNVS+"inter").c_str(), mulDefaultIntervalleMesure);
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
   mucNbEnvois = prefs.getUShort((mPrefixNVS+"renvois").c_str(), 1);

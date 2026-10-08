@@ -24,7 +24,16 @@ public:
   String nomEquipement = "Wifi";
   String mqttSubTopic = "wifi";
   bool active = false;
-  String mPrefixNVS = "wifi_";  
+  String mPrefixNVS = "wifi_";
+  // Puissance d'émission (valeur de wifi_power_t, en quarts de dBm : 34 = 8,5 dBm, 78 = 19,5 dBm)
+  #ifdef __ESP32_C3__
+  // ESP32-C3 Super Mini : antenne mal adaptée, la connexion échoue souvent à pleine puissance.
+  // Réduire améliore la stabilité de près, mais réduit la portée : à régler selon l'emplacement.
+  static const int8_t default_tx_power = WIFI_POWER_8_5dBm;
+  #else
+  static const int8_t default_tx_power = WIFI_POWER_19_5dBm;
+  #endif
+  int8_t mcTxPower = default_tx_power;
 
   void setup(const String pref); //const String pref);
   void begin();

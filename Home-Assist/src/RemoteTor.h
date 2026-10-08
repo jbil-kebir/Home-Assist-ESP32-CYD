@@ -65,6 +65,7 @@ public:
   void handleMqttState(const String& payload);
   bool remonteStatusParMqtt();
   bool estPresent() const; // Message reçu depuis le démarrage et watchdog non expiré
+  int etatPresence() const; // 1 : présent, 0 : absent, -1 : inconnu (inactif, ou démarrage sans message)
   unsigned long getWatchdogIntervalle() const { return mulWatchdogIntervalle; } // en secondes
 };
 

@@ -24,6 +24,21 @@ bool CRemoteTor::estPresent() const {
 }
 
 //--------------------------------------------------------------------------
+//  CRemoteTor::etatPresence()
+//
+// Pour l'affichage (pastille) :
+//  1 : présent (voir estPresent())
+//  0 : absent (watchdog expiré)
+// -1 : inconnu (inactif, ou premier intervalle de watchdog sans message depuis le démarrage)
+//--------------------------------------------------------------------------
+int CRemoteTor::etatPresence() const {
+  if (!active) return -1;
+  if (estPresent()) return 1;
+  if (!mbMessageRecu && (millis() - mulWatchDog) < mulWatchdogIntervalle*1000) return -1;
+  return 0;
+}
+
+//--------------------------------------------------------------------------
 //  CRemoteTor::loop()
 //
 // Retour

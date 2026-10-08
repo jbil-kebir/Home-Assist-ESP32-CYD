@@ -25,6 +25,9 @@ class CMyBoutonBase {
          }
 
         CEquipementBase *mDevice=nullptr;
+        bool mbCondamne = false; // Emplacement réservé : grisé, sans libellé, insensible au toucher
+        void setCondamne(bool condamne) { mbCondamne = condamne; }
+        void drawCondamne();
         bool isPressed();
         void waitRelease();
 

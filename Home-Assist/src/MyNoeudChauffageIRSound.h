@@ -36,6 +36,7 @@ public:
   void loadFromWebServer (WebServer& server);
   void saveToNVS();
   String getHTML();
+  void verifieParametres(); // Bornes des délais (dépend du watchdog du noeud : appeler une fois mNoeud chargé)
 
 private:
   enum EtatSequence {

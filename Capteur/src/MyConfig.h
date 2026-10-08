@@ -129,6 +129,16 @@ public:
   };
   std::map<String, EtatWatchdog> mEtatsWatchdog; // nomEquipement → état de son watchdog
 
+  // === PUCE NON CONFIGURÉE ===
+  // Puce neuve (NVS vide) : tant que la configuration n'a pas été enregistrée depuis la page Web,
+  // on publie toutes les 60 s sur le topic de configuration "NONCONFIGURE <modèle>-<fin MAC> <date> <heure> <IP>"
+  // pour que le CYD affiche l'adresse IP de la puce.
+  // NVS "conf" : écrit par saveToNVS() (y compris avant deep sleep, d'où une clé dédiée plutôt que "nom").
+  // Absente (puce antérieure à cette clé) : configurée si "nom" existe.
+  bool mbConfiguree = false;
+  bool mbAnnonceNonConfigureeEnvoyee = false;
+  unsigned long mulDerniereAnnonceNonConfiguree = 0;
+
   // MQTT callback pour le deep-sleep
   std::function<int(const char*, const char*)> onMqttPublish;    
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
@@ -158,6 +168,7 @@ public:
   bool loopWatchdog();
   bool verifieWatchdog(const String& nom, const String& topic);
   void envoieAlive(const String& nom, const String& topic);
+  void annonceNonConfiguree();
   String getHTML();
   void print() const;
 };

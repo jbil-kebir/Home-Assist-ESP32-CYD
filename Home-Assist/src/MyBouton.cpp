@@ -27,6 +27,10 @@ void CMyBouton::draw(unsigned int color) {
 }
 
 void CMyBouton::draw() { 
+    if (mbCondamne) {
+        drawCondamne();
+        return;
+    }
     if (mDevice == nullptr) {
         DBG(DBG_ECRAN, "void CMyBouton::draw() - %s - mDevice == nullptr\n", msNom.c_str());
         return;
@@ -39,6 +43,18 @@ void CMyBouton::draw() {
     mTft.drawRoundRect(muiPosX, muiPosY, muiWidth, muiHight, 8, TFT_WHITE);
     mTft.setTextColor(TFT_WHITE);
     mTft.drawCentreString(msNom, muiPosX + muiWidth/2, muiPosY + muiHight/2 - 8, 2.5);
+    drawPastille();
+}
+
+// Disque coloré cerclé de blanc : reste visible sur un bouton de la même couleur
+void CMyBouton::drawPastille() {
+    if (mbCondamne || !mfEtatPastille) return;
+    int etat = mfEtatPastille();
+    unsigned int couleur = (etat == 1) ? TFT_GREEN : (etat == 0) ? TFT_RED : TFT_LIGHTGREY;
+    int x = muiPosX + muiWidth - 9;
+    int y = muiPosY + 9;
+    mTft.fillCircle(x, y, 5, TFT_WHITE);
+    mTft.fillCircle(x, y, 4, couleur);
 }
 
 void CMyBouton::drawActive(bool bActiv) {

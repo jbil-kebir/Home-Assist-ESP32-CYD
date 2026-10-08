@@ -61,31 +61,30 @@
     mBtnProjecteur.mDevice = mConfig.projecteur;
     mBtnGuirlande.mDevice = mConfig.guirlande;
     mBtnChauffageON.mDevice = mConfig.chauffageSb;
-    mBtnChauffageOFF.mDevice = mConfig.chauffageSb;
     mBtnChaudiereON.mDevice = mConfig.chaudiere;
     mBtnChaudiereOFF.mDevice = mConfig.chaudiere;
 
     mBtnProjecteurActif.mDevice = mConfig.projecteur;
     mBtnGuirlandeActif.mDevice = mConfig.guirlande;
     mBtnChauffageONActif.mDevice = mConfig.chauffageSb;
-    mBtnChauffageOFFActif.mDevice = mConfig.chauffageSb;
     mBtnChaudiereONActif.mDevice = mConfig.chaudiere;
     mBtnChaudiereOFFActif.mDevice = mConfig.chaudiere;
     #else
     mBtnProjecteur.mDevice = mConfig.mRemoteProjecteur;
     mBtnGuirlande.mDevice = mConfig.mRemoteGuirlande;
     mBtnChauffageON.mDevice = mConfig.mRemoteChauffage;
-    mBtnChauffageOFF.mDevice = mConfig.mRemoteChauffage;
     mBtnChaudiereON.mDevice = mConfig.mRemoteChaudiere;
     mBtnChaudiereOFF.mDevice = mConfig.mRemoteChaudiere;
 
     mBtnProjecteurActif.mDevice = mConfig.mRemoteProjecteur;
     mBtnGuirlandeActif.mDevice = mConfig.mRemoteGuirlande;
     mBtnChauffageONActif.mDevice = mConfig.mRemoteChauffage;
-    mBtnChauffageOFFActif.mDevice = mConfig.mRemoteChauffage;
     mBtnChaudiereONActif.mDevice = mConfig.mRemoteChaudiere;
     mBtnChaudiereOFFActif.mDevice = mConfig.mRemoteChaudiere;
     #endif
+    // Boutons SB OFF condamnés (réservés à un autre appareil) : le bouton SB suffit au chauffage
+    mBtnChauffageOFF.setCondamne(true);
+    mBtnChauffageOFFActif.setCondamne(true);
 
     int i = 0;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnProjecteurActif; i++;
@@ -105,7 +104,7 @@
     // Charge les paramètres liés à l'écran
     //loadFromNVS ();
 
-    // Initiallisation de l'écran
+    // Initialisation de l'écran
     tft.init();
 //    tft.setRotation(mucOrientationEcran);
     tft.fillScreen(TFT_NAVY);
@@ -114,7 +113,7 @@
     tft.setTextColor(TFT_WHITE);
     tft.drawCentreString("Initialisation...", 160, 80, 2);
 
-    // Initiallisation de la partie tactile de l'écran
+    // Initialisation de la partie tactile de l'écran
     touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     touch.begin(touchSPI);
 
@@ -144,7 +143,7 @@
     static unsigned long ulIntervalleDateHeure=0;
     unsigned long tempsRafraichissement = 1000UL;
     if (millis() - ulIntervalleDateHeure >= tempsRafraichissement) { // On affiche l'heure régulièrement
-      mZoneDateTime.drawDateTime();
+      updateDateHeure();
       ulIntervalleDateHeure = millis();
     }
   }
@@ -240,9 +239,23 @@ void CEcran::activeChauffageSb(bool activ/*=true*/, bool bDrawInterface/*=true*/
   drawMainInterface();
   drawStatus("Chauffage active", false);
 }
+// Pastille de présence du C3 sur le bouton SB (boutons affichés en séries 1 et 2 seulement)
+void CEcran::updatePastilleChauffageSb() {
+  if (mucSerieAffichageEnCours < 3)
+    mBtnChauffageON.drawPastille();
+}
 
 
 int CEcran::drawStatus(const String& msg, bool memorise/*=false*/) {
+  // Série 5 : pas de zone de status, la liste des contrôleurs occupe l'écran.
+  // Le message n'est pas affiché (il écraserait la liste), mais reste mémorisé si demandé.
+  if (mucSerieAffichageEnCours == 5) {
+    if (memorise) {
+      String s = msg;
+      mZoneStatus.setLastStatusMessage(s);
+    }
+    return 0;
+  }
   /*if (mucSerieAffichageEnCours == 4)
     mZoneStatusBas.drawStatus(msg, memorise);
   else */mZoneStatus.drawStatus(msg, memorise);
@@ -250,6 +263,7 @@ int CEcran::drawStatus(const String& msg, bool memorise/*=false*/) {
 }
 
 int CEcran::drawStatus() {
+  if (mucSerieAffichageEnCours == 5) return 0; // Pas de zone de status en série 5
   // Série 4 : la zone du bas est occupée par ThNomade, on garde la zone de status du haut
   mZoneStatus.drawStatus();
   return 0;
@@ -814,10 +828,13 @@ void CEcran::updateSerie4() {
 //============================================================================================
 // Affichage de la date et de l'heure
 //============================================================================================
+// Série 5 : pas de date ni d'heure, la liste des contrôleurs occupe l'écran
 void CEcran::updateDateHeure(const String& date, const String& heure) {
+  if (mucSerieAffichageEnCours == 5) return;
   mZoneDateTime.drawDateTime(date, heure);
 }
 void CEcran::updateDateHeure() {
+  if (mucSerieAffichageEnCours == 5) return;
   mZoneDateTime.drawDateTime();
 }
 

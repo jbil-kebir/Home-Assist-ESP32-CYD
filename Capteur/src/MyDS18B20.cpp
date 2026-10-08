@@ -172,7 +172,7 @@ void MyDS18B20::loadFromNVS() {
   mucPin = prefs.getUShort((mPrefixNVS+"pin").c_str(), 0);
 #endif
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), "thermometre/");
-  active = prefs.getBool((mPrefixNVS+"active").c_str(), true);
+  active = prefs.getBool((mPrefixNVS+"active").c_str(), false); // Désactivé tant que non configuré (puce neuve muette)
   mulIntervalleMesure = prefs.getLong((mPrefixNVS+"inter").c_str(), mulDefaultIntervalleMesure);
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
   

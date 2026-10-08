@@ -153,7 +153,7 @@ void setup() {
       CC1101_GDO0, CC1101_CS, CC1101_MOSI, CC1101_MISO, CC1101_SCK, CC1101_POWER_GND_GPIO,
       #endif
       #ifdef CAPTEUR_MICRO_MAX4466
-      CAPTEUR_MICRO_MAX4466_PIN,
+      CAPTEUR_MICRO_MAX4466_PIN, CAPTEUR_MICRO_MAX4466_LED_PIN,
       #endif
       #ifdef ACTIONNEUR_IR
       ACTIONNEUR_IR_PIN, ACTIONNEUR_IR_LED_PIN,
@@ -199,7 +199,11 @@ void setup() {
 
   #ifdef ACTIONNEUR_IR
   pinMode(ACTIONNEUR_IR_LED_PIN, OUTPUT);
-  digitalWrite(ACTIONNEUR_IR_LED_PIN, LOW);  // LED éteinte au démarrage
+  digitalWrite(ACTIONNEUR_IR_LED_PIN, LOW);  // LED IR éteinte au démarrage
+  #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+  pinMode(CAPTEUR_MICRO_MAX4466_LED_PIN, OUTPUT);
+  digitalWrite(CAPTEUR_MICRO_MAX4466_LED_PIN, LOW);  // LED bleue (son) éteinte au démarrage
   #endif
   
   
@@ -349,9 +353,7 @@ void setup() {
   Serial.println("Initialisation CAPTEUR_MICRO_MAX4466...");
   mMicro.setup("mic_");
   config.mMicro = &mMicro;
-  #ifdef ACTIONNEUR_IR
-  mMicro.setLedPin(ACTIONNEUR_IR_LED_PIN); // LED à l'état bas, flash à chaque bip valide
-  #endif
+  mMicro.setLedPin(CAPTEUR_MICRO_MAX4466_LED_PIN); // LED bleue à l'état bas, flash à chaque bip valide
   #ifdef _WIFI_MODE_
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mMicro.setMqttPublishCallback([](const char* topic, const char* payload) -> int {

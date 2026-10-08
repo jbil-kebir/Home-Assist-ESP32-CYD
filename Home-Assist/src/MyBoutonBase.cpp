@@ -5,6 +5,7 @@
 
 
 bool CMyBoutonBase::isPressed() {
+    if (mbCondamne) return false;
     if (!touch.touched()) return false;
     
 
@@ -19,6 +20,11 @@ bool CMyBoutonBase::isPressed() {
         return true;
     }
     return false;;
+}
+
+void CMyBoutonBase::drawCondamne() {
+    mTft.fillRoundRect(muiPosX, muiPosY, muiWidth, muiHight, 8, TFT_DARKGREY);
+    mTft.drawRoundRect(muiPosX, muiPosY, muiWidth, muiHight, 8, TFT_WHITE);
 }
 
 void CMyBoutonBase::waitRelease() {

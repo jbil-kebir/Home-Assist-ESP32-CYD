@@ -265,7 +265,8 @@ void setup() {
     String sError = "ERREUR : Impossible de se connecter à un réseau WiFi. Vérifiez la configuration.";
     Serial.println(sError);
     ecran.updateStatus(sError);
-    while(true); // On bloque tout
+    delay(30000);   // Laisse le message lisible et évite de harceler la box
+    ESP.restart();  // On redémarre pour retenter la connexion
   }
   config.setWifi(&mWifi[i]);
   ecran.updateTitleWithIP(WiFi.localIP().toString());
@@ -296,7 +297,7 @@ void setup() {
   
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("Initiallisation Serveur Web...");
+    Serial.println("Initialisation Serveur Web...");
     webServer.setup();
     Serial.println("...Serveur Web OK");
   }
@@ -358,7 +359,8 @@ void loop() {
       String sError = "ERREUR : Impossible de se reconnecter à un réseau WiFi. Vérifiez la configuration.";
       DBGLN(DBG_CONFIG, sError);
       ecran.updateStatus(sError);
-      while(true); // On bloque tout
+      delay(30000);   // Laisse le message lisible et évite de harceler la box
+      ESP.restart();  // On redémarre pour retenter la connexion
     }
     config.setWifi(&mWifi[i]);
     ecran.updateTitleWithIP(WiFi.localIP().toString());
@@ -431,7 +433,7 @@ void loop() {
       #endif
       #endif // __LOCAL_MODE__
     }
-    else if (btnNum == BTN_CHAUFFAGE_ON_ACTIVE) { // Bouton Activation chauffage appuyé
+    else if (btnNum == BTN_CHAUFFAGE_ON_ACTIVE) { // Bouton Activation chauffage appuyé (BTN_CHAUFFAGE_OFF* : condamnés)
       #ifdef __LOCAL_MODE__
       chauffageSb.activeEquipement();
       #ifdef __CYD__
@@ -440,16 +442,6 @@ void loop() {
       #else // Equipement distant
       mRemoteChauffage.activeEquipement();
       #endif // __LOCAL_MODE__
-     }
-    else if (btnNum == BTN_CHAUFFAGE_OFF_ACTIVE) { // Bouton Activation chauffage appuyé
-      #ifdef __LOCAL_MODE__
-      chauffageSb.activeEquipement();
-      #ifdef __CYD__
-      ecran.activeChauffageSb(chauffageSb.active);
-      #endif
-      #else // Equipement distant
-      mRemoteChauffage.activeEquipement();
-      #endif
      }
     else if (btnNum == BTN_CHAUDIERE_ON_ACTIVE) { // Bouton Activation chaudière appuyé
       #ifdef __LOCAL_MODE__
@@ -498,14 +490,7 @@ void loop() {
       mRemoteGuirlande.envoiOnOff();
       #endif
     }
-    else if (btnNum == BTN_CHAUFFAGE_ON) { // Bouton Chauffage ON appuyé
-      #ifdef __LOCAL_MODE__
-      int ret = chauffageSb.envoiOnOff();
-      #else // Equipement distant
-      mRemoteChauffage.envoiOnOff();
-      #endif
-    }
-    else if (btnNum == BTN_CHAUFFAGE_OFF) { // Bouton Chauffage ON appuyé
+    else if (btnNum == BTN_CHAUFFAGE_ON) { // Bouton SB appuyé : marche ou arrêt selon l'état
       #ifdef __LOCAL_MODE__
       int ret = chauffageSb.envoiOnOff();
       #else // Equipement distant

@@ -1,5 +1,8 @@
 
 #include "MyConfig.h"
+#ifdef _WIFI_MODE_
+#include <WiFi.h> // RSSI dans les ALIVE
+#endif
 #ifdef _RCSWITCH_MODE_
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 #endif
@@ -85,6 +88,10 @@ void CConfig::setup() {
  //saveToNVS();
  #endif
 
+ // Puce non configurée : jamais de deep sleep (page Web joignable, annonces NONCONFIGURE, moniteur série).
+ // Non enregistré dans le NVS : l'enregistrement de la page Web fixe le réglage voulu.
+ if (!mbConfiguree) mbDeepSleepActive = false;
+
 #ifdef CAPTEUR_DS18B20
 if (ds18b20 != nullptr)
   ds18b20->domotique_prefix = domotique_prefix;
@@ -103,12 +110,18 @@ if (mBatterieAA != nullptr)
 #endif
 
  Serial.printf("CConfig::setup() - Deep sleep : %d - Durée avant : %ld\n", mbDeepSleepActive, mulWakeDuration); Serial.flush();
+ Serial.printf("CConfig::setup() - Puce %s - Topic de configuration : %s\n",
+               mbConfiguree ? "CONFIGUREE (pas d'annonce NONCONFIGURE)" : "NON CONFIGUREE (annonce NONCONFIGURE)",
+               topic_config_command.c_str()); Serial.flush();
 }
 
 void CConfig::loop() {
 
   // ==================================== Watchdog ALIVE ====================================
   loopWatchdog();
+
+  // ==================================== Puce non configurée ====================================
+  annonceNonConfiguree();
 
   // ==================================== Deep sleep ====================================
   // S'il est actif, on n'entre en deep sleep que si le délai avant deep sleep est écoulé et qu'une mesure a été remontée (pour tous les capteurs)
@@ -338,9 +351,10 @@ void CConfig::enterDeepSleep() {
   pinMode(DEFAULT_TOR_PIN, INPUT_PULLDOWN);
   #endif
 
-  // Micro MAX4466 : libère l'entrée ADC
+  // Micro MAX4466 : libère l'entrée ADC et coupe la LED bleue
   #ifdef CAPTEUR_MICRO_MAX4466
   pinMode(CAPTEUR_MICRO_MAX4466_PIN, INPUT_PULLDOWN);
+  pinMode(CAPTEUR_MICRO_MAX4466_LED_PIN, INPUT_PULLDOWN);
   #endif
 
   // Actionneur IR : coupe les LED
@@ -396,6 +410,7 @@ void CConfig::loadFromNVS() {
   mulWatchdogPeriod = prefs.getLong((mPrefixNVS+"wdogP").c_str(), DEFAULT_WATCHDOG_PERIOD_SEC);
   mbJournalSauvegarde = prefs.getBool((mPrefixNVS+"jrnSv").c_str(), true);
   gJournal.setSauvegardeActive(mbJournalSauvegarde);
+  mbConfiguree = prefs.getBool((mPrefixNVS+"conf").c_str(), prefs.isKey((mPrefixNVS+"nom").c_str()));
 
   prefs.end();
 
@@ -413,6 +428,7 @@ void CConfig::saveToNVS() {
   // Autres paramètres. 
 
   prefs.putString((mPrefixNVS+"nom").c_str(), nomEquipement);
+  prefs.putBool((mPrefixNVS+"conf").c_str(), mbConfiguree);
   prefs.putString((mPrefixNVS+"domo_pref").c_str(), domotique_prefix);
   prefs.putString((mPrefixNVS+"subtopic").c_str(), mqttSubTopic);
   prefs.putBool((mPrefixNVS+"sleepA").c_str(), mbDeepSleepActive);
@@ -432,6 +448,7 @@ void CConfig::saveToNVS() {
 }
 
 void CConfig::loadFromWebServer (WebServer& server) {
+  mbConfiguree = true; // Enregistrement depuis la page Web : fin des annonces NONCONFIGURE
   // === PARAMÈTRES CLASSIQUES ===
   if (server.hasArg((mPrefixNVS+"nom").c_str())) nomEquipement = server.arg((mPrefixNVS+"nom").c_str());
   if (server.hasArg((mPrefixNVS+"domo_pref").c_str())) domotique_prefix = server.arg((mPrefixNVS+"domo_pref").c_str());
@@ -835,6 +852,12 @@ void CConfig::envoieAlive(const String& nom, const String& topic) {
   else
     sHorodatage = "UPTIME " + String(millis() / 1000);
   String sMsg = nom + " ALIVE " + sHorodatage;
+  #ifdef _WIFI_MODE_
+  // Niveau de réception de la box (dBm), pour juger de la portée sans liaison série.
+  // Placé en fin de message : les récepteurs (CYD) ne lisent que le premier champ après le nom.
+  if (WiFi.status() == WL_CONNECTED)
+    sMsg += " RSSI " + String(WiFi.RSSI());
+  #endif
   Serial.println("CConfig::envoieAlive() - " + sMsg);
 
   if (onMqttPublish != nullptr)
@@ -843,6 +866,42 @@ void CConfig::envoieAlive(const String& nom, const String& topic) {
   #ifdef _LORA_P2P_MODE_
   if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized())
     mLoraRxTx->sendPacket((topic + " " + sMsg).c_str());
+  #endif
+}
+
+//
+// Puce non configurée : annonce sur le topic de configuration, pour que le CYD affiche son IP
+// (l'IP est ajoutée en fin de message par CMqtt::publish()).
+// Tentative toutes les 2 s tant qu'aucune annonce n'a abouti (WiFi / MQTT pas encore connectés), puis toutes les 60 s.
+//
+void CConfig::annonceNonConfiguree() {
+  #ifdef _WIFI_MODE_
+  if (mbConfiguree || onMqttPublish == nullptr) {
+    static bool bTraceFaite = false;
+    if (!bTraceFaite) {
+      Serial.printf("CConfig::annonceNonConfiguree() - Pas d'annonce : %s\n",
+                    mbConfiguree ? "puce configuree (NVS cfg_conf, ou cfg_nom present)" : "callback MQTT absente");
+      bTraceFaite = true;
+    }
+    return;
+  }
+  unsigned long now = millis();
+  unsigned long ulAttente = mbAnnonceNonConfigureeEnvoyee ? 60000UL : 2000UL;
+  if (mulDerniereAnnonceNonConfiguree != 0 && now - mulDerniereAnnonceNonConfiguree < ulAttente) return;
+  mulDerniereAnnonceNonConfiguree = (now == 0) ? 1 : now;
+
+  // Identifiant : modèle de puce et fin de l'adresse MAC (ex. ESP32-C3-A1B2C3)
+  String sMac = WiFi.macAddress();
+  sMac.replace(":", "");
+  String sMsg = "NONCONFIGURE " + String(ESP.getChipModel()) + "-" + sMac.substring(6);
+  if (mDateTime != nullptr && mDateTime->isTimeValid())
+    sMsg += " " + mDateTime->getDate() + " " + mDateTime->getTime();
+
+  int ret = onMqttPublish(topic_config_command.c_str(), sMsg.c_str());
+  // 0 : publié, -1 : MQTT inactif, -2 : échec de publication, -3 : MQTT non connecté
+  Serial.printf("CConfig::annonceNonConfiguree() - %s sur %s -> %d\n", sMsg.c_str(), topic_config_command.c_str(), ret);
+  if (ret == 0)
+    mbAnnonceNonConfigureeEnvoyee = true;
   #endif
 }
 

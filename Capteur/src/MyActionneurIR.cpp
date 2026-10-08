@@ -247,6 +247,7 @@ void CActionneurIR::loadFromNVS() {
   muiNbTentatives = prefs.getUChar((mPrefixNVS+"tentat").c_str(), IR_DEFAULT_NB_TENTATIVES);
 
   prefs.end();
+  bornesParametres();
 }
 
 void CActionneurIR::saveToNVS() {
@@ -279,9 +280,23 @@ void CActionneurIR::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"addr").c_str())) muiAdresse = strtoul(server.arg((mPrefixNVS+"addr")).c_str(), nullptr, 0);
   if (server.hasArg((mPrefixNVS+"cmd").c_str())) mucCommande = strtoul(server.arg((mPrefixNVS+"cmd")).c_str(), nullptr, 0);
   if (server.hasArg((mPrefixNVS+"rep").c_str())) mucRepetitions = server.arg((mPrefixNVS+"rep")).toInt();
-  if (server.hasArg((mPrefixNVS+"attente").c_str())) muiAttenteBip = server.arg((mPrefixNVS+"attente")).toInt();
-  if (server.hasArg((mPrefixNVS+"tentat").c_str())) muiNbTentatives = server.arg((mPrefixNVS+"tentat")).toInt();
-  if (muiNbTentatives == 0) muiNbTentatives = 1;
+  // Lus en long : une saisie négative est ramenée au minimum par bornesParametres(), pas à une valeur énorme
+  if (server.hasArg((mPrefixNVS+"attente").c_str())) muiAttenteBip = max(0L, server.arg((mPrefixNVS+"attente")).toInt());
+  if (server.hasArg((mPrefixNVS+"tentat").c_str())) muiNbTentatives = max(0L, server.arg((mPrefixNVS+"tentat")).toInt());
+  bornesParametres();
+}
+
+//--------------------------------------------------------------------------
+// Ramène l'attente du bip et le nombre de tentatives dans leurs bornes (voir MyActionneurIR.h).
+// Aussi au chargement du NVS, pour les valeurs enregistrées avant l'ajout des bornes.
+//--------------------------------------------------------------------------
+void CActionneurIR::bornesParametres() {
+  unsigned int uiAttente = constrain(muiAttenteBip, (unsigned int)IR_MIN_ATTENTE_BIP, (unsigned int)IR_MAX_ATTENTE_BIP);
+  unsigned int uiTentatives = constrain(muiNbTentatives, (unsigned int)IR_MIN_NB_TENTATIVES, (unsigned int)IR_MAX_NB_TENTATIVES);
+  if (uiAttente != muiAttenteBip || uiTentatives != muiNbTentatives)
+    Serial.printf("CActionneurIR::bornesParametres() - Attente du bip %u -> %u ms, tentatives %u -> %u\n", muiAttenteBip, uiAttente, muiNbTentatives, uiTentatives);
+  muiAttenteBip = uiAttente;
+  muiNbTentatives = uiTentatives;
 }
 
 String CActionneurIR::getHTML() {
@@ -301,8 +316,8 @@ String CActionneurIR::getHTML() {
       "</div>"
       "<div class=\"row\">"
         "<div><label>Répétitions</label><input type=\"text\" name=" + (mPrefixNVS+"rep") + " value=\"" + mucRepetitions + "\"></div>"
-        "<div><label>Attente du bip (ms)</label><input type=\"text\" name=" + (mPrefixNVS+"attente") + " value=\"" + muiAttenteBip + "\"></div>"
-        "<div><label>Nb de tentatives</label><input type=\"text\" name=" + (mPrefixNVS+"tentat") + " value=\"" + muiNbTentatives + "\"></div>"
+        "<div><label>Attente du bip (ms, " + String(IR_MIN_ATTENTE_BIP) + "-" + String(IR_MAX_ATTENTE_BIP) + ")</label><input type=\"text\" name=" + (mPrefixNVS+"attente") + " value=\"" + muiAttenteBip + "\"></div>"
+        "<div><label>Nb de tentatives (" + String(IR_MIN_NB_TENTATIVES) + "-" + String(IR_MAX_NB_TENTATIVES) + ")</label><input type=\"text\" name=" + (mPrefixNVS+"tentat") + " value=\"" + muiNbTentatives + "\"></div>"
       "</div>";
 
   return html;

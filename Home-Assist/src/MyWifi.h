@@ -28,6 +28,7 @@ public:
 
   void setup(const String pref); //const String pref);
   void begin();
+  void diagnostic();
   void loadFromNVS();
   void saveToNVS();
   void setPrefixNVS(const char* pr) { mPrefixNVS = pr; }

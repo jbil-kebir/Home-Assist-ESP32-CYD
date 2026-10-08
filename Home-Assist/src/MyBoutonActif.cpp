@@ -18,6 +18,10 @@ void CMyBoutonActif::draw(unsigned int color) {
 }
 
 void CMyBoutonActif::draw() { 
+    if (mbCondamne) {
+        drawCondamne();
+        return;
+    }
     if (mDevice == nullptr) {
         DBG(DBG_ECRAN, "void CMyBoutonActif::draw() - %s - mDevice == nullptr\n", msNom.c_str());
         return;

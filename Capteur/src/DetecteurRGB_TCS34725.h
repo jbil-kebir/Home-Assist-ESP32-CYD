@@ -95,7 +95,7 @@ public:
     String domotique_prefix;
     String nomEquipement = "thEquipement";
     String mqttSubTopic = "thermometre";
-    bool active = true;
+    bool active = false; // Voir loadFromNVS()
     bool mbMesureRemontee = false; // Permet d'empêcher le deep sleep tant qu'une mesure n'a pas été remontée
     String mqttSubTopicCommand;
     String mqttSubTopicState;

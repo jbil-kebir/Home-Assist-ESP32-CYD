@@ -82,6 +82,9 @@ int CMyRCSwitch::toggleDevice() {
   ELECHOUSE_cc1101.setSyncMode(0);
   ELECHOUSE_cc1101.setCrc(0);
   ELECHOUSE_cc1101.setPA(12);
+  // En mode asynchrone, le CC1101 échantillonne GDO0 à 8 x DRate : avec le débit de réception
+  // (2.4, voir MyCC1101.cpp), les fronts émis sont décalés jusqu'à 52 us -> portée réduite
+  ELECHOUSE_cc1101.setDRate(50);
   ELECHOUSE_cc1101.SetTx();
   delay(10);
 
@@ -96,6 +99,7 @@ int CMyRCSwitch::toggleDevice() {
 
   mySwitch.disableTransmit();
   pinMode(CC1101_GDO0, INPUT);
+  ELECHOUSE_cc1101.setDRate(2.4);  // retour au débit de réception (voir MyCC1101.cpp)
   ELECHOUSE_cc1101.SetRx();
   mySwitch.enableReceive(CC1101_GDO0);
 
