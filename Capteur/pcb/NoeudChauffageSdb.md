@@ -1,7 +1,8 @@
-# NoeudChauffageSdb — Circuit imprimé (proposition de schéma)
+# NoeudChauffageSdb — Circuit imprimé
 
-Version du 2026-10-18. Dossier de conception VALIDÉ, à reprendre au moment de dessiner la carte dans EasyEDA Pro.
-**État : rien n'est encore créé dans EasyEDA.**
+Version du 2026-10-18 (carte V 1.0 dessinée).
+**État : schéma, placement, routage, gouttes et sérigraphie FAITS dans EasyEDA Pro ; contrôle des règles (DRC) = 0 erreur ;
+schéma et PCB identiques. Prêt pour l'export .epro2 et la commande** (détail au § 8).
 
 Notices à appliquer (dossier `D:\Developpement\EasyEda\Notices`) : modèle de règles PCB, routage PCB, bibliothèque
 personnelle. La carte est conçue **de zéro**, dimensionnée pour ses besoins réels (les blocs d'alimentation
@@ -36,7 +37,7 @@ Les broches du micro et de l'IR sont modifiables par la page Web (NVS) ; les val
 | LED IR | les mêmes que l'IR Box : 2 × HIR204C en série |
 | Transistor IR | 2N2222A |
 | LED témoins | sur la carte, visibles à travers le couvercle transparent ; LED bleue gardée |
-| Boîtier | Hammond 1554C2GYCL (IP66, couvercle transparent) ; entrées par presse-étoupes |
+| Boîtier | **impression 3D** pour le premier essai (carte au plus juste) ; Hammond 1554C2GYCL gardé en option (§ 6) |
 | Composants | tout en traversant |
 
 ## 3. Consommation estimée (à mesurer, § 7)
@@ -145,7 +146,11 @@ presque pas). Ici la LED témoin a sa propre broche.
 
 ## 6. Boîtier et mécanique
 
-**Hammond 1554C2GYCL** : polycarbonate, couvercle transparent, IP66 ; extérieur 120 × 65 × 40 mm ; intérieur
+**Décision pour le premier essai : boîtier imprimé en 3D**, dessiné autour de la carte (64 × 48 mm, 4 trous M3 à 3,5 mm
+des coins, § 8.2). Le micro et les LED IR restent dehors, sur fil ; les LED témoins doivent rester visibles (fenêtre ou
+couvercle translucide à prévoir au tracé du boîtier).
+
+Option gardée pour plus tard, **Hammond 1554C2GYCL** : polycarbonate, couvercle transparent, IP66 ; extérieur 120 × 65 × 40 mm ; intérieur
 ≈ 113,4 × 58,4 mm, hauteur 34,5 mm ; inserts laiton M3 pour fixer le PCB ; 4 vis de couvercle M4 et joint fournis.
 Plan : `https://www.hammfg.com/files/parts/pdf/1554C2GYCL.pdf`.
 
@@ -169,17 +174,74 @@ But : connaître les vraies limites hautes en puissance pour dimensionner les ca
 | Portée IR | — | essais de R3 : 47 Ω, puis 22 Ω, puis 15 Ω, à la distance réelle (1,80 m) |
 | Échauffement | U1, R3, Q1 | au doigt ou thermomètre après une série d'émissions |
 
-## 8. À faire au moment de la conception
+## 8. Circuit imprimé réalisé (EasyEDA Pro)
 
-- [ ] Fiche perso **TO-92 au pas de 2,54 mm** (pattes écartées) pour Q1 : l'empreinte LCSC du 2N2222A est au pas de
-      1,27 mm, serrée pour la soudure à la main (à valider).
-- [ ] Fiche perso **bornier XY301V agrandi** (couronne 0,40 → ≥ 0,5 mm).
-- [ ] Contrôle des couronnes de toutes les empreintes à la pose (notice du modèle, § 6).
-- [ ] Entraxe des inserts Hammond (§ 6).
-- [ ] Projet EasyEDA en Online Mode, règles « THT soudure main JLCPCB », classes PUISSANCE (`V12_J`, `V12`, `5V_REG`,
-      `+5V`, `5V_CARTE`, `GND`, `IR_V`, `IR_A`, `IR_K`) et ALIM_3V3 (`3V3`), connecteurs « vers … ».
+### 8.1 Projet
+
+| Élément | Valeur |
+|---|---|
+| Projet | cloud (Online Mode) « NoeudChauffageSdb » ; sauvegarde locale : `pcb/NoeudChauffageSdb.epro2` |
+| Schéma | « NoeudChauffageSdb », 3 pages : Alimentation, Carte, Périphériques ; 29 composants, 16 réseaux, 60 liaisons ; pages aérées (composants regroupés par fonction, dans le sens du signal) |
+| Exports | `pcb/` : 2D_PCB_…png, 3D_PCB_…png, PCB_PCB_…png (vues de la carte), PDF_…zip (schéma et PCB en PDF) |
+| Règles | « THT soudure main JLCPCB » (notice du modèle de règles) |
+| Classes | PUISSANCE 1,0 mm (`V12_J`, `V12`, `5V_REG`, `+5V`, `5V_CARTE`, `GND`, `IR_V`, `IR_A`, `IR_K`) ; ALIM_3V3 0,6 mm (`3V3`) ; signaux 0,4 mm |
+| Couronnes | ≥ 0,4 mm partout (fiches personnelles du § 8.5), pastilles THT 1,8 mm sur les composants courants |
+
+### 8.2 Carte et placement
+
+- **64 × 48 mm**, 2 couches ; **4 trous de fixation M3** non métallisés (Ø 3,2 mm) à 3,5 mm de chaque coin.
+- **Bord bas** : tout ce qui part sur fil ou se mesure à la pince : J1 (12 V), J6 (LED IR), J5 (micro), points de
+  test `MICRO` et `GND`. Le bornier J1 et la prise J5 sont tournés de 180° pour que **l'entrée des fils soit
+  tournée vers le bord** : sur J1, le + est à droite et le − à gauche ; sur J5, de gauche à droite : MICRO, GND, 3V3.
+- **Bord droit** : prise USB-C du XIAO, accessible pour le reflashage.
+- **Bord haut** : LED témoins D6 (bleue, son) et D7 (rouge, IR).
+- Alimentation à gauche (J1 → D1 → C1 → U1 → JP1), émission IR au centre (JP2, R3, C10, Q1, R1, R2), XIAO à droite.
+- Modèles 3D vérifiés (XIAO tourné de −90°, composants posés à plat sur la carte).
+
+### 8.3 Routage
+
+| Élément | Réalisé |
+|---|---|
+| Réseaux routés | 16, aucune liaison ouverte |
+| Largeurs | puissance 1,0 mm, `3V3` 0,6 mm, signaux 0,4 mm |
+| Masse | plan `GND` coulé sur les 2 faces, rayons thermiques sur les pastilles, 29 vias de couture |
+| Gouttes (teardrops) | posées sur toutes les pastilles et vias (Tools → Teardrop), plans recoulés ensuite (Tools → Copper Manager → Rebuild All) |
+| Contrôle des règles | **0 erreur** ; schéma et PCB identiques (60 liaisons) |
+
+### 8.4 Sérigraphie (face dessus)
+
+- Titre : « Noeud Chauffage Sdb » et « V 1.0 - Octobre 2026 ».
+- Prises : « 12 V » (J1, broches + et −), « LED IR » (J6, broches + et −), « MICRO » (J5, broches MICRO, GND, 3V3 de gauche à droite).
+- Cavaliers de mesure : « I 5V » (JP1, courant total 5 V) et « I IR » (JP2, courant des LED IR) ; « I » = intensité.
+- Points de test : V12, +5V, 3V3, MICRO, IR_K, GND (à côté des repères TP1 à TP6).
+- Modules : « XIAO ESP32-C3 » (A1) et « R-78E5.0-1.0 » (U1).
+- Contrôle : aucun texte sur une pastille, un via ou un trou ; hauteur mini 0,81 mm (noms des broches de J5).
+
+### 8.5 Fiches personnelles utilisées
+
+| Fiche (bibliothèque perso) | Repères | Pourquoi |
+|---|---|---|
+| XIAO ESP32-C3 (THT) | A1 | barrettes femelles, pattes numérotées 1–14, pastilles 1,8 mm |
+| Bornier XY301V 2P pas 5,0 agrandi (THT) | J1 | couronne agrandie (pastille 2,4 / trou 1,2) |
+| 2N2222A TO-92 pas 2,54 (THT) | Q1 | pattes écartées pour la soudure à la main (1 = E, pastille carrée) |
+| Résistance 1/4 W (THT) | R1–R5 | une seule empreinte pas 10,16 mm, pastille 1,8 mm |
+| Condensateur électrolytique D5 pas 2,0 (THT) | C1, C8 | couronne agrandie |
+| Condensateur électrolytique D6,3 pas 2,5 (THT) | C6, C10 | couronne agrandie |
+| LED 5 mm (THT) | D6, D7 | A = 1 sur les deux LED |
+| JST-XH 2P (THT) / JST-XH 3P (THT) | J6 / J5 | couronne agrandie |
+| Point de test (THT) | TP1–TP6 | couronne agrandie |
+
+### 8.6 Reste à faire
+
+- [x] Export `.epro2` dans `pcb/` (Fichier → Enregistrer sous → Project save as local → epro2 V3).
+- [ ] Commit (procédure NAS de Pilotage_Maison, sans `global.h`).
+- [ ] Commande JLCPCB (fichiers de fabrication depuis EasyEDA ; options de commande à choisir).
+- [ ] À réception : mesures du § 7 ; tracé du boîtier imprimé.
 
 ## 9. Pièces LCSC (références EasyEDA)
+
+Pièces choisies au départ ; les empreintes réellement posées sont celles des fiches personnelles du § 8.5 quand elles
+existent.
 
 | Pièce | part_uuid |
 |---|---|
