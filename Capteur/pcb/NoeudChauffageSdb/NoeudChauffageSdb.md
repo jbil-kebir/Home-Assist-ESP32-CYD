@@ -180,9 +180,9 @@ But : connaître les vraies limites hautes en puissance pour dimensionner les ca
 
 | Élément | Valeur |
 |---|---|
-| Projet | cloud (Online Mode) « NoeudChauffageSdb » ; sauvegarde locale : `pcb/NoeudChauffageSdb.epro2` |
+| Projet | cloud (Online Mode) « NoeudChauffageSdb » ; sauvegarde locale : `pcb/NoeudChauffageSdb/NoeudChauffageSdb.epro2` |
 | Schéma | « NoeudChauffageSdb », 3 pages : Alimentation, Carte, Périphériques ; 29 composants, 16 réseaux, 60 liaisons ; pages aérées (composants regroupés par fonction, dans le sens du signal) |
-| Exports | `pcb/` : 2D_PCB_…png, 3D_PCB_…png, PCB_PCB_…png (vues de la carte), PDF_…zip (schéma et PCB en PDF) |
+| Exports | `pcb/NoeudChauffageSdb/` : 2D_PCB_…png, 3D_PCB_…png, PCB_PCB_…png (vues de la carte), PDF_…zip (schéma et PCB en PDF) |
 | Règles | « THT soudure main JLCPCB » (notice du modèle de règles) |
 | Classes | PUISSANCE 1,0 mm (`V12_J`, `V12`, `5V_REG`, `+5V`, `5V_CARTE`, `GND`, `IR_V`, `IR_A`, `IR_K`) ; ALIM_3V3 0,6 mm (`3V3`) ; signaux 0,4 mm |
 | Couronnes | ≥ 0,4 mm partout (fiches personnelles du § 8.5), pastilles THT 1,8 mm sur les composants courants |
@@ -233,7 +233,7 @@ But : connaître les vraies limites hautes en puissance pour dimensionner les ca
 
 ### 8.6 Reste à faire
 
-- [x] Export `.epro2` dans `pcb/` (Fichier → Enregistrer sous → Project save as local → epro2 V3).
+- [x] Export `.epro2` dans `pcb/NoeudChauffageSdb/` (Fichier → Enregistrer sous → Project save as local → epro2 V3).
 - [ ] Commit (procédure NAS de Pilotage_Maison, sans `global.h`).
 - [ ] Commande JLCPCB (fichiers de fabrication depuis EasyEDA ; options de commande à choisir).
 - [ ] À réception : mesures du § 7 ; tracé du boîtier imprimé.
