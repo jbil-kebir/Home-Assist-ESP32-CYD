@@ -198,8 +198,54 @@ recoulage ; zones recréées avec un trait de 10 mil.
 - [x] Export `.epro2` et vues dans `pcb/Capteur chaudiere Sdb/`.
 - [ ] Commit (procédure NAS de Pilotage_Maison, sans `global.h`).
 - [ ] Commande JLCPCB (5 cartes).
-- [ ] Câbles : J2 vers **VIN** du TCS34725 (pas sa broche 3V3) ; torsader SDA/GND et SCL/3V3.
+- [ ] Câbles : J2 vers **VIN** du TCS34725 (pas sa broche 3V3) ; torsader SDA/GND et SCL/3V3 (§ 7.7).
 - [ ] Tracé du boîtier imprimé (hauteur intérieure ≥ 25 mm, trous USB-C et LED côté droit, passe-fils, DHT20 sur la paroi).
+
+### 7.7 Câbles vers les modules
+
+**Pourquoi VIN** : le TCS34725 s'alimente par **VIN** (entrée de son régulateur et de son adaptateur de niveau I2C, comme
+le préconise Adafruit) ; sa broche **3V3 est une sortie**. Le fil de la broche 1 de J2 va donc sur VIN, pas sur 3V3.
+
+**Pourquoi torsader** : le bus I2C n'est pas fait pour de longs fils (≈ 30 cm au total ici). En torsadant les fils deux
+par deux (quelques tours par centimètre), chaque signal voyage collé à son fil de retour : il capte moins de parasites et
+gêne moins son voisin. Précaution gratuite contre des erreurs de lecture intermittentes : **SDA avec GND**, **SCL avec
+l'alimentation** (VIN ou +).
+
+**Méthode conseillée : câbles JST-XH déjà sertis + soudure côté module**
+
+1. Acheter des câbles **JST-XH pas de 2,5 mm**, déjà sertis (connecteur femelle d'un côté, fils nus de l'autre),
+   longueur 20 cm : un 5 broches (TCS34725) et un 4 broches (DHT20).
+2. Repérer le fil de la **broche 1** du connecteur : sur la carte, la broche 1 de J2 est à droite, sous « VIN ».
+3. Torsader les fils deux par deux (voir ci-dessus).
+4. **Souder** les fils directement dans les trous du module (plus fiable qu'un connecteur Dupont dans l'humidité d'une
+   salle de bain).
+5. Protéger les soudures : gaine thermorétractable ou point de colle chaude.
+6. **Contrôler au multimètre** (continuité) avant de brancher : chaque broche du connecteur sonne avec la bonne pastille du
+   module, et aucune avec sa voisine.
+
+Variante : sertir soi-même (boîtiers XHP-4 / XHP-5, contacts SXH-001T-P0.6, pince adaptée type IWISS SN-01BM ou
+Engineer PA-09, fil AWG 26–28) ; ne vaut le coup que pour beaucoup de câbles. Si le module porte déjà une barrette mâle,
+des fils à connecteur Dupont femelle conviennent pour les essais, moins pour la durée.
+
+Câble J2 → TCS34725 (JST-XH 5 broches) :
+
+| J2 | Module | Torsadé avec |
+|---|---|---|
+| 1 | VIN | SCL |
+| 2 | GND | SDA |
+| 3 | SCL | VIN |
+| 4 | SDA | GND |
+| 5 | LED (reliée à GND sur la carte : LED blanche éteinte) | — |
+| — | 3V3 et INT du module : non câblées | — |
+
+Câble J1 → DHT20 (JST-XH 4 broches, dans l'ordre du module) :
+
+| J1 | Module | Torsadé avec |
+|---|---|---|
+| 1 | + | SCL |
+| 2 | − | SDA |
+| 3 | SCL | + |
+| 4 | SDA | − |
 
 ## 8. Pièces LCSC (références EasyEDA)
 
