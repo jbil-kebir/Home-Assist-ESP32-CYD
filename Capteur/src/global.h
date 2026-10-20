@@ -49,18 +49,18 @@
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
-//#define CAPTEUR_DHT20 // Fonctionne en I2C
+#define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
-//#define FLOTTEUR_VERTICAL
-//#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
-//#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
-//#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
-#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
+#define FLOTTEUR_VERTICAL
+#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
+#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
+#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
+//#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
 
 //----------------------------------------------------------------------------
 // Décommenter en fonction des actionneurs installés
 //----------------------------------------------------------------------------
-#define ACTIONNEUR_IR
+//#define ACTIONNEUR_IR
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
@@ -72,12 +72,12 @@
 //#define FORCE_CONNEXION_WIFI
 
 #ifdef FORCE_CONNEXION_WIFI
-#define FORCE_WIFI_SSID  "xxxxxxxx"
-#define FORCE_WIFI_PASSWD "xxxxxxxx"
-#define FORCE_MQTT_SERVER "xxx.xxx.xxx.xxx"
+#define FORCE_WIFI_SSID  "xxxxxx"
+#define FORCE_WIFI_PASSWD "xxxx"
+#define FORCE_MQTT_SERVER "1.1.1.1"
 #define FORCE_MQTT_PORT 1883
-#define FORCE_MQTT_USER "xxxxxxxx"
-#define FORCE_MQTT_PWD "xxxxxxxx"
+#define FORCE_MQTT_USER "xxxxxx"
+#define FORCE_MQTT_PWD "xxxxxxxxxx"
 #endif
 
 // -----------------------------------------------------------------------------
@@ -86,7 +86,13 @@
 #if defined(__ESP32_C3__)
   #define IS_ESP32_C3       1
   #define IS_ESP32_S3       0
+  // BOARD_XIAO_C3 (env xiao_esp32c3 de platformio.ini) : carte « Capteur C3 Xiao » (pcb/Capteur C3 Xiao/).
+  // Sinon : ESP32-C3 Super Mini.
+  #if defined(BOARD_XIAO_C3)
+  #define BOARD_NAME        "XIAO ESP32-C3"
+  #else
   #define BOARD_NAME        "ESP32-C3 Super Mini"
+  #endif
 
   // Pins spécifiques ESP32-C3 (tirés de ton mapping)
   //#define LORA_MISO_PIN     5
@@ -98,8 +104,14 @@
   //#define LORA_RESET_PIN    2
   //#define LORA_BUSY_PIN     1   // ou RADIOLIB_NC
 
+  #if defined(BOARD_XIAO_C3)
+    // XIAO D4 / D5 (pas GPIO8 / GPIO9 : broches de démarrage, GPIO9 = bouton BOOT)
+    #define DEFAULT_SDA_PIN 6   // XIAO D4 // DHT20 entre autre
+    #define DEFAULT_SCL_PIN 7   // XIAO D5 // DHT20 entre autre
+  #else
     #define DEFAULT_SDA_PIN 8   // Pin 4 // DHT20 entre autre
     #define DEFAULT_SCL_PIN 9   // Pin 5 // DHT20 entre autre
+  #endif
 
   // Broches CC1101 (RCSwitch) : toujours définies, même si _RCSWITCH_MODE_ est désactivé,
   // pour que setup() puisse les repasser en INPUT_PULLDOWN quand l'actionneur RF n'est pas utilisé.
@@ -110,6 +122,44 @@
   #define CC1101_SCK        4
   #define CC1101_POWER_GND_GPIO 20
 
+  #if defined(BOARD_XIAO_C3)
+  // Carte « Capteur C3 Xiao » : D0 (GPIO2, broche de démarrage, doit être haute au démarrage)
+  // n'est pas câblée ; D8 / D9 (GPIO8 / GPIO9) non plus.
+  // Toujours définie (même si CAPTEUR_DS18B20 est désactivé) pour pouvoir neutraliser
+  // cette broche en setup() : pas de DS18B20 sur cette carte, D3 est libre.
+  #define DS18B20_PIN 5 // XIAO D3 (non câblée)
+
+  // Etat batterie : pont 200 k / 100 k (défini même si CAPTEUR_BATTERIE est désactivé : sert de
+  // valeur par défaut dans CBatterieAA::loadFromNVS(), toujours compilé). Entrée analogique
+  // obligatoire : GPIO0 à 4 (ADC1) seulement sur le C3.
+  #define BATTERIE_PIN    4 // XIAO D2 (ADC1_CH4)
+
+  // Toujours définie (même si FLOTTEUR_VERTICAL est désactivé) pour pouvoir neutraliser
+  // cette broche en setup() quand le flotteur n'est pas câblé.
+  #define DEFAULT_TOR_PIN 3 // XIAO D1
+
+  // Toujours définies (même si CAPTEUR_RGB_TCS34725 / LED_CAPTEUR_RGB sont désactivés) pour
+  // pouvoir neutraliser ces broches en setup().
+  #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // XIAO D6, non câblée (U0TXD : messages du ROM au démarrage)
+  #define LED_CAPTEUR_RGB_PIN 20            // XIAO D7
+
+  #ifdef _RCSWITCH_MODE_
+    #error "BOARD_XIAO_C3 : pas de CC1101 sur la carte Capteur C3 Xiao (ses broches servent au flotteur, à l'I2C, à la mesure et à la LED)"
+  #endif
+  #if defined(CAPTEUR_DS18B20)
+    #error "BOARD_XIAO_C3 : pas de DS18B20 sur la carte Capteur C3 Xiao"
+  #endif
+  #if defined(CAPTEUR_MICRO_MAX4466) && defined(FLOTTEUR_VERTICAL)
+    #error "BOARD_XIAO_C3 : GPIO3 utilisée à la fois par le micro MAX4466 et par le flotteur"
+  #endif
+  #if defined(CAPTEUR_MICRO_MAX4466) && (defined(CAPTEUR_DHT20) || defined(CAPTEUR_RGB_TCS34725))
+    #error "BOARD_XIAO_C3 : GPIO7 utilisée à la fois par la LED du micro MAX4466 et par l'I2C (SCL)"
+  #endif
+  #if defined(ACTIONNEUR_IR) && defined(LED_CAPTEUR_RGB)
+    #error "BOARD_XIAO_C3 : GPIO20 utilisée à la fois par l'actionneur IR et par la LED du capteur RGB"
+  #endif
+
+  #else // Super Mini
   // Toujours définie (même si CAPTEUR_DS18B20 est désactivé) pour pouvoir neutraliser
   // cette broche en setup() quand le capteur n'est pas câblé.
   #define DS18B20_PIN 2 // Pin 111
@@ -134,6 +184,7 @@
   // DEFAULT_TOR_PIN sur cette carte : la neutralisation dans setup() tient compte de ce partage.
   #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // Optionnel
   #define LED_CAPTEUR_RGB_PIN 1
+  #endif // BOARD_XIAO_C3
 
   // Noeud chauffage SdB sur XIAO ESP32C3 (GPIO0 et GPIO1 non sortis sur cette carte).
   // Broches micro et IR : valeurs par défaut, modifiables par la page Web (NVS).

@@ -26,8 +26,8 @@ public:
   bool active = false;
   String mPrefixNVS = "wifi_";
   // Puissance d'émission (valeur de wifi_power_t, en quarts de dBm : 34 = 8,5 dBm, 78 = 19,5 dBm)
-  #ifdef __ESP32_C3__
-  // ESP32-C3 Super Mini : antenne mal adaptée, la connexion échoue souvent à pleine puissance.
+  #if defined(__ESP32_C3__) && !defined(BOARD_XIAO_C3)
+  // ESP32-C3 Super Mini (le XIAO ESP32-C3, antenne externe, garde 19,5 dBm) : antenne mal adaptée, la connexion échoue souvent à pleine puissance.
   // Réduire améliore la stabilité de près, mais réduit la portée : à régler selon l'emplacement.
   static const int8_t default_tx_power = WIFI_POWER_8_5dBm;
   #else

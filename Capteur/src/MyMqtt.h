@@ -32,10 +32,10 @@ public:
     return currentState;
   }
 
-  const char* default_mqtt_server = "51.77.244.19";
+  const char* default_mqtt_server = "1.1.1.1";
   const uint16_t default_mqtt_port = 1883;
-  const char* default_mqtt_user = "ubuntu";
-  const char* default_mqtt_password = "al177SOLO$*";
+  const char* default_mqtt_user = "xxxxxxx";
+  const char* default_mqtt_password = "xxxxxxxxxxxx";
   const char* default_topic_prefix = "ad200/";
 
   String nomEquipement = "Mqtt";
