@@ -11,7 +11,7 @@ Le dépôt git de référence est sur le NAS :
 - remote `origin` = https://github.com/jbil-kebir/Home-Assist-ESP32-CYD.git
 - branche `main`
 
-Correspondance des dossiers D: → NAS : `Capteur`, `CydMonitor`, `Home-Assist`, `Relais-Lora`, `Doc`, `Firmwares`, `images` (même nom) ; `Home-Assist-App 1.2` → `Home-Assist-App`.
+Correspondance des dossiers D: → NAS : `Capteur`, `CydMonitor`, `Home-Assist`, `Relais-Lora`, `Linky`, `Doc`, `Firmwares`, `images` (même nom) ; `Home-Assist-App 1.2` → `Home-Assist-App`.
 Ne pas copier : `Archives`, `Analyse`, `Programmes unitaires`, les `.zip`, les raccourcis `.lnk`, les sauvegardes datées.
 
 ### Procédure « commit et pousse »
