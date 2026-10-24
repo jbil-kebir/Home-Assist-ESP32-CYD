@@ -44,9 +44,10 @@ Liste d'achat pour **une carte**. La liste exacte des composants dessinés sur l
 | Bloc secteur 12 V (tension à vide < 16 V) | 1 | deux fils vers J1 |
 | Module micro MAX4466 | 1 | sur fil, face au haut-parleur du chauffage |
 | Câble JST-XH 3 broches serti | 1 | vers J5 (3V3, GND, MICRO) |
-| LED infrarouge HIR204C | 2 | en série, sur fil, face au récepteur du chauffage |
+| LED infrarouge Everlight IR333C-A (5 mm, 940 nm) | 2 | en série, sur fil, dans le couvercle face au chauffage |
 | Câble JST-XH 2 broches serti | 1 | vers J6 |
 | Antenne Wi-Fi U.FL | 1 | fournie avec le XIAO ESP32-C3 |
 | Gaine thermorétractable | – | soudures du micro et des LED IR |
-| Boîtier imprimé en 3D | 1 | LED témoins visibles (fenêtre ou couvercle translucide) |
-| Option : boîtier Hammond 1554C2GYCL + 3 presse-étoupes PG7 | 1 | voir `NoeudChauffageSdb.md` § 6 |
+| Boîtier imprimé en 3D | 1 | `Capteur/boitier/NoeudChauffageSdb/` (boîte + couvercle, PETG) |
+| Vis du boîtier | – | 4 vis à bois Ø 4 fraisées (mur), 4 M3 × 6 (carte), 4 M3 × 8 (couvercle), 2 M2 × 6 (micro) |
+| Collier de serrage 2,5 mm, rondelle de mousse | 1 + 1 | serre-câble 12 V ; mousse autour de la capsule du micro |

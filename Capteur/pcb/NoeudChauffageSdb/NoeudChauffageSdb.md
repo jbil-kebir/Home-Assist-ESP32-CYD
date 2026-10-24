@@ -1,6 +1,6 @@
 # NoeudChauffageSdb — Circuit imprimé
 
-Version du 2026-10-18 (carte V 1.0 dessinée).
+Version du 2026-10-18 (carte V 1.0 dessinée) ; mise à jour le 2026-10-24 (LED IR IR333C-A, boîtier tracé : § 6).
 **État : schéma, placement, routage, gouttes et sérigraphie FAITS dans EasyEDA Pro ; contrôle des règles (DRC) = 0 erreur ;
 schéma et PCB identiques. Prêt pour l'export .epro2 et la commande** (détail au § 8).
 
@@ -34,10 +34,10 @@ Les broches du micro et de l'IR sont modifiables par la page Web (NVS) ; les val
 | Alimentation | bloc secteur 12 V (tension à vide < 16 V) → bornier → régulateur à découpage 5 V |
 | Interrupteur | aucun (nœud fixe) |
 | Micro et LED IR | sur FIL (placés face au chauffage et à son haut-parleur), prises JST-XH |
-| LED IR | les mêmes que l'IR Box : 2 × HIR204C en série |
+| LED IR | 2 × **Everlight IR333C-A** (5 mm, 940 nm) en série ; les HIR204C de l'IR Box sont des 3 mm |
 | Transistor IR | 2N2222A |
-| LED témoins | sur la carte, visibles à travers le couvercle transparent ; LED bleue gardée |
-| Boîtier | **impression 3D** pour le premier essai (carte au plus juste) ; Hammond 1554C2GYCL gardé en option (§ 6) |
+| LED témoins | sur la carte, visibles par 2 trous du couvercle (tubes-guides) ; LED bleue gardée |
+| Boîtier | **impression 3D**, tracé le 2026-10-24 (§ 6) ; micro et LED IR à l'intérieur, sous le couvercle ; Hammond 1554C2GYCL abandonné |
 | Composants | tout en traversant |
 
 ## 3. Consommation estimée (à mesurer, § 7)
@@ -93,7 +93,7 @@ Le micro est alimenté en 3,3 V : sa sortie est centrée sur VCC / 2 et l'entré
 | R2 | 10 kΩ, LED IR éteinte au démarrage | PCF14JT10K0 | `IR_B` → `GND` |
 | JP2 | barrette mâle 2 broches + cavalier, mesure du courant IR | barrette 1 × 2 | 1 → `+5V` ; 2 → `IR_V` |
 | R3 | 22 Ω 1/4 W, série LED (montée un peu au-dessus de la carte pour essais) | PCF14JT22R0 | `IR_V` → `IR_A` |
-| J6 | JST-XH 2 broches « vers LED IR (2 × HIR204C) » | B2B-XH-A(LF)(SN) | 1 → `IR_A` ; 2 → `IR_K` |
+| J6 | JST-XH 2 broches « vers LED IR (2 × HIR204C) » (LED posées : 2 × IR333C-A) | B2B-XH-A(LF)(SN) | 1 → `IR_A` ; 2 → `IR_K` |
 | C10 | électrolytique 100 µF 16 V, réserve pour les impulsions IR | KM101M016E110A | + → `+5V` ; − → `GND` |
 
 LED témoins :
@@ -108,7 +108,7 @@ LED témoins :
 Points de test (pastilles) : `V12`, `+5V`, `3V3`, `MICRO`, `IR_K` (collecteur : impulsions IR), `GND`.
 
 Hors carte, non dessinés (connecteurs nommés « vers … ») : bloc secteur 12 V, module micro MAX4466,
-2 × HIR204C en série.
+2 LED IR en série (IR333C-A ; le PCB garde le nom HIR204C dans le libellé de J6).
 
 ## 5. Dimensionnement
 
@@ -121,45 +121,44 @@ Hors carte, non dessinés (connecteurs nommés « vers … ») : bloc secteur 12
 
 ### 5.2 Émission IR
 
-HIR204C : 100 mA en continu ; le 1 A de la fiche technique ne vaut que pour des impulsions ≤ 100 µs et ≤ 1 % du temps,
-ce que n'est pas le NEC (porteuse 38 kHz allumée environ un tiers du temps pendant les rafales). Le montage d'essai
-actuel fonctionne à 1,80 m avec environ 15 mA (6 V, 197 Ω en série, 150 Ω en base, 2N3511). Cible : **100 mA en crête**
-(≈ 6 fois plus de marge de portée, dans la limite du continu des LED).
+LED posées : **IR333C-A** (fiche technique : `U:\Info-Developpement\Composants\LED\IR333C-A`) : 940 nm, angle 20°,
+100 mA en continu, VF ≈ 1,4 V à 100 mA. Le 1 A de la fiche technique ne vaut que pour des impulsions ≤ 100 µs et ≤ 1 %
+du temps, ce que n'est pas le NEC (porteuse 38 kHz allumée environ un tiers du temps pendant les rafales). Le montage
+d'essai actuel (HIR204C) fonctionne à 1,80 m avec environ 15 mA (6 V, 197 Ω en série, 150 Ω en base, 2N3511). Cible :
+**≈ 90 à 100 mA en crête** (≈ 6 fois plus de marge de portée, dans la limite du continu des LED).
 
 | Repère | Calcul | Valeur | IR Box ESP32 1.0 |
 |---|---|---|---|
-| R3 (série LED) | (5 − 2 × 1,35 − 0,15) / 0,1 A = 21,5 Ω | 22 Ω 1/4 W (≈ 98 mA) | 5 Ω (≈ 0,35 A) |
+| R3 (série LED) | (5 − 2 × 1,4 − 0,2) / 0,1 A = 20 Ω | 22 Ω 1/4 W (≈ 90 mA) | 5 Ω (≈ 0,35 A) |
 | R1 (base) | courant de base = 100 mA / 10 = 10 mA ; (3,3 − 0,8) / 10 mA = 250 Ω | 220 Ω (≈ 11 mA) | 197 Ω |
 | R2 (rappel) | LED IR éteinte tant que la broche n'est pas pilotée | 10 kΩ | absente |
 | R4 (LED bleue) | (3,3 − ≈ 2,9) / 4 mA | 100 Ω (2 à 5 mA) | — |
 | R5 (LED rouge) | (3,3 − 1,9) / 4 mA | 330 Ω (≈ 4 mA) | — |
 
-Sécurité : si la broche IR restait bloquée à l'état haut, les LED recevraient 100 mA en continu (leur limite, pas une
-surcharge) et R3 dissiperait 0,21 W (< 0,25 W). Avec les 5 Ω de l'IR Box, ce serait 0,35 A en continu dans les LED.
+Sécurité : si la broche IR restait bloquée à l'état haut, les LED recevraient ≈ 90 mA en continu (sous leur limite de
+100 mA) et R3 dissiperait 0,18 W (< 0,25 W). Avec les 5 Ω de l'IR Box, ce serait 0,35 A en continu dans les LED.
 
-Pour aller plus loin si la portée manque : 15 Ω → ≈ 145 mA en crête (encore raisonnable, en 1/2 W). Les HIR204C
-émettent à 850 nm alors que les récepteurs sont plutôt réglés vers 940 nm : une LED 940 nm (TSAL6200 par exemple)
-serait plus efficace, sans toucher au PCB (LED sur fil).
+Pour aller plus loin si la portée manque : 15 Ω → ≈ 135 mA en crête (encore raisonnable, en 1/2 W). Le faisceau
+des IR333C-A est étroit (20°) : le couvercle du boîtier doit regarder le chauffage.
 
 Défaut de l'IR Box à NE PAS reprendre : LED L1 + 100 Ω entre la base et la masse (vole le courant de base, ne s'allume
 presque pas). Ici la LED témoin a sa propre broche.
 
 ## 6. Boîtier et mécanique
 
-**Décision pour le premier essai : boîtier imprimé en 3D**, dessiné autour de la carte (64 × 48 mm, 4 trous M3 à 3,5 mm
-des coins, § 8.2). Le micro et les LED IR restent dehors, sur fil ; les LED témoins doivent rester visibles (fenêtre ou
-couvercle translucide à prévoir au tracé du boîtier).
+**Boîtier imprimé en 3D, tracé le 2026-10-24** : `Capteur/boitier/NoeudChauffageSdb/` (source `boitier_noeud.scad`,
+STL, aperçus, fiche « Boîtier NoeudChauffageSdb.md » avec le détail, le montage et les cotes à vérifier avant impression).
 
-Option gardée pour plus tard, **Hammond 1554C2GYCL** : polycarbonate, couvercle transparent, IP66 ; extérieur 120 × 65 × 40 mm ; intérieur
-≈ 113,4 × 58,4 mm, hauteur 34,5 mm ; inserts laiton M3 pour fixer le PCB ; 4 vis de couvercle M4 et joint fournis.
-Plan : `https://www.hammfg.com/files/parts/pdf/1554C2GYCL.pdf`.
+- Fixé à plat au mur de la salle de bain (à l'abri), par 4 oreilles ; **couvercle face au chauffage** (≈ 1,80 m).
+- Carte tournée de 180° : prise USB-C à gauche (fente), J1 / J5 / J6 en haut, LED témoins en bas ; placement inchangé.
+- Seul le câble 12 V sort, par la paroi droite (fente + serre-câble).
+- **Micro et LED IR à l'intérieur**, sous le couvercle : micro vissé (M2) derrière une grille de 7 trous, LED IR passées
+  dans 2 trous du couvercle (le PETG opaque arrête l'infrarouge).
+- LED témoins D6 / D7 visibles par 2 trous du couvercle : **les souder avec 16,4 mm de patte** entre la carte et la
+  collerette (tubes-guides du couvercle).
+- Antenne Wi-Fi souple 40 × 20 mm contre la paroi basse.
 
-- Entraxe exact des inserts M3 : **à lire sur le plan** (peut-être 95 × 40,5 mm) ou à mesurer sur la pièce → fixe le
-  contour et les trous du PCB.
-- Hauteur : composant le plus haut ≈ 16 mm (XIAO sur barrettes), largement sous les 34,5 mm.
-- 3 presse-étoupes PG7 (câble 12 V, micro, LED IR) ; le micro et les LED IR sont DEHORS (enfermé, le micro entendrait mal ;
-  le polycarbonate gris arrête l'infrarouge).
-- Prises sur la carte (J1, J5, J6) du côté des presse-étoupes ; LED témoins visibles par le couvercle.
+Le boîtier Hammond 1554C2GYCL envisagé au départ est abandonné.
 
 ## 7. Mesures à l'usage (limites de puissance)
 
@@ -236,7 +235,8 @@ But : connaître les vraies limites hautes en puissance pour dimensionner les ca
 - [x] Export `.epro2` dans `pcb/NoeudChauffageSdb/` (Fichier → Enregistrer sous → Project save as local → epro2 V3).
 - [ ] Commit (procédure NAS de Pilotage_Maison, sans `global.h`).
 - [ ] Commande JLCPCB (fichiers de fabrication depuis EasyEDA ; options de commande à choisir).
-- [ ] À réception : mesures du § 7 ; tracé du boîtier imprimé.
+- [x] Tracé du boîtier imprimé (2026-10-24, § 6).
+- [ ] À réception : mesures du § 7 ; cotes à vérifier avant impression du boîtier.
 
 ## 9. Pièces LCSC (références EasyEDA)
 
