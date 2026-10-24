@@ -42,10 +42,12 @@ ce qui est hors carte.
 | Interrupteur à levier MTS-102 | 1 | façade du boîtier, sur fils vers J2 (à l'arrière de la carte) |
 | LED 5 mm verte | 1 | façade, à côté de l'interrupteur, sur fils vers J4 |
 | Câble JST-XH 2 broches serti | 2 | J2 (≈ 15 cm, la carte traverse le boîtier) et J4 |
-| Module DHT20 | 1 | contre la paroi gauche du boîtier (fentes), câble JST-XH 4 broches serti vers J3 |
+| Module DHT20 | 1 | vissé à l'extérieur de la paroi gauche (vis M3 × 8 + écrou), câble par un trou vers J3 (JST-XH 4) |
 | Câble JST-XH 4 broches serti | 1 | même brochage que les capteurs (1 3V3, 2 GND, 3 SCL, 4 SDA) |
 | Antenne 433 MHz SMA | 1 | fournie avec le CC1101, vissée sur sa prise à travers la paroi arrière |
-| Câble U.FL → SMA femelle de traversée (≈ 10 cm) | 1 | antenne LoRa sortie sur la paroi arrière |
-| Antenne LoRa 868 MHz SMA | 1 | vérifier la bande de l'antenne du kit Wio-SX1262 |
-| Antenne Wi-Fi U.FL | 1 | fournie avec le XIAO ESP32-S3, collée à l'intérieur |
-| Boîtier imprimé en 3D | 1 | à dessiner |
+| Antenne LoRa souple U.FL 40 × 10 mm | 1 | fournie avec le kit Wio-SX1262, collée en haut de la paroi droite |
+| Antenne Wi-Fi souple U.FL 40 × 20 mm | 1 | fournie avec le XIAO ESP32-S3, collée contre la paroi gauche |
+| Boîtier imprimé en 3D | 1 | `Home-Assist/boitier/` (boîte + couvercle, PETG) |
+| Vis M3 × 8 (couvercle) | 4 | dans les colonnes des coins |
+| Vis à bois Ø 4 tête fraisée | 2 | oreilles, si le boîtier est fixé à l'étagère |
+| Patins caoutchouc adhésifs | 4 | sous le fond |

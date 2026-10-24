@@ -124,9 +124,9 @@ large marge).
 
 - **ESP32** : antenne gravée sur le module WROOM → le bout du module **dépasse du bord de la carte** (ou zone sans
   cuivre sous l'antenne).
-- **XIAO S3** : antenne Wi-Fi sur câble u.FL, collée à l'intérieur du boîtier.
-- **Wio-SX1262** : antenne LoRa **sortie** : câble u.FL → SMA femelle de traversée (≈ 10 cm, écrou sur la paroi arrière)
-  et antenne **868 MHz** vissée dessus.
+- **XIAO S3** : antenne Wi-Fi souple 40 × 20 mm (câble u.FL de 52 mm), collée contre la paroi gauche, à l'intérieur.
+- **Wio-SX1262** : antenne LoRa souple du kit, 40 × 10 mm (câble u.FL de 52 mm), collée en haut de la paroi droite, à
+  l'intérieur (décidé le 2026-10-24 : plus de SMA de traversée ni d'antenne 868 MHz externe).
 - **CC1101** : antenne SMA (§ 3.4).
 
 ## 4. Connecteurs
@@ -159,7 +159,7 @@ des composants dessinés : `Controleur_BOM.xlsx`.
 | J2 | Embase JST-XH 2 broches | 1 |
 | J3 | Embase JST-XH 4 broches | 1 |
 | J4 | Embase JST-XH 2 broches | 1 |
-| – | Hors carte : bloc 12 V 1 A, interrupteur MTS-102, LED 5 mm verte, module DHT20, antenne 433 MHz SMA, antenne Wi-Fi u.FL, câble u.FL → SMA de traversée + antenne LoRa 868 MHz | – |
+| – | Hors carte : bloc 12 V 1 A, interrupteur MTS-102, LED 5 mm verte, module DHT20, antenne 433 MHz SMA, antennes souples Wi-Fi et LoRa (u.FL, fournies) | – |
 
 Fiches EasyEDA réutilisables : XIAO ESP32-S3 + Wio-SX1262 (carte Capteur S3), 1N5819, condensateurs, JST-XH
 (borne Squash). À créer ou à chercher : DevKit ESP32 38 broches, module CC1101 2 × 4, module MP1584EN, jack.
@@ -175,8 +175,8 @@ Fiches EasyEDA réutilisables : XIAO ESP32-S3 + Wio-SX1262 (carte Capteur S3), 1
 4. ~~Polarité du bloc 12 V~~ : centre +.
 5. **Forme de la carte et du boîtier** (décidé le 2026-10-23) : boîtier posé sur une étagère.
    - **Avant** : interrupteur et LED (fils ; J4 au bord avant de la carte, J2 à l'arrière, voir § 3.1).
-   - **Arrière** : jack 12 V (J1 au bord), SMA du CC1101 (module au bord, la prise traverse la paroi), SMA de traversée
-     de l'antenne LoRa.
+   - **Arrière** : jack 12 V (J1 au bord), SMA du CC1101 (module au bord, la prise traverse la paroi).
+     Boîtier dessiné : `Home-Assist/boitier/Boîtier contrôleur HA.md`.
    - **Côté droit** : fentes USB du DevKit et du XIAO (programmation sans ouvrir le boîtier).
    - **Côté gauche** : antenne gravée du DevKit (dépasse du bord, sans cuivre dessous), fentes d'aération, DHT20 contre
      la paroi, loin du MP1584EN.
