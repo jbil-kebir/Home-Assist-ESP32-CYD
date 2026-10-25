@@ -196,6 +196,12 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   if (String(topic) == mConfig.topic_config_command) {
     Serial.println("Commande configuration reçue : " + message);
     mConfig.handleMqttCommand(messageOrg);
+    // Accusé de réception (diagnostic des commandes retained reçues au réveil)
+    if (messageOrg.length() > 0) {
+      String sAccuse = mConfig.nomEquipement + " COMMANDE reçue à " + String(millis()) + " ms : " + messageOrg +
+                       " (deep sleep : " + (mConfig.mbDeepSleepActive ? "ACTIF" : "INACTIF") + ")";
+      client.publish(mConfig.topic_config_state.c_str(), sAccuse.c_str(), false);
+    }
     if (message == "STATUS") {
       String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
       statusMsg += String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getDate() : "DATE") + " " + String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getTime() : "TIME") + "\n";

@@ -106,6 +106,7 @@ public:
 
   unsigned int mulWakeDuration = DEFAULT_WAKE_DURATION_SEC; // Durée maximale d'éveil avant un deep sleep (garde-fou si les mesures ne sont pas remontées)
   // Wi-Fi : délai entre la remontée de toutes les mesures et le deep sleep, pour traiter les commandes MQTT retained
+  // Essai à 200 ms (2026-10-25) : 1 cycle sur 2 se termine mal (écho manqué, testament). Garder 1 s.
   const unsigned long DELAI_COMMANDES_APRES_REMONTEE_MS = 1000UL;
   // Wi-Fi : intervalle entre deux nouvelles tentatives de publication des mesures non remontées
   const unsigned long DELAI_RELANCE_MESURES_MS = 2000UL;
