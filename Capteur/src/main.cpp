@@ -7,6 +7,7 @@
 #include "MyWifi.h"
 #ifndef __DESACTIVE_ENVOI_MQTT__
 #include "MyMqtt.h"
+#include "Diagnostic.h"
 #endif
 #include "MyWebServer.h"
 #endif
@@ -232,6 +233,7 @@ void setup() {
   config.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
       return mqtt.publish(topic, payload);
   });
+  config.setMqttPowerDownCallback([]() { mqtt.powerDown(); }); // Déconnexion propre avant deep sleep
   #endif
   #endif
   Serial.printf("\n=== %s %s ===\n",config.nomEquipement.c_str(), VERSION);
@@ -411,6 +413,13 @@ void setup() {
   #endif
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.setup("mqtt_");
+  #ifdef FORCE_CONNEXION_WIFI
+  // Connexion forcée : identifiants MQTT de secret.h (remplacent ceux de la NVS)
+  mqtt.mqtt_server   = FORCE_MQTT_SERVER;
+  mqtt.mqtt_port     = FORCE_MQTT_PORT;
+  mqtt.mqtt_user     = FORCE_MQTT_USER;
+  mqtt.mqtt_password = FORCE_MQTT_PWD;
+  #endif
   #endif
   #endif //_WIFI_MODE_
 
@@ -431,14 +440,12 @@ void setup() {
     i = (i + 1) % MAX_WIFI_NETS;
   }
   config.setWifi(&mWifi[i]);
+  gDiag.ulWifi = millis();
 
   // Configurer et synchroniser l'heure
   Serial.println("\nSynchronisation de l'heure...");
-  mDateTime.setup();
-  //configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  
-  // Attendre la synchronisation
-  delay(2000);
+  mDateTime.setup(); // Attend la synchro NTP seulement si l'heure n'est pas connue (mise sous tension)
+  gDiag.ulNtp = millis();
   
   // Afficher la date et l'heure
   Serial.println("\n========== DATE ET HEURE ==========");

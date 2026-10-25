@@ -51,9 +51,9 @@
 //----------------------------------------------------------------------------
 #define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
-#define FLOTTEUR_VERTICAL
-#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
-#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
+//#define FLOTTEUR_VERTICAL
+//#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
+//#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
 #define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 //#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
 
@@ -63,21 +63,20 @@
 //#define ACTIONNEUR_IR
 
 //----------------------------------------------------------------------------
-// En cas de perte de la configuration, décommenter la ligne suivante
-// et remplissez les champs ssid et passwd par vos propres données.
+// En cas de perte de la configuration, décommenter la ligne suivante.
+// Les identifiants Wi-Fi / MQTT sont dans secret.h (exclu de Git) ;
+// modèle : secret.exemple.h (valeurs factices, utilisé si secret.h est absent).
 //
-// Une fois le Wifi connecté, connectez-vous par Web, reparamétrez les champs
-// et revenez ici effacer vos données
+// Une fois le Wifi connecté, connectez-vous par Web et reparamétrez les champs.
 //----------------------------------------------------------------------------
 //#define FORCE_CONNEXION_WIFI
 
 #ifdef FORCE_CONNEXION_WIFI
-#define FORCE_WIFI_SSID  "xxxxxx"
-#define FORCE_WIFI_PASSWD "xxxx"
-#define FORCE_MQTT_SERVER "1.1.1.1"
-#define FORCE_MQTT_PORT 1883
-#define FORCE_MQTT_USER "xxxxxx"
-#define FORCE_MQTT_PWD "xxxxxxxxxx"
+  #if __has_include("secret.h")
+    #include "secret.h"
+  #else
+    #include "secret.exemple.h"
+  #endif
 #endif
 
 // -----------------------------------------------------------------------------

@@ -104,7 +104,11 @@ public:
   unsigned int mulSleepDurationM = DEFAULT_SLEEP_DURATIONM_SEC;  // Durée deep-sleep
   unsigned int mulSleepDurationL = DEFAULT_SLEEP_DURATIONL_SEC;  // Durée deep-sleep
 
-  unsigned int mulWakeDuration = DEFAULT_WAKE_DURATION_SEC; // Durée avant un deep sleep. Permet de traiter d'éventuelles requêtes MQTT 
+  unsigned int mulWakeDuration = DEFAULT_WAKE_DURATION_SEC; // Durée maximale d'éveil avant un deep sleep (garde-fou si les mesures ne sont pas remontées)
+  // Wi-Fi : délai entre la remontée de toutes les mesures et le deep sleep, pour traiter les commandes MQTT retained
+  const unsigned long DELAI_COMMANDES_APRES_REMONTEE_MS = 1000UL;
+  // Wi-Fi : intervalle entre deux nouvelles tentatives de publication des mesures non remontées
+  const unsigned long DELAI_RELANCE_MESURES_MS = 2000UL;
   bool mbDeepSleepActive = false;  
   bool mbWakeFromDeepSleep = false; // Variable qui indiquera qu'on s'est réveillé d'un deep sleep
   unsigned long mulDateMiseEnSommeil=0; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
@@ -142,8 +146,8 @@ public:
   // MQTT callback pour le deep-sleep
   std::function<int(const char*, const char*)> onMqttPublish;    
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
-  //std::function<void()> onMqttPowerDown;    
-  //void setMqttPowerDownCallback(std::function<void()> cbMqttPowerDown); // Pour Power down MQTT
+  std::function<void()> onMqttPowerDown;
+  void setMqttPowerDownCallback(std::function<void()> cbMqttPowerDown); // Pour Power down MQTT
 
   void setup();
   void traiteReveil();
@@ -167,6 +171,10 @@ public:
   String getWatchdogStatus() const;
   bool loopWatchdog();
   bool verifieWatchdog(const String& nom, const String& topic);
+  bool mesuresToutesRemontees() const;
+  void relanceMesuresNonRemontees();
+  static String causeReveil();
+  static String causeReset();
   void envoieAlive(const String& nom, const String& topic);
   void annonceNonConfiguree();
   String getHTML();

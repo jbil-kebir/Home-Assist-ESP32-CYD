@@ -1,5 +1,6 @@
 
 #include "MyConfig.h"
+#include "Diagnostic.h"
 #ifdef _WIFI_MODE_
 #include <WiFi.h> // RSSI dans les ALIVE
 #endif
@@ -66,6 +67,13 @@ void CConfig::traiteReveil() {
   sMqttMsg = nomEquipement + " REVEIL OFF " + sDate + " " + sTime;
   Serial.println(sMqttMsg+String(" Réveil sans Deep Sleep préalable ")); Serial.flush();
  }
+ // Diagnostic : cause du réveil et du dernier reset (un BROWNOUT trahit une chute d'alimentation)
+ sMqttMsg += " Cause réveil : " + causeReveil() + " Cause reset : " + causeReset();
+ #ifdef _WIFI_MODE_
+ sMqttMsg += " RSSI : " + String(WiFi.RSSI()) + " dBm"; // Qualité de la liaison Wi-Fi (< -80 dBm : pertes probables)
+ #endif
+ // Étapes du cycle précédent (mémoire RTC, valide seulement après un deep sleep)
+ if (esp_reset_reason() == ESP_RST_DEEPSLEEP) sMqttMsg += " Préc : " + diagToString(gDiagPrec);
 
   #ifdef CAPTEUR_DS18B20
   if (onMqttPublish != nullptr && ds18b20 != nullptr)
@@ -77,6 +85,34 @@ void CConfig::traiteReveil() {
   #endif
 
 }
+
+String CConfig::causeReveil() {
+  switch (esp_sleep_get_wakeup_cause()) {
+    case ESP_SLEEP_WAKEUP_UNDEFINED : return "AUCUNE";   // Pas un réveil de deep sleep (mise sous tension, reset)
+    case ESP_SLEEP_WAKEUP_TIMER     : return "TIMER";
+    case ESP_SLEEP_WAKEUP_GPIO      : return "GPIO";
+    case ESP_SLEEP_WAKEUP_EXT0      : return "EXT0";
+    case ESP_SLEEP_WAKEUP_EXT1      : return "EXT1";
+    default                         : return String((int)esp_sleep_get_wakeup_cause());
+  }
+}
+
+String CConfig::causeReset() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON  : return "POWERON";
+    case ESP_RST_EXT      : return "EXT";
+    case ESP_RST_SW       : return "SW";
+    case ESP_RST_PANIC    : return "PANIC";
+    case ESP_RST_INT_WDT  : return "INT_WDT";
+    case ESP_RST_TASK_WDT : return "TASK_WDT";
+    case ESP_RST_WDT      : return "WDT";
+    case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+    case ESP_RST_BROWNOUT : return "BROWNOUT";
+    case ESP_RST_SDIO     : return "SDIO";
+    default               : return String((int)esp_reset_reason());
+  }
+}
+
 void CConfig::setup() {
 
  loadFromNVS();
@@ -128,12 +164,31 @@ void CConfig::loop() {
   // Pour les capteurs qui ont besoin d'un ACK, on n'entre en deep-sleep que si l'ACK a été reçu
   //
   if (mbDeepSleepActive) {
-    if (millis() < mulWakeDuration*1000) {
+    // Wi-Fi : fin d'éveil anticipée dès que toutes les mesures sont remontées sur MQTT, après
+    // DELAI_COMMANDES_APRES_REMONTEE_MS pour traiter les commandes retained (reçues dès l'abonnement).
+    // mulWakeDuration reste la durée maximale d'éveil (MQTT injoignable, publication échouée).
+    bool bFinAnticipee = false;
+    #ifdef _WIFI_MODE_
+    static unsigned long ulDateToutRemonte = 0;
+    static unsigned long ulDerniereRelance = 0;
+    if (ulDateToutRemonte == 0 && mesuresToutesRemontees()) { ulDateToutRemonte = millis(); gDiag.ulPub = ulDateToutRemonte; }
+    // Publication échouée (MQTT pas encore connecté...) : nouvelle tentative
+    if (ulDateToutRemonte == 0 && millis() - ulDerniereRelance >= DELAI_RELANCE_MESURES_MS) {
+      ulDerniereRelance = millis();
+      relanceMesuresNonRemontees();
+    }
+    bFinAnticipee = (ulDateToutRemonte != 0) && (millis() - ulDateToutRemonte >= DELAI_COMMANDES_APRES_REMONTEE_MS);
+    #endif
+    if (!bFinAnticipee && millis() < mulWakeDuration*1000) {
       // Pas encore le temps de dormir
       return;
     }
-    
-    Serial.printf("[Deep Sleep] CConfig::loop() - : délai avant deep sleep écoulé (%ld secondes). ", mulWakeDuration); Serial.flush();
+
+    if (bFinAnticipee)
+      Serial.printf("[Deep Sleep] CConfig::loop() - : mesures remontées après %lu ms. ", millis());
+    else
+      Serial.printf("[Deep Sleep] CConfig::loop() - : délai avant deep sleep écoulé (%ld secondes). ", mulWakeDuration);
+    Serial.flush();
     bool bDeepSleepPossible = true;
     bool bMesureRemontee = false; // Permet d'empêcher le deep sleep tant qu'une mesure n'a pas été remontée
     // Si LoRa non initialisé, on ne peut pas attendre une remontée LoRa → on autorise le deep sleep directement
@@ -225,7 +280,7 @@ void CConfig::enterDeepSleep() {
   Serial.flush();           // Attend que le serial soit vide
   mbWakeFromDeepSleep = true;
   mulDateMiseEnSommeil = 0; // A initialiser correctement par synchro avec le contrôleur principal
-  #ifdef __WIFI_MODE__
+  #ifdef _WIFI_MODE_
   mulDateMiseEnSommeil = mDateTime->getAbsoluteSecondes();
   #endif
 */
@@ -240,28 +295,22 @@ void CConfig::enterDeepSleep() {
 
   String sDate = "DATE";
   String sHeure = "HEURE";
-  #ifdef __WIFI_MODE__
+  #ifdef _WIFI_MODE_
   if (mDateTime != nullptr) {
     sDate = mDateTime->getDate();
     sHeure = mDateTime->getTime();
   }
   #endif
 
-  unsigned int dureeEveil = 0;
-  String sDureeEveil = "Durée inconnue";
-  #ifdef __WIFI_MODE__
-  if (mDateTime != nullptr) {
-    dureeEveil = mDateTime->getAbsoluteSecondes() - mulDateReveil;
-    sDureeEveil = String(dureeEveil);
-  }
-  #endif
+  // Après un deep sleep la puce redémarre : millis() est directement la durée d'éveil depuis le boot
+  String sDureeEveil = String(millis()) + " ms";
 
   String sMqttMsg = nomEquipement + " DEEPSLEEP ON " + sDate + " " + sHeure + " " + String(mulSleepDuration) + " Durée éveil : " + sDureeEveil;
   Serial.println(sMqttMsg + String(". Deep sleep in few seconds ..."));
   Serial.flush();           // Attend que le serial soit vide
   mbWakeFromDeepSleep = true;
   mulDateMiseEnSommeil = 0;
-  #ifdef __WIFI_MODE__
+  #ifdef _WIFI_MODE_
   if (mDateTime != nullptr)
     mulDateMiseEnSommeil = mDateTime->getAbsoluteSecondes();
   #endif
@@ -287,11 +336,12 @@ void CConfig::enterDeepSleep() {
   #endif
   #endif
 
-  delay(1000);               // Sécurité
+  // Plus de délai fixe : onMqttPowerDown() attend l'écho du broker (preuve que tout est arrivé)
 
-  // Si MQTT
-  // Ligne commentée car ça fait grimper la consommation à 85 mA en Deep-Sleep ???
-  //onMqttPowerDown();
+  // Déconnexion MQTT propre : sinon le broker publie le testament (LWT) à chaque deep sleep.
+  // L'ancien appel était commenté (« 85 mA en Deep-Sleep ») : le setter l'étant aussi, la callback était vide
+  // et son appel levait une exception → panic et reboot, d'où la carte vue éveillée. D'où le test nullptr.
+  if (onMqttPowerDown != nullptr) onMqttPowerDown();
 
   #ifdef _WIFI_MODE_
   WiFi.disconnect(true);
@@ -386,6 +436,8 @@ void CConfig::enterDeepSleep() {
   pinMode(9, OUTPUT);
   digitalWrite(9, HIGH);
   #endif
+  gDiag.ulSommeil = millis();
+  gDiagPrec = gDiag;        // Mémoire RTC : publié dans le message REVEIL du prochain réveil
   esp_deep_sleep_start();   // Bonne nuit !
 }
 
@@ -822,6 +874,48 @@ bool CConfig::loopWatchdog() {
 }
 
 //
+// Retour : true si tous les capteurs actifs ont remonté leur mesure depuis le réveil
+// (le micro n'est pas concerné : il empêche de toute façon le deep sleep)
+//
+//
+// Republie (forcé, sans nouvelle mesure) les capteurs actifs dont la mesure n'a pas été remontée
+//
+void CConfig::relanceMesuresNonRemontees() {
+  #ifdef CAPTEUR_DS18B20
+  if (ds18b20 != nullptr && ds18b20->active && !ds18b20->mbMesureRemontee) ds18b20->readAndPublish(true);
+  #endif
+  #ifdef CAPTEUR_DHT20
+  if (dht20 != nullptr && dht20->active && !dht20->mbMesureRemontee) dht20->readAndPublish(true, false);
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  if (mCapteurRGB != nullptr && mCapteurRGB->active && !mCapteurRGB->mbMesureRemontee) mCapteurRGB->readAndPublish(true, false);
+  #endif
+  #ifdef CAPTEUR_BATTERIE
+  if (mBatterieAA != nullptr && mBatterieAA->active && !mBatterieAA->mbMesureRemontee) mBatterieAA->readAndPublish(true);
+  #endif
+}
+
+bool CConfig::mesuresToutesRemontees() const {
+  #ifdef CAPTEUR_DS18B20
+  if (ds18b20 != nullptr && ds18b20->active && !ds18b20->mbMesureRemontee) return false;
+  #endif
+  #ifdef CAPTEUR_DHT20
+  if (dht20 != nullptr && dht20->active && !dht20->mbMesureRemontee) return false;
+  #endif
+  #ifdef FLOTTEUR_VERTICAL
+  if (mFlotteurVertical != nullptr && mFlotteurVertical->active && !mFlotteurVertical->mbMesureRemontee) return false;
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  if (mCapteurRGB != nullptr && mCapteurRGB->active && !mCapteurRGB->mbMesureRemontee) return false;
+  #endif
+  #ifdef CAPTEUR_BATTERIE
+  if (mBatterieAA != nullptr && mBatterieAA->active && !mBatterieAA->mbMesureRemontee) return false;
+  #endif
+
+  return true;
+}
+
+//
 // Retour : true si un ALIVE a été envoyé pour cet équipement
 //
 bool CConfig::verifieWatchdog(const String& nom, const String& topic) {
@@ -957,7 +1051,7 @@ void CConfig::annonceNonConfiguree() {
         onMqttPublish = cb;
     }
 
-  /*void CConfig::setMqttPowerDownCallback(std::function<void()> cb) {
+  void CConfig::setMqttPowerDownCallback(std::function<void()> cb) {
         onMqttPowerDown = cb;
-    }*/
+    }
     

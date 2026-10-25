@@ -10,22 +10,22 @@ bool CDetecteurRGB_TCS34725::begin(const String pref) {
 
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+  // Date de départ fixe (pas remise à zéro à chaque tour) : sinon le délai n'est jamais atteint
+  // et setup() reste bloqué (plus de serveur Web) quand le TCS34725 ne répond pas.
+  unsigned long ulDebut = millis();
   while(!Wire.begin(mucSdaPin, mucSclPin)) {
-      static unsigned long ulLastTime = millis();
       Serial.println("Wire.begin() échec");
-      if (millis() - ulLastTime > TIMEOUT_WIRE)
+      if (millis() - ulDebut > TIMEOUT_WIRE)
           return false;
-      ulLastTime = millis();
       delay(500);
   };               // Pins par défaut SDA/SCL de ta board ESP32-C3
+  ulDebut = millis();
   while(!tcs.begin()) {
-      static unsigned long ulLastTime = millis();
       Serial.println("tcs.begin() échec");
-      if (millis() - ulLastTime > TIMEOUT_DHT)
+      if (millis() - ulDebut > TIMEOUT_DHT)
           return false;
-      ulLastTime = millis();
       delay(500);
-  };               
+  };
   
   tcs.setIntegrationTime(TCS34725_INTEGRATIONTIME_614MS);  // 614 ms = max sensibilité
   tcs.setGain(TCS34725_GAIN_60X);                          // gain x60  

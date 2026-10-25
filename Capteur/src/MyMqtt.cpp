@@ -5,6 +5,7 @@
 #include "MyConfig.h"
 #include "MyWifi.h"
 #include "MyMqtt.h"
+#include "Diagnostic.h"
 
 void CMqtt::setup(const String pref) {
   mPrefixNVS = pref;
@@ -15,22 +16,47 @@ void CMqtt::setup(const String pref) {
 
 void CMqtt::begin() {
   client.setServer(mqtt_server.c_str(), mqtt_port);
+  client.setSocketTimeout(MQTT_SOCKET_TIMEOUT_S); // 15 s par défaut : un CONNACK perdu bloquait tout l'éveil
   client.setCallback([this](char* t, byte* p, unsigned int l) { this->callback(t, p, l); });
 
   reconnect();
 }
 
 void CMqtt::powerDown() {
-  if (client.connected()) client.disconnect();
+  if (!client.connected()) return;
+  // 1) Écho : abonnement à un topic dédié puis publication dessus. TCP et le broker respectant l'ordre,
+  //    recevoir l'écho prouve que toutes les publications précédentes sont arrivées au broker.
+  String sTopicEcho = mConfig.topic_config_state + "/echo";
+  mbEchoRecu = false;
+  client.subscribe(sTopicEcho.c_str(), 0);
+  client.publish(sTopicEcho.c_str(), mConfig.nomEquipement.c_str(), false);
+  unsigned long ulDebut = millis();
+  while (!mbEchoRecu && client.connected() && millis() - ulDebut < MQTT_ECHO_TIMEOUT_MS) { client.loop(); delay(5); }
+  if (mbEchoRecu) gDiag.ulEcho = millis();
+  // 2) DISCONNECT écrit directement sur la socket, puis attente que le broker ferme la connexion :
+  //    il a alors traité le DISCONNECT et ne publiera pas le testament. (PubSubClient::disconnect()
+  //    ferme la socket aussitôt : le DISCONNECT pouvait se perdre à la coupure du Wi-Fi.)
+  const uint8_t trameDisconnect[2] = { 0xE0, 0x00 };
+  mWifiClient.write(trameDisconnect, sizeof(trameDisconnect));
+  ulDebut = millis();
+  while (mWifiClient.connected() && millis() - ulDebut < MQTT_FERMETURE_TIMEOUT_MS) delay(5);
+  if (!mWifiClient.connected()) gDiag.ulFermeture = millis();
+  client.disconnect();
 }
+// Une seule tentative de connexion au broker. En cas d'échec, loop() réessaie toutes les
+// MQTT_RECONNECT_INTERVAL_MS : le serveur Web et les mesures continuent de tourner sans broker.
 void CMqtt::reconnect() {
-  while (!client.connected()) {
+  mulDerniereTentative = millis();
+  if (!client.connected()) {
     String clientId = "Thermometre_" + String(random(0xffff), HEX);
     //Serial.print("Connexion MQTT Id : " + clientId + " - User : " + mqtt_user + " - Passwd : " + mqtt_password + " ...");
     String sPayload = mConfig.nomEquipement + String(" ") + String("offline");
+    gDiag.uiEssaisMqtt++;
+    // Testament (LWT) sur le topic state, non retained : sur le topic command il écrasait les commandes retained
     if (client.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_password.c_str(),
-                        mConfig.topic_config_command.c_str(), 0, true, sPayload.c_str())) {
+                        mConfig.topic_config_state.c_str(), 0, false, sPayload.c_str())) {
       Serial.println("connecté");
+      if (gDiag.ulMqtt == 0) gDiag.ulMqtt = millis();
 
       // === ABONNEMENTS FORCÉS À CHAQUE CONNEXION ===
       #ifdef CAPTEUR_DS18B20
@@ -79,14 +105,18 @@ void CMqtt::reconnect() {
     } else {
       Serial.print("échec, rc=");
       Serial.println(client.state());
-      delay(5000);
+      gDiag.iDernierRc = client.state();
     }
   }
 }
 
   void CMqtt::loop() {
-    if (WiFi.status() != WL_CONNECTED) return; // Le WiFi est down : reconnect() bloquerait indéfiniment en essayant de joindre le broker
-    if (!client.connected()) reconnect();
+    if (WiFi.status() != WL_CONNECTED) return; // Le WiFi est down : inutile d'essayer de joindre le broker
+    if (!client.connected()) {
+      unsigned long ulIntervalle = (millis() < MQTT_RECONNECT_DUREE_BOOT_MS) ? MQTT_RECONNECT_INTERVAL_BOOT_MS : MQTT_RECONNECT_INTERVAL_MS;
+      if (millis() - mulDerniereTentative >= ulIntervalle) reconnect();
+      return;
+    }
     client.loop();
   }
 
@@ -132,15 +162,15 @@ int CMqtt::publish(const char* topic, const char* payload, bool retained) {
   return ret;
 }
 
-// Garde aussi la version sans retained (pour compatibilité)
+// Version sans retained. Renvoie le vrai résultat (avant : toujours 0, et une mesure non
+// publiée était considérée comme remontée → deep sleep sans l'avoir envoyée)
 int CMqtt::publish(const char* topic, const char* payload) {
-  if (!active) return -1;
-  publish(topic, payload, false);
-  return 0;
+  return publish(topic, payload, false);
 }
 
 void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   if (!active) return;
+  if (String(topic).endsWith("/echo")) { mbEchoRecu = true; return; } // Écho de powerDown()
   String message, messageOrg;
   for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
   message.trim();

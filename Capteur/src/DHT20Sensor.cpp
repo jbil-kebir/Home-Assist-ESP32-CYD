@@ -12,22 +12,22 @@ bool DHT20Sensor::begin(const String pref) {
 
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+  // Date de départ fixe (pas remise à zéro à chaque tour) : sinon le délai n'est jamais atteint
+  // et setup() reste bloqué (plus de serveur Web) quand le DHT20 ne répond pas.
+  unsigned long ulDebut = millis();
   while(!Wire.begin(mucSdaPin, mucSclPin)) {
-      static unsigned long ulLastTime = millis();
       Serial.println("Wire.begin() échec");
-      if (millis() - ulLastTime > TIMEOUT_WIRE)
+      if (millis() - ulDebut > TIMEOUT_WIRE)
           return false;
-      ulLastTime = millis();
       delay(500);
   };               // Pins par défaut SDA/SCL de ta board ESP32-C3
+  ulDebut = millis();
   while(!dht.begin()) {
-      static unsigned long ulLastTime = millis();
       Serial.println("dht.begin() échec");
-      if (millis() - ulLastTime > TIMEOUT_DHT)
+      if (millis() - ulDebut > TIMEOUT_DHT)
           return false;
-      ulLastTime = millis();
       delay(500);
-  };               
+  };
   
   Serial.println("DHT20 trouvé");
   _initialized = true;
@@ -267,7 +267,7 @@ bool DHT20Sensor::publieSurMqtt(bool force/*=false*/) {
     Serial.println("DHT20Sensor::publieSurMqtt() Hum  : " + sValHum);
     if (onMqttPublish != nullptr) {
       ret = (onMqttPublish(mqttSubTopicState.c_str(), sValTemp.c_str()) == 0);
-      ret = (onMqttPublish(mqttSubTopicState.c_str(), sValHum.c_str()) == 0);
+      ret = (onMqttPublish(mqttSubTopicState.c_str(), sValHum.c_str()) == 0) && ret;
     }
     else {
       Serial.printf("DHT20Sensor::publieSurMqtt() - callback onMqttPublish() non définie\n");

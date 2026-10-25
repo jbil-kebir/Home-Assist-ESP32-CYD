@@ -83,6 +83,173 @@ Schéma de principe des ajouts (identique à la carte S3, sauf les broches du XI
      Flotteur normalement ouvert, FERMÉ = CUVE PLEINE
 ```
 
+### 1.3 Schémas de câblage par variante
+
+Un dessin complet par variante, d'après le schéma EasyEDA (`PDF_Capteur C3 Xiao_2026-10-19.zip`). Le XIAO est vu de dessus, USB-C en haut ;
+1 à 14 = numéros de ses pattes.
+
+Conventions : `+` = connexion ; un trait qui en coupe un autre sans `+` n'y est pas relié ; toutes les masses `GND`
+sont reliées entre elles ; les broches des modules portent le numéro de leur prise (J1, J2, J5).
+
+Repères communs aux variantes sur piles :
+
+- **D2 1N5819** : bague (cathode) côté interrupteur.
+- **U1 MCP1700 (TO-92)** : face plate vers soi, pattes en bas : 1 GND, 2 IN, 3 OUT.
+- **Électrolytiques** : `+` côté VSW pour C3, côté 3V3 pour C2 et C5.
+- **DHT20** : broches du module **+ − SCL SDA** = J1 1 à 4 ; sur le dessin, elles se lisent de bas en haut.
+- **Pont R2 / R3** pris sur VSW, après l'interrupteur ; calibre 3,0.
+- **5V** du XIAO jamais relié aux piles ; **interrupteur sur arrêt avant de brancher l'USB**.
+
+> **IMPORTANT — broches enregistrées en NVS.** Les broches (I2C, mesure des piles, flotteur, LED) sont enregistrées avec
+> la configuration par la page Web ; au démarrage, le code relit ces valeurs et n'utilise celles de `global.h` que si
+> rien n'est enregistré. Une configuration enregistrée avec un autre firmware (par exemple celui de la Super Mini) garde
+> donc ses broches même après le passage au firmware `xiao_esp32c3`. **Après chaque téléversement, vérifier sur la page
+> Web** :
+>
+> | Réglage | Valeur (GPIO) | Patte XIAO |
+> |---|---|---|
+> | SDA (DHT20, TCS34725) | 6 | D4 |
+> | SCL (DHT20, TCS34725) | 7 | D5 |
+> | Mesure des piles (+ calibre 3,0) | 4 | D2 |
+> | Flotteur | 3 | D1 |
+> | LED témoin chaudière | 20 | D7 |
+
+**Placement des condensateurs** (montage d'essai ou carte) : chacun au plus près des pattes qu'il relie, fils courts ;
+toutes les masses au même GND.
+
+| Repère | Type | Entre | Où le placer | Rôle |
+|---|---|---|---|---|
+| C1 | céramique 100 nF | 3V3 et GND | contre les pattes 12 (3V3) et 13 (GND) du XIAO | découplage du XIAO |
+| C2 | électrolytique 10 µF, **+ côté 3V3** | 3V3 et GND | près du XIAO, à côté de C1 | réserve locale du 3V3 |
+| C3 | électrolytique 10 µF, **+ côté VSW** | VSW et GND | contre les pattes 2 (IN) et 1 (GND) du MCP1700 | stabilité de l'entrée du régulateur |
+| C4 | céramique 1 µF | 3V3 et GND | contre les pattes 3 (OUT) et 1 (GND) du MCP1700, à moins de 1 cm | **obligatoire** : sans lui, le MCP1700 peut osciller |
+| C5 | électrolytique 470 µF, **+ côté 3V3** | 3V3 et GND | sur le 3V3 entre le MCP1700 et le XIAO, fils courts et gros | fournit les pointes Wi-Fi (≈ 300 mA) au-delà des 250 mA du MCP1700 |
+| C6 | céramique 100 nF | VMES et GND | contre la patte de mesure du XIAO (D2) | filtre la mesure des piles |
+| C7 | céramique 100 nF | FLOT et GND | contre la patte du flotteur (D1), après R5 | filtre les parasites du fil du flotteur |
+
+**Montage d'essai sans 1N5819 (D2)** : la remplacer par un fil (+ des piles → interrupteur). Conséquences :
+
+- **plus de protection contre l'inversion des piles** (MCP1700 et XIAO détruits) : vérifier la polarité au multimètre
+  avant la mise en marche ;
+- **entrée du MCP1700** : 4 AA neuves ≈ 6,4 V, au-dessus des 6,0 V de fonctionnement (maximum absolu 6,5 V). Si le bloc
+  dépasse 6,0 V : piles un peu entamées, ou 3 AA (4,5 V) provisoirement ;
+- **mesure des piles** : VSW = tension réelle des piles, soit 0,2 à 0,3 V **de plus** qu'avec la diode → ne pas régler le
+  seuil « piles déchargées » sur ce montage ;
+- **consommation en deep sleep** : inchangée (la diode ne consomme rien). Le pont R2 / R3 consomme, lui, ≈ 20 µA en
+  permanence, interrupteur en marche ;
+- dépannage possible avec une 1N4001…1N4007 : protection conservée, mais chute de 0,7 à 0,9 V (mesure d'autant plus basse).
+
+#### a) Piles + DHT20 (cuve sans flotteur)
+
+```
+   D2 1N5819   J4 inter                   VSW
+  +---->|-------o/ o----+---------+-----------------+
+  |                     |         | 2 IN            |             XIAO ESP32-C3 (vu de dessus)
+ (+)                C3 10 µF +---------+        R2 200 k              +---[ USB-C ]---+
+PILES                   |    | U1      |-(1)-- GND  |           D0  1 | o           o | 14  5V
+4 AA                   GND   | MCP1700 |            |           D1  2 | o           o | 13  GND --- GND
+ (-)                         | 3302E   |      VMES  +---------- D2  3 | o           o | 12  3V3 --------+
+  |                          +---------+            |           D3  4 | o           o | 11  D10         |
+ GND                        3 OUT |       +---------+    +----- D4  5 | o           o | 10  D9          |
+                                  |       |         |    |   +- D5  6 | o           o |  9  D8          |
+                                  |   C6 100 nF R3 100 k |   |  D6  7 | o           o |  8  D7          |
+                                  |       |         |    |   |        +---------------+                 |
+                                  |      GND       GND   |   |                                          |
+                                  |                      |   |                                          |
+                                  |       +-----------+  |   |                                          |
+                                  |       |DHT20 4 SDA|--+   |                                          |
+                                  |       |      3 SCL|------+                                          |
+                                  |       | J1   2 -  |--- GND                                          |
+                                  |       |      1 +  |--+       GND        GND        GND        GND   |
+                                  |       +-----------+  |        |          |          |          |    |
+                                  |                      |     C4 1 µF   C5 470 µF  C1 100 nF  C2 10 µF |
+                                  |                      |        |          |          |          |    |
+                                  +----------------------+--------+----------+----------+----------+----+
+                                                               3V3
+```
+
+Pattes libres : D0, D1, D3, D6, D7, D8, D9, D10, 5V. **D0, D8, D9 sont des broches de démarrage** : ne rien y câbler.
+
+#### b) Cuve : piles + DHT20 + flotteur
+
+```
+                                              +--------------------------- 3V3 -------------------------+
+                                              |                                                         |
+                                           R4 10 k                                                      |
+                            +--------+FLOT_EXT|                                                         |
+                            | J5   1 |--------+- R5 1 k +---+                                           |
+                            |      2 |-- GND            |   |                                           |
+                            +--------+              C7 100 nF                                           |
+   D2 1N5819   J4 inter    vers flotteur  VSW           |   |                                           |
+  +---->|-------o/ o----+---------+-----------------+  GND  |                                           |
+  |                     |         | 2 IN            |       |     XIAO ESP32-C3 (vu de dessus)          |
+ (+)                C3 10 µF +---------+        R2 200 k    |         +---[ USB-C ]---+                 |
+PILES                   |    | U1      |-(1)-- GND  |       |   D0  1 | o           o | 14  5V          |
+4 AA                   GND   | MCP1700 |            |       +-- D1  2 | o           o | 13  GND --- GND |
+ (-)                         | 3302E   |      VMES  +---------- D2  3 | o           o | 12  3V3 --------+
+  |                          +---------+            |           D3  4 | o           o | 11  D10         |
+ GND                        3 OUT |       +---------+    +----- D4  5 | o           o | 10  D9          |
+                                  |       |         |    |   +- D5  6 | o           o |  9  D8          |
+                                  |   C6 100 nF R3 100 k |   |  D6  7 | o           o |  8  D7          |
+                                  |       |         |    |   |        +---------------+                 |
+                                  |      GND       GND   |   |                                          |
+                                  |                      |   |                                          |
+                                  |       +-----------+  |   |                                          |
+                                  |       |DHT20 4 SDA|--+   |                                          |
+                                  |       |      3 SCL|------+                                          |
+                                  |       | J1   2 -  |--- GND                                          |
+                                  |       |      1 +  |--+       GND        GND        GND        GND   |
+                                  |       +-----------+  |        |          |          |          |    |
+                                  |                      |     C4 1 µF   C5 470 µF  C1 100 nF  C2 10 µF |
+                                  |                      |        |          |          |          |    |
+                                  +----------------------+--------+----------+----------+----------+----+
+                                                               3V3
+```
+
+- **J5 flotteur** : normalement ouvert, fermé = cuve pleine ; fils de 50 cm.
+
+Pattes libres : D0, D3, D6, D7, D8, D9, D10, 5V.
+
+#### c) Chaudière : USB + DHT20 + TCS34725 + LED
+
+```
+                                                                  alimentation : câble USB-C 5 V
+                                                                  XIAO ESP32-C3 (vu de dessus)
+                                                                      +---[ USB-C ]---+
+                                                                D0  1 | o           o | 14  5V
+                                                                D1  2 | o           o | 13  GND ---- GND
+                                                                D2  3 | o           o | 12  3V3 ---- 3V3
+                                                                D3  4 | o           o | 11  D10
+                                                         +----- D4  5 | o           o | 10  D9
+                                                         |   +- D5  6 | o           o |  9  D8
+                                                         |   |  D6  7 | o           o |  8  D7  ----+
+                                                         |   |        +---------------+             |
+                                    +-----------+        |   |                                  R1 100 Ω
+                                    |DHT20 4 SDA|--------+   |                                      |
+                                    |      3 SCL|--------|---+                                      V   D1 LED bleue
+                                    | J1   2 -  |-- GND  |   |             3V3         3V3          -   (méplat en bas)
+                                    |      1 +  |-- 3V3  |   |              |           |           |
+                                    +-----------+        |   |          C1 100 nF   C2 10 µF       GND
+                                                         |   |              |           |
+                                    +-----------+        |   |             GND         GND
+                                    |TCS   5 LED|-- GND  |   |
+                                    |34725 4 SDA|--------+   |
+                                    | J2   3 SCL|------------+
+                                    |      2 -  |-- GND
+                                    |      1 +  |-- 3V3
+                                    +-----------+
+```
+
+- Alimentation par le câble USB-C (régulateur du XIAO) ; J3, D2, J4, U1, C3 à C7, R2 à R5 et J5 non montés.
+- Un seul croisement : la ligne SCL du DHT20 coupe la ligne SDA sans y être reliée.
+- **J2** : 1 = + (VIN du module), 2 = −, 3 = SCL, 4 = SDA, 5 = LED du module reliée à GND (LED éteinte) ; INT du module
+  non câblée.
+- **D1 LED bleue** : patte longue (anode) côté R1, méplat / patte courte côté GND.
+
+Pattes libres : D0, D1, D2, D3, D6, D8, D9, D10 ; 5V = entrée USB, rien à y câbler.
+
+Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
+
 ## 2. Décisions
 
 | Sujet | Décision |

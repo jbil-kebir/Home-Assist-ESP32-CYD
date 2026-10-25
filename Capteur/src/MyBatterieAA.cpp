@@ -248,7 +248,7 @@ String CBatterieAA::getHTML() {
       "</div>"
       "<div class=\"row\">"
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
-      "</div>";
+      "</div>"
       "<div class=\"row\">"
         "<div><label>Dernière tension</label><input type=\"text\" name=" + (mPrefixNVS+"u") + " value=\"" + mLastTension + "\"></div>"
         "<div><label>Tension min.</label><input type=\"text\" name=" + (mPrefixNVS+"umin") + " value=\"" + mfTensionMin + "\"></div>"

@@ -51,9 +51,14 @@ String CMyDateTime::getDateTimeISO() {
 
 int CMyDateTime::setup() {
     int ret = 0;
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    // Attendre la synchronisation
-    delay(4000);
+    configTzTime(tzFrance, ntpServer);
+    // Au réveil de deep sleep, l'horloge RTC a gardé l'heure : getLocalTime() rend la main aussitôt
+    // (la synchro NTP se fait en tâche de fond). À la mise sous tension, on attend la 1re synchro.
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo, NTP_TIMEOUT_MS)) {
+      Serial.println("Heure non synchronisée");
+      ret = -1;
+    }
 
     return ret;
 }

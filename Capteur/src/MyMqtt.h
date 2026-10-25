@@ -8,17 +8,28 @@
 
 class CConfig;
 
+#define MQTT_RECONNECT_INTERVAL_MS 30000UL // Délai entre deux tentatives de connexion au broker
+// Juste après le boot (réveil de deep sleep), tentatives rapprochées pour publier avant la fin de l'éveil
+#define MQTT_RECONNECT_INTERVAL_BOOT_MS 2000UL
+#define MQTT_RECONNECT_DUREE_BOOT_MS 60000UL // Durée après le boot pendant laquelle l'intervalle court s'applique
+#define MQTT_SOCKET_TIMEOUT_S 3             // Attente maximale d'une réponse du broker (CONNACK...)
+#define MQTT_ECHO_TIMEOUT_MS 1500UL         // powerDown() : attente maximale de l'écho
+#define MQTT_FERMETURE_TIMEOUT_MS 500UL     // powerDown() : attente maximale de la fermeture par le broker
+
 class CMqtt {
 private:
   PubSubClient client;
+  WiFiClient& mWifiClient;  // Socket du client MQTT : utilisée par powerDown() pour la déconnexion
+  bool mbEchoRecu = false;  // powerDown() : écho reçu
   bool currentState = false;
   CConfig& mConfig;
+  unsigned long mulDerniereTentative = 0; // millis() de la dernière tentative de connexion au broker
 
   Preferences prefs;
   const char* nvs_namespace = NVS_NAME_SPACE;  
 
 public:
-  CMqtt(WiFiClient& wifiClient, CConfig& config) : client(wifiClient), mConfig(config) {}
+  CMqtt(WiFiClient& wifiClient, CConfig& config) : client(wifiClient), mWifiClient(wifiClient), mConfig(config) {}
   
   void setup(const String pref);
   void begin();
