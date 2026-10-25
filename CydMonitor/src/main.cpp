@@ -7,12 +7,12 @@
 #include <time.h>
 
 // ─── Valeurs par défaut (utilisées si NVS vide) ───────────────────────────────
-#define DEFAULT_WIFI_SSID    "Simpsonn"
-#define DEFAULT_WIFI_PASSWD  "al177SOLO$*"
-#define DEFAULT_MQTT_SERVER  "51.77.244.19"
-#define DEFAULT_MQTT_PORT    1883
-#define DEFAULT_MQTT_USER    "ubuntu"
-#define DEFAULT_MQTT_PASSWD  "al177SOLO$*"
+// Identifiants dans secret.h (exclu de Git) ; modèle : secret.exemple.h
+#if __has_include("secret.h")
+  #include "secret.h"
+#else
+  #include "secret.exemple.h"
+#endif
 
 #define MQTT_TOPIC  "home/thermometre/state"
 #define NTP_SERVER  "pool.ntp.org"

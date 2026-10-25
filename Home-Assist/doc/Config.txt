@@ -5,12 +5,12 @@
   VERSION      : 1.1
 [WiFi]
   SSID         : Simpson
-  Password     : al177SOLO$*
+  Password     : ********
 [MQTT]
   Server       : 51.77.244.19
   Port         : 1883
   User         : ubuntu
-  Password     : al177SOLO$*
+  Password     : ********
 
 [Veille écran]
   Timeout      : 600 secondes (10 minutes)

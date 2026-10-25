@@ -36,20 +36,19 @@
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante
-// et remplissez les champs ssid et passwd par vos propres données.
+// Les identifiants Wi-Fi / MQTT sont dans secret.h (exclu de Git).
 //
-// Une fois le Wifi connecté, connectez-vous par Web, reparamétrez les champs
-// et revenez ici effacer vos données
+// Une fois le Wifi connecté, connectez-vous par Web et reparamétrez les champs.
 //----------------------------------------------------------------------------
 //#define FORCE_CONNEXION_WIFI
 
 #ifdef FORCE_CONNEXION_WIFI
-#define FORCE_WIFI_SSID  "xxxxxxxx"
-#define FORCE_WIFI_PASSWD "xxxxxxx"
-#define FORCE_MQTT_SERVER "119.177.244.151"
-#define FORCE_MQTT_PORT 1883
-#define FORCE_MQTT_USER "ubu_ntu"
-#define FORCE_MQTT_PWD "ffffffffff*"
+// Identifiants dans secret.h (exclu de Git) ; modèle : secret.exemple.h
+#if __has_include("secret.h")
+  #include "secret.h"
+#else
+  #include "secret.exemple.h"
+#endif
 #endif
 
 // Pins écran

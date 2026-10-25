@@ -15,6 +15,7 @@ struct DiagCycle {
   uint32_t ulSommeil;     // Entrée en deep sleep
   uint16_t uiEssaisMqtt;  // Nombre de tentatives de connexion MQTT
   int16_t  iDernierRc;    // Code du dernier échec MQTT (PubSubClient::state())
+  uint8_t  ucWifiRapide;  // Canal mémorisé : 0 non utilisé, 1 utilisé, 2 échec (connexion normale)
 };
 
 extern DiagCycle gDiag;

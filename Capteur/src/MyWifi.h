@@ -8,6 +8,8 @@
 #include "MyWebServer.h"
 
 #define MAX_WIFI_NETS 3 // Nombre de connexions Wifi Max
+#define WIFI_TIMEOUT_MS 15000UL        // Attente maximale d'une connexion normale
+#define WIFI_TIMEOUT_RAPIDE_MS 3000UL  // Attente maximale d'une connexion sur le canal mémorisé (sinon : connexion normale)
 
 class CWifi {
 private:
@@ -19,8 +21,9 @@ public:
 
   String wifi_ssid;
   String wifi_password;
-  const char* default_wifi_ssid = "Simpson";
-  const char* default_wifi_password = "al177SOLO$*";
+  // Wi-Fi d'une puce neuve (NVS vide) : identifiants de secret.h, hors Git
+  const char* default_wifi_ssid = FORCE_WIFI_SSID;
+  const char* default_wifi_password = FORCE_WIFI_PASSWD;
   String nomEquipement = "Wifi";
   String mqttSubTopic = "wifi";
   bool active = false;
@@ -35,6 +38,16 @@ public:
   #endif
   int8_t mcTxPower = default_tx_power;
 
+  // Connexion rapide (réveil de deep sleep) : voir doc/Adresse_IP_Fixe.docx
+  // IP fixe : pas de DHCP. L'adresse doit être réservée dans la box (bail statique) pour l'adresse MAC du capteur.
+  bool mbIpFixe = false;
+  String msIp = "";
+  String msPasserelle = "192.168.1.254"; // Freebox
+  String msMasque = "255.255.255.0";
+  String msDns = "192.168.1.254";
+  // Mémorisation du canal et du BSSID de la box en mémoire RTC : pas de recherche sur tous les canaux au réveil
+  bool mbMemoCanal = false;
+
   void setup(const String pref); //const String pref);
   void begin();
   void loadFromNVS();
@@ -43,6 +56,10 @@ public:
   String getHTML(int i);  
   void loadFromWebServer(WebServer& server);  
   void print() const;
+
+private:
+  void configureIp();
+  bool attendConnexion(unsigned long ulTimeoutMs);
 };
 
 #endif // __MYWIFI_H__

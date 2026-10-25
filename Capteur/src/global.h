@@ -71,12 +71,11 @@
 //----------------------------------------------------------------------------
 //#define FORCE_CONNEXION_WIFI
 
-#ifdef FORCE_CONNEXION_WIFI
-  #if __has_include("secret.h")
-    #include "secret.h"
-  #else
-    #include "secret.exemple.h"
-  #endif
+// Toujours inclus : FORCE_WIFI_* sert aussi de Wi-Fi par défaut d'une puce neuve (voir MyWifi.h)
+#if __has_include("secret.h")
+  #include "secret.h"
+#else
+  #include "secret.exemple.h"
 #endif
 
 // -----------------------------------------------------------------------------
