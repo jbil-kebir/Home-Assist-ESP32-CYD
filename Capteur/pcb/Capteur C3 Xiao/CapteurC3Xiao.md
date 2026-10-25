@@ -184,7 +184,7 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
 
 | Élément | Valeur |
 |---|---|
-| Projet | cloud « Capteur C3 Xiao » (copie par import de `ProPrj_Capteur S3_2026-10-19.epro2`) ; sauvegarde locale : `pcb/Capteur C3 Xiao/ProPrj_Capteur C3 Xiao_2026-10-19.epro2` |
+| Projet | cloud « Capteur C3 Xiao » (copie par import de `Capteur_S3_Projet_2026-10-19.epro2`, alors nommé `ProPrj_Capteur S3_2026-10-19.epro2`) ; sauvegarde locale : `pcb/Capteur C3 Xiao/ProPrj_Capteur C3 Xiao_2026-10-19.epro2` |
 | Schéma | « Capteur C3 Xiao », 3 pages : Carte, Périphériques, Alimentation |
 | Règles | « THT soudure main JLCPCB » |
 

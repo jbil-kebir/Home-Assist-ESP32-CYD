@@ -188,7 +188,7 @@ Bilan : 25 composants, 12 réseaux ; netlist du schéma = PCB (57 liaisons).
 
 | Élément | Valeur |
 |---|---|
-| Projet | cloud « Capteur S3 » (copie par import de `CapteurChaudiereSdb.epro2`) ; sauvegarde locale : `pcb/Capteur S3/ProPrj_Capteur S3_2026-10-19.epro2` |
+| Projet | cloud « Capteur S3 » (copie par import de `CapteurChaudiereSdb.epro2`) ; sauvegarde locale : `pcb/Capteur S3/Capteur_S3_Projet_2026-10-19.epro2` |
 | Schéma | « Capteur S3 », 3 pages : Carte, Périphériques, Alimentation |
 | Règles | « THT soudure main JLCPCB » (modèle par défaut) |
 | Classes | ALIM_3V3 (`3V3`, `GND`) 0,6 mm ; `VPIL+`, `VPIL`, `VSW` 0,6 mm ; signaux 0,4 mm |

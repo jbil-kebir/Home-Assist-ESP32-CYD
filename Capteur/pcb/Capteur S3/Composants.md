@@ -1,7 +1,7 @@
 # Capteur S3 — Liste des composants
 
 Liste d'achat pour **une carte**, par variante (chaudière / cuve, voir `CapteurS3.md` § 3).
-La liste exacte des composants dessinés sur le circuit imprimé est l'export EasyEDA `BOM_Capteur S3.xlsx`
+La liste exacte des composants dessinés sur le circuit imprimé est l'export EasyEDA `Capteur_S3_BOM.xlsx`
 (même dossier) ; cette page y ajoute ce qui n'est pas dessiné et ce qui est hors carte.
 
 ## 1. Sur le circuit imprimé
