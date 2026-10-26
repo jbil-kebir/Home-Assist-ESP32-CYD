@@ -97,6 +97,11 @@ public:
   const unsigned int DEFAULT_SLEEP_DURATIONM_SEC = 350;   // 5 minutes par défaut  
   const unsigned int DEFAULT_SLEEP_DURATIONL_SEC = 600;   // 10 minutes par défaut  
   const unsigned int DEFAULT_WAKE_DURATION_SEC = 20;   // 20 secondes par défaut  
+  // Bornes acceptées par setParam() (commande SET, page Web)
+  const unsigned long SLEEP_DURATION_MIN_SEC = 1;
+  const unsigned long SLEEP_DURATION_MAX_SEC = 86400;  // 24 h
+  const unsigned long WAKE_DURATION_MIN_SEC = 1;
+  const unsigned long WAKE_DURATION_MAX_SEC = 3600;    // 1 h
   unsigned int mulSleepDuration = DEFAULT_SLEEP_DURATION_SEC;  // Durée deep-sleep
   // Trois valeurs qui peuvent paramétrées en appelant un mot clé SLEEPS, SLEEPM ou SLEEPL suivi de la durée en secondes. Par exemple SLEEEPS 60 pour 1 minute de sommeil
   // Pour les invoquer, il suffit de faire home/confthmesure/command SLEEPL par exemple 
@@ -161,6 +166,9 @@ public:
   int parseSleepCommand(const String& msg);
   int parseSleepCommandSML(const String& msg);
   int  handleMqttCommand(const String& payload);
+  int  setParam(const String& cle, const String& valeur);  // Paramètre modifiable à distance (SET) ou par la page Web
+  String getParams() const;                                // « cle:valeur ... » de tous les paramètres modifiables
+  void envoieConfig(const String& sErreurs = "");          // Réponse aux commandes GET / SET (MQTT et LoRa)
   void setSleepIntervalle(unsigned long st);
   void setWakeIntervalle(unsigned long st);
   void setDeepSleep(bool active);

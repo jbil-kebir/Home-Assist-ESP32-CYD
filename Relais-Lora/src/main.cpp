@@ -8,6 +8,7 @@
 #include "MyWebServer.h"
 #include "MyDateTime.h"
 #include "MyLoraRxTx.h"
+#include "FileCommandes.h"
 
 
 // === OBJETS GLOBAUX ===
@@ -21,6 +22,7 @@ CMyDateTime mDateTime;
 
 SX1262 radio = new Module(LORA_CS_PIN, LORA_DIO1_PIN, LORA_RESET_PIN, LORA_BUSY_PIN);
 CMyLoraRxTx mLoraRxTx(config, radio);
+CFileCommandes mFileCommandes;
 
 void print();
 
@@ -49,6 +51,13 @@ void setup() {
   mLoraRxTx.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
       return mqtt.publish(topic, payload);
   });
+  mFileCommandes.onLoraPublish = [](const char* topic, const char* payload) -> int {
+      return mLoraRxTx.sendPacket(topic, payload);
+  };
+  mFileCommandes.onMqttPublish = [](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
+  };
+  config.mFileCommandes = &mFileCommandes;
   /*ret = radio.startReceive();
   if (ret == RADIOLIB_ERR_NONE) {
     Serial.println(F("success!"));
@@ -128,6 +137,7 @@ void setup() {
   #endif
 
   config.traiteReveil();
+  mFileCommandes.topicEtatRelais = config.topic_config_state;
 
   // On signale que nous venons 
   // d'accéder au réseau pour recevoir l'état des appareils
@@ -156,6 +166,7 @@ void loop() {
   
 
   int retRCS = mLoraRxTx.loop(); // On écoute sur la fréquence Lora
+  mFileCommandes.loop();          // Commandes de config en attente pour les capteurs LoRa
 
   // Envoi périodique aléatoire de l'ACK (5 à 20 secondes)
   /*static unsigned long ulTimerAck = 0;

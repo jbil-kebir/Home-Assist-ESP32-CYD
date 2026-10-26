@@ -44,6 +44,9 @@ private:
   uint16_t muiPreambleLength = LORA_PREAMBLE_LENGTH;
   String mPendingMessage;
   bool mbPendingMessage = false;
+  // Paquet reçu mais pas encore traité par loop() au moment d'une émission : mis de côté (sinon perdu)
+  String mReceptionEnAttente;
+  bool mbReceptionEnAttente = false;
 
 public:
   CMyLoraRxTx(CConfig& cfg/*, SX1262& radio*/);

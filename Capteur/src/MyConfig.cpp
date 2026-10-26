@@ -540,14 +540,10 @@ void CConfig::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"nom").c_str())) nomEquipement = server.arg((mPrefixNVS+"nom").c_str());
   if (server.hasArg((mPrefixNVS+"domo_pref").c_str())) domotique_prefix = server.arg((mPrefixNVS+"domo_pref").c_str());
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
-  if (server.hasArg((mPrefixNVS+"sleepA").c_str())) mbDeepSleepActive = true; else mbDeepSleepActive = false;
-  if (server.hasArg((mPrefixNVS+"sleepI").c_str())) mulSleepDuration = server.arg((mPrefixNVS+"sleepI")).toInt();
-  if (server.hasArg((mPrefixNVS+"sleepI").c_str())) mulSleepDuration = server.arg((mPrefixNVS+"sleepI")).toInt();
-  if (server.hasArg((mPrefixNVS+"sleepI").c_str())) mulSleepDuration = server.arg((mPrefixNVS+"sleepI")).toInt();
-  if (server.hasArg((mPrefixNVS+"sleepS").c_str())) mulSleepDurationS = server.arg((mPrefixNVS+"sleepS")).toInt();
-  if (server.hasArg((mPrefixNVS+"sleepM").c_str())) mulSleepDurationM = server.arg((mPrefixNVS+"sleepM")).toInt();
-  if (server.hasArg((mPrefixNVS+"sleepL").c_str())) mulSleepDurationL = server.arg((mPrefixNVS+"sleepL")).toInt();
-  if (server.hasArg((mPrefixNVS+"wakeI").c_str())) mulWakeDuration = server.arg((mPrefixNVS+"wakeI")).toInt();
+  // Paramètres du deep sleep : mêmes contrôles que la commande SET (setParam)
+  setParam("sleepA", server.hasArg((mPrefixNVS+"sleepA").c_str()) ? "1" : "0");
+  for (const char* cle : {"sleepI", "sleepS", "sleepM", "sleepL", "wakeI"})
+    if (server.hasArg((mPrefixNVS+cle).c_str())) setParam(cle, server.arg((mPrefixNVS+cle).c_str()));
   if (server.hasArg((mPrefixNVS+"wdogA").c_str())) mbWatchdogActive = true; else mbWatchdogActive = false;
   if (server.hasArg((mPrefixNVS+"wdogP").c_str())) mulWatchdogPeriod = server.arg((mPrefixNVS+"wdogP")).toInt();
   mbJournalSauvegarde = server.hasArg((mPrefixNVS+"jrnSv").c_str());
@@ -783,12 +779,89 @@ int CConfig::handleMqttCommand(const String& payload) {
     Serial.println("CConfig::handleMqttCommand - Commande WDOG détectée : " + cmd); Serial.flush();
     parseWdogCommand(cmd);
   }
+  else if (cmd == "GET") {
+    envoieConfig();
+  }
+  else if (cmd.startsWith("SET ")) {
+    // SET cle valeur [cle valeur ...] : paramètres invalides ignorés et signalés dans la réponse
+    String sErreurs;
+    String reste = payload; reste.trim(); reste = reste.substring(4); reste.trim();
+    while (reste.length() > 0) {
+      int i = reste.indexOf(' ');
+      String cle = (i < 0) ? reste : reste.substring(0, i);
+      reste = (i < 0) ? "" : reste.substring(i + 1); reste.trim();
+      i = reste.indexOf(' ');
+      String valeur = (i < 0) ? reste : reste.substring(0, i);
+      reste = (i < 0) ? "" : reste.substring(i + 1); reste.trim();
+      if (setParam(cle, valeur) != 0) sErreurs += (sErreurs.length() ? " " : "") + cle + ":" + valeur;
+    }
+    saveToNVS();
+    envoieConfig(sErreurs);
+    if (sErreurs.length() > 0) ret = -2;
+  }
   else {
     Serial.println("CConfig::handleMqttCommand - Commande inconnue : " + cmd); Serial.flush();
     ret = -1; // Commande inconnue
   }
 
   return ret;
+}
+
+//
+// Paramètre modifiable à distance (SET cle valeur) ou par la page Web. Nom de clé = nom NVS (casse indifférente).
+// Seulement des paramètres sans risque : une broche ou un identifiant faux rendrait le capteur injoignable.
+// Retour
+//  0 : paramètre modifié (en RAM ; saveToNVS() à la charge de l'appelant)
+// -1 : clé inconnue
+// -2 : valeur invalide ou hors bornes
+//
+int CConfig::setParam(const String& cle, const String& valeur) {
+  String c = cle; c.toUpperCase();
+  String v = valeur; v.trim();
+  bool bNombre = v.length() > 0;
+  for (char ch : v) if (!isdigit(ch)) bNombre = false;
+  unsigned long ul = bNombre ? strtoul(v.c_str(), nullptr, 10) : 0;
+  bool bDuree = bNombre && ul >= SLEEP_DURATION_MIN_SEC && ul <= SLEEP_DURATION_MAX_SEC;
+
+  if (c == "SLEEPA") {
+    if (v != "0" && v != "1") return -2;
+    mbDeepSleepActive = (v == "1");
+  }
+  else if (c == "SLEEPI") { if (!bDuree) return -2; mulSleepDuration = ul; }
+  else if (c == "SLEEPS") { if (!bDuree) return -2; mulSleepDurationS = ul; }
+  else if (c == "SLEEPM") { if (!bDuree) return -2; mulSleepDurationM = ul; }
+  else if (c == "SLEEPL") { if (!bDuree) return -2; mulSleepDurationL = ul; }
+  else if (c == "WAKEI") {
+    if (!bNombre || ul < WAKE_DURATION_MIN_SEC || ul > WAKE_DURATION_MAX_SEC) return -2;
+    mulWakeDuration = ul;
+  }
+  else return -1;
+  Serial.println("CConfig::setParam() - " + cle + " = " + v);
+  return 0;
+}
+
+// Séparateur « : » : Relais-Lora refuse un '=' dans une trame
+String CConfig::getParams() const {
+  return "sleepA:" + String(mbDeepSleepActive ? 1 : 0) +
+         " sleepI:" + String(mulSleepDuration) +
+         " sleepS:" + String(mulSleepDurationS) +
+         " sleepM:" + String(mulSleepDurationM) +
+         " sleepL:" + String(mulSleepDurationL) +
+         " wakeI:" + String(mulWakeDuration);
+}
+
+// « <nom> CONFIG <paramètres> [ERREUR <cle:valeur ...>] » sur topic_config_state, par MQTT et par LoRa.
+// Une trame LoRa fait au plus 255 octets : à découper en plusieurs trames si la liste des paramètres s'allonge.
+void CConfig::envoieConfig(const String& sErreurs) {
+  String sMsg = nomEquipement + " CONFIG " + getParams();
+  if (sErreurs.length() > 0) sMsg += " ERREUR " + sErreurs;
+  Serial.println("CConfig::envoieConfig() - " + sMsg);
+  if (onMqttPublish != nullptr)
+    onMqttPublish(topic_config_state.c_str(), sMsg.c_str());
+  #ifdef _LORA_P2P_MODE_
+  if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized())
+    mLoraRxTx->sendPacket((topic_config_state + " " + sMsg).c_str());
+  #endif
 }
 
 //

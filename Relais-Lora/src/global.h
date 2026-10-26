@@ -49,6 +49,16 @@
 
 #define START_STOP "==========" // A retirer du début et de la fin des messages reçus avant réexpédition par MQTT
 
+// File d'attente des commandes de config vers les capteurs LoRa (FileCommandes.cpp)
+// { topic de config, suffixe des noms d'équipement du capteur }
+#define FILE_CMD_CAPTEURS { \
+  { "home/confthremise/command", "Remise" }, \
+  { "home/confthnomade/command", "Nomade" } }
+#define FILE_CMD_NB_MAX_CAPTEURS    8
+#define FILE_CMD_SILENCE_MS         300   // Silence après la dernière trame du capteur avant d'envoyer (il écoute 1 s)
+#define FILE_CMD_NOUVEAU_REVEIL_MS  5000  // Silence au-delà duquel une trame marque un nouveau réveil
+#define FILE_CMD_MAX_ENVOIS         10    // Réveils sans accusé avant abandon
+
 
 // Espace de nom pour l'enregistrement NVS
 #define NVS_NAME_SPACE "RelaisLora"

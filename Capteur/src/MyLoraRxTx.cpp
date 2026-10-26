@@ -279,16 +279,29 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
   if (topic == mConfig->topic_config_command) {
     Serial.println("int CMyLoraRxTx::handleIncommingLoraP2PMessage() - Commande configuration reçue : " + payload);
     mConfig->handleMqttCommand(payload);
+    // Accusé de réception : Relais-Lora le publie sur MQTT et retire la commande de sa file d'attente
+    if (payload.length() > 0) {
+      String sAccuse = mConfig->nomEquipement + " COMMANDE reçue à " + String(millis()) + " ms : " + payload +
+                       " (deep sleep : " + (mConfig->mbDeepSleepActive ? "ACTIF" : "INACTIF") + ")";
+      sendPacket((mConfig->topic_config_state + " " + sAccuse).c_str());
+    }
     if (payloadUpper == "STATUS") {
-      String statusMsg = "=== ÉTAT "+ String(mConfig->nomEquipement) +" ===\n";
-      String sDate = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getDate() : "DATE";
-      String sTime = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getTime() : "TIME";
-      statusMsg += sDate + " " + sTime + "\n";
+      // Une seule ligne et aucun '=' : Relais-Lora refuse un '=' entre les bordures START_STOP.
+      // Sans heure valide (LoRa seul), les jetons DATE et TIME sont remplacés par le relais.
+      String sDate = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getDate() : "Erreur";
+      String sTime = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getTime() : "Erreur";
+      if (sDate.startsWith("Erreur")) sDate = "DATE";
+      if (sTime.startsWith("Erreur")) sTime = "TIME";
+      String statusMsg = String(mConfig->nomEquipement) + " ETAT " + sDate + " " + sTime;
       if (WiFi.status() == WL_CONNECTED) { // On peut être en Lora et avoir une adresse IP (voir commutateur _WIFI_MODE_ dans global.h)
-        statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
+        statusMsg += " | IP : " + WiFi.localIP().toString();
       }
-      statusMsg += mConfig->getWatchdogStatus();
-      statusMsg += "Uptime : " + String(millis() / 1000) + "s";
+      String sWdog = mConfig->getWatchdogStatus();
+      sWdog.trim();
+      sWdog.replace("\n", " | ");
+      sWdog.replace("   ", " ");
+      statusMsg += " | " + sWdog;
+      statusMsg += " | Uptime : " + String(millis() / 1000) + "s";
 
       sendPacket((mConfig->topic_config_state + " " + statusMsg).c_str());
       Serial.println("STATUS publié sur " + mConfig->topic_config_state);
@@ -388,8 +401,14 @@ int CMyLoraRxTx::loop() {
 
       ret = handleIncommingLoraP2PMessage(received);
 
-      startRx();
+      // Le traitement a pu émettre (accusé, STATUS) : startRx() couperait l'émission
+      if (currentMode == MODE_RX) startRx();
     }
+  }
+  if (mbReceptionEnAttente) {
+    mbReceptionEnAttente = false;
+    Serial.printf("int CMyLoraRxTx::loop() - Reçu (mis de côté) : %s\n", mReceptionEnAttente.c_str());
+    ret = handleIncommingLoraP2PMessage(mReceptionEnAttente);
   }
   /*if (operationDone) {
     operationDone = false;
@@ -460,6 +479,15 @@ int CMyLoraRxTx::sendPacket(const char* message) {
   }
   sToSend += START_STOP; // pour marquer la fin du message (utile pour le parsing côté réception)
 
+  if (currentMode == MODE_RX && operationDone) {
+    // Paquet reçu pas encore traité par loop() : l'émission remettrait operationDone à false et il serait perdu
+    operationDone = false;
+    String received;
+    if (radio.readData(received) == RADIOLIB_ERR_NONE) {
+      mReceptionEnAttente = received;
+      mbReceptionEnAttente = true;
+    }
+  }
   if (currentMode == MODE_TX) {
     // Attendre la fin du TX en cours (max 2 secondes) pour ne pas écraser le message précédent
     unsigned long tWait = millis();

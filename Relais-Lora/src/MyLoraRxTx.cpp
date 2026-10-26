@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include "MyConfig.h"
 #include "MyLoraRxTx.h"
+#include "FileCommandes.h"
 
 // this file contains binary patch for the SX1262
 //#include <modules/SX126x/patches/SX126x_patch_scan.h>
@@ -227,6 +228,10 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
     Serial.printf("handleIncommingLoraP2PMessage() - %s : %s\n", msg.topic.c_str(), mqttMsg.c_str());
     onMqttPublish(msg.topic.c_str(), mqttMsg.c_str());
   }
+
+  // Le capteur est éveillé : la file d'attente peut lui envoyer sa commande de config
+  if (mConfig->mFileCommandes != nullptr && msg.fields.size() > 0)
+    mConfig->mFileCommandes->noteTrame(msg.topic, msg.fields[0], mqttMsg);
 
   return nb;
 }

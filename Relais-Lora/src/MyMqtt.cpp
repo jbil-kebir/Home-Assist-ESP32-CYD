@@ -3,6 +3,7 @@
 #include <PubSubClient.h>
 #include "global.h"
 #include "MyConfig.h"
+#include "FileCommandes.h"
 #include "MyWifi.h"
 #include "MyMqtt.h"
 
@@ -50,8 +51,13 @@ void CMqtt::reconnect() {
 //      client.subscribe(mConfig.chaudiere->mqttSubTopicCommand.c_str());
       Serial.println("Abonnement à " + mConfig.topic_config_command);
       client.subscribe(mConfig.topic_config_command.c_str()); //, 1);
-      Serial.println("Abonnement à " + String("home/confthremise/command"));
-      client.subscribe("home/confthremise/command"); //, 1);
+      // Topics de config des capteurs LoRa (file d'attente, voir FILE_CMD_CAPTEURS dans global.h)
+      if (mConfig.mFileCommandes != nullptr) {
+        for (int i = 0; i < mConfig.mFileCommandes->nbCapteurs(); i++) {
+          Serial.println("Abonnement à " + String(mConfig.mFileCommandes->topicConfig(i)));
+          client.subscribe(mConfig.mFileCommandes->topicConfig(i));
+        }
+      }
       Serial.println("Abonnement à " + String("home/thermometre/command"));
       client.subscribe("home/thermometre/command"); //, 1);
       // Ajouter ici tous les équipements relayés par Lora
@@ -138,8 +144,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       
     }
   }
-  else if (String(topic) == "home/confthremise/command") {
-    mConfig.onLoraPublish("home/confthremise/command", messageOrg.c_str());
+  else if (mConfig.mFileCommandes != nullptr && mConfig.mFileCommandes->estTopicConfig(String(topic))) {
+    // Le capteur dort sans doute : la commande lui sera envoyée à son prochain réveil
+    mConfig.mFileCommandes->memorise(String(topic), messageOrg);
   }
   else {
     Serial.printf("CMqtt::callback() - Topic non traité ***%s*** : \n", topic);

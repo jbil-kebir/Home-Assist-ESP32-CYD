@@ -9,6 +9,7 @@
 #include "MyDateTime.h"
 
 class CWifi;
+class CFileCommandes;
 
 #define CONFIG_SUB_TOPIC "configuration/"
 #define CONFIG_SUB_TOPIC_MAITRE "configuration/"
@@ -29,6 +30,7 @@ public:
   CWifi  *mWifi=nullptr;
 
   CMyDateTime *mDateTime=nullptr;
+  CFileCommandes *mFileCommandes=nullptr; // File d'attente des commandes de config vers les capteurs LoRa
   String mPrefixNVS = "cfg_";  // Préfixe par défaut
 
   // === PRÉFIXE DOMOTIQUE (pour projecteur, guirlande, sdb) ===
