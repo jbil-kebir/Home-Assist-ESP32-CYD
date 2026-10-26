@@ -47,7 +47,7 @@ Schéma de principe des ajouts (le reste est celui de la carte chaudière) :
           |                                             C3 10 µF --+      |         +-- C4 1 µF
          GND                                                       |     GND        +-- C5 470 µF
                                                                    |
-                                          R2 200 k                 |
+                                          R2 220 k                 |
                                VMES <----/\/\/------------ VSW ----+
                      (D1, GPIO2)  |
                                   +--- R3 100 k --- GND
@@ -75,7 +75,7 @@ Repères communs aux variantes sur piles :
 - **U1 MCP1700 (TO-92)** : face plate vers soi, pattes en bas : 1 GND, 2 IN, 3 OUT.
 - **Électrolytiques** : `+` côté VSW pour C3, côté 3V3 pour C2 et C5.
 - **DHT20** : broches du module **+ − SCL SDA** = J1 1 à 4 ; sur le dessin, elles se lisent de bas en haut.
-- **Pont R2 / R3** pris sur VSW, après l'interrupteur ; calibre 3,0.
+- **Pont R2 / R3** pris sur VSW, après l'interrupteur ; calibre 3,2 (ajuster au multimètre, 3,2 à 3,3 selon les tolérances).
 - **5V** du XIAO jamais relié aux piles ; **interrupteur sur arrêt avant de brancher l'USB**.
 - **Wio-SX1262** : monté au dos du XIAO (connecteur), non dessiné ; il utilise D8, D9, D10 (SPI) : ne rien y câbler.
 
@@ -88,7 +88,7 @@ Repères communs aux variantes sur piles :
 > |---|---|---|
 > | SDA (DHT20, TCS34725) | 5 | D4 |
 > | SCL (DHT20, TCS34725) | 6 | D5 |
-> | Mesure des piles (+ calibre 3,0) | 2 | D1 |
+> | Mesure des piles (+ calibre 3,2) | 2 | D1 |
 > | Flotteur | 1 | D0 |
 > | LED témoin chaudière | 44 | D7 |
 
@@ -123,7 +123,7 @@ toutes les masses au même GND.
    D2 1N5819   J4 inter                   VSW
   +---->|-------o/ o----+---------+-----------------+
   |                     |         | 2 IN            |             XIAO ESP32-S3 (vu de dessus)
- (+)                C3 10 µF +---------+        R2 200 k              +---[ USB-C ]---+
+ (+)                C3 10 µF +---------+        R2 220 k              +---[ USB-C ]---+
 PILES                   |    | U1      |-(1)-- GND  |           D0  1 | o           o | 14  5V
 4 AA                   GND   | MCP1700 |      VMES  +---------- D1  2 | o           o | 13  GND --- GND
  (-)                         | 3302E   |            |           D2  3 | o           o | 12  3V3 --------+
@@ -161,7 +161,7 @@ Pattes libres : D0, D2, D3, D6, D7, 5V ; D8, D9, D10 réservées au Wio-SX1262.
    D2 1N5819   J4 inter    vers flotteur  VSW           |   |                                           |
   +---->|-------o/ o----+---------+-----------------+  GND  |                                           |
   |                     |         | 2 IN            |       |     XIAO ESP32-S3 (vu de dessus)          |
- (+)                C3 10 µF +---------+        R2 200 k    |         +---[ USB-C ]---+                 |
+ (+)                C3 10 µF +---------+        R2 220 k    |         +---[ USB-C ]---+                 |
 PILES                   |    | U1      |-(1)-- GND  |       +-- D0  1 | o           o | 14  5V          |
 4 AA                   GND   | MCP1700 |      VMES  +---------- D1  2 | o           o | 13  GND --- GND |
  (-)                         | 3302E   |            |           D2  3 | o           o | 12  3V3 --------+
@@ -237,7 +237,7 @@ Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
 | Régulateur | **MCP1700-3302E/TO** (stock de l'utilisateur), sortie **directement sur la broche 3V3** du XIAO ; un MCP1702-3302E/TO (même brochage, entrée 13,2 V) se monte aussi |
 | Protection | 1N5819 contre l'inversion des piles |
 | Interrupteur | **en paroi**, sur fil, relié à J4 (coupe franche des piles) |
-| Mesure des piles | pont **200 k / 100 k** + 100 nF, pris **après l'interrupteur** (aucune consommation à l'arrêt) |
+| Mesure des piles | pont **220 k / 100 k** + 100 nF, pris **après l'interrupteur** (aucune consommation à l'arrêt) |
 | Flotteur | **normalement ouvert, fermé = cuve pleine** ; fils de 50 cm sur bornier ; mesure toutes les 2 à 5 min ; rappel 10 k + filtre 1 k / 100 nF |
 | LED D1 | **non montée** dans la variante cuve |
 | Variantes | décrites **dans ce dossier seulement** (rien sur la sérigraphie) |
@@ -320,7 +320,7 @@ l'alimentation par piles suppose donc le deep sleep (réveil toutes les quelques
 | U1 | MCP1700-3302E (TO-92) | 1 GND → `GND` ; 2 IN → `VSW` ; 3 OUT → `3V3` |
 | C4 | céramique 1 µF 50 V (obligatoire pour la stabilité du MCP1700) | `3V3` → `GND` |
 | C5 | électrolytique 470 µF 10 V (réserve pour les pointes Wi-Fi) | + → `3V3` |
-| R2 | 200 kΩ | `VSW` → `VMES` |
+| R2 | 220 kΩ | `VSW` → `VMES` |
 | R3 | 100 kΩ | `VMES` → `GND` |
 | C6 | céramique 100 nF | `VMES` → `GND` |
 
@@ -332,8 +332,9 @@ Bilan : 25 composants, 12 réseaux ; netlist du schéma = PCB (57 liaisons).
   convertisseur du S3 (0–3,3 V à 11 dB). Consommation du pont : ≈ 20 µA, seulement interrupteur en marche.
   `VSW` = tension des piles moins la chute de D2 (≈ 0,2–0,3 V, variable avec le courant) : en tenir compte dans le seuil
   « piles déchargées » ou corriger le calibre.
-- **Calibre** à régler : 3,0 (pont 200 k / 100 k) au lieu de 4,3 par défaut dans le code (pont 330 k / 100 k) — par la
-  page Web (« Calibre ») ou en changeant `mDefaultCalibre` dans `MyBatterieAA.h`.
+- **Calibre** : 3,2 par défaut dans le code (pont 220 k / 100 k, `mDefaultCalibre` dans `MyBatterieAA.h`). Il est
+  enregistré en NVS : une configuration existante garde son ancien calibre (par exemple 4,3, ancien pont 330 k / 100 k),
+  à corriger par la page Web (« Calibre »). Ajuster ensuite au multimètre (ThRemise : 3,3).
 - **Flotteur** : rappel de 10 k vers 3V3 (le rappel interne du S3, ≈ 45 k, est faible pour 50 cm de fil) ; R5 1 k + C7
   100 nF filtrent les parasites captés par le fil (constante de temps 0,1 ms, sans effet sur une mesure toutes les
   minutes). Contact fermé (cuve pleine) : 0,33 mA dans R4. Le code (`INPUT_PULLUP`) inverse la lecture : il publie
@@ -407,7 +408,8 @@ recréés ; après redémarrage, les plans ont été recréés **une face à la 
 - [x] Export `.epro2`, vues 2D / 3D / PCB et PDF dans `pcb/Capteur S3/`.
 - [ ] Commit (procédure NAS de Pilotage_Maison, sans `global.h`).
 - [ ] Commande JLCPCB.
-- [ ] Code : calibre de la mesure des piles à 3,0 ; vérifier le sens de lecture du flotteur (1 = plein).
+- [x] Code : calibre par défaut de la mesure des piles à 3,2 (pont 220 k / 100 k).
+- [ ] Code : vérifier le sens de lecture du flotteur (1 = plein).
 - [ ] Essais : redémarrages en Wi-Fi continu sur piles (C5), tension des piles neuves sur `VSW` (< 6,0 V ?).
 - [ ] Boîtier imprimé : support 4 AA, interrupteur en paroi, passages de fils au bord haut.
 

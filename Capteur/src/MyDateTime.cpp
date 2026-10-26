@@ -5,7 +5,7 @@
 // Fonction pour obtenir la date et l'heure en String
 String CMyDateTime::getDateTime() {
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
+  if (!getLocalTime(&timeinfo, 0)) { // 0 : sans attente (défaut 5 s, ×2 par message en LoRa seul, heure jamais synchronisée)
     return "Erreur: Temps non disponible";
   }
   
@@ -17,7 +17,7 @@ String CMyDateTime::getDateTime() {
 // Autres formats possibles
 String CMyDateTime::getDate() {
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
+  if (!getLocalTime(&timeinfo, 0)) {
     return "Erreur";
   }
   
@@ -28,7 +28,7 @@ String CMyDateTime::getDate() {
 
 String CMyDateTime::getTime() {
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
+  if (!getLocalTime(&timeinfo, 0)) {
     return "Erreur";
   }
   
@@ -40,7 +40,7 @@ String CMyDateTime::getTime() {
 // Format ISO 8601
 String CMyDateTime::getDateTimeISO() {
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
+  if (!getLocalTime(&timeinfo, 0)) {
     return "Erreur";
   }
   

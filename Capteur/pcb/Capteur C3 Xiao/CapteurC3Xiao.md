@@ -69,7 +69,7 @@ Schéma de principe des ajouts (identique à la carte S3, sauf les broches du XI
           |                                             C3 10 µF --+      |         +-- C4 1 µF
          GND                                                       |     GND        +-- C5 470 µF
                                                                    |
-                                          R2 200 k                 |
+                                          R2 220 k                 |
                                VMES <----/\/\/------------ VSW ----+
                      (D2, GPIO4)  |
                                   +--- R3 100 k --- GND
@@ -97,7 +97,7 @@ Repères communs aux variantes sur piles :
 - **U1 MCP1700 (TO-92)** : face plate vers soi, pattes en bas : 1 GND, 2 IN, 3 OUT.
 - **Électrolytiques** : `+` côté VSW pour C3, côté 3V3 pour C2 et C5.
 - **DHT20** : broches du module **+ − SCL SDA** = J1 1 à 4 ; sur le dessin, elles se lisent de bas en haut.
-- **Pont R2 / R3** pris sur VSW, après l'interrupteur ; calibre 3,0.
+- **Pont R2 / R3** pris sur VSW, après l'interrupteur ; calibre 3,2 (ajuster au multimètre, 3,2 à 3,3 selon les tolérances).
 - **5V** du XIAO jamais relié aux piles ; **interrupteur sur arrêt avant de brancher l'USB**.
 
 > **IMPORTANT — broches enregistrées en NVS.** Les broches (I2C, mesure des piles, flotteur, LED) sont enregistrées avec
@@ -110,7 +110,7 @@ Repères communs aux variantes sur piles :
 > |---|---|---|
 > | SDA (DHT20, TCS34725) | 6 | D4 |
 > | SCL (DHT20, TCS34725) | 7 | D5 |
-> | Mesure des piles (+ calibre 3,0) | 4 | D2 |
+> | Mesure des piles (+ calibre 3,2) | 4 | D2 |
 > | Flotteur | 3 | D1 |
 > | LED témoin chaudière | 20 | D7 |
 
@@ -145,7 +145,7 @@ toutes les masses au même GND.
    D2 1N5819   J4 inter                   VSW
   +---->|-------o/ o----+---------+-----------------+
   |                     |         | 2 IN            |             XIAO ESP32-C3 (vu de dessus)
- (+)                C3 10 µF +---------+        R2 200 k              +---[ USB-C ]---+
+ (+)                C3 10 µF +---------+        R2 220 k              +---[ USB-C ]---+
 PILES                   |    | U1      |-(1)-- GND  |           D0  1 | o           o | 14  5V
 4 AA                   GND   | MCP1700 |            |           D1  2 | o           o | 13  GND --- GND
  (-)                         | 3302E   |      VMES  +---------- D2  3 | o           o | 12  3V3 --------+
@@ -183,7 +183,7 @@ Pattes libres : D0, D1, D3, D6, D7, D8, D9, D10, 5V. **D0, D8, D9 sont des broch
    D2 1N5819   J4 inter    vers flotteur  VSW           |   |                                           |
   +---->|-------o/ o----+---------+-----------------+  GND  |                                           |
   |                     |         | 2 IN            |       |     XIAO ESP32-C3 (vu de dessus)          |
- (+)                C3 10 µF +---------+        R2 200 k    |         +---[ USB-C ]---+                 |
+ (+)                C3 10 µF +---------+        R2 220 k    |         +---[ USB-C ]---+                 |
 PILES                   |    | U1      |-(1)-- GND  |       |   D0  1 | o           o | 14  5V          |
 4 AA                   GND   | MCP1700 |            |       +-- D1  2 | o           o | 13  GND --- GND |
  (-)                         | 3302E   |      VMES  +---------- D2  3 | o           o | 12  3V3 --------+
@@ -261,7 +261,7 @@ Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
 | Régulateur | **MCP1700-3302E/TO**, sortie **directement sur la broche 3V3** du XIAO ; MCP1702-3302E/TO montable |
 | Protection | 1N5819 contre l'inversion des piles |
 | Interrupteur | **en paroi**, sur fil, relié à J4 |
-| Mesure des piles | pont **200 k / 100 k** + 100 nF, pris après l'interrupteur |
+| Mesure des piles | pont **220 k / 100 k** + 100 nF, pris après l'interrupteur |
 | Flotteur | **normalement ouvert, fermé = cuve pleine** ; fils de 50 cm ; rappel 10 k + filtre 1 k / 100 nF |
 | LED D1 | **non montée** dans la variante cuve |
 | Variantes | décrites **dans ce dossier seulement** |
@@ -332,7 +332,8 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
 
 - **Pont de mesure** : `VMES` = `VSW` / 3 → ≈ 2,0 V au maximum sur D2, dans la zone de mesure du C3 (0–2,5 V environ
   à 11 dB). `VSW` = tension des piles moins la chute de D2 (≈ 0,2–0,3 V).
-- **Calibre** à régler : 3,0 (pont 200 k / 100 k) au lieu de 4,3 par défaut — par la page Web (« Calibre »).
+- **Calibre** : 3,2 par défaut dans le code (pont 220 k / 100 k). Il est enregistré en NVS : une configuration existante
+  garde son ancien calibre (par exemple 4,3), à corriger par la page Web (« Calibre »). Ajuster ensuite au multimètre.
 - **Flotteur** : rappel de 10 k vers 3V3 ; R5 1 k + C7 100 nF filtrent les parasites du fil. Le code (`INPUT_PULLUP`)
   publie **1 = cuve pleine, 0 = pas pleine**. Sur D1 (GPIO3), l'état du flotteur au démarrage n'a pas d'effet.
 - **Largeurs de piste** : `3V3`, `VPIL+`, `VPIL`, `VSW` à 0,6 mm ; signaux à 0,4 mm ; plan `GND` sur les 2 faces.
@@ -370,7 +371,7 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
 - [x] Export `.epro2`, vues 2D / 3D / PCB et PDF dans `pcb/Capteur C3 Xiao/`.
 - [x] Commit du dossier de la carte (les modifications de code du § 1.2 ne sont pas commitées).
 - [ ] Commande JLCPCB.
-- [ ] Essais : démarrage avec cuve pleine, mesure des piles sur D2 (calibre 3,0), Wi-Fi à 19,5 dBm sur piles.
+- [ ] Essais : démarrage avec cuve pleine, mesure des piles sur D2 (calibre 3,2), Wi-Fi à 19,5 dBm sur piles.
 - [ ] Boîtier imprimé.
 
 ## 9. Pièces

@@ -51,6 +51,7 @@ public:
   int loop();
   void sleep(); // Via RadioLib pour deep-sleep;
   bool isInitialized() const { return mbInitialized; }
+  bool emissionEnCours() const; // Émission en cours ou message en attente : ne pas couper le module
   String getLastMessage() const { return msLastReceivedMessage; }
 
   // Callback MQTT (topic, payload) -> int

@@ -24,7 +24,7 @@ private:
   float mLastTension = -1.0;  // Valeur invalide par défaut
   float newTension = -2.0;  // Valeur invalide par défaut
   float mCalibre = 4.38; // Entre 4.35 et 4.45
-  float mDefaultCalibre = (200.0+100.0)/100.0; // Pont diviseur Vpiles -> 200 K (R2) --> GPIO --> 100 K (R3) --> GND
+  float mDefaultCalibre = (220.0+100.0)/100.0; // Pont diviseur Vpiles -> 220 K (R2) --> GPIO --> 100 K (R3) --> GND (pas de 200 K en stock)
   const char* default_domotique_topic_prefix = "home/";
   const char* nvs_namespace = NVS_NAME_SPACE;  // 
   String mPrefixNVS = "bt_";  // Préfixe par défaut

@@ -178,6 +178,17 @@ void CConfig::loop() {
       relanceMesuresNonRemontees();
     }
     bFinAnticipee = (ulDateToutRemonte != 0) && (millis() - ulDateToutRemonte >= DELAI_COMMANDES_APRES_REMONTEE_MS);
+    #elif defined(_LORA_P2P_MODE_)
+    // LoRa seul : fin d'éveil anticipée dès que toutes les mesures sont parties ET que la dernière émission est
+    // terminée (sinon mLoraRxTx->sleep() la couperait), puis DELAI_COMMANDES_APRES_REMONTEE_MS d'écoute
+    // pour les commandes relayées par Relais-Lora.
+    static unsigned long ulDateToutEmis = 0;
+    if (ulDateToutEmis == 0 && mLoraRxTx != nullptr && mLoraRxTx->isInitialized()
+        && mesuresToutesRemontees() && !mLoraRxTx->emissionEnCours()) {
+      ulDateToutEmis = millis();
+      gDiag.ulPub = ulDateToutEmis;
+    }
+    bFinAnticipee = (ulDateToutEmis != 0) && (millis() - ulDateToutEmis >= DELAI_COMMANDES_APRES_REMONTEE_MS);
     #endif
     if (!bFinAnticipee && millis() < mulWakeDuration*1000) {
       // Pas encore le temps de dormir
@@ -336,6 +347,21 @@ void CConfig::enterDeepSleep() {
   #endif
   #endif
 
+  #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+  // LoRa seul : DEEPSLEEP ON (durée d'éveil) envoyé par LoRa, relayé sur MQTT par Relais-Lora.
+  // On attend la fin de l'émission (2 s max) : mLoraRxTx->sleep() plus bas la couperait.
+  #ifdef CAPTEUR_DHT20
+  if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized() && dht20 != nullptr) {
+    mLoraRxTx->sendPacket((dht20->mqttSubTopicState + " " + sMqttMsg).c_str());
+    unsigned long ulDebutAttente = millis();
+    while (mLoraRxTx->emissionEnCours() && millis() - ulDebutAttente < 2000) {
+      mLoraRxTx->loop();
+      delay(5);
+    }
+  }
+  #endif
+  #endif
+
   // Plus de délai fixe : onMqttPowerDown() attend l'écho du broker (preuve que tout est arrivé)
 
   // Déconnexion MQTT propre : sinon le broker publie le testament (LWT) à chaque deep sleep.
@@ -385,7 +411,16 @@ void CConfig::enterDeepSleep() {
   pinMode(LORA_CS_PIN,    OUTPUT); digitalWrite(LORA_CS_PIN, HIGH); // CS haut = SX1262 non sélectionné sur bus SPI
   pinMode(LORA_DIO1_PIN,  INPUT_PULLDOWN);  // Pin d'interruption, plus nécessaire en sleep
   pinMode(LORA_BUSY_PIN,  INPUT_PULLDOWN);
-  pinMode(LORA_RESET_PIN, INPUT);           // Actif LOW → INPUT pour éviter reset involontaire
+  pinMode(LORA_RESET_PIN, OUTPUT); digitalWrite(LORA_RESET_PIN, HIGH); // Actif LOW → maintenu haut
+  // CS (41) et RESET (42) ne sont pas des broches RTC : sans maintien, elles flottent pendant le deep sleep.
+  // Un front descendant sur CS réveille le SX1262 (1,3 mA mesurés au lieu de ~60 µA). On fige leur état haut ;
+  // le maintien est levé au réveil (main.cpp, avant mLoraRxTx.setup()).
+  // RXEN (38, commutateur d'antenne / LNA) : maintenu bas, sinon le LNA reste alimenté
+  pinMode(LORA_DIO2_PIN, OUTPUT); digitalWrite(LORA_DIO2_PIN, LOW);
+  gpio_hold_en((gpio_num_t)LORA_CS_PIN);
+  gpio_hold_en((gpio_num_t)LORA_RESET_PIN);
+  gpio_hold_en((gpio_num_t)LORA_DIO2_PIN);
+  gpio_deep_sleep_hold_en();
   #endif
   #endif
 

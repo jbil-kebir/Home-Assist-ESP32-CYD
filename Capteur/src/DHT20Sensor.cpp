@@ -294,7 +294,7 @@ bool DHT20Sensor::publieParLoraP2P(bool force/*=false*/) {
     Serial.println("DHT20Sensor::publieParLoraP2P() Hum  : " + sValHum);
     if (onLoraP2PPublish != nullptr) {
       ret = (onLoraP2PPublish(sValTemp.c_str()) == 0);
-      delay(3000);
+      // Plus de delay(3000) ici : sendPacket() attend lui-même la fin de l'émission précédente (2 s max)
       ret = (onLoraP2PPublish(sValHum.c_str()) == 0);
     }
     else {
@@ -410,7 +410,21 @@ bool DHT20Sensor::read() {
     }
     //float temperature;
     //float humidity;
-    int status = dht.read();
+    // Équivalent de dht.read() sans sa règle « pas plus d'une lecture par seconde » : son compteur part de 0,
+    // donc toute lecture dans la 1re seconde après le boot était refusée (DHT20_ERROR_LASTREAD). En LoRa seul,
+    // la première mesure tombe avant 1 s → -127 publié. Le DHT20 demande seulement 100 ms après mise sous tension.
+    int status = dht.requestData();
+    if (status == 0) {
+      unsigned long ulDebut = millis();
+      while (dht.isMeasuring()) {
+        if (millis() - ulDebut >= 200) { status = DHT20_ERROR_READ_TIMEOUT; break; }
+        delay(5);
+      }
+      if (status == 0) {
+        status = dht.readData();
+        if (status >= 0) status = dht.convert();
+      }
+    }
     if (status == DHT20_OK) {
         newTempC = dht.getTemperature(); //Serial.printf("DHT20Sensor::read() newTempC : %.2f\n", newTempC);
         newHum   = dht.getHumidity();

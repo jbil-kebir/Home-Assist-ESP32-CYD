@@ -35,6 +35,10 @@ CMyLoraRxTx::CMyLoraRxTx(CConfig& cfg/*, SX1262& radio*/) : mConfig(&cfg)/*, mRa
   //mRadio = &
   };
 
+bool CMyLoraRxTx::emissionEnCours() const {
+  return (currentMode == MODE_TX) || mbPendingMessage;
+}
+
 void CMyLoraRxTx::sleep() {
   if (!mbInitialized) {
     Serial.println("[LoRa] sleep() ignoré : module non initialisé");
@@ -82,8 +86,13 @@ int CMyLoraRxTx::setup() {
         Serial.println(state);
         return -9;
       }*/
-      ret = 0; 
+      ret = 0;
       mbInitialized = true;
+      #if IS_ESP32_S3
+      // Kit XIAO S3 + Wio-SX1262 : GPIO38 (LORA_DIO2_PIN) commande le commutateur d'antenne / LNA de réception (RXEN).
+      // Non pilotée, elle flottait (LNA alimenté pendant le sommeil). RadioLib la met à 1 en RX, à 0 en TX et en sommeil.
+      radio.setRfSwitchPins(LORA_DIO2_PIN, RADIOLIB_NC);
+      #endif
       // Un seul callback pour TX done et RX done
       radio.setPacketSentAction(setFlag);
       radio.setPacketReceivedAction(setFlag);

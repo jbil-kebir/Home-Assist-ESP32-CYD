@@ -5,9 +5,9 @@
 #include "MyConfig.h"
 #ifdef _WIFI_MODE_
 #include "MyWifi.h"
+#include "Diagnostic.h" // gDiag sert aussi au Wi-Fi, même sans MQTT (__DESACTIVE_ENVOI_MQTT__)
 #ifndef __DESACTIVE_ENVOI_MQTT__
 #include "MyMqtt.h"
-#include "Diagnostic.h"
 #endif
 #include "MyWebServer.h"
 #endif
@@ -211,6 +211,12 @@ void setup() {
   config.setPrefixNVS("cfg_");
 
   #ifdef _LORA_P2P_MODE_
+  #if IS_ESP32_S3
+  // Lève le maintien de CS / RESET / RXEN posé avant le deep sleep (CConfig::enterDeepSleep()), sinon RadioLib ne peut plus les piloter
+  gpio_hold_dis((gpio_num_t)LORA_CS_PIN);
+  gpio_hold_dis((gpio_num_t)LORA_RESET_PIN);
+  gpio_hold_dis((gpio_num_t)LORA_DIO2_PIN);
+  #endif
   int ret = mLoraRxTx.setup();
   if (ret != 0) {
     Serial.println("Erreur init LoRa RX/TX : " + String(ret));
