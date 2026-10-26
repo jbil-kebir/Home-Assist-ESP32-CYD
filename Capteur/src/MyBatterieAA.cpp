@@ -95,8 +95,9 @@ bool CBatterieAA::publieParLoraP2P(bool force/*=false*/) {
 
 
 bool CBatterieAA::readTension() {
-  float raw = analogRead(mucPin);
-  float v_gpio = (raw / 4095.0f) * 3.3f;
+  // Tension sur la broche corrigée par l'étalonnage d'usine de la puce (eFuse) : raw / 4095 x 3,3 V
+  // donnait -12 % sur ESP32-C3 (ADC saturé vers 2,5 V, non linéaire). mCalibre = rapport du pont.
+  float v_gpio = analogReadMilliVolts(mucPin) / 1000.0f;
   newTension = v_gpio * mCalibre;
 
   return true;

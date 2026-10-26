@@ -1,0 +1,151 @@
+TESTS DEEP SLEEP — 25/10/2026
+=============================
+
+Capteur : ThChRDC (DHT20 + batterie), firmware Capteur, mode PRODUCTION.
+Mesures MQTT : enregistreur abonné à home/# (message REVEIL avec diagnostic
+« Préc : » du cycle précédent, message DEEPSLEEP ON avec « Durée éveil »).
+Réglages : sleepI 30 s (cycle d'environ 33 s), wakeI 30 s (durée MAX d'éveil).
+
+
+1. MONTAGE XIAO ESP32-C3
+------------------------
+4 piles AA -> MCP1700 -> 3V3 (sans diode 1N5819), DHT20 SDA 6 / SCL 7,
+pont batterie 200k/100k sur GPIO 4. Broker MQTT distant (51.77.244.19).
+ERREUR DE CÂBLAGE constatée le 26/10 : pont branché APRÈS le régulateur
+(il mesure le 3V3, pas les piles : affiche ~3,3 V en permanence).
+À recâbler : haut du pont sur le + des piles, AVANT le MCP1700
+(GPIO = Vpiles / 3 : 1,55 V avec 3 AA neuves, 2,07 V avec 4 AA neuves).
+
+Sommeil : 43 µA mesurés au multimètre, dont ~11 µA dans le pont diviseur
+(3,3 V / 300 kΩ, pont après le régulateur). Pont recâblé avant le
+régulateur : ~15 µA avec 3 AA neuves (4,65 V / 300 kΩ).
+Éveil   : 19 à 90 mA.
+
+
+2. DURÉE D'ÉVEIL PAR ÉTAPE (commits de la soirée)
+--------------------------------------------------
+| Version                                  | Wi-Fi  | Éveil  | Cycles ratés  |
+|------------------------------------------|--------|--------|---------------|
+| Départ (delay NTP 4 s + 2 s)             | 3,4 s  | 10,7 s | ~1 sur 3      |
+| 87e0509 : corrections MQTT, NTP sans     | 3,4 s  | 4,7 s  | 0 sur 10      |
+|   attente, écho avant sommeil            |        |        | (1 faux       |
+|                                          |        |        |  offline)     |
+| 21bb712 : attente Wi-Fi par pas de 20 ms | 1,3 s  | 2,6 s  | 0             |
+|   + IP fixe + canal mémorisé             | 1,0 s  | 2,35 s | 0 sur 9       |
+| Essai attente après publication 200 ms   | 1,0 s  | 1,6 s  | 12 faux       |
+|   (au lieu de 1 s) : ABANDONNÉ           |        |        | offline / 24  |
+| 4b96de6 : attente 1 s + accusé commandes | 1,0 s  | 2,4 s  | -             |
+
+Détail d'un cycle actuel (4b96de6) :
+  Démarrage + Wi-Fi (IP fixe, canal mémorisé)   1,0 s
+  MQTT + publications                           0,2 s
+  Attente fixe des commandes retained           1,0 s
+  Écho, déconnexion, mise en sommeil            0,3 s
+
+Causes des cycles ratés trouvées (avant 87e0509) :
+- publish() à 2 arguments renvoyait toujours 0 : une mesure non publiée était
+  considérée comme remontée -> sommeil sans envoi ;
+- fin des messages et DISCONNECT perdus à la coupure du Wi-Fi -> testament
+  « offline » ; corrigé par l'écho et l'attente de fermeture par le broker ;
+- CONNACK perdu : attente de 15 s du broker -> ramenée à 3 s.
+
+Commandes retained (SLEEP DISABLE) : reçues et appliquées au réveil
+(accusé « COMMANDE reçue à ~1,7 s »). Ne pas effacer le retained avant
+d'avoir reçu l'accusé.
+
+
+3. MONTAGE C3 SUPER MINI (même capteur, breadboard) — NON MESURÉ
+----------------------------------------------------------------
+La Super Mini a été remplacée par un XIAO avant la mesure. Sans objet :
+les cartes C3 Super Mini sont abandonnées (tout passe en XIAO ESP32-C3).
+
+
+3 bis. DEUXIÈME XIAO — ThCh1er (breadboard, 3 AA) — 26/10/2026
+--------------------------------------------------------------
+Firmware 4b96de6 en PRODUCTION, IP fixe + canal mémorisé cochés.
+Éveil : 2,35 à 2,4 s (9 cycles sur 9 complets, aucun brownout sur 3 AA),
+Wi-Fi connecté en 1,1 à 1,3 s. Identique à ThChRDC.
+
+Sommeil : 240 µA mesurés (contre 43 µA sur ThChRDC). Recherche de la cause :
+- pas de LED, câble USB débranché ;
+- pont, DHT20 débranchés : presque rien ne change ;
+- XIAO échangés entre les deux montages : la consommation reste sur le
+  montage -> pas le XIAO ;
+- condensateurs retirés : rien ne change ; autre breadboard : rien ne change ;
+- régulateurs échangés : CAUSE TROUVÉE = le régulateur de ce montage
+  (exemplaire défectueux ou contrefaçon). À écarter.
+Sommeil après remplacement du régulateur : 47 µA (pont AVANT le régulateur :
+~13 µA sous 4,0 V ; ThChRDC : 43 µA avec le pont après le régulateur, ~11 µA).
+Écart cohérent : sans le pont, les deux montages consomment ~32-34 µA.
+Tension réelle des 3 AA (multimètre) : 4,53 V ; le capteur affiche 4,0 V
+(-12 %). Causes trouvées :
+- pont monté avec 220 k au lieu de 200 k : rapport 3,2 (mesuré 4,53 / 1,39 =
+  3,26 avec la tolérance), alors que le calibre était à 3,0 ;
+- mesure faite pendant l'éveil : sous la charge Wi-Fi, les piles fléchissent
+  (GPIO4 : 1,39 V au repos, 1,30 à 1,36 V pendant l'éveil). Mesure sous charge
+  conservée : plus représentative de l'usure des piles.
+- MyBatterieAA calculait raw / 4095 x 3,3 V (ADC de l'ESP32-C3 non linéaire,
+  saturé vers 2,5 V) : remplacé par analogReadMilliVolts() (étalonnage
+  d'usine). Après correction, l'ADC lit juste (~1,33 V pendant l'éveil).
+- Calibre par défaut du code passé de 4,3 (ancien pont 330k/100k) à 3,0.
+Réglage ThCh1er : Calibre 3,2 (pont 220k/100k).
+
+IMPORTANT pour les PCB : sans le condensateur de 470 µF sur le 3V3, la carte
+redémarre (brownout) et n'atteint jamais le deep sleep. Le MCP1700 est
+limité à 250 mA : les pointes Wi-Fi au-delà sont fournies par ce
+condensateur. Garder >= 470 µF au plus près du module.
+
+
+4. ESTIMATION D'AUTONOMIE (XIAO, à affiner)
+-------------------------------------------
+Hypothèses : éveil 2,4 s à ~50 mA en moyenne, sommeil 43 µA.
+Cycle de 33 s (essai)     : ~3,7 mA moyen.
+Cycle de 10 min           : ~0,24 mA moyen -> 4 AA (~2500 mAh) : environ 1 an.
+(Valeurs à recalculer avec le courant moyen d'éveil réellement mesuré.)
+
+
+5. ALIMENTATION : 3 AA, 4 AA OU LiFePO4 ?
+-----------------------------------------
+Régulateur linéaire (MCP1700) : le courant d'entrée = le courant de sortie,
+la tension en trop est perdue en chaleur. Des piles en série donnent donc la
+même capacité en mAh (~2500 mAh), qu'il y en ait 3 ou 4 : la 4e pile n'ajoute
+que de la MARGE DE TENSION, qui permet de vider les piles plus à fond.
+
+ESP32-C3 : 3,0 à 3,6 V. MCP1700 : chute de 0,1 à 0,3 V pendant les pointes
+Wi-Fi, entrée 6,0 V maximum.
+
+| Piles alcalines        | 3 AA                  | 4 AA                     |
+|------------------------|-----------------------|--------------------------|
+| Neuves                 | 4,65 V                | 6,2 V : AU-DESSUS des    |
+|                        |                       | 6,0 V max du MCP1700     |
+| Arrêt (~3,2-3,3 V)     | ~1,1 V par pile       | ~0,8 V par pile          |
+| Capacité utilisée      | ~75 à 85 % (estimé)   | ~100 %                   |
+
+- 4 AA neuves dépassent la limite du MCP1700 : d'où la diode 1N5819 prévue
+  (-0,3 V). Le montage d'essai actuel, sans diode, est hors spécification
+  avec des piles neuves.
+- 3 AA : possible, SANS diode. Risque en fin de vie : brownout pendant les
+  pointes Wi-Fi (visible dans REVEIL : « Cause reset : BROWNOUT »).
+  Test proposé : bloc de 3 piles à moitié usées (~3,4 V à l'entrée).
+
+LiFePO4 (lithium fer phosphate, « LFP ») : accumulateur rechargeable.
+- Tension : 3,6 V chargé (redescend vite à 3,3 V), 3,3 à 3,2 V pendant
+  presque toute la décharge (courbe très plate), 2,8 à 3,0 V vide.
+  -> Branchement DIRECT sur le 3V3, SANS régulateur : pas de chute, pas de
+  courant perdu, presque toute la capacité utilisable.
+- Formats : 14500 (taille AA) 500-600 mAh ; 18650 1500-1800 mAh ;
+  26650 3000-3300 mAh.
+- Avantages : ~2000 cycles, chimie très sûre (pas d'emballement thermique),
+  faible autodécharge, tient le froid.
+- Précautions :
+  * chargeur LiFePO4 OBLIGATOIRE (fin de charge 3,6-3,65 V) ; un chargeur
+    Li-ion (4,2 V) abîme l'accu et détruirait l'ESP32 branché en direct ;
+  * une 14500 a la taille d'une AA mais fait 3,2 V : jamais dans un appareil
+    prévu pour des piles de 1,5 V ;
+  * niveau de charge difficile à estimer (tension presque constante) :
+    revoir les seuils CHARGEE / DECHARGEE de MyBatterieAA ;
+  * boîtier actuel prévu pour 4 AA : logement à redessiner.
+- Comparaison : 3 AA alcalines ~2000 mAh utilisables (jetables) ;
+  18650 LiFePO4 ~1500 mAh utilisables, rechargeable.
+  Avec l'éveil actuel (2,4 s) et un cycle de 10 min : 18650 LiFePO4 de
+  l'ordre de 8 à 9 mois (à confirmer avec le courant d'éveil mesuré).
