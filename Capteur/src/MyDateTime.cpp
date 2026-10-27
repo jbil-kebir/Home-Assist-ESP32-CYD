@@ -15,10 +15,11 @@ String CMyDateTime::getDateTime() {
 }
 
 // Autres formats possibles
+// Sans heure valide (LoRa seul) : jetons DATE / TIME, remplacés par la date et l'heure de Relais-Lora
 String CMyDateTime::getDate() {
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo, 0)) {
-    return "Erreur";
+    return "DATE";
   }
   
   char buffer[32];
@@ -29,7 +30,7 @@ String CMyDateTime::getDate() {
 String CMyDateTime::getTime() {
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo, 0)) {
-    return "Erreur";
+    return "TIME";
   }
   
   char buffer[32];

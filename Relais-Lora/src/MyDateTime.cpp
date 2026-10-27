@@ -49,7 +49,7 @@ String CMyDateTime::getDateTimeISO() {
 
 int CMyDateTime::setup() {
     int ret = 0;
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    configTzTime(tzFrance, ntpServer);
     // Attendre la synchronisation
     delay(4000);
 

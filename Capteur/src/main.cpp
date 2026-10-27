@@ -598,7 +598,7 @@ void loop() {
   #endif
 
   String sDate = "DATE";
-  String sHeure = "HEURE";
+  String sHeure = "TIME"; // Jeton remplacé par Relais-Lora
   #ifdef _WIFI_MODE_
   sDate = mDateTime.getDate();
   sHeure = mDateTime.getTime();

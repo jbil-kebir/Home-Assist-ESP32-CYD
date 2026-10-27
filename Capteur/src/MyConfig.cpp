@@ -273,7 +273,7 @@ void CConfig::enterDeepSleep() {
   delay(100);               // Sécurité
 
   String sDate = "DATE";
-  String sHeure = "HEURE";
+  String sHeure = "TIME"; // Jeton remplacé par Relais-Lora
   #ifdef __WIFI_MODE__
   if (mDateTime != nullptr) {
     sDate = mDateTime->getDate();
@@ -305,7 +305,7 @@ void CConfig::enterDeepSleep() {
   delay(100);               // Sécurité
 
   String sDate = "DATE";
-  String sHeure = "HEURE";
+  String sHeure = "TIME"; // Jeton remplacé par Relais-Lora
   #ifdef _WIFI_MODE_
   if (mDateTime != nullptr) {
     sDate = mDateTime->getDate();
@@ -783,16 +783,24 @@ int CConfig::handleMqttCommand(const String& payload) {
     envoieConfig();
   }
   else if (cmd.startsWith("SET ")) {
-    // SET cle valeur [cle valeur ...] : paramètres invalides ignorés et signalés dans la réponse
+    // SET cle valeur [cle valeur ...] ou SET cle:valeur [...] (format de la réponse CONFIG), mélange possible :
+    // paramètres invalides ignorés et signalés dans la réponse
     String sErreurs;
     String reste = payload; reste.trim(); reste = reste.substring(4); reste.trim();
     while (reste.length() > 0) {
       int i = reste.indexOf(' ');
       String cle = (i < 0) ? reste : reste.substring(0, i);
       reste = (i < 0) ? "" : reste.substring(i + 1); reste.trim();
-      i = reste.indexOf(' ');
-      String valeur = (i < 0) ? reste : reste.substring(0, i);
-      reste = (i < 0) ? "" : reste.substring(i + 1); reste.trim();
+      String valeur;
+      int p = cle.indexOf(':');
+      if (p >= 0) {
+        valeur = cle.substring(p + 1);
+        cle = cle.substring(0, p);
+      } else {
+        i = reste.indexOf(' ');
+        valeur = (i < 0) ? reste : reste.substring(0, i);
+        reste = (i < 0) ? "" : reste.substring(i + 1); reste.trim();
+      }
       if (setParam(cle, valeur) != 0) sErreurs += (sErreurs.length() ? " " : "") + cle + ":" + valeur;
     }
     saveToNVS();
