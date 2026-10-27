@@ -476,18 +476,8 @@ void setup() {
   #ifndef TEST_EMISSION_RCS
   // Nécessite wifi et mqtt
   config.traiteReveil();
-  #ifdef CAPTEUR_DS18B20
-  int retTemp = ds18b20.readAndPublish(true); // Force une première remontée
-  #endif
-  #ifdef CAPTEUR_BATTERIE
-  int retBatt = mBatterie.readAndPublish(true); // Force une première remontée
-  #endif
-  #ifdef CAPTEUR_DHT20
-  int retTempHum = dht20.readAndPublish(true, true); // Force une première remontée
-  #endif
-  #ifdef CAPTEUR_RGB_TCS34725
-  int retRGBLux = mCapteurRGB.readAndPublish(true, true); // Force une première remontée
-  #endif
+  // Plus de remontée forcée ici : le premier passage dans loop() de chaque capteur publie déjà
+  // (lastRead == 0), d'où des trames en double à chaque réveil.
   #endif // TEST_EMISSION_RCS
 
   #ifdef ACTIONNEUR_IR
