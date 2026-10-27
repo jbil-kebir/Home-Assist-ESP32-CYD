@@ -75,6 +75,12 @@ void CMqtt::reconnect() {
       //client.subscribe(mConfig.dht20->mqttSubTopicState.c_str(), 1);
       //Serial.println("Abonnement à : " + mConfig.dht20->mqttSubTopicState);
       #endif
+      #ifdef CAPTEUR_BATTERIE
+      if (mConfig.mBatterieAA != nullptr) {
+        client.subscribe(mConfig.mBatterieAA->mqttSubTopicCommand.c_str(), 1);
+        Serial.println("Abonnement à : " + mConfig.mBatterieAA->mqttSubTopicCommand);
+      }
+      #endif
       #ifdef CAPTEUR_MICRO_MAX4466
       if (mConfig.mMicro != nullptr) {
         client.subscribe(mConfig.mMicro->mqttSubTopicCommand.c_str(), 1);
@@ -189,6 +195,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   #ifdef FLOTTEUR_VERTICAL
   String sFlotteurEquipement = (mConfig.mFlotteurVertical != nullptr) ? mConfig.mFlotteurVertical->nomEquipement : ""; sFlotteurEquipement.toUpperCase();
   #endif
+  #ifdef CAPTEUR_BATTERIE
+  String sBatEquipement = (mConfig.mBatterieAA != nullptr) ? mConfig.mBatterieAA->nomEquipement : ""; sBatEquipement.toUpperCase();
+  #endif
 
   Serial.printf("[MQTT] void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
 
@@ -241,12 +250,23 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       if (mConfig.mFlotteurVertical != nullptr) mConfig.mFlotteurVertical->handleMqttCommand(messageOrg);
     }
     #endif
+    #ifdef CAPTEUR_BATTERIE
+    else if (sBatEquipement.length() > 0 && message.startsWith(sBatEquipement)) {
+      mConfig.mBatterieAA->handleMqttCommand(messageOrg);   // ex : « BatRemise MESURE »
+    }
+    #endif
     else {
       Serial.println("void CMqtt::callback() - Non traité " + String(topic) + " : " + message);
       // Traiter les autres commandes MQTT spécifiques à d'autres capteurs ou fonctions
     }
 
   } // if (String(topic) == "home/thermometre/command") {
+  #ifdef CAPTEUR_BATTERIE
+  // Topic de commande propre à la batterie (ex : home/batt/command, celui du CYD par défaut)
+  else if (mConfig.mBatterieAA != nullptr && String(topic) == mConfig.mBatterieAA->mqttSubTopicCommand) {
+    mConfig.mBatterieAA->handleMqttCommand(messageOrg);
+  }
+  #endif
   #ifdef CAPTEUR_MICRO_MAX4466
   else if (mConfig.mMicro != nullptr && String(topic) == mConfig.mMicro->mqttSubTopicCommand) {
     // Seules les commandes adressées au micro (ex : "<nom> MESURE") sont traitées, les autres sont ignorées

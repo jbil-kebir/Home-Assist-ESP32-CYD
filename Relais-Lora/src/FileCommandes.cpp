@@ -79,3 +79,18 @@ void CFileCommandes::loop() {
     if (onLoraPublish) onLoraPublish(mCapteurs[i].topicConfig, e.commande.c_str());
   }
 }
+
+// « <topic de config> : dernière trame il y a 12 s — en attente : SET sleepI 60 (envoi 1/10) », une ligne par capteur
+String CFileCommandes::getEtat() const {
+  String s;
+  for (int i = 0; i < NB_CAPTEURS; i++) {
+    const SEntree& e = mEntrees[i];
+    s += String(mCapteurs[i].topicConfig) + " : ";
+    if (!e.bDejaVu) s += "jamais vu";
+    else s += "dernière trame il y a " + String((millis() - e.ulDerniereTrame) / 1000) + " s";
+    if (e.commande.length() > 0)
+      s += " — en attente : " + e.commande + " (envoi " + String(e.nbEnvois) + "/" + String(FILE_CMD_MAX_ENVOIS) + ")";
+    s += "\n";
+  }
+  return s;
+}

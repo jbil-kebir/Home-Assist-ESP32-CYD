@@ -46,6 +46,7 @@ public:
   void memorise(const String& topicConfig, const String& commande);
   void noteTrame(const String& topic, const String& nomEquipement, const String& payload);
   void loop();
+  String getEtat() const;  // Une ligne par capteur (dernière trame, commande en attente) pour STATUS
 };
 
 #endif // __FILE_COMMANDES_H__

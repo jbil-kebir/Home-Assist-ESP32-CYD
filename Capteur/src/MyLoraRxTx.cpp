@@ -274,6 +274,9 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
   }
   String sFlotteurEquipement = mConfig->mFlotteurVertical->nomEquipement; sFlotteurEquipement.toUpperCase();
   #endif
+  #ifdef CAPTEUR_BATTERIE
+  String sBatEquipement = (mConfig->mBatterieAA != nullptr) ? mConfig->mBatterieAA->nomEquipement : ""; sBatEquipement.toUpperCase();
+  #endif
 
     // Commandes de configuration
   if (topic == mConfig->topic_config_command) {
@@ -332,6 +335,11 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
     else if (payloadUpper.startsWith(sFlotteurEquipement)) {
       mConfig->mFlotteurVertical->handleMqttCommand(payload);
     } 
+    #endif
+    #ifdef CAPTEUR_BATTERIE
+    else if (sBatEquipement.length() > 0 && payloadUpper.startsWith(sBatEquipement)) {
+      mConfig->mBatterieAA->handleMqttCommand(payload);   // ex : « BatRemise MESURE »
+    }
     #endif
     else {
       Serial.println("void CMyLoraRxTx::handleIncommingLoraP2PMessage() - Non traité " + topic + " : " + payload);

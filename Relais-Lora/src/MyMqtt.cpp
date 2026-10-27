@@ -115,6 +115,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       statusMsg += String(mConfig.mDateTime->getDate()) + " " + String(mConfig.mDateTime->getTime()) + "\n";
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
+      if (mConfig.mFileCommandes != nullptr) statusMsg += "\n" + mConfig.mFileCommandes->getEtat();
 
       client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
       Serial.println("STATUS publié sur " + mConfig.topic_config_state);

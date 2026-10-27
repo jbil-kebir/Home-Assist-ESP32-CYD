@@ -142,11 +142,12 @@ void CConfig::saveToNVS() {
   prefs.end();
 }
 
+// Pas de commande de configuration propre au relais pour l'instant : STATUS (avec l'état de la file d'attente
+// des capteurs LoRa) et REBOOT sont traités directement dans CMqtt::callback().
 void CConfig::handleMqttCommand(const String& payload) {
   String cmd = payload;
   cmd.toUpperCase();
   cmd.trim();
-      
 }
 
 void CConfig::loadFromWebServer (WebServer& server) {

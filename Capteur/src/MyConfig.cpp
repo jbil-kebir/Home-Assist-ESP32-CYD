@@ -705,6 +705,10 @@ int CConfig::parseSleepCommand(const String& msg) {
   s.trim();
   s.toUpperCase();
 
+  // SLEEPS / SLEEPM / SLEEPL [durée] sans le préfixe « SLEEP » (SLEEP SLEEPS reste accepté plus bas)
+  if (s.startsWith("SLEEPS") || s.startsWith("SLEEPM") || s.startsWith("SLEEPL"))
+    return parseSleepCommandSML(s);
+
   if (!s.startsWith("SLEEP")) {
     Serial.println("CConfig::parseSleepCommand() - Commande ne commence pas par SLEEP : "+s);
     return result;

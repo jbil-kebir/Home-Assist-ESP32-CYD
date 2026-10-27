@@ -101,7 +101,7 @@ doc.add_heading('Trames MQTT et LoRa — Pilotage Maison', 0)
 P('Inventaire des trames échangées en MQTT et en LoRa P2P entre les capteurs (firmware Capteur), '
   'le Relais-Lora, les CYD (Home-Assist), CydMonitor, l\'application Android et Home Assistant : '
   'syntaxe exacte, topics, et **liste exhaustive des commandes traitées** par chaque récepteur.')
-P('Mise à jour du 26/10/2026, établie par lecture des sources : Capteur/src, Relais-Lora/src, Home-Assist/src, '
+P('Mise à jour du 27/10/2026, établie par lecture des sources : Capteur/src, Relais-Lora/src, Home-Assist/src, '
   'CydMonitor/src, Home-Assist-App 1.2/lib, Doc/configuration.yaml et Doc/automations.yaml.')
 
 ENCADRE('⚠ Commandes destinées à un capteur endormi : retain = true, puis payload vide', [
@@ -121,10 +121,9 @@ ENCADRE('⚠ Commandes destinées à un capteur endormi : retain = true, puis pa
     '• Ne jamais retenir sur `home/thermometre/command` : ce topic est partagé par tous les capteurs, '
     'le broker ne garde qu\'UN message retenu par topic (le dernier écrase les autres), et un '
     '`FLOTTEURREMISE ACK` retenu acquitterait d\'avance toutes les remontées suivantes.',
-    '• En LoRa, le retain ne suffit pas aujourd\'hui : le Relais-Lora reçoit le message retenu à sa '
-    'propre (re)connexion et le réémet aussitôt par radio ; si le capteur dort, il est perdu. '
-    'Évolution prévue : le relais mémorise la dernière commande par capteur et la réémet juste après '
-    'avoir reçu une trame de ce capteur.',
+    '• Capteur LoRa : **pas de retain**. Le Relais-Lora met la commande en file d\'attente et la transmet '
+    'lui-même au réveil suivant du capteur, jusqu\'à l\'accusé (§ 2.5). Une commande retenue serait '
+    'remise en file à chaque reconnexion du relais, donc rejouée.',
     '• L\'automatisation HA « Cuve - SLEEP et ACK flotteur » publie actuellement avec retain: false, '
     'en réponse à une trame FlotteurRemise (donc capteur éveillé).',
 ])
@@ -137,7 +136,7 @@ T(['Paramètre', 'Valeur'], [
     ('Préfixe des topics', '`home/` (NVS « domo_pref » / « dom_pre »)'),
     ('Topics de configuration', '`home/<sous-topic>command` et `home/<sous-topic>state`, sous-topic en NVS : '
      '`configuration/` (CYD principal), `configaux/`, `configaux2/` (CYD auxiliaires), '
-     '`confthremise/`, `confthnomade/` (capteurs), `confrelaislora2/` (relais)'),
+     '`confthremise/`, `confthnomade/` (capteurs), `confrelaislora/` (relais, relevé sur le broker)'),
     ('QoS', 'Capteur : abonnements QoS 1. CYD, relais : QoS 0. Application : QoS 1 (atLeastOnce).'),
     ('Retain', 'Aucune publication des firmwares n\'est retenue (retain = false partout). '
      'Le retain n\'est utilisé que par l\'émetteur des commandes (voir encadré).'),
@@ -150,8 +149,9 @@ CODE('<NOM> <MESURE> [<ETAT>] <JJ/MM/AAAA> <HH:MM:SS> <VALEUR(S)> [FORCE] <IP>')
 B('`FORCE` : présent quand la mesure a été forcée (commande MESURE, relance, premier envoi après réveil).')
 B('`<IP>` : ajoutée en fin de trame par CMqtt::publish() du capteur Wi-Fi ; `0.0.0.0` quand la trame est '
   'arrivée par LoRa (ajoutée par le Relais-Lora si le dernier champ n\'est pas une IP).')
-B('Date / heure : `DATE` et `TIME` sont des jetons que le Relais-Lora remplace par sa propre date / heure. '
-  'Un capteur LoRa sans heure valide envoie actuellement `Erreur Erreur` (non substitué) — voir § 9.')
+B('Date / heure : l\'heure d\'un capteur n\'est jugée valide qu\'après une synchronisation NTP (conservée pendant '
+  'un deep sleep, oubliée à tout autre redémarrage). Sans elle (LoRa seul), le capteur envoie les jetons '
+  '`DATE` et `TIME`, que le Relais-Lora remplace par sa propre date / heure (heure d\'été / hiver automatique).')
 B('Suffixe `R` (TEMPR, HUMR, TENSIONR, ONOFFR, COULR, LUXR, DELR, INACTIFR) : '
   'état republié par le CYD principal pour synchroniser les CYD auxiliaires et l\'application.')
 
@@ -182,18 +182,35 @@ T(['Trame LoRa (exemple ThRemise)', 'Origine'], [
     ('`==========home/thermometre/state BatRemise Tension CHARGEE|DECHARGEE <date> <heure> 4.9 [FORCE]==========`', 'Batterie'),
     ('`==========home/thermometre/state FlotteurRemise OnOff <date> <heure> 0|1 [FORCE]==========`', 'Flotteur'),
     ('`==========home/thermometre/state <nom> ALIVE <date> <heure>==========` ou `… ALIVE UPTIME <s>`', 'Watchdog ALIVE (hors deep sleep)'),
-    ('`==========home/thermometre/state ThRemise DEEPSLEEP ON DATE HEURE <s> Durée éveil : <ms> ms==========`', 'Mise en sommeil (LoRa seul)'),
-    ('`==========home/confthremise/state === ÉTAT <nom> ===\\n<date> <heure>\\n[IP : …\\n]Wdog : …\\nUptime : <s>s==========`', 'Réponse à STATUS'),
+    ('`==========home/thermometre/state ThRemise DEEPSLEEP ON DATE TIME <s> Durée éveil : <ms> ms==========`', 'Mise en sommeil (LoRa seul)'),
+    ('`==========home/confthremise/state ThRemise COMMANDE reçue à <ms> ms : <commande> (deep sleep : ACTIF|INACTIF)==========`', 'Accusé de toute commande de configuration non vide'),
+    ('`==========home/confthremise/state ThRemise ETAT DATE TIME | [IP : <ip> | ]Wdog : … | Uptime : <s>s==========`', 'Réponse à STATUS (une ligne, sans « = »)'),
+    ('`==========home/confthremise/state ThRemise CONFIG sleepA:1 sleepI:30 … [ERREUR <cle:valeur> …]==========`', 'Réponse à GET / SET'),
 ])
+P('Une seule série de mesures par réveil (plus de doublons depuis le 27/10/2026).')
 H('2.4 Trames émises par le Relais-Lora vers les capteurs', 2)
 T(['Trame LoRa', 'Condition'], [
     ('`==========home/thermometre/command <payload>==========`',
      'Payload MQTT reçu sur `home/thermometre/command` commençant par THREMISE, BATREMISE, FLOTTEURREMISE, '
-     'THNOMADE, BATNOMADE, FLOTTEURNOMADE, THCAVE ou BATCAVE'),
-    ('`==========home/confthremise/command <payload>==========`', 'Tout payload reçu sur `home/confthremise/command`'),
+     'THNOMADE, BATNOMADE, FLOTTEURNOMADE, THCAVE ou BATCAVE : réémis **aussitôt**, sans file d\'attente '
+     '(arrive seulement si le capteur est éveillé)'),
+    ('`==========home/confthremise/command <payload>==========` (idem confthnomade)',
+     'Payload non vide reçu sur le topic de configuration d\'un capteur LoRa : transmis par la **file d\'attente** (§ 2.5)'),
 ])
 P('Les commandes que le capteur traite à réception sont celles du § 3.2, identiques en MQTT et en LoRa '
   '(sauf mention contraire).')
+H('2.5 File d\'attente des commandes de configuration (Relais-Lora)', 2)
+P('Un capteur LoRa dort presque tout le temps : le relais garde la **dernière** commande de configuration de chaque '
+  'capteur et la lui envoie quand il se manifeste.')
+B('Table des capteurs dans Relais-Lora/src/global.h (`FILE_CMD_CAPTEURS`) : `home/confthremise/command` ↔ noms finissant '
+  'par `Remise` (ThRemise, BatRemise, FlotteurRemise), `home/confthnomade/command` ↔ `Nomade`. Les abonnements en découlent.')
+B('Une nouvelle commande remplace la précédente. Un payload vide (effacement d\'un retained) est ignoré.')
+B('Envoi : **300 ms après la dernière trame** reçue du capteur (fin de sa rafale de mesures, pendant sa seconde d\'écoute) ; '
+  'jamais après sa trame `DEEPSLEEP ON`. Une trame après 5 s de silence marque un nouveau réveil.')
+B('Retrait : à réception de l\'accusé `<nom> COMMANDE reçue … : <commande> …` sur `home/<conf>/state`.')
+B('Abandon après **10 réveils** sans accusé, signalé sur `home/confrelaislora/state` : '
+  '`ABANDON commande <topic> : <commande> (10 réveils sans accusé)`.')
+B('Délai d\'application : jusqu\'au réveil suivant du capteur (30 s à 10 min selon l\'intervalle de sommeil).')
 
 # ────────────────────────────────────────────────────────────────────────────
 H('3. Capteurs (firmware Capteur)')
@@ -216,8 +233,9 @@ T(['Topic', 'Payload', 'Quand'], [
     ('`home/thermometre/state`', '`<nomConfig> DEEPSLEEP ON <date> <heure> <s> Durée éveil : <ms> ms <IP>`', 'Mise en sommeil'),
     ('`home/thermometre/state`', '`<nomConfig> online le <date> à <heure> <IP>`', 'Connexion MQTT (Wi-Fi)'),
     ('`home/<conf>/state`', '`<nomConfig> offline`', 'Testament (LWT), non retenu'),
-    ('`home/<conf>/state`', '`<nomConfig> COMMANDE reçue à <ms> ms : <commande> (deep sleep : ACTIF|INACTIF)`', 'Accusé de toute commande de configuration non vide (MQTT seulement)'),
-    ('`home/<conf>/state`', 'Rapport multiligne `=== ÉTAT <nom> ===` (date, IP, Wdog, Uptime)', 'Réponse à STATUS'),
+    ('`home/<conf>/state`', '`<nomConfig> COMMANDE reçue à <ms> ms : <commande> (deep sleep : ACTIF|INACTIF)`', 'Accusé de toute commande de configuration non vide (MQTT et LoRa)'),
+    ('`home/<conf>/state`', 'Rapport multiligne `=== ÉTAT <nom> ===` (date, IP, Wdog, Uptime) ; en LoRa : une ligne `<nom> ETAT …` (§ 2.3)', 'Réponse à STATUS'),
+    ('`home/<conf>/state`', '`<nomConfig> CONFIG sleepA:<0|1> sleepI:<s> sleepS:<s> sleepM:<s> sleepL:<s> wakeI:<s> [ERREUR <cle:valeur> …]`', 'Réponse à GET et à SET (MQTT et LoRa)'),
     ('`home/<conf>/state/echo`', '`<nomConfig>`', 'Écho interne avant coupure (le capteur s\'y abonne lui-même)'),
     ('`home/configuration/command`', '`NONCONFIGURE <modèle>-<fin MAC> [<date> <heure>] <IP>`', 'Puce neuve non configurée (toutes les 2 s puis 60 s)'),
 ])
@@ -229,36 +247,44 @@ T(['Topic', 'Commande', 'Effet', 'MQTT / LoRa'], [
     ('`home/<conf>/command` (ex. confthremise)', '`SLEEP ENABLE`', 'Active le deep sleep (NVS)', 'les deux'),
     ('', '`SLEEP DISABLE` ou `SLEEP -1`', 'Désactive le deep sleep', 'les deux'),
     ('', '`SLEEP <n>`', 'Intervalle de sommeil = n s, et active le deep sleep', 'les deux'),
-    ('', '`SLEEP SLEEPS` / `SLEEP SLEEPM` / `SLEEP SLEEPL`', 'Applique la durée Small / Medium / Large, et active le deep sleep', 'les deux'),
-    ('', '`SLEEP SLEEPS <n>` (idem M, L)', 'Règle la durée Small (Medium, Large) à n s, sans l\'appliquer', 'les deux'),
+    ('', '`SLEEPS` / `SLEEPM` / `SLEEPL` (ou `SLEEP SLEEPS` …)', 'Applique la durée Small / Medium / Large, et active le deep sleep', 'les deux'),
+    ('', '`SLEEPS <n>` ou `SLEEP SLEEPS <n>` (idem M, L)', 'Règle la durée Small (Medium, Large) à n s, sans l\'appliquer', 'les deux'),
+    ('', '`GET`', 'Publie la configuration modifiable à distance (réponse `CONFIG`, § 3.1)', 'les deux'),
+    ('', '`SET <cle> <valeur> […]` ou `SET <cle>:<valeur> […]`', 'Modifie un ou plusieurs paramètres, enregistre en NVS, répond `CONFIG` '
+     '(paramètres refusés listés après `ERREUR`). Clés (noms NVS, casse indifférente) : `sleepA` 0/1, `sleepI`, `sleepS`, '
+     '`sleepM`, `sleepL` (1 à 86 400 s), `wakeI` (1 à 3 600 s)', 'les deux'),
     ('', '`WDOG ENABLE` / `WDOG DISABLE`', 'Active / désactive le watchdog ALIVE', 'les deux'),
     ('', '`WDOG <s>`', 'Période ALIVE = s secondes (> 0), et active le watchdog', 'les deux'),
     ('', '`STATUS`', 'Publie le rapport d\'état sur `home/<conf>/state` (par LoRa si reçu par LoRa)', 'les deux'),
     ('', '`REBOOT`', 'Redémarre l\'ESP32', 'les deux'),
-    ('`home/thermometre/command`', '`<nomCapteur> MESURE`', 'Mesure immédiate et publication FORCE (DS18B20, DHT20, TCS34725, flotteur)', 'les deux'),
+    ('`home/thermometre/command`', '`<nomCapteur> MESURE`', 'Mesure immédiate et publication FORCE (DS18B20, DHT20, TCS34725, flotteur, batterie)', 'les deux'),
+    ('topic de commande de la batterie (ex. `home/batt/command`)', '`<nomBatterie> MESURE`', 'Idem pour la batterie (topic propre, celui du CYD par défaut)', 'MQTT'),
     ('', '`<nomFlotteur> ACK`', 'Acquitte la remontée du flotteur : nécessaire au coucher si l\'option « Acknoledge » est cochée (LoRa)', 'les deux'),
     ('', '`<nomCapteur> SLEEP <n>`', 'Analysée mais sans effet (utiliser le topic de configuration)', 'les deux'),
     ('`home/noeud/command` (sous-topic du micro)', '`<nomMicro> MESURE`', 'Publie l\'état OnOff du chauffage', 'MQTT'),
     ('', '`<nomMicro> ON` / `<nomMicro> OFF`', 'Allumage / extinction du chauffage par l\'actionneur IR (si ACTIONNEUR_IR)', 'MQTT'),
 ])
-P('Attention à la syntaxe : `SLEEPS` seul est refusé, il faut `SLEEP SLEEPS`. Les durées sont en secondes.')
+P('Les durées sont en secondes. En LoRa, les commandes de configuration passent par la file d\'attente du relais (§ 2.5) ; '
+  'celles de `home/thermometre/command` (MESURE, ACK) n\'arrivent que si le capteur est éveillé.')
 
 # ────────────────────────────────────────────────────────────────────────────
 H('4. Relais-Lora (passerelle MQTT ↔ LoRa)')
 H('4.1 Abonnements et commandes traitées (liste exhaustive)', 2)
 T(['Topic écouté', 'Commande / filtre', 'Effet'], [
-    ('`home/confrelaislora2/command`', '`STATUS`', 'Publie `=== ÉTAT <nom> ===\\n<date> <heure>\\nIP : <ip>\\nUptime : <s>s` sur `home/confrelaislora2/state`'),
+    ('`home/confrelaislora/command`', '`STATUS`', 'Publie `=== ÉTAT <nom> ===\\n<date> <heure>\\nIP : <ip>\\nUptime : <s>s` puis une ligne par capteur LoRa '
+     '`<topic de config> : dernière trame il y a <s> s|jamais vu [— en attente : <commande> (envoi <n>/10)]` sur `home/confrelaislora/state`'),
     ('', '`REBOOT`', 'Redémarre le relais'),
-    ('`home/thermometre/command`', 'Payload commençant par THREMISE, BATREMISE, FLOTTEURREMISE, THNOMADE, BATNOMADE, FLOTTEURNOMADE, THCAVE, BATCAVE', 'Réémis par LoRa (§ 2.4) ; autres payloads ignorés'),
-    ('`home/confthremise/command`', 'Tout payload', 'Réémis par LoRa (§ 2.4)'),
+    ('`home/thermometre/command`', 'Payload commençant par THREMISE, BATREMISE, FLOTTEURREMISE, THNOMADE, BATNOMADE, FLOTTEURNOMADE, THCAVE, BATCAVE', 'Réémis aussitôt par LoRa (§ 2.4) ; autres payloads ignorés'),
+    ('`home/confthremise/command`, `home/confthnomade/command`', 'Tout payload non vide', 'Mis en file d\'attente, transmis au réveil du capteur (§ 2.5)'),
     ('LoRa (réception)', 'Toute trame valide `==========<topic> <payload>==========`', 'Publiée sur MQTT `<topic>` avec DATE / TIME substitués et `0.0.0.0` ajouté'),
 ])
 H('4.2 Publications propres', 2)
 T(['Topic', 'Payload', 'Quand'], [
     ('`home/configuration/command` (topic du maître)', '`DEVICE RELAIS LORA <nom> <date> <heure>`', 'Démarrage'),
-    ('`home/confrelaislora2/state`', '`<nom> - Reconnect le <date> à <heure>`', 'Testament (LWT)'),
-    ('`home/confrelaislora2/state`', '`<nom> REVEIL OFF <date> <heure>` / `<nom> REVEIL DEEPSLEEP …`', 'Démarrage'),
-    ('`home/confrelaislora2/state`', 'Rapport STATUS', 'Réponse à STATUS'),
+    ('`home/confrelaislora/state`', '`<nom> - Reconnect le <date> à <heure>`', 'Testament (LWT)'),
+    ('`home/confrelaislora/state`', '`<nom> REVEIL OFF <date> <heure>` / `<nom> REVEIL DEEPSLEEP …`', 'Démarrage'),
+    ('`home/confrelaislora/state`', 'Rapport STATUS', 'Réponse à STATUS'),
+    ('`home/confrelaislora/state`', '`ABANDON commande <topic> : <commande> (10 réveils sans accusé)`', 'Abandon d\'une commande en file (§ 2.5)'),
 ])
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -360,16 +386,23 @@ T(['Topic', 'Publié par', 'Écouté par'], [
     ('`home/configuration/command`', 'HA, application (DEVICE APP), CYD aux (DEVICE CYD), relais (DEVICE RELAIS LORA), puces neuves (NONCONFIGURE)', 'CYD principal'),
     ('`home/configuration/state`', 'CYD principal et auxiliaires (ALIVEWDOG, réponses)', 'CYD principal, HA'),
     ('`home/configaux/…`, `home/configaux2/…`', 'HA / CYD auxiliaires', 'CYD auxiliaires / HA'),
-    ('`home/confthremise/command`', 'HA (SLEEP)', 'ThRemise (Wi-Fi), Relais-Lora (→ LoRa)'),
-    ('`home/confthnomade/command`', 'HA (SLEEP)', 'ThNomade (Wi-Fi) — non relayé en LoRa'),
-    ('`home/conf<capteur>/state`', 'Capteurs (accusé, STATUS, LWT)', 'Home Assistant, MQTTBox'),
-    ('`home/confrelaislora2/command|state`', 'HA / relais', 'relais / HA'),
+    ('`home/confthremise/command`', 'HA (SLEEP), utilisateur (GET, SET, STATUS…)', 'ThRemise (Wi-Fi), Relais-Lora (→ file d\'attente → LoRa)'),
+    ('`home/confthnomade/command`', 'HA (SLEEP), utilisateur', 'ThNomade (Wi-Fi), Relais-Lora (→ file d\'attente → LoRa)'),
+    ('`home/conf<capteur>/state`', 'Capteurs (accusé, CONFIG, STATUS, LWT), en LoRa via le relais', 'Home Assistant, MQTTBox, Relais-Lora (accusés)'),
+    ('`home/confrelaislora/command|state`', 'HA / relais (STATUS, ABANDON)', 'relais / HA'),
     ('`home/homeassistant/state`', 'Home Assistant', 'CYD'),
     ('`home/log`', 'CYD', 'débogage'),
 ])
 
 # ────────────────────────────────────────────────────────────────────────────
 H('8. Ce qui a changé par rapport à la version précédente du document')
+P('**Version du 27/10/2026** (commits 1cc5665, 064c1ed, 306f88b et suivant) :')
+B('Relais-Lora : file d\'attente des commandes de configuration (§ 2.5), `home/confthnomade/command` écouté, '
+  'STATUS avec l\'état de la file, publication ABANDON, heure d\'été / hiver automatique.')
+B('Capteur : commandes `GET` et `SET` (réponse `CONFIG`), `SLEEPS` / `SLEEPM` / `SLEEPL` sans préfixe, `<nomBatterie> MESURE`, '
+  'accusé `COMMANDE reçue` aussi en LoRa, STATUS LoRa sur une ligne, jetons `DATE TIME` sans heure NTP, '
+  'une seule série de mesures par réveil.')
+P('**Version du 26/10/2026** :')
 B('Les réponses d\'état des équipements (ONR, OFFR, ENABLER, DISABLER) sont sur le topic **command**, pas state.')
 B('Le chauffage SDB est sur `home/chauffage/command` (et non chauffagesb).')
 B('REVEIL / DEEPSLEEP des capteurs : publiés sur `home/thermometre/state` (topic de leurs sous-capteurs), pas sur le topic de configuration.')
@@ -378,14 +411,19 @@ B('Ajouts : trames LoRa, commandes SLEEP / WDOG / STATUS / REBOOT des capteurs, 
 
 # ────────────────────────────────────────────────────────────────────────────
 H('9. Anomalies relevées à la lecture des sources')
-B('Relais-Lora : pas d\'abonnement à `home/confthnomade/command` ; les SLEEP envoyés à ThNomade par HA ne sont pas relayés en LoRa.')
-B('Relais-Lora : aucune file d\'attente ; une commande arrivant pendant le sommeil du capteur LoRa est perdue (voir encadré).')
-B('Capteur LoRa : `sendPacket()` remet `operationDone` à false avant d\'émettre, ce qui peut effacer une réception pas encore traitée.')
-B('Capteur LoRa sans heure : les mesures partent avec `Erreur Erreur` au lieu des jetons `DATE TIME`, et DEEPSLEEP ON avec `DATE HEURE` ; '
-  'le relais ne substitue que DATE et TIME.')
-B('Batterie : aucune commande MESURE n\'est traitée côté capteur (pas d\'aiguillage BATxxx sur `home/thermometre/command`), '
-  'alors que le CYD en envoie.')
-B('CConfig::handleMqttCommand() du Relais-Lora est vide : seuls STATUS et REBOOT agissent.')
+P('Les sept anomalies relevées le 26/10/2026 sont **corrigées et testées** (27/10/2026) :')
+T(['Anomalie', 'Correction'], [
+    ('Relais-Lora non abonné à `home/confthnomade/command`', 'Abonnements générés depuis la table de la file d\'attente'),
+    ('Relais-Lora sans file d\'attente : commande perdue si le capteur dort', 'File d\'attente avec accusé et abandon (§ 2.5)'),
+    ('Capteur : `sendPacket()` effaçait une réception non traitée', 'Paquet reçu mis de côté avant l\'émission, traité ensuite'),
+    ('Capteur LoRa sans heure : `Erreur Erreur`, DEEPSLEEP ON avec `DATE HEURE`', 'Jetons `DATE TIME` partout ; heure valide seulement après NTP'),
+    ('`BATxxx MESURE` jamais traitée', 'Aiguillage batterie en MQTT et LoRa, et topic de commande de la batterie écouté'),
+    ('`CConfig::handleMqttCommand()` du relais vide', 'Sans objet : STATUS et REBOOT traités dans le callback ; STATUS enrichi de l\'état de la file'),
+    ('`SLEEPS` seul refusé', '`SLEEPS` / `SLEEPM` / `SLEEPL` acceptés sans préfixe'),
+])
+B('Corrigé aussi : le STATUS LoRa du capteur (multiligne avec « === ») était rejeté par le relais ; '
+  'l\'heure du relais avançait d\'une heure en hiver (décalages fixes).')
+B('Choix assumé : `home/thermometre/command` (MESURE, ACK) ne passe pas par la file d\'attente.')
 
 doc.save(DST)
 print('OK', DST)
