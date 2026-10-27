@@ -1,0 +1,876 @@
+# ============================================================
+# PACKAGE : NŒUDS CAPTEURS - pilotage à distance des nœuds (LoRa et Wi-Fi)
+# Généré par genere_noeuds.py : modifier la liste NOEUDS du générateur plutôt que ce fichier.
+#
+# Un nœud = une carte (un suffixe : Remise, Cave, ChRDC...) portant plusieurs capteurs unitaires
+# (Th<Suffixe>, Bat<Suffixe>, Flotteur<Suffixe>...). Identifiant du nœud : th<suffixe> (ex. thchrdc).
+#
+# Topics : home/conf<id>/command  commandes
+#          home/conf<id>/state    réponses du nœud (CONFIG, ETAT, accusés « COMMANDE reçue »)
+#          home/conf<id>/attente  LoRa : commande en attente dans le relais (retenu, publié par le relais)
+# File d'attente : LoRa = le relais (envoi au prochain réveil) ;
+#                  Wi-Fi = commande publiée en RETENU, effacée par HA à l'accusé ou à la connexion (« online »).
+# Entités : sensor.<id>_config (attributs sleepA, sleepI, sleepS, sleepM, sleepL, wakeI, erreur)
+#           sensor.<id>_rapport (réponse STATUS), sensor.<id>_commande_en_attente
+#           sensor.<id>_derniere_trame, binary_sensor.<id>_eveille
+#           input_boolean.<id>_sleepa, input_number.<id>_sleepi / _sleeps / _sleepm / _sleepl / _wakei
+#           input_text.<id>_commande (commande libre)
+# Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
+# ============================================================
+
+# Pas de bloc « mqtt: » ici : il est déjà un dictionnaire dans configuration.yaml (fusion de paquet refusée).
+# Les capteurs MQTT sont donc des templates à déclencheur MQTT (comme packages/chauffage.yaml).
+template:
+  # ---------- ThRemise : commande en attente dans le relais (« STATUS (envoi 1/10) » ou « aucune », retenu) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthremise/attente"
+    sensor:
+      - name: "ThRemise Commande en attente"
+        unique_id: thremise_commande_attente
+        icon: mdi:timer-sand
+        state: "{{ trigger.payload[:255] }}"
+
+  # ---------- ThRemise : réponse CONFIG (« ThRemise CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthremise/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIG"
+    sensor:
+      - name: "ThRemise Config"
+        unique_id: thremise_config
+        device_class: timestamp
+        icon: mdi:cog
+        state: "{{ now().isoformat() }}"
+        attributes:
+          sleepA: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepS: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepM: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepL: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          wakeI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          erreur: >-
+            {%- set p = trigger.payload.split(' ERREUR ') -%}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+
+  # ---------- ThRemise : réponse STATUS ----------
+  # LoRa : une ligne « ThRemise ETAT <date> <heure> | Wdog : ... | Uptime : ...s <IP> »
+  # Wi-Fi : plusieurs lignes « === ÉTAT ThRemise === », date, IP, Wdog, Uptime (remises sur une ligne, séparées par « | »)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthremise/state"
+        value_template: >-
+          {{ 'ETAT' if (value.split(' ') + [''])[1] | upper in ['ETAT', 'ÉTAT'] else '' }}
+        payload: "ETAT"
+    sensor:
+      - name: "ThRemise Rapport"
+        unique_id: thremise_rapport
+        icon: mdi:information-outline
+        state: >-
+          {%- set p = trigger.payload -%}
+          {%- if p.startswith('===') -%}
+            {%- set s = p.split('\n')[1:] | map('trim') | reject('eq', '') | join(' | ') -%}
+          {%- else -%}
+            {%- set s = p.split(' ', 2)[2] -%}
+          {%- endif -%}
+          {{ (s | regex_replace(' {2,}', ' ') | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', ''))[:255] }}
+        attributes:
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- ThRemise : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "THREMISE"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "BATREMISE"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "FLOTTEURREMISE"
+      - trigger: mqtt
+        topic: "home/confthremise/state"
+    binary_sensor:
+      - name: "ThRemise Éveillé"
+        unique_id: thremise_eveille
+        icon: mdi:sleep-off
+        state: >-
+          {%- set p = trigger.payload | upper -%}
+          {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
+        auto_off: "00:01:00"
+    sensor:
+      - name: "ThRemise Dernière trame"
+        unique_id: thremise_derniere_trame
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
+  # ---------- ThNomade : commande en attente dans le relais (« STATUS (envoi 1/10) » ou « aucune », retenu) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthnomade/attente"
+    sensor:
+      - name: "ThNomade Commande en attente"
+        unique_id: thnomade_commande_attente
+        icon: mdi:timer-sand
+        state: "{{ trigger.payload[:255] }}"
+
+  # ---------- ThNomade : réponse CONFIG (« ThNomade CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthnomade/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIG"
+    sensor:
+      - name: "ThNomade Config"
+        unique_id: thnomade_config
+        device_class: timestamp
+        icon: mdi:cog
+        state: "{{ now().isoformat() }}"
+        attributes:
+          sleepA: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepS: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepM: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepL: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          wakeI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          erreur: >-
+            {%- set p = trigger.payload.split(' ERREUR ') -%}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+
+  # ---------- ThNomade : réponse STATUS ----------
+  # LoRa : une ligne « ThNomade ETAT <date> <heure> | Wdog : ... | Uptime : ...s <IP> »
+  # Wi-Fi : plusieurs lignes « === ÉTAT ThNomade === », date, IP, Wdog, Uptime (remises sur une ligne, séparées par « | »)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthnomade/state"
+        value_template: >-
+          {{ 'ETAT' if (value.split(' ') + [''])[1] | upper in ['ETAT', 'ÉTAT'] else '' }}
+        payload: "ETAT"
+    sensor:
+      - name: "ThNomade Rapport"
+        unique_id: thnomade_rapport
+        icon: mdi:information-outline
+        state: >-
+          {%- set p = trigger.payload -%}
+          {%- if p.startswith('===') -%}
+            {%- set s = p.split('\n')[1:] | map('trim') | reject('eq', '') | join(' | ') -%}
+          {%- else -%}
+            {%- set s = p.split(' ', 2)[2] -%}
+          {%- endif -%}
+          {{ (s | regex_replace(' {2,}', ' ') | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', ''))[:255] }}
+        attributes:
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- ThNomade : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "THNOMADE"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "BATNOMADE"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "FLOTTEURNOMADE"
+      - trigger: mqtt
+        topic: "home/confthnomade/state"
+    binary_sensor:
+      - name: "ThNomade Éveillé"
+        unique_id: thnomade_eveille
+        icon: mdi:sleep-off
+        state: >-
+          {%- set p = trigger.payload | upper -%}
+          {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
+        auto_off: "00:01:00"
+    sensor:
+      - name: "ThNomade Dernière trame"
+        unique_id: thnomade_derniere_trame
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
+  # ---------- ThCave : commande en attente dans le relais (« STATUS (envoi 1/10) » ou « aucune », retenu) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthcave/attente"
+    sensor:
+      - name: "ThCave Commande en attente"
+        unique_id: thcave_commande_attente
+        icon: mdi:timer-sand
+        state: "{{ trigger.payload[:255] }}"
+
+  # ---------- ThCave : réponse CONFIG (« ThCave CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthcave/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIG"
+    sensor:
+      - name: "ThCave Config"
+        unique_id: thcave_config
+        device_class: timestamp
+        icon: mdi:cog
+        state: "{{ now().isoformat() }}"
+        attributes:
+          sleepA: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepS: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepM: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepL: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          wakeI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          erreur: >-
+            {%- set p = trigger.payload.split(' ERREUR ') -%}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+
+  # ---------- ThCave : réponse STATUS ----------
+  # LoRa : une ligne « ThCave ETAT <date> <heure> | Wdog : ... | Uptime : ...s <IP> »
+  # Wi-Fi : plusieurs lignes « === ÉTAT ThCave === », date, IP, Wdog, Uptime (remises sur une ligne, séparées par « | »)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthcave/state"
+        value_template: >-
+          {{ 'ETAT' if (value.split(' ') + [''])[1] | upper in ['ETAT', 'ÉTAT'] else '' }}
+        payload: "ETAT"
+    sensor:
+      - name: "ThCave Rapport"
+        unique_id: thcave_rapport
+        icon: mdi:information-outline
+        state: >-
+          {%- set p = trigger.payload -%}
+          {%- if p.startswith('===') -%}
+            {%- set s = p.split('\n')[1:] | map('trim') | reject('eq', '') | join(' | ') -%}
+          {%- else -%}
+            {%- set s = p.split(' ', 2)[2] -%}
+          {%- endif -%}
+          {{ (s | regex_replace(' {2,}', ' ') | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', ''))[:255] }}
+        attributes:
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- ThCave : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "THCAVE"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "BATCAVE"
+      - trigger: mqtt
+        topic: "home/confthcave/state"
+    binary_sensor:
+      - name: "ThCave Éveillé"
+        unique_id: thcave_eveille
+        icon: mdi:sleep-off
+        state: >-
+          {%- set p = trigger.payload | upper -%}
+          {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
+        auto_off: "00:01:00"
+    sensor:
+      - name: "ThCave Dernière trame"
+        unique_id: thcave_derniere_trame
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
+  # ---------- ThChRDC : commande en attente = message retenu sur le topic command (vide = « aucune ») ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthchrdc/command"
+    sensor:
+      - name: "ThChRDC Commande en attente"
+        unique_id: thchrdc_commande_attente
+        icon: mdi:timer-sand
+        state: "{{ trigger.payload[:255] if trigger.payload | trim != '' else 'aucune' }}"
+
+  # ---------- ThChRDC : réponse CONFIG (« ThChRDC CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthchrdc/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIG"
+    sensor:
+      - name: "ThChRDC Config"
+        unique_id: thchrdc_config
+        device_class: timestamp
+        icon: mdi:cog
+        state: "{{ now().isoformat() }}"
+        attributes:
+          sleepA: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepS: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepM: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepL: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          wakeI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          erreur: >-
+            {%- set p = trigger.payload.split(' ERREUR ') -%}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+
+  # ---------- ThChRDC : réponse STATUS ----------
+  # LoRa : une ligne « ThChRDC ETAT <date> <heure> | Wdog : ... | Uptime : ...s <IP> »
+  # Wi-Fi : plusieurs lignes « === ÉTAT ThChRDC === », date, IP, Wdog, Uptime (remises sur une ligne, séparées par « | »)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthchrdc/state"
+        value_template: >-
+          {{ 'ETAT' if (value.split(' ') + [''])[1] | upper in ['ETAT', 'ÉTAT'] else '' }}
+        payload: "ETAT"
+    sensor:
+      - name: "ThChRDC Rapport"
+        unique_id: thchrdc_rapport
+        icon: mdi:information-outline
+        state: >-
+          {%- set p = trigger.payload -%}
+          {%- if p.startswith('===') -%}
+            {%- set s = p.split('\n')[1:] | map('trim') | reject('eq', '') | join(' | ') -%}
+          {%- else -%}
+            {%- set s = p.split(' ', 2)[2] -%}
+          {%- endif -%}
+          {{ (s | regex_replace(' {2,}', ' ') | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', ''))[:255] }}
+        attributes:
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- ThChRDC : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "THCHRDC"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "BATCHRDC"
+      - trigger: mqtt
+        topic: "home/confthchrdc/state"
+    binary_sensor:
+      - name: "ThChRDC Éveillé"
+        unique_id: thchrdc_eveille
+        icon: mdi:sleep-off
+        state: >-
+          {%- set p = trigger.payload | upper -%}
+          {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
+        auto_off: "00:01:00"
+    sensor:
+      - name: "ThChRDC Dernière trame"
+        unique_id: thchrdc_derniere_trame
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
+input_boolean:
+  # ---------- ThRemise ----------
+  thremise_sleepa:
+    name: "ThRemise Deep sleep actif"
+    icon: mdi:sleep
+
+  # ---------- ThNomade ----------
+  thnomade_sleepa:
+    name: "ThNomade Deep sleep actif"
+    icon: mdi:sleep
+
+  # ---------- ThCave ----------
+  thcave_sleepa:
+    name: "ThCave Deep sleep actif"
+    icon: mdi:sleep
+
+  # ---------- ThChRDC ----------
+  thchrdc_sleepa:
+    name: "ThChRDC Deep sleep actif"
+    icon: mdi:sleep
+
+input_number:
+  # ---------- ThRemise (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
+  thremise_sleepi:
+    name: "ThRemise Intervalle deep sleep"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thremise_sleeps:
+    name: "ThRemise Sommeil court (SLEEPS)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thremise_sleepm:
+    name: "ThRemise Sommeil moyen (SLEEPM)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thremise_sleepl:
+    name: "ThRemise Sommeil long (SLEEPL)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thremise_wakei:
+    name: "ThRemise Éveil maximum"
+    min: 1
+    max: 3600
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-sand
+
+  # ---------- ThNomade (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
+  thnomade_sleepi:
+    name: "ThNomade Intervalle deep sleep"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thnomade_sleeps:
+    name: "ThNomade Sommeil court (SLEEPS)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thnomade_sleepm:
+    name: "ThNomade Sommeil moyen (SLEEPM)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thnomade_sleepl:
+    name: "ThNomade Sommeil long (SLEEPL)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thnomade_wakei:
+    name: "ThNomade Éveil maximum"
+    min: 1
+    max: 3600
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-sand
+
+  # ---------- ThCave (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
+  thcave_sleepi:
+    name: "ThCave Intervalle deep sleep"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thcave_sleeps:
+    name: "ThCave Sommeil court (SLEEPS)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thcave_sleepm:
+    name: "ThCave Sommeil moyen (SLEEPM)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thcave_sleepl:
+    name: "ThCave Sommeil long (SLEEPL)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thcave_wakei:
+    name: "ThCave Éveil maximum"
+    min: 1
+    max: 3600
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-sand
+
+  # ---------- ThChRDC (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
+  thchrdc_sleepi:
+    name: "ThChRDC Intervalle deep sleep"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thchrdc_sleeps:
+    name: "ThChRDC Sommeil court (SLEEPS)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thchrdc_sleepm:
+    name: "ThChRDC Sommeil moyen (SLEEPM)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thchrdc_sleepl:
+    name: "ThChRDC Sommeil long (SLEEPL)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thchrdc_wakei:
+    name: "ThChRDC Éveil maximum"
+    min: 1
+    max: 3600
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-sand
+
+input_text:
+  # ---------- ThRemise ----------
+  thremise_commande:
+    name: "ThRemise Commande libre"
+    max: 100
+    icon: mdi:console
+
+  # ---------- ThNomade ----------
+  thnomade_commande:
+    name: "ThNomade Commande libre"
+    max: 100
+    icon: mdi:console
+
+  # ---------- ThCave ----------
+  thcave_commande:
+    name: "ThCave Commande libre"
+    max: 100
+    icon: mdi:console
+
+  # ---------- ThChRDC ----------
+  thchrdc_commande:
+    name: "ThChRDC Commande libre"
+    max: 100
+    icon: mdi:console
+
+script:
+  # ------------------------------------------------------------
+  # Envoie une commande au nœud.
+  # LoRa : via la file d'attente du relais (envoyée au prochain réveil ; ANNULER est traité par le relais).
+  # Wi-Fi : publiée en RETENU (le nœud la lit à son réveil) ; effacée par l'automatisation
+  #         « Nœuds Wi-Fi - Effacer la commande retenue » ; ANNULER = effacement du message retenu.
+  # Refusée si une commande attend déjà (sauf ANNULER) : une nouvelle commande remplacerait celle qui attend.
+  # ------------------------------------------------------------
+  noeud_commande:
+    alias: Nœud capteur - Envoyer une commande
+    icon: mdi:send
+    mode: queued
+    fields:
+      capteur:
+        name: Nœud
+        description: Identifiant du nœud (thremise, thchrdc...)
+        required: true
+        example: thchrdc
+        selector:
+          text:
+      commande:
+        name: Commande
+        description: GET, STATUS, REBOOT, ANNULER, SET cle:valeur..., SLEEP..., WDOG...
+        required: true
+        example: STATUS
+        selector:
+          text:
+    sequence:
+      - variables:
+          # Nœuds LoRa (les autres sont en Wi-Fi) : même liste que dans genere_noeuds.py
+          lora: "['thremise', 'thnomade', 'thcave']"
+          wifi: "{{ capteur not in lora }}"
+          cmd: "{{ commande | trim }}"
+          attente: "{{ states('sensor.' ~ capteur ~ '_commande_en_attente') }}"
+      - if:
+          - condition: template
+            value_template: "{{ cmd == '' }}"
+        then:
+          - stop: "Commande vide"
+      - if:
+          - condition: template
+            value_template: >-
+              {{ cmd | upper != 'ANNULER' and attente not in ['aucune', 'unknown', 'unavailable', ''] }}
+        then:
+          - action: persistent_notification.create
+            data:
+              title: "Nœud {{ capteur }}"
+              message: >-
+                Commande « {{ cmd }} » refusée : « {{ attente }} » est déjà en attente.
+                Annulez-la d'abord, ou attendez le prochain réveil du nœud.
+          - stop: "Une commande est déjà en attente"
+      - action: mqtt.publish
+        data:
+          topic: "home/conf{{ capteur }}/command"
+          payload: "{{ '' if wifi and cmd | upper == 'ANNULER' else cmd }}"
+          retain: "{{ wifi }}"
+
+  # ------------------------------------------------------------
+  # Efface le message retenu du topic command (commande restée en retenu, ancien testament « <nom> offline »...)
+  # Sans effet sur la file du relais (il ignore un message vide).
+  # ------------------------------------------------------------
+  noeud_nettoyer_retenu:
+    alias: Nœud capteur - Nettoyer le message retenu
+    icon: mdi:broom
+    mode: queued
+    fields:
+      capteur:
+        name: Nœud
+        description: Identifiant du nœud (thremise, thchrdc...)
+        required: true
+        example: thchrdc
+        selector:
+          text:
+    sequence:
+      - action: mqtt.publish
+        data:
+          topic: "home/conf{{ capteur }}/command"
+          payload: ""
+          retain: true
+
+  # ------------------------------------------------------------
+  # Un seul SET avec les réglages qui diffèrent de la dernière config reçue
+  # ------------------------------------------------------------
+  noeud_enregistrer:
+    alias: Nœud capteur - Enregistrer les réglages
+    icon: mdi:content-save
+    mode: queued
+    fields:
+      capteur:
+        name: Nœud
+        description: Identifiant du nœud (thremise, thchrdc...)
+        required: true
+        example: thchrdc
+        selector:
+          text:
+    sequence:
+      - variables:
+          cfg: "sensor.{{ capteur }}_config"
+          params: >-
+            {%- set ns = namespace(s='') -%}
+            {%- set a = 1 if is_state('input_boolean.' ~ capteur ~ '_sleepa', 'on') else 0 -%}
+            {%- if a != state_attr(cfg, 'sleepA') -%}{%- set ns.s = ns.s ~ ' sleepA:' ~ a -%}{%- endif -%}
+            {%- for k in ['sleepI', 'sleepS', 'sleepM', 'sleepL', 'wakeI'] -%}
+              {%- set v = states('input_number.' ~ capteur ~ '_' ~ k | lower) | float(0) | int -%}
+              {%- if v > 0 and v != state_attr(cfg, k) -%}{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}{%- endif -%}
+            {%- endfor -%}
+            {{- ns.s | trim -}}
+          # Réglages trop courts (faute de frappe, champs restés au minimum) : 10 s au moins
+          trop_courts: >-
+            {%- set ns = namespace(l=[]) -%}
+            {%- for k in ['sleepI', 'sleepS', 'sleepM', 'sleepL', 'wakeI'] -%}
+              {%- if states('input_number.' ~ capteur ~ '_' ~ k | lower) | float(0) < 10 -%}{%- set ns.l = ns.l + [k] -%}{%- endif -%}
+            {%- endfor -%}
+            {{- ns.l | join(', ') -}}
+      # Sans config reçue, les champs ne reflètent pas le nœud (valeur minimale à la création) : envoi refusé
+      - if:
+          - condition: template
+            value_template: "{{ state_attr(cfg, 'sleepI') is none }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: "Nœud {{ capteur }}"
+              message: >-
+                Config du nœud inconnue : cliquez d'abord sur « Relire » et attendez son réveil,
+                les réglages se rempliront avec ses vraies valeurs.
+          - stop: "Config inconnue"
+      - if:
+          - condition: template
+            value_template: "{{ trop_courts != '' }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: "Nœud {{ capteur }}"
+              message: "Envoi refusé : durée inférieure à 10 s pour {{ trop_courts }}."
+          - stop: "Durée trop courte"
+      - if:
+          - condition: template
+            value_template: "{{ params == '' }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: "Nœud {{ capteur }}"
+              message: "Aucun réglage modifié : rien à envoyer."
+          - stop: "Aucune modification"
+      - action: script.noeud_commande
+        data:
+          capteur: "{{ capteur }}"
+          commande: "SET {{ params }}"
+
+  # ------------------------------------------------------------
+  # Envoie la commande libre saisie dans input_text.<nœud>_commande, puis vide le champ
+  # ------------------------------------------------------------
+  noeud_commande_libre:
+    alias: Nœud capteur - Envoyer la commande libre
+    icon: mdi:console
+    mode: queued
+    fields:
+      capteur:
+        name: Nœud
+        description: Identifiant du nœud (thremise, thchrdc...)
+        required: true
+        example: thchrdc
+        selector:
+          text:
+    sequence:
+      - variables:
+          cmd: "{{ states('input_text.' ~ capteur ~ '_commande') }}"
+      - action: script.noeud_commande
+        data:
+          capteur: "{{ capteur }}"
+          commande: "{{ cmd }}"
+      - action: input_text.set_value
+        target:
+          entity_id: "input_text.{{ capteur }}_commande"
+        data:
+          value: ""
+
+automation:
+  # ------------------------------------------------------------
+  # Config reçue du nœud : recopiée dans les réglages (input_boolean / input_number)
+  # ------------------------------------------------------------
+  - id: capteurs_lora_synchro_reglages
+    alias: Nœuds capteurs - Recopier la config reçue dans les réglages
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id:
+          - sensor.thremise_config
+          - sensor.thnomade_config
+          - sensor.thcave_config
+          - sensor.thchrdc_config
+    actions:
+      - variables:
+          capteur: "{{ trigger.entity_id.split('.')[1] | replace('_config', '') }}"
+      - if:
+          - condition: template
+            value_template: "{{ state_attr(trigger.entity_id, 'sleepA') is not none }}"
+        then:
+          - action: >-
+              input_boolean.turn_{{ 'on' if state_attr(trigger.entity_id, 'sleepA') == 1 else 'off' }}
+            target:
+              entity_id: "input_boolean.{{ capteur }}_sleepa"
+      - repeat:
+          for_each: ["sleepI", "sleepS", "sleepM", "sleepL", "wakeI"]
+          sequence:
+            - if:
+                - condition: template
+                  value_template: "{{ state_attr(trigger.entity_id, repeat.item) is number }}"
+              then:
+                - action: input_number.set_value
+                  target:
+                    entity_id: "input_number.{{ capteur }}_{{ repeat.item | lower }}"
+                  data:
+                    value: "{{ state_attr(trigger.entity_id, repeat.item) }}"
+
+  # ------------------------------------------------------------
+  # Nœuds Wi-Fi : efface la commande retenue dès que le nœud l'a reçue, c.-à-d. à son accusé
+  # (« <nom> COMMANDE reçue ... ») ou à sa connexion (« <nom> online le ... », publié APRÈS ses abonnements :
+  # la commande retenue lui est déjà remise). Évite qu'elle soit rejouée à chaque réveil (REBOOT en boucle).
+  # ------------------------------------------------------------
+  - id: noeuds_wifi_effacer_commande_retenue
+    alias: Nœuds Wi-Fi - Effacer la commande retenue
+    mode: queued
+    triggers:
+      # home/+/state couvre home/thermometre/state (« online ») et home/conf<id>/state (accusé) ;
+      # filtré dans le déclencheur pour ne pas lancer l'automatisation à chaque mesure
+      - trigger: mqtt
+        topic: "home/+/state"
+        value_template: >-
+          {{ 'oui' if (' COMMANDE reçue ' in value or ' online le ' in value) else 'non' }}
+        payload: "oui"
+    variables:
+      # Nœuds Wi-Fi : même liste que dans genere_noeuds.py
+      wifi: "['thchrdc']"
+      capteur: "{{ (trigger.payload.split(' ') + [''])[0] | lower }}"
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ capteur in wifi
+             and states('sensor.' ~ capteur ~ '_commande_en_attente') not in ['aucune', 'unknown', 'unavailable', ''] }}
+    actions:
+      - action: mqtt.publish
+        data:
+          topic: "home/conf{{ capteur }}/command"
+          payload: ""
+          retain: true

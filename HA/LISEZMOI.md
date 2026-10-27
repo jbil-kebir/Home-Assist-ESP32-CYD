@@ -12,6 +12,9 @@ Dernier export : 27/10/2026.
 | `automations.yaml` | Automatisations (IP des équipements, CYD, cuve…) |
 | `scripts.yaml` | Scripts |
 | `packages/` | Paquets inclus par `homeassistant: packages: !include_dir_named packages` |
+| `packages/noeuds_capteurs.yaml` | Pilotage à distance des nœuds capteurs LoRa (via Relais-Lora) et Wi-Fi (réglages, GET, STATUS, REBOOT, ANNULER, nettoyage du retenu, commande libre, éveil/sommeil) — **généré** |
+| `vue-noeuds-capteurs.yaml` | Vue « Nœuds capteurs » du tableau Système, à coller dans l'interface (pas un fichier de HA) — **générée** |
+| `genere_noeuds.py` | Générateur des deux fichiers ci-dessus à partir de la liste des nœuds (pas un fichier de HA) |
 | `.storage/lovelace_dashboards` | Liste des tableaux de bord |
 | `.storage/lovelace.dashboard_systeme` | Tableau « Système » (vues NAS, Diagnostic, CYD, Paramétrage) |
 
@@ -34,3 +37,26 @@ Dernier export : 27/10/2026.
 - YAML : remplacer le fichier, puis Outils de développement → YAML → « Vérifier la configuration » avant de recharger ou redémarrer.
 - Tableaux de bord : passer par l'interface (éditeur de carte ou éditeur de configuration brute), jamais en écrasant
   un fichier `.storage` pendant que HA tourne.
+
+## Installer le pilotage des nœuds capteurs (paquet noeuds_capteurs)
+
+Un **nœud** = une carte (un suffixe : Remise, Cave, ChRDC…) portant plusieurs capteurs unitaires (Th<Suffixe>,
+Bat<Suffixe>, Flotteur<Suffixe>…). Identifiant du nœud dans HA : `th<suffixe>` (ex. `thchrdc`).
+File d'attente des commandes : LoRa = Relais-Lora (publie `home/<conf>/attente`, traite `ANNULER`) ;
+Wi-Fi = commande publiée en **retenu**, effacée par l'automatisation « Nœuds Wi-Fi - Effacer la commande retenue »
+dès l'accusé du nœud ou sa connexion (« online »).
+
+**Ajouter un nœud** : compléter la liste `NOEUDS` de `genere_noeuds.py` (mode, capteurs unitaires, entités de mesure),
+lancer `python -I HA/genere_noeuds.py`, puis réinstaller les deux fichiers (étapes 1, 3 et 4). Un nœud LoRa doit
+aussi figurer dans `FILE_CMD_CAPTEURS` (Relais-Lora/src/global.h).
+
+1. Dans `/config/packages/` : **supprimer `capteurs_lora.yaml`** (ancienne version, entités en double sinon) et copier
+   `packages/noeuds_capteurs.yaml`.
+2. Remplacer `/config/automations.yaml` (l'automatisation « Cuve - SLEEP et ACK flotteur » n'envoie plus son SLEEP
+   quand une commande attend), sauf si des automatisations ont été modifiées dans HA depuis l'export.
+3. Outils de développement → YAML → « Vérifier la configuration », puis redémarrer HA.
+4. Tableau Système → ✏️ → vue « Capteurs LoRa » (ou « + » nouvelle vue) → ⋮ → « Modifier en YAML » → remplacer par
+   `vue-noeuds-capteurs.yaml` → Enregistrer (nouvelle adresse : `/dashboard-systeme/noeuds-capteurs`).
+5. Vérifier : `sensor.thremise_commande_en_attente` = « aucune » (message retenu du relais) ; bouton « Relire » →
+   la commande apparaît en attente puis, au réveil suivant, « Config reçue » se met à jour et les réglages se remplissent.
+   Nœud Wi-Fi : « Relire » → commande en attente = GET, puis « aucune » dès l'accusé, et « Config reçue » se met à jour.

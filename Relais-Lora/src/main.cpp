@@ -57,6 +57,9 @@ void setup() {
   mFileCommandes.onMqttPublish = [](const char* topic, const char* payload) -> int {
       return mqtt.publish(topic, payload);
   };
+  mFileCommandes.onMqttPublishRetenu = [](const char* topic, const char* payload, bool retained) -> int {
+      return mqtt.publish(topic, payload, retained);
+  };
   config.mFileCommandes = &mFileCommandes;
   /*ret = radio.startReceive();
   if (ret == RADIOLIB_ERR_NONE) {
@@ -138,6 +141,9 @@ void setup() {
 
   config.traiteReveil();
   mFileCommandes.topicEtatRelais = config.topic_config_state;
+  #ifndef __PREMIER_DEMARRAGE__
+  mFileCommandes.publieAttentes(); // Files vides après un redémarrage : remet « aucune » dans Home Assistant
+  #endif
 
   // On signale que nous venons 
   // d'accéder au réseau pour recevoir l'état des appareils

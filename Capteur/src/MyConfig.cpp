@@ -189,6 +189,9 @@ void CConfig::loop() {
       gDiag.ulPub = ulDateToutEmis;
     }
     bFinAnticipee = (ulDateToutEmis != 0) && (millis() - ulDateToutEmis >= DELAI_COMMANDES_APRES_REMONTEE_MS);
+    // Même si l'éveil maximum (wakeI) est dépassé, la fenêtre d'écoute est gardée : sans elle, aucune commande
+    // ne peut plus atteindre le capteur (wakeI 1 → capteur injoignable à distance, vu le 27/10/2026)
+    if (!bFinAnticipee && ulDateToutEmis != 0) return;
     #endif
     if (!bFinAnticipee && millis() < mulWakeDuration*1000) {
       // Pas encore le temps de dormir

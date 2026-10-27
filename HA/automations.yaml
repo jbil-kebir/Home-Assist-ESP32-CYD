@@ -649,15 +649,20 @@
     value_template: '{{ value.split('' '')[0] | upper }}'
     payload: FLOTTEURREMISE
   actions:
-  - action: mqtt.publish
-    data:
-      topic: home/confthremise/command
-      payload: '{{ ''SLEEP SLEEPS'' if states(''sensor.meteo_france_forecast_for_city_bischwiller_alsace_67_fr_bischwiller_rain_chance'')
-        | int > 80 or states(''sensor.meteo_france_rain_for_city_bischwiller_alsace_67_fr_bischwiller_next_rain'')
-        != ''unknown'' else ''SLEEP SLEEPL'' }}
+  - if:
+    - condition: template
+      value_template: '{{ states(''sensor.thremise_commande_en_attente'') in [''aucune'',
+        ''unknown'', ''unavailable'', ''''] }}'
+    then:
+    - action: mqtt.publish
+      data:
+        topic: home/confthremise/command
+        payload: '{{ ''SLEEP SLEEPS'' if states(''sensor.meteo_france_forecast_for_city_bischwiller_alsace_67_fr_bischwiller_rain_chance'')
+          | int > 80 or states(''sensor.meteo_france_rain_for_city_bischwiller_alsace_67_fr_bischwiller_next_rain'')
+          != ''unknown'' else ''SLEEP SLEEPL'' }}
 
-        '
-      retain: false
+          '
+        retain: false
   - delay: 00:00:02
   - action: mqtt.publish
     data:

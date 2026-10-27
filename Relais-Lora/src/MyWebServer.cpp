@@ -205,6 +205,7 @@ void MyWebServer::handleCapteurs() {
         "<tr><td><code>WDOG s</code></td><td>Période ALIVE = s secondes, et active le watchdog</td></tr>"
         "<tr><td><code>STATUS</code></td><td>Rapport d'état (bouton État)</td></tr>"
         "<tr><td><code>REBOOT</code></td><td>Redémarre le capteur (bouton Redémarrer)</td></tr>"
+        "<tr><td><code>ANNULER</code></td><td>Traitée par le relais, non transmise : vide la commande en attente (bouton Annuler)</td></tr>"
       "</table>"
       "<button type=\"button\" class=\"btn btn-cyan\" onclick=\"aide(false)\">Fermer</button>"
     "</div></div>";

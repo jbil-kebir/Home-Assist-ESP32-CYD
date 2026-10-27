@@ -42,18 +42,22 @@ private:
   int indexTopic(const String& topicConfig) const;
   int indexEquipement(const String& nomEquipement) const;
   void noteConfig(SEntree& e, const String& payload, int iConfig);
+  void retire(int i);         // Vide la commande en attente du capteur i
+  void publieAttente(int i);  // Commande en attente sur home/<conf>/attente (retenu), pour Home Assistant
 
 public:
   // Envoi LoRa (topic, payload) et publication MQTT (topic, payload)
   std::function<int(const char*, const char*)> onLoraPublish;
   std::function<int(const char*, const char*)> onMqttPublish;
+  std::function<int(const char*, const char*, bool)> onMqttPublishRetenu;
   String topicEtatRelais; // Où signaler les abandons
 
   int nbCapteurs() const { return NB_CAPTEURS; }
   const char* topicConfig(int i) const { return mCapteurs[i].topicConfig; }
   bool estTopicConfig(const String& topic) const { return indexTopic(topic) >= 0; }
 
-  void memorise(const String& topicConfig, const String& commande);
+  void memorise(const String& topicConfig, const String& commande);  // « ANNULER » vide la file au lieu d'attendre
+  void publieAttentes();  // Toutes les files (au démarrage, une fois MQTT connecté)
   void noteTrame(const String& topic, const String& nomEquipement, const String& payload);
   void loop();
   String getEtat() const;  // Une ligne par capteur (dernière trame, commande en attente) pour STATUS

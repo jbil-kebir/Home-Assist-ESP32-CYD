@@ -29,10 +29,38 @@ void CFileCommandes::memorise(const String& topicConfig, const String& commande)
     Serial.printf("[File] %s : testament <%s> ignoré\n", topicConfig.c_str(), commande.c_str());
     return;
   }
+  if (commande.equalsIgnoreCase("ANNULER")) {
+    Serial.printf("[File] %s : commande <%s> annulée\n", topicConfig.c_str(), mEntrees[i].commande.c_str());
+    retire(i);
+    return;
+  }
   mEntrees[i].commande = commande;
   mEntrees[i].nbEnvois = 0;
   mEntrees[i].bEnvoiArme = false;
   Serial.printf("[File] %s : commande mise en attente <%s>\n", topicConfig.c_str(), commande.c_str());
+  publieAttente(i);
+}
+
+void CFileCommandes::retire(int i) {
+  mEntrees[i].commande = "";
+  mEntrees[i].bEnvoiArme = false;
+  publieAttente(i);
+}
+
+// « STATUS (envoi 1/10) » ou « aucune », retenu : Home Assistant l'affiche même s'il démarre après
+void CFileCommandes::publieAttente(int i) {
+  if (!onMqttPublishRetenu) return;
+  String sTopic = mCapteurs[i].topicConfig;
+  sTopic.replace("/command", "/attente");
+  const SEntree& e = mEntrees[i];
+  String sMsg = (e.commande.length() > 0)
+                ? e.commande + " (envoi " + String(e.nbEnvois) + "/" + String(FILE_CMD_MAX_ENVOIS) + ")"
+                : String("aucune");
+  onMqttPublishRetenu(sTopic.c_str(), sMsg.c_str(), true);
+}
+
+void CFileCommandes::publieAttentes() {
+  for (int i = 0; i < NB_CAPTEURS; i++) publieAttente(i);
 }
 
 // Trame LoRa reçue d'un équipement : détecte l'accusé, compte les réveils et arme l'envoi.
@@ -55,8 +83,7 @@ void CFileCommandes::noteTrame(const String& topic, const String& nomEquipement,
     noteConfig(e, payload, iConfig);
     if (e.commande.equalsIgnoreCase("GET")) {
       Serial.printf("[File] %s : config reçue, GET retiré\n", mCapteurs[i].topicConfig);
-      e.commande = "";
-      e.bEnvoiArme = false;
+      retire(i);
       return;
     }
   }
@@ -82,8 +109,7 @@ void CFileCommandes::noteTrame(const String& topic, const String& nomEquipement,
   String sPayload = payload; sPayload.toUpperCase();
   if (topic.endsWith("/state") && sPayload.indexOf("COMMANDE RE") >= 0 && sPayload.indexOf(sCmd) >= 0) {
     Serial.printf("[File] %s : accusé reçu, commande <%s> retirée\n", mCapteurs[i].topicConfig, e.commande.c_str());
-    e.commande = "";
-    e.bEnvoiArme = false;
+    retire(i);
     return;
   }
 
@@ -92,8 +118,7 @@ void CFileCommandes::noteTrame(const String& topic, const String& nomEquipement,
                   " (" + String(e.nbEnvois) + " réveils sans accusé)";
     Serial.println("[File] " + sMsg);
     if (onMqttPublish && topicEtatRelais.length() > 0) onMqttPublish(topicEtatRelais.c_str(), sMsg.c_str());
-    e.commande = "";
-    e.bEnvoiArme = false;
+    retire(i);
     return;
   }
 
@@ -113,6 +138,7 @@ void CFileCommandes::loop() {
     e.nbEnvois++;
     Serial.printf("[File] %s : envoi %d/%d de <%s>\n", mCapteurs[i].topicConfig, e.nbEnvois, FILE_CMD_MAX_ENVOIS, e.commande.c_str());
     if (onLoraPublish) onLoraPublish(mCapteurs[i].topicConfig, e.commande.c_str());
+    publieAttente(i);
   }
 }
 
@@ -235,12 +261,7 @@ void CFileCommandes::loadFromWebServer(WebServer& server) {
   int i = server.arg("cap").toInt();
   if (!server.hasArg("cap") || i < 0 || i >= NB_CAPTEURS) return;
   String sAction = server.arg("action");
-  if (sAction == "annuler") {
-    Serial.printf("[File] %s : commande <%s> annulée depuis la page Web\n", mCapteurs[i].topicConfig, mEntrees[i].commande.c_str());
-    mEntrees[i].commande = "";
-    mEntrees[i].bEnvoiArme = false;
-    return;
-  }
+  if (sAction == "annuler") { memorise(mCapteurs[i].topicConfig, "ANNULER"); return; }
   // Une seule commande en attente par capteur : pas de remplacement depuis la page (boutons grisés)
   if (mEntrees[i].commande.length() > 0) return;
   if (sAction == "relire") { memorise(mCapteurs[i].topicConfig, "GET"); return; }

@@ -43,15 +43,15 @@
 
 //#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
-//#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
+#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
 //#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
-#define _LORA_P2P_MODE_ // Envoi par LORA
+//#define _LORA_P2P_MODE_ // Envoi par LORA
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
 #define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
-#define FLOTTEUR_VERTICAL
+//#define FLOTTEUR_VERTICAL // ThCave / ThNomade : pas de flotteur (ThRemise : décommenter)
 //#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF)
 #define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)

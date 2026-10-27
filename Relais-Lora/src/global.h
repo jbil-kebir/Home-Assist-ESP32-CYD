@@ -50,10 +50,12 @@
 #define START_STOP "==========" // A retirer du début et de la fin des messages reçus avant réexpédition par MQTT
 
 // File d'attente des commandes de config vers les capteurs LoRa (FileCommandes.cpp)
-// { topic de config, suffixe des noms d'équipement du capteur }
+// { topic de config, suffixe des noms d'équipement du capteur } : un par capteur LoRa
+// (l'ajouter aussi à la liste NOEUDS de HA/genere_noeuds.py, qui génère le paquet et la vue HA)
 #define FILE_CMD_CAPTEURS { \
   { "home/confthremise/command", "Remise" }, \
-  { "home/confthnomade/command", "Nomade" } }
+  { "home/confthnomade/command", "Nomade" }, \
+  { "home/confthcave/command", "Cave" } }
 #define FILE_CMD_NB_MAX_CAPTEURS    8
 #define FILE_CMD_SILENCE_MS         300   // Silence après la dernière trame du capteur avant d'envoyer (il écoute 1 s)
 #define FILE_CMD_NOUVEAU_REVEIL_MS  5000  // Silence au-delà duquel une trame marque un nouveau réveil
