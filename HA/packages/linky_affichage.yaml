@@ -1,0 +1,52 @@
+# ============================================================
+# PACKAGE : LINKY - Affichage avec unités
+# Reprend les valeurs saisies dans les input_text
+# pour les afficher avec leur unité (lecture seule)
+# ============================================================
+
+template:
+  - sensor:
+      # Prix du kWh converti en centimes
+      # input_text.linky_cout_kwh est en €/kWh (ex : 0.312 -> 31.2 cts)
+      - name: "Linky prix kWh"
+        unique_id: linky_prix_kwh_affichage
+        unit_of_measurement: cts
+        icon: mdi:cash
+        state: >
+          {{ (states('input_text.linky_cout_kwh') | replace(',', '.') | float(0) * 100) | round(1) }}
+
+      # Montant de la dernière facture en €
+      - name: "Linky montant dernière facture"
+        unique_id: linky_montant_derniere_facture_affichage
+        unit_of_measurement: €
+        icon: mdi:receipt-text
+        state: >
+          {{ states('input_text.linky_cout_derniere_facture') | replace(',', '.') | float(0) | round(2) }}
+
+      # Date de début de la période de facturation (format JJ/MM/AAAA)
+      # input_number.facture_jour = jour du mois (1 à 31)
+      - name: "Linky début facturation"
+        unique_id: linky_debut_facturation
+        icon: mdi:calendar-start
+        availability: "{{ has_value('input_number.facture_jour') }}"
+        state: >
+          {% set j = states('input_number.facture_jour') | int %}
+          {% set t = now().date() %}
+          {% set fin_mois = (t.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
+          {% set jc = [j, fin_mois.day] | min %}
+          {% if t.day >= jc %}
+            {% set d = t.replace(day=jc) %}
+          {% else %}
+            {% set prec = t.replace(day=1) - timedelta(days=1) %}
+            {% set d = prec.replace(day=[j, prec.day] | min) %}
+          {% endif %}
+          {{ d.strftime('%d/%m/%Y') }}
+
+      # Nombre de jours écoulés depuis le début de facturation
+      - name: "Linky jours écoulés"
+        unique_id: linky_jours_ecoules
+        icon: mdi:calendar-clock
+        unit_of_measurement: "j"
+        availability: "{{ has_value('sensor.linky_debut_facturation') }}"
+        state: >
+          {{ (now().date() - strptime(states('sensor.linky_debut_facturation'), '%d/%m/%Y').date()).days }}

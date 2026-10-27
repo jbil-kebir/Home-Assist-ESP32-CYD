@@ -1,0 +1,750 @@
+- id: '1774711711788'
+  alias: CYD - Changer veille ecran
+  triggers:
+  - entity_id: input_number.cyd_veille
+    trigger: state
+  actions:
+  - data:
+      topic: home/configuration/command
+      payload: '{{ ''VEILLE '' + states(''input_number.cyd_veille'') | int | string
+        }}'
+    action: mqtt.publish
+  mode: single
+- id: '1774711735760'
+  alias: CYD - Changer serie ecran
+  description: ''
+  triggers:
+  - entity_id: input_select.cyd_serie
+    trigger: state
+  actions:
+  - data:
+      topic: home/configuration/command
+      payload: '{{ ''ECRAN SERIE '' + states(''input_select.cyd_serie'') }}'
+    action: mqtt.publish
+  mode: single
+- id: '1774711757403'
+  alias: CYD - Changer orientation ecran
+  triggers:
+  - entity_id: input_select.cyd_orientation
+    trigger: state
+  actions:
+  - data:
+      topic: home/configuration/command
+      payload: '{{ ''ECRAN '' + states(''input_select.cyd_orientation'') }}'
+    action: mqtt.publish
+  mode: single
+- id: '1774715979427'
+  alias: CYD - Recevoir Status
+  triggers:
+  - topic: home/configuration/state
+    trigger: mqtt
+  actions:
+  - target:
+      entity_id: input_text.cyd_status
+    data:
+      value: '{{ trigger.payload[:255] }}'
+    action: input_text.set_value
+  mode: single
+- id: '1774715981022'
+  alias: CYD - Recevoir Status
+  description: ''
+  triggers:
+  - topic: home/configuration/state
+    trigger: mqtt
+  actions:
+  - target:
+      entity_id: input_text.cyd_status
+    data:
+      value: '{{ trigger.payload }}'
+    action: input_text.set_value
+  mode: single
+- id: '1774734954643'
+  alias: CYD - Recevoir Veille
+  triggers:
+  - topic: home/configuration/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''VEILLE'') }}'
+  actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cyd_veille
+    data:
+      value: '{{ trigger.payload.split('' '')[1] | int }}'
+  mode: single
+- id: '1774735029724'
+  alias: CYD - Recevoir Serie
+  triggers:
+  - topic: home/configuration/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ECRAN SERIE'') }}'
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.cyd_serie
+    data:
+      option: '{{ trigger.payload.split('' '')[2] }}'
+  mode: single
+- id: '1774735054064'
+  alias: CYD - Recevoir Orientation
+  triggers:
+  - topic: home/configuration/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ECRAN'') and not trigger.payload.upper().startswith(''ECRAN
+      SERIE'') }}
+
+      '
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.cyd_orientation
+    data:
+      option: '{{ trigger.payload.split('' '')[1] }}'
+  mode: single
+- id: '1774736517752'
+  alias: CYD - Recevoir Alive
+  triggers:
+  - topic: home/configuration/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ALIVEWDOG'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.cyd_alive
+    data:
+      value: '{{ now().strftime(''%d/%m/%Y %H:%M:%S'') }}'
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_cyd
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774742666955'
+  alias: CYD - Changer intervalle Alive
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_number.cyd_watchdog_intervalle
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configuration/command
+      payload: '{{ ''ALIVE '' + states(''input_number.cyd_watchdog_intervalle'') |
+        int | string }}'
+  mode: single
+- id: '1774745201658'
+  alias: CYD - Watchdog check
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    seconds: /30
+  actions:
+  - action: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.cyd_watchdog
+    data: {}
+  - if:
+    - condition: template
+      value_template: '{{ (as_timestamp(now()) - as_timestamp(states.input_text.cyd_alive.last_updated))
+        > (states(''input_number.cyd_watchdog_delai'') | int * 60) }}
+
+        '
+    then:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.cyd_watchdog
+  mode: single
+- id: '1774746177112'
+  alias: CYD - Recevoir Intervalle Alive
+  description: ''
+  triggers:
+  - topic: home/configuration/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ALIVE '') }}'
+  actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cyd_watchdog_intervalle
+    data:
+      value: '{{ trigger.payload.split('' '')[1] | int }}'
+  mode: single
+- id: '1774753108107'
+  alias: CYD AUX - Changer veille ecran
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_number.cyd_aux_veille
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux/command
+      payload: '{{ ''VEILLE '' + states(''input_number.cyd_aux_veille'') | int | string
+        }}'
+  mode: single
+- id: '1774753133236'
+  alias: CYD AUX - Changer serie ecran
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_select.cyd_aux_serie
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux/command
+      payload: '{{ ''ECRAN SERIE '' + states(''input_select.cyd_aux_serie'') }}'
+  mode: single
+- id: '1774753155075'
+  alias: CYD AUX - Changer orientation ecran
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_select.cyd_aux_orientation
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux/command
+      payload: '{{ ''ECRAN '' + states(''input_select.cyd_aux_orientation'') }}'
+  mode: single
+- id: '1774753173863'
+  alias: CYD AUX - Changer intervalle Alive
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_number.cyd_aux_watchdog_intervalle
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux/command
+      payload: '{{ ''ALIVE '' + states(''input_number.cyd_aux_watchdog_intervalle'')
+        | int | string }}'
+  mode: single
+- id: '1774753192103'
+  alias: CYD AUX - Recevoir Status
+  description: ''
+  triggers:
+  - topic: home/configaux/state
+    trigger: mqtt
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.cyd_aux_status
+    data:
+      value: '{{ trigger.payload[:255] }}'
+  mode: single
+- id: '1774753212715'
+  alias: CYD AUX - Recevoir Veille
+  description: ''
+  triggers:
+  - topic: home/configaux/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''VEILLE'') }}'
+  actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cyd_aux_veille
+    data:
+      value: '{{ trigger.payload.split('' '')[1] | int }}'
+  mode: single
+- id: '1774753231286'
+  alias: CYD AUX - Recevoir Serie
+  description: ''
+  triggers:
+  - topic: home/configaux/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ECRAN SERIE'') }}'
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.cyd_aux_serie
+    data:
+      option: '{{ trigger.payload.split('' '')[2] }}'
+  mode: single
+- id: '1774753253864'
+  alias: CYD AUX - Recevoir Orientation
+  description: ''
+  triggers:
+  - topic: home/configaux/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ECRAN'') and not trigger.payload.upper().startswith(''ECRAN
+      SERIE'') }}
+
+      '
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.cyd_aux_orientation
+    data:
+      option: '{{ trigger.payload.split('' '')[1] }}'
+  mode: single
+- id: '1774753272051'
+  alias: CYD AUX - Recevoir Alive
+  triggers:
+  - topic: home/configaux/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ALIVEWDOG'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.cyd_aux_alive
+    data:
+      value: '{{ now().strftime(''%d/%m/%Y %H:%M:%S'') }}'
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_cyd_aux
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774753288317'
+  alias: CYD AUX - Recevoir Intervalle Alive
+  description: ''
+  triggers:
+  - topic: home/configaux/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ALIVE '') }}'
+  actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cyd_aux_watchdog_intervalle
+    data:
+      value: '{{ trigger.payload.split('' '')[1] | int }}'
+  mode: single
+- id: '1774753306995'
+  alias: CYD AUX - Watchdog check
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    seconds: /30
+  actions:
+  - action: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.cyd_aux_watchdog
+  - if:
+    - condition: template
+      value_template: '{{ (as_timestamp(now()) - as_timestamp(states.input_text.cyd_aux_alive.last_updated))
+        > (states(''input_number.cyd_aux_watchdog_delai'') | int * 60) }}
+
+        '
+    then:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.cyd_aux_watchdog
+  mode: single
+- id: '1774753328247'
+  alias: CYD AUX2 - Changer veille ecran
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_number.cyd_aux2_veille
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux2/command
+      payload: '{{ ''VEILLE '' + states(''input_number.cyd_aux2_veille'') | int |
+        string }}'
+  mode: single
+- id: '1774753345814'
+  alias: CYD AUX2 - Changer serie ecran
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_select.cyd_aux2_serie
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux2/command
+      payload: '{{ ''ECRAN SERIE '' + states(''input_select.cyd_aux2_serie'') }}'
+  mode: single
+- id: '1774753364678'
+  alias: CYD AUX2 - Changer orientation ecran
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_select.cyd_aux2_orientation
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux2/command
+      payload: '{{ ''ECRAN '' + states(''input_select.cyd_aux2_orientation'') }}'
+  mode: single
+- id: '1774753384558'
+  alias: CYD AUX2 - Changer intervalle Alive
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: input_number.cyd_aux2_watchdog_intervalle
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/configaux2/command
+      payload: '{{ ''ALIVE '' + states(''input_number.cyd_aux2_watchdog_intervalle'')
+        | int | string }}'
+  mode: single
+- id: '1774753403999'
+  alias: CYD AUX2 - Recevoir Status
+  description: ''
+  triggers:
+  - topic: home/configaux2/state
+    trigger: mqtt
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.cyd_aux2_status
+    data:
+      value: '{{ trigger.payload[:255] }}'
+  mode: single
+- id: '1774753420634'
+  alias: CYD AUX2 - Recevoir Veille
+  description: ''
+  triggers:
+  - topic: home/configaux2/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''VEILLE'') }}'
+  actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cyd_aux2_veille
+    data:
+      value: '{{ trigger.payload.split('' '')[1] | int }}'
+  mode: single
+- id: '1774753437447'
+  alias: CYD AUX2 - Recevoir Serie
+  description: ''
+  triggers:
+  - topic: home/configaux2/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ECRAN SERIE'') }}'
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.cyd_aux2_serie
+    data:
+      option: '{{ trigger.payload.split('' '')[2] }}'
+  mode: single
+- id: '1774753455377'
+  alias: CYD AUX2 - Recevoir Orientation
+  description: ''
+  triggers:
+  - topic: home/cydaux2/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ECRAN'') and not trigger.payload.upper().startswith(''ECRAN
+      SERIE'') }}
+
+      '
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.cyd_aux2_orientation
+    data:
+      option: '{{ trigger.payload.split('' '')[1] }}'
+  mode: single
+- id: '1774753471630'
+  alias: CYD AUX2 - Recevoir Alive
+  triggers:
+  - topic: home/configaux2/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ALIVEWDOG'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.cyd_aux2_alive
+    data:
+      value: '{{ now().strftime(''%d/%m/%Y %H:%M:%S'') }}'
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_cyd_aux2
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774753488982'
+  alias: CYD AUX2 - Recevoir Intervalle Alive
+  description: ''
+  triggers:
+  - topic: home/configaux2/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''ALIVE '') }}'
+  actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cyd_aux2_watchdog_intervalle
+    data:
+      value: '{{ trigger.payload.split('' '')[1] | int }}'
+  mode: single
+- id: '1774753505954'
+  alias: CYD AUX2 - Watchdog check
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    seconds: /30
+  actions:
+  - action: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.cyd_aux2_watchdog
+  - if:
+    - condition: template
+      value_template: '{{ (as_timestamp(now()) - as_timestamp(states.input_text.cyd_aux2_alive.last_updated))
+        > (states(''input_number.cyd_aux2_watchdog_delai'') | int * 60) }}
+
+        '
+    then:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.cyd_aux2_watchdog
+  mode: single
+- id: '1774818864542'
+  alias: Capteurs - Recevoir IP ThCave
+  description: ''
+  triggers:
+  - topic: home/thermometre/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''THCAVE'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_thcave
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774818891127'
+  alias: Capteurs - Recevoir IP ThChRDC
+  description: ''
+  triggers:
+  - topic: home/thermometre/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''THCHRDC'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_thchrdc
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774818914529'
+  alias: Capteurs - Recevoir IP ThCh1er
+  description: ''
+  triggers:
+  - topic: home/thermometre/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''THCH1ER'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_thch1er
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774818936417'
+  alias: Capteurs - Recevoir IP ThRemise
+  description: ''
+  triggers:
+  - topic: home/thermometre/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''THREMISE'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_thremise
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774818955708'
+  alias: Capteurs - Recevoir IP ThSdb
+  description: ''
+  triggers:
+  - topic: home/thermometre/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''THSDB'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_thsdb
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1774944736290'
+  alias: NAS - Publier etat MQTT
+  triggers:
+  - trigger: time_pattern
+    hours: /1
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/homeassistant/state
+      payload: 'NewNas ETAT {{ now().strftime(''%d/%m/%Y %H:%M:%S'') }} {{ ''1'' if
+        states(''sensor.newnas_sante'') == ''ok'' else ''0'' }} {{states(''input_text.ip_newnas'')
+        }}
+
+        '
+  - action: mqtt.publish
+    data:
+      topic: home/homeassistant/state
+      payload: 'BigNas ETAT {{ now().strftime(''%d/%m/%Y %H:%M:%S'') }} {{ ''1'' if
+        states(''sensor.bignas_sante'') == ''ok'' else ''0'' }} {{states(''input_text.ip_bignas'')}}
+
+        '
+  mode: single
+- id: '1774986792154'
+  alias: HA - Publier IP
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    hours: /1
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/homeassistant/state
+      payload: 'PIOS IO {{ now().strftime(''%d/%m/%Y %H:%M:%S'') }} {{ states(''sensor.system_monitor_adresse_ipv4_end0'')
+        }} {{ states(''sensor.system_monitor_adresse_ipv4_end0'') }}
+
+        '
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_ha
+    data:
+      value: '{{ states(''sensor.system_monitor_adresse_ipv4_end0'') }}'
+  mode: single
+- id: '1775399513935'
+  alias: Cuve - SLEEP et ACK flotteur
+  triggers:
+  - trigger: mqtt
+    topic: home/thermometre/state
+    value_template: '{{ value.split('' '')[0] | upper }}'
+    payload: FLOTTEURREMISE
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/confthremise/command
+      payload: '{{ ''SLEEP SLEEPS'' if states(''sensor.meteo_france_forecast_for_city_bischwiller_alsace_67_fr_bischwiller_rain_chance'')
+        | int > 80 or states(''sensor.meteo_france_rain_for_city_bischwiller_alsace_67_fr_bischwiller_next_rain'')
+        != ''unknown'' else ''SLEEP SLEEPL'' }}
+
+        '
+      retain: false
+  - delay: 00:00:02
+  - action: mqtt.publish
+    data:
+      topic: home/thermometre/command
+      payload: FLOTTEURREMISE ACK
+      retain: false
+  mode: single
+- id: '1775853470108'
+  alias: Chaudière - Allumer si froid
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.thchrdc_temperature
+    below: 22.8
+  conditions:
+  - condition: time
+    after: '18:00:00'
+    before: '23:59:00'
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/chaudiere/command
+      payload: ON_FORCE
+  mode: single
+- id: '1775853496116'
+  alias: Chaudière - Éteindre si chaud
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.thchrdc_temperature
+    above: 22.8
+  conditions:
+  - condition: time
+    after: '18:00:00'
+    before: '23:59:00'
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: home/chaudiere/command
+      payload: OFF_FORCE
+  mode: single
+- id: '1776081017162'
+  alias: Capteurs - Recevoir IP ThCYD
+  description: ''
+  triggers:
+  - topic: home/thermometre/state
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''THCYD'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_thcyd
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single
+- id: '1778436367565'
+  alias: Cuve - Alerte cuve pleine
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: sensor.flotteur_remise
+    to: Cuve pleine
+  actions:
+  - action: notify.email_kebir
+    data:
+      title: "\U0001F6B0 Alerte cuve pleine"
+      message: 'La cuve de la remise est pleine. Détecté le {{ now().strftime(''%d/%m/%Y
+        à %H:%M:%S'') }}.
+
+        '
+  mode: single
+- id: '1777300000001'
+  alias: Relais LoRa - Recevoir IP
+  description: Annonce de démarrage du relais « DEVICE RELAIS LORA <nom> <date> <heure> <IP> »
+  triggers:
+  - topic: home/configuration/command
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload.upper().startswith(''DEVICE RELAIS LORA'')
+      and trigger.payload.split('' '')[-1] is match(''^\d{1,3}(\.\d{1,3}){3}$'') }}'
+  actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ip_relaislora
+    data:
+      value: '{{ trigger.payload.split('' '')[-1] }}'
+  mode: single

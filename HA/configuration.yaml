@@ -1,0 +1,804 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+# Incl;ure d'autres fichiers de config
+homeassistant:
+  packages: !include_dir_named packages
+  # Dossiers dont HA peut lire les fichiers (pièces jointes des e-mails)
+  allowlist_external_dirs:
+    - /config/rapports
+  
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.30.33.0/24
+    
+mqtt:
+  switch:
+    - name: "Projecteur"
+      unique_id: mqtt_projecteur
+      command_topic: "home/projecteur/command"
+      state_topic: "home/projecteur/command"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_on: "ONR"
+      state_off: "OFFR"
+      icon: mdi:projector
+
+    - name: "Guirlande"
+      unique_id: mqtt_guirlande
+      command_topic: "home/guirlande/command"
+      state_topic: "home/guirlande/command"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_on: "ONR"
+      state_off: "OFFR"
+      icon: mdi:string-lights
+
+    - name: "Chauffage"
+      unique_id: mqtt_chauffage
+      command_topic: "home/chauffage/command"
+      state_topic: "home/chauffage/command"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_on: "ONR"
+      state_off: "OFFR"
+      icon: mdi:radiator      
+      
+    - name: "Chaudiere"
+      unique_id: mqtt_chaudiere
+      command_topic: "home/chaudiere/command"
+      state_topic: "home/chaudiere/command"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_on: "ONR"
+      state_off: "OFFR"
+      icon: mdi:fire
+
+    - name: "Chaudiere Enable"
+      unique_id: mqtt_chaudiere_enable
+      command_topic: "home/chaudiere/command"
+      state_topic: "home/chaudiere/command"
+      payload_on: "ENABLE"
+      payload_off: "DISABLE"
+      state_on: "ENABLER"
+      state_off: "DISABLER"
+      icon: mdi:fire
+
+    - name: "Projecteur Enable"
+      unique_id: mqtt_projecteur_enable
+      command_topic: "home/projecteur/command"
+      state_topic: "home/projecteur/command"
+      payload_on: "ENABLE"
+      payload_off: "DISABLE"
+      state_on: "ENABLER"
+      state_off: "DISABLER"
+      icon: mdi:projector
+
+    - name: "Guirlande Enable"
+      unique_id: mqtt_guirlande_enable
+      command_topic: "home/guirlande/command"
+      state_topic: "home/guirlande/command"
+      payload_on: "ENABLE"
+      payload_off: "DISABLE"
+      state_on: "ENABLER"
+      state_off: "DISABLER"
+      icon: mdi:string-lights
+
+    - name: "Chauffage Enable"
+      unique_id: mqtt_chauffage_enable
+      command_topic: "home/chauffage/command"
+      state_topic: "home/chauffage/command"
+      payload_on: "ENABLE"
+      payload_off: "DISABLE"
+      state_on: "ENABLER"
+      state_off: "DISABLER"
+      icon: mdi:radiator
+
+    - name: "Chaudiere Programmation"
+      unique_id: mqtt_chaudiere_programmation
+      command_topic: "home/chaudiere/command"
+      payload_on: "ON_FORCE"
+      payload_off: "OFF_FORCE"
+      state_topic: "home/chaudiere/command"
+      state_on: "ONR"
+      state_off: "OFFR"
+      icon: mdi:fire
+      
+  sensor:
+    - name: "ThSdb Temperature"
+      unique_id: thsdb_temp
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THSDB' and parts[1]|upper == 'TEMP' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thsdb_temperature') }}
+        {% endif %}
+
+    - name: "ThSdb Humidite"
+      unique_id: thsdb_hum
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "%"
+      device_class: humidity
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THSDB' and parts[1]|upper == 'HUM' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thsdb_humidite') }}
+        {% endif %}
+
+    - name: "ThCave Temperature"
+      unique_id: thcave_temp
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCAVE' and parts[1]|upper == 'TEMP' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thcave_temperature') }}
+        {% endif %}
+
+    - name: "ThCave Humidite"
+      unique_id: thcave_hum
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "%"
+      device_class: humidity
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCAVE' and parts[1]|upper == 'HUM' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thcave_humidite') }}
+        {% endif %}
+
+    - name: "ThChRDC Temperature"
+      unique_id: thchrdc_temp
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCHRDC' and parts[1]|upper == 'TEMP' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thchrdc_temperature') }}
+        {% endif %}
+
+    - name: "ThChRDC Humidite"
+      unique_id: thchrdc_hum
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "%"
+      device_class: humidity
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCHRDC' and parts[1]|upper == 'HUM' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thchrdc_humidite') }}
+        {% endif %}
+
+    - name: "ThCYD Temperature"
+      unique_id: thcyd_temp
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCYD' and parts[1]|upper == 'TEMP' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thcyd_temperature') }}
+        {% endif %}
+
+    - name: "ThCYD Humidite"
+      unique_id: thcyd_hum
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "%"
+      device_class: humidity
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCYD' and parts[1]|upper == 'HUM' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thcyd_humidite') }}
+        {% endif %}
+
+    - name: "ThCh1er Temperature"
+      unique_id: thch1er_temp
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCH1ER' and parts[1]|upper == 'TEMP' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thch1er_temperature') }}
+        {% endif %}
+
+    - name: "ThCh1er Humidite"
+      unique_id: thch1er_hum
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "%"
+      device_class: humidity
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THCH1ER' and parts[1]|upper == 'HUM' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thch1er_humidite') }}
+        {% endif %}
+
+    - name: "ThRemise Temperature"
+      unique_id: thremise_temp
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THREMISE' and parts[1]|upper == 'TEMP' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thremise_temperature') }}
+        {% endif %}
+
+    - name: "ThRemise Humidite"
+      unique_id: thremise_hum
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "%"
+      device_class: humidity
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'THREMISE' and parts[1]|upper == 'HUM' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.thremise_humidite') }}
+        {% endif %}
+
+    - name: "CoulSdb DEL"
+      unique_id: coulsdb_del
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'DEL' %}
+          {% if parts[4] == '0' %}Eteinte{% else %}Allumee{% endif %}
+        {% else %}
+          {{ states('sensor.coulsdb_del') }}
+        {% endif %}
+
+    - name: "CoulSdb Rouge"
+      unique_id: coulsdb_r
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.coulsdb_rouge') }}
+        {% endif %}
+
+    - name: "CoulSdb Vert"
+      unique_id: coulsdb_g
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+          {{ parts[5] }}
+        {% else %}
+          {{ states('sensor.coulsdb_vert') }}
+        {% endif %}
+
+    - name: "CoulSdb Bleu"
+      unique_id: coulsdb_b
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+          {{ parts[6] }}
+        {% else %}
+          {{ states('sensor.coulsdb_bleu') }}
+        {% endif %}
+
+    - name: "CoulSdb Intensite"
+      unique_id: coulsdb_lux
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+          {{ parts[7] }}
+        {% else %}
+          {{ states('sensor.coulsdb_intensite') }}
+        {% endif %}
+
+    - name: "CoulSdb Intensite brute"
+      unique_id: coulsdb_lux_raw
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+          {{ parts[8] }}
+        {% else %}
+          {{ states('sensor.coulsdb_intensite_brute') }}
+        {% endif %}
+
+    - name: "BatSdb Tension"
+      unique_id: batsdb_tension
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "V"
+      device_class: voltage
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATSDB' and parts[1]|upper == 'TENSION' %}
+          {{ parts[5] }}
+        {% else %}
+          {{ states('sensor.batsdb_tension') }}
+        {% endif %}
+
+    - name: "BatSdb Etat"
+      unique_id: batsdb_etat
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATSDB' and parts[1]|upper == 'TENSION' %}
+          {{ parts[2] | capitalize }}
+        {% else %}
+          {{ states('sensor.batsdb_etat') }}
+        {% endif %}
+
+    - name: "BatCave Tension"
+      unique_id: batcave_tension
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "V"
+      device_class: voltage
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCAVE' and parts[1]|upper == 'TENSION' %}
+          {{ parts[5] }}
+        {% else %}
+          {{ states('sensor.batcave_tension') }}
+        {% endif %}
+
+    - name: "BatCave Etat"
+      unique_id: batcave_etat
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCAVE' and parts[1]|upper == 'TENSION' %}
+          {{ parts[2] | capitalize }}
+        {% else %}
+          {{ states('sensor.batcave_etat') }}
+        {% endif %}
+
+    - name: "BatCh1er Tension"
+      unique_id: batch1er_tension
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "V"
+      device_class: voltage
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCH1ER' and parts[1]|upper == 'TENSION' %}
+          {{ parts[5] }}
+        {% else %}
+          {{ states('sensor.batch1er_tension') }}
+        {% endif %}
+
+    - name: "BatCh1er Etat"
+      unique_id: batch1er_etat
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCH1ER' and parts[1]|upper == 'TENSION' %}
+          {{ parts[2] | capitalize }}
+        {% else %}
+          {{ states('sensor.batch1er_etat') }}
+        {% endif %}
+
+    - name: "BatChRDC Tension"
+      unique_id: batchrdc_tension
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "V"
+      device_class: voltage
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCHRDC' and parts[1]|upper == 'TENSION' %}
+          {{ parts[5] }}
+        {% else %}
+          {{ states('sensor.batchrdc_tension') }}
+        {% endif %}
+
+    - name: "BatChRDC Etat"
+      unique_id: batchrdc_etat
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCHRDC' and parts[1]|upper == 'TENSION' %}
+          {{ parts[2] | capitalize }}
+        {% else %}
+          {{ states('sensor.batchrdc_etat') }}
+        {% endif %}
+
+    - name: "BatRemise Tension"
+      unique_id: batremise_tension
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "V"
+      device_class: voltage
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATREMISE' and parts[1]|upper == 'TENSION' %}
+          {{ parts[5] }}
+        {% else %}
+          {{ states('sensor.batremise_tension') }}
+        {% endif %}
+
+    - name: "BatRemise Etat"
+      unique_id: batremise_etat
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATREMISE' and parts[1]|upper == 'TENSION' %}
+          {{ parts[2] | capitalize }}
+        {% else %}
+          {{ states('sensor.batremise_etat') }}
+        {% endif %}
+
+    - name: "Flotteur Remise"
+      unique_id: flotteurremise_onoff
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'FLOTTEURREMISE' and parts[1]|upper == 'ONOFF' %}
+          {% if parts[4] | float > 0 %}Cuve vide{% else %}Cuve pleine{% endif %}
+        {% else %}
+          {{ states('sensor.flotteur_remise') }}
+        {% endif %}
+        
+    - name: "CYD Status"
+      unique_id: cyd_status
+      state_topic: "home/configuration/state"
+
+    - name: "BatCYD Tension"
+      unique_id: batcyd_tension
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "V"
+      device_class: voltage
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCYD' and parts[1]|upper == 'TENSION' %}
+          {{ parts[5] }}
+        {% else %}
+          {{ states('sensor.batcyd_tension') }}
+        {% endif %}
+
+    - name: "BatCYD Etat"
+      unique_id: batcyd_etat
+      state_topic: "home/thermometre/state"
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'BATCYD' and parts[1]|upper == 'TENSION' %}
+          {{ parts[2] | capitalize }}
+        {% else %}
+          {{ states('sensor.batcyd_etat') }}
+        {% endif %}
+        
+    - name: "CYD Log"
+      unique_id: cyd_log
+      state_topic: "home/log"
+      value_template: "{{ value }}"
+
+input_boolean:
+  cyd_watchdog:
+    name: "CYD Watchdog"
+    icon: mdi:heart-pulse
+
+  cyd_aux_watchdog:
+    name: "CYD AUX Watchdog"
+    icon: mdi:heart-pulse
+  cyd_aux2_watchdog:
+    name: "CYD AUX2 Watchdog"
+    icon: mdi:heart-pulse
+
+input_number:
+  cyd_veille:
+    name: "CYD Veille ecran"
+    min: -1
+    max: 3600
+    step: 1
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  cyd_watchdog_delai:
+    name: "CYD Watchdog delai (min)"
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: "min"
+    icon: mdi:timer-alert
+  cyd_watchdog_intervalle:
+    name: "CYD Watchdog intervalle (min)"
+    min: 1
+    max: 60
+    step: 1
+    initial: 5
+    unit_of_measurement: "min"
+    icon: mdi:timer
+  cyd_aux_veille:
+    name: "CYD AUX Veille ecran"
+    min: -1
+    max: 3600
+    step: 1
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  cyd_aux_watchdog_delai:
+    name: "CYD AUX Watchdog delai (min)"
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: "min"
+    icon: mdi:timer-alert
+  cyd_aux_watchdog_intervalle:
+    name: "CYD AUX Watchdog intervalle (min)"
+    min: 1
+    max: 60
+    step: 1
+    initial: 5
+    unit_of_measurement: "min"
+    icon: mdi:timer
+  cyd_aux2_veille:
+    name: "CYD AUX2 Veille ecran"
+    min: -1
+    max: 3600
+    step: 1
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  cyd_aux2_watchdog_delai:
+    name: "CYD AUX2 Watchdog delai (min)"
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: "min"
+    icon: mdi:timer-alert
+  cyd_aux2_watchdog_intervalle:
+    name: "CYD AUX2 Watchdog intervalle (min)"
+    min: 1
+    max: 60
+    step: 1
+    initial: 5
+    unit_of_measurement: "min"
+    icon: mdi:timer
+
+
+input_select:
+  cyd_serie:
+    name: "CYD Serie ecran"
+    options:
+      - "1"
+      - "2"
+      - "3"
+      - "4"
+      - "5"
+    icon: mdi:television
+  cyd_orientation:
+    name: "CYD Orientation ecran"
+    options:
+      - "1"
+      - "2"
+      - "3"
+      - "4"
+    icon: mdi:screen-rotation
+
+  cyd_aux_serie:
+    name: "CYD AUX Serie ecran"
+    options:
+      - "1"
+      - "2"
+      - "3"
+      - "4"
+      - "5"
+    icon: mdi:television
+  cyd_aux_orientation:
+    name: "CYD AUX Orientation ecran"
+    options:
+      - "1"
+      - "2"
+      - "3"
+      - "4"
+    icon: mdi:screen-rotation
+  cyd_aux2_serie:
+    name: "CYD AUX2 Serie ecran"
+    options:
+      - "1"
+      - "2"
+      - "3"
+      - "4"
+      - "5"
+    icon: mdi:television
+  cyd_aux2_orientation:
+    name: "CYD AUX2 Orientation ecran"
+    options:
+      - "1"
+      - "2"
+      - "3"
+      - "4"
+    icon: mdi:screen-rotation
+    
+    
+
+
+input_text:
+  cyd_status:
+    name: "CYD Status"
+    max: 255
+  cyd_alive:
+    name: "CYD Alive"
+    max: 50
+
+  cyd_aux_status:
+    name: "CYD AUX Status"
+    max: 255
+  cyd_aux_alive:
+    name: "CYD AUX Alive"
+    max: 50
+  cyd_aux2_status:
+    name: "CYD AUX2 Status"
+    max: 255
+  cyd_aux2_alive:
+    name: "CYD AUX2 Alive"
+    max: 50
+
+  ip_thsdb:
+    name: "IP ThSdb"
+    max: 15
+  ip_thcave:
+    name: "IP ThCave"
+    max: 15
+  ip_thchrdc:
+    name: "IP ThChRDC"
+    max: 15
+  ip_thch1er:
+    name: "IP ThCh1er"
+    max: 15
+  ip_thremise:
+    name: "IP ThRemise"
+    max: 15
+  ip_thcyd:
+    name: "IP ThCYD"
+    max: 15
+  ip_cyd:
+    name: "IP CYD"
+    max: 15
+  ip_cyd_aux:
+    name: "IP CYD AUX"
+    max: 15
+  ip_cyd_aux2:
+    name: "IP CYD AUX2"
+    max: 15
+  ip_relaislora:
+    name: "IP Relais LoRa"
+    max: 15
+    
+  ip_ha:
+    name: "IP HA"
+    max: 15
+
+  ip_newnas:
+    name: "IP NewNas"
+    max: 15
+  ip_bignas:
+    name: "IP BigNas"
+    max: 15    
+    
+  linky_index_facture:
+    name: "Linky Index Facture"
+    max: 10
+    icon: mdi:receipt
+    
+  linky_cout_kwh:
+    name: "Linky Cout kWh"
+    max: 10
+    icon: mdi:currency-eur
+
+  linky_date_facture:
+    name: "Linky Date Facture"
+    max: 10
+    icon: mdi:calendar
+    
+  linky_consommation_derniere_facture:
+    name: "Linky Conso dernière Facture"
+    max: 10
+    icon: mdi:receipt
+  linky_cout_derniere_facture:
+    name: "Linky Cout dernière facture"
+    max: 10
+    icon: mdi:currency-eur
+
+    
+climate:
+  - platform: generic_thermostat
+    name: Chaudière RDC
+    heater: switch.chaudiere_programmation
+    target_sensor: sensor.thchrdc_temperature
+    min_temp: 15
+    max_temp: 25
+    cold_tolerance: 0.5
+    hot_tolerance: 0.5
+    target_temp: 20
+    
+
+notify:
+  - name: email_kebir
+    platform: smtp
+    server: smtp.gmail.com
+    port: 587
+    starttls: true
+    sender: jbil.kebir@gmail.com
+    username: jbil.kebir@gmail.com
+    password: !secret gmail_app_password
+    recipient:
+      - jbil.kebir@gmail.com
+
+    
+template:
+  - sensor:
+      - name: "NewNas Sante"
+        state: >
+          {{ 'ok' if states('sensor.newnas_volume_1_etat') == 'normal'
+            and states('sensor.newnas_drive_1_etat') == 'normal'
+            and states('sensor.newnas_drive_2_etat') == 'normal'
+            and states('binary_sensor.newnas_drive_1_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.newnas_drive_1_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            and states('binary_sensor.newnas_drive_2_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.newnas_drive_2_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            else 'probleme' }}
+      - name: "BigNas Sante"
+        state: >
+          {{ 'ok' if states('sensor.bignas_volume_1_etat') == 'normal'
+            and states('sensor.bignas_drive_1_etat') == 'normal'
+            and states('sensor.bignas_drive_2_etat') == 'normal'
+            and states('binary_sensor.bignas_drive_1_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.bignas_drive_1_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            and states('binary_sensor.bignas_drive_2_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.bignas_drive_2_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            else 'probleme' }}
+            
+      - name: "Linky Consommation Depuis Facture"
+        unit_of_measurement: "kWh"
+        state: >
+          {{ (states('sensor.linky_index_base') | float - states('input_text.linky_index_facture') | float) | round(1) }}     
+          
+      - name: "Linky Cout Depuis Facture"
+        unit_of_measurement: "€"
+        state: >
+          {{ ((states('sensor.linky_index_base') | float - states('input_text.linky_index_facture') | float) * states('input_text.linky_cout_kwh') | float) | round(2) }}          
+          
+  - switch:
+      - name: "Chaudiere Programme"
+        unique_id: chaudiere_programme
+        state: "{{ is_state('switch.chaudiere', 'on') }}"
+        turn_on:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.chaudiere_enable
+          - action: switch.turn_on
+            target:
+              entity_id: switch.chaudiere
+        turn_off:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.chaudiere
+          - action: switch.turn_off
+            target:
+              entity_id: switch.chaudiere_enable

@@ -1,0 +1,129 @@
+# ============================================================
+# PACKAGE : RAPPORT DE CONSOMMATION PAR E-MAIL
+# Envoie un récapitulatif HTML de toutes les mesures + Linky,
+# avec en pièce jointe le CSV horaire des prises Eve
+# Les mesures sont détectées automatiquement (convention mesure_xxx)
+# Utilisation : script.rapport_consommation
+# ============================================================
+
+# ------------------------------------------------------------
+# Commande : export CSV des statistiques horaires des prises Eve
+# Paramètre optionnel "debut" : timestamp de début de période
+# ------------------------------------------------------------
+shell_command:
+  export_conso_csv: "python3 /config/scripts_py/export_conso.py {{ debut | default('') }}"
+
+script:
+  rapport_consommation:
+    alias: Envoyer le rapport de consommation
+    icon: mdi:email-fast
+    mode: single
+    fields:
+      titre:
+        name: Titre
+        description: Titre du rapport
+        required: false
+        default: Rapport de consommation
+        example: Bilan de période de facturation
+        selector:
+          text:
+    sequence:
+      # 1. Début de la période du CSV = démarrage des mesures fixes
+      #    (le plus ancien des débuts de mesure, hors itinérante)
+      - variables:
+          debut_periode: >
+            {{ states.input_datetime
+               | selectattr('entity_id', 'match', 'input_datetime\.mesure_.+_debut$')
+               | rejectattr('entity_id', 'eq', 'input_datetime.mesure_itinerante_debut')
+               | map(attribute='attributes.timestamp')
+               | min | int(0) }}
+
+      # 2. Générer le CSV (un échec n'empêche pas l'envoi du rapport)
+      - action: shell_command.export_conso_csv
+        continue_on_error: true
+        data:
+          debut: "{{ debut_periode }}"
+        response_variable: export
+
+      # 3. Pièce jointe seulement si l'export a réussi
+      - variables:
+          pieces_jointes: >
+            {{ [ export.stdout | trim ]
+               if export is defined and export.returncode == 0
+               else [] }}
+
+      # 4. Envoi de l'e-mail
+      - action: notify.mail_ha
+        data:
+          title: "{{ titre | default('Rapport de consommation') }} - {{ now().strftime('%d/%m/%Y') }}"
+          # Version texte (secours si le client mail n'affiche pas le HTML)
+          message: >
+            Rapport de consommation du {{ now().strftime('%d/%m/%Y à %H:%M') }}.
+            Consultez la version HTML pour le détail.
+          data:
+            images: "{{ pieces_jointes }}"
+            html: >
+              {% set prix = states('input_text.linky_cout_kwh') | replace(',', '.') | float(0) %}
+              {% set td = 'padding:6px 10px; border:1px solid #ccc;' %}
+              <div style="font-family: Arial, sans-serif; color: #222;">
+              <h2 style="color:#e67e22;">⚡ {{ titre | default('Rapport de consommation') }}</h2>
+              <p>Généré le {{ now().strftime('%d/%m/%Y à %H:%M') }}</p>
+
+              <h3>Facture ES</h3>
+              <table style="border-collapse: collapse;">
+                <tr><td style="padding:4px 12px;">Prix du kWh</td>
+                    <td style="padding:4px 12px; text-align:right;"><b>{{ (prix * 100) | round(1) }} cts</b></td></tr>
+                <tr><td style="padding:4px 12px;">Date dernière facture</td>
+                    <td style="padding:4px 12px; text-align:right;">{{ states('input_text.linky_date_facture') }}</td></tr>
+                <tr><td style="padding:4px 12px;">Consommation depuis la facture</td>
+                    <td style="padding:4px 12px; text-align:right;"><b>{{ states('sensor.linky_consommation_depuis_facture') }} kWh</b></td></tr>
+                <tr><td style="padding:4px 12px;">Coût depuis la facture</td>
+                    <td style="padding:4px 12px; text-align:right;"><b>{{ states('sensor.linky_cout_depuis_facture') }} €</b></td></tr>
+              </table>
+
+              <h3>Mesures par équipement</h3>
+              <table style="border-collapse: collapse; border: 1px solid #ccc;">
+                <tr style="background:#f2f2f2;">
+                  <th style="{{ td }} text-align:left;">Équipement</th>
+                  <th style="{{ td }}">Début</th>
+                  <th style="{{ td }}">Durée</th>
+                  <th style="{{ td }}">Énergie</th>
+                  <th style="{{ td }}">P moy</th>
+                  <th style="{{ td }}">Projection<br>60 jours</th>
+                  <th style="{{ td }}">Projection<br>1 an</th>
+                </tr>
+                {% for s in states.input_datetime
+                     | selectattr('entity_id', 'match', 'input_datetime\.mesure_.+_debut$') %}
+                {% set m = s.entity_id | regex_replace('^input_datetime\.mesure_(.+)_debut$', '\\1') %}
+                {% set n = s.name | replace('Mesure ', '') | replace(' début', '') %}
+                {% set debut = as_datetime(s.state) %}
+                {% set h = states('sensor.mesure_' ~ m ~ '_duree') | float(0) %}
+                {% set wh = states('sensor.mesure_' ~ m ~ '_energie_consommee') | float(0) %}
+                <tr>
+                  <td style="{{ td }}"><b>{{ n[0] | upper ~ n[1:] }}</b></td>
+                  <td style="{{ td }} text-align:center;">{{ debut.strftime('%d/%m %H:%M') if debut else '-' }}</td>
+                  <td style="{{ td }} text-align:right;">{{ (h / 24) | round(1) }} j</td>
+                  <td style="{{ td }} text-align:right;">{{ (wh / 1000) | round(2) }} kWh</td>
+                  <td style="{{ td }} text-align:right;">{{ states('sensor.mesure_' ~ m ~ '_puissance_moyenne') }} W</td>
+                  <td style="{{ td }} text-align:right;">
+                    {{ states('sensor.mesure_' ~ m ~ '_projection_energie_60_jours') }} kWh<br>
+                    <b>{{ states('sensor.mesure_' ~ m ~ '_projection_cout_60_jours') }} €</b>
+                  </td>
+                  <td style="{{ td }} text-align:right;">
+                    {{ states('sensor.mesure_' ~ m ~ '_projection_energie_1_an') }} kWh<br>
+                    <b>{{ states('sensor.mesure_' ~ m ~ '_projection_cout_1_an') }} €</b>
+                  </td>
+                </tr>
+                {% endfor %}
+              </table>
+
+              <p style="color:#888; font-size:12px; margin-top:20px;">
+                Projections calculées d'après la puissance moyenne mesurée sur la durée indiquée.<br>
+                {% if pieces_jointes %}
+                Pièce jointe : relevé horaire des prises Eve depuis le
+                {{ (debut_periode | int) | timestamp_custom('%d/%m/%Y %H:%M') }} (CSV, séparateur ;).
+                {% else %}
+                ⚠️ Le relevé CSV n'a pas pu être généré.
+                {% endif %}
+              </p>
+              </div>

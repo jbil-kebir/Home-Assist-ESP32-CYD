@@ -51,3 +51,8 @@ android/.gradle/
 android/local.properties
 android/app/build/
 
+
+# Home Assistant (depot public) : pas de secrets.yaml, de .storage seulement lovelace*
+HA/secrets.yaml
+HA/.storage/*
+!HA/.storage/lovelace*

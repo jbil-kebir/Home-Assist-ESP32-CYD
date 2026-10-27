@@ -1,0 +1,19 @@
+# ============================================================
+# PACKAGE : NOTIFICATION PAR E-MAIL (Proton SMTP)
+# Expéditeur : ha@jbil.org (jeton SMTP Proton)
+# Utilisation : action notify.mail_ha
+# ============================================================
+
+notify:
+  - name: mail_ha
+    platform: smtp
+    server: smtp.protonmail.ch
+    port: 587
+    encryption: starttls
+    timeout: 15
+    username: ha@jbil.org
+    password: !secret proton_smtp_token
+    sender: ha@jbil.org
+    sender_name: Home Assistant
+    recipient:
+      - jbil.kebir@pm.me   # <- remplace par l'adresse qui recevra les rapports

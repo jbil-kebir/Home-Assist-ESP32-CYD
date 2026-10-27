@@ -11,8 +11,10 @@ Le dépôt git de référence est sur le NAS :
 - remote `origin` = https://github.com/jbil-kebir/Home-Assist-ESP32-CYD.git
 - branche `main`
 
-Correspondance des dossiers D: → NAS : `Capteur`, `CydMonitor`, `Home-Assist`, `Relais-Lora`, `Linky`, `Doc`, `Firmwares`, `images` (même nom) ; `Home-Assist-App 1.2` → `Home-Assist-App`.
-Ne pas copier : `Archives`, `Analyse`, `Programmes unitaires`, les `.zip`, les raccourcis `.lnk`, les sauvegardes datées.
+Correspondance des dossiers D: → NAS : `Capteur`, `CydMonitor`, `Home-Assist`, `Relais-Lora`, `Linky`, `Doc`, `Firmwares`, `images`, `HA` (même nom) ; `Home-Assist-App 1.2` → `Home-Assist-App`.
+Ne pas copier : `secret.h` (identifiants Wi-Fi / MQTT réels, exclu par `.gitignore` ; seul `secret.exemple.h` est commité), `Archives`, `Analyse`, `Programmes unitaires`, les `.zip`, les raccourcis `.lnk`, les sauvegardes datées.
+
+`HA` = copie de la configuration Home Assistant (`/config`), voir `HA/LISEZMOI.md`. Dépôt public : jamais `secrets.yaml`, et de `.storage` seulement les fichiers `lovelace*` ; vérifier qu'aucun mot de passe ou jeton n'est en clair avant de commiter.
 
 ### Procédure « commit et pousse »
 

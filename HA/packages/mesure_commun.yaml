@@ -1,0 +1,146 @@
+# ============================================================
+# PACKAGE : MESURE - Éléments communs à toutes les mesures
+# Convention : pour une mesure de suffixe "xxx"
+#   - source    : sensor.eve_xxx_energie (kWh cumulés)
+#   - helpers   : input_datetime.mesure_xxx_debut
+#                 input_number.mesure_xxx_energie_debut
+# Mesures fixes (toutes sauf "itinerante") : redémarrage
+# automatique à la date de facture (jour + mois pairs/impairs)
+# ============================================================
+
+# ------------------------------------------------------------
+# Helpers : date de facture (saisis dans la vue Facture ES)
+# ------------------------------------------------------------
+input_number:
+  # Jour du mois de la facture (limité à 28 pour exister chaque mois)
+  facture_jour:
+    name: Jour de facture
+    min: 1
+    max: 28
+    step: 1
+    mode: box
+    icon: mdi:calendar-today
+
+input_select:
+  # Mois de facture : pairs ou impairs (facturation tous les 2 mois)
+  facture_mois:
+    name: Mois de facture
+    options:
+      - Impairs
+      - Pairs
+    icon: mdi:calendar-month
+
+# ------------------------------------------------------------
+# Script : démarre (ou redémarre) une mesure à partir de son suffixe
+# ------------------------------------------------------------
+script:
+  mesure_demarrer:
+    alias: Démarrer une mesure
+    icon: mdi:play-circle
+    mode: parallel       # plusieurs mesures peuvent démarrer en même temps
+    fields:
+      mesure:
+        name: Mesure
+        description: Suffixe de la mesure (itinerante, nas, poele...)
+        required: true
+        example: nas
+        selector:
+          text:
+    sequence:
+      # 1. Mémoriser la date/heure actuelle comme début de mesure
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: "input_datetime.mesure_{{ mesure }}_debut"
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      # 2. Mémoriser la valeur actuelle du compteur Eve correspondant
+      - action: input_number.set_value
+        target:
+          entity_id: "input_number.mesure_{{ mesure }}_energie_debut"
+        data:
+          value: "{{ states('sensor.eve_' ~ mesure ~ '_energie') | float(0) }}"
+
+# ------------------------------------------------------------
+# Automatisation : le jour de facture
+#   1. envoie le bilan de la période qui se termine
+#   2. redémarre toutes les mesures fixes (sauf itinérante)
+# Les mesures sont détectées automatiquement grâce à la convention
+# de nommage : tout nouveau package mesure_xxx sera pris en compte
+# ------------------------------------------------------------
+automation:
+  - id: mesure_redemarrage_facture
+    alias: Mesures - bilan et redémarrage à la date de facture
+    description: >-
+      Envoie le rapport de consommation puis redémarre toutes les mesures
+      fixes (sauf itinérante) le jour de facture
+    mode: single
+    triggers:
+      # Vérification chaque jour à minuit
+      - trigger: time
+        at: "00:00:00"
+    conditions:
+      # Bon jour du mois ET bonne parité du mois
+      - condition: template
+        value_template: >
+          {% set jour = states('input_number.facture_jour') | int(0) %}
+          {% set mois_impair = now().month % 2 == 1 %}
+          {% set veut_impair = states('input_select.facture_mois') == 'Impairs' %}
+          {{ now().day == jour and mois_impair == veut_impair }}
+    actions:
+      # 1. Bilan de la période AVANT remise à zéro
+      #    (appel direct du script : on attend la fin de l'envoi)
+      #    continue_on_error : un échec d'envoi ne bloque pas le redémarrage
+      - action: script.rapport_consommation
+        continue_on_error: true
+        data:
+          titre: Bilan de période de facturation
+
+      # 2. Liste des suffixes : toutes les mesures sauf "itinerante"
+      - variables:
+          mesures: >
+            {{ states.input_datetime
+               | map(attribute='entity_id')
+               | select('match', 'input_datetime\.mesure_.+_debut$')
+               | map('regex_replace', '^input_datetime\.mesure_(.+)_debut$', '\\1')
+               | reject('eq', 'itinerante')
+               | list }}
+
+      # 3. Redémarrer chaque mesure
+      - repeat:
+          for_each: "{{ mesures }}"
+          sequence:
+            - action: script.mesure_demarrer
+              data:
+                mesure: "{{ repeat.item }}"
+                
+                
+# ------------------------------------------------------------
+# Capteur : nombre de jours depuis la dernière date de facture
+# (jour saisi + mois pairs/impairs), sert à caler les graphes
+# ------------------------------------------------------------
+template:
+  - sensor:
+      - name: "Facture jours depuis"
+        unique_id: facture_jours_depuis
+        unit_of_measurement: j
+        icon: mdi:calendar-range
+        state: >
+          {% set jour = states('input_number.facture_jour') | int(13) %}
+          {% set veut_impair = states('input_select.facture_mois') == 'Impairs' %}
+          {% set t = now() %}
+          {% set ns = namespace(d=none) %}
+          {# On remonte mois par mois jusqu'à trouver la dernière date de facture passée #}
+          {% for i in range(0, 3) %}
+            {% set m = (t.month - 1 - i) % 12 + 1 %}
+            {% set y = t.year + ((t.month - 1 - i) // 12) %}
+            {% set c = t.replace(year=y, month=m, day=jour, hour=0, minute=0, second=0, microsecond=0) %}
+            {% if ns.d is none and (m % 2 == 1) == veut_impair and c <= t %}
+              {% set ns.d = c %}
+            {% endif %}
+          {% endfor %}
+          {{ (t - ns.d).days + 1 if ns.d else 62 }}
+          
+          
+          
+                

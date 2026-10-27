@@ -1,0 +1,967 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace.dashboard_systeme",
+  "data": {
+    "config": {
+      "title": "Système",
+      "views": [
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "NAS",
+          "path": "nas",
+          "icon": "mdi:nas",
+          "show_icon_and_title": true,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "markdown",
+                      "content": "{% if states('sensor.newnas_sante') == 'ok' %} 🟢 **NewNas : Santé OK** {% else %} 🔴 **NewNas : Problème détecté !** {% endif %}\n",
+                      "card_mod": {
+                        "style": "ha-markdown {\n  text-align: center;\n  padding: 8px;\n  color: {{ 'green' if states('sensor.newnas_sante') == 'ok' else 'red' }} !important;\n}\n"
+                      }
+                    },
+                    {
+                      "type": "custom:apexcharts-card",
+                      "header": {
+                        "show": true,
+                        "title": "NewNas"
+                      },
+                      "chart_type": "radialBar",
+                      "apex_config": {
+                        "legend": {
+                          "show": true,
+                          "position": "right",
+                          "fontSize": "16px"
+                        },
+                        "plotOptions": {
+                          "radialBar": {
+                            "hollow": {
+                              "size": "30%"
+                            },
+                            "dataLabels": {
+                              "show": true,
+                              "value": {
+                                "show": true,
+                                "fontSize": "16px"
+                              },
+                              "total": {
+                                "show": false
+                              }
+                            }
+                          }
+                        },
+                        "chart": {
+                          "height": "200px"
+                        }
+                      },
+                      "series": [
+                        {
+                          "entity": "sensor.newnas_utilisation_du_processeur_totale",
+                          "name": "CPU",
+                          "color": "orange"
+                        },
+                        {
+                          "entity": "sensor.newnas_utilisation_de_la_memoire_reelle",
+                          "name": "Memoire",
+                          "color": "blue"
+                        },
+                        {
+                          "entity": "sensor.newnas_volume_1_volume_utilise",
+                          "name": "Disque",
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "tile",
+                          "entity": "button.newnas_reboot",
+                          "hide_state": true
+                        },
+                        {
+                          "type": "tile",
+                          "entity": "button.newnas_shutdown",
+                          "hide_state": true
+                        }
+                      ]
+                    },
+                    {
+                      "type": "markdown",
+                      "content": "{% if states('sensor.bignas_sante') == 'ok' %} 🟢 **BigNas : Santé OK** {% else %} 🔴 **BigNas : Problème détecté !** {% endif %}\n",
+                      "card_mod": {
+                        "style": "ha-markdown {\n  text-align: center;\n  padding: 8px;\n  color: {{ 'green' if states('sensor.bignas_sante') == 'ok' else 'red' }} !important;\n}\n"
+                      }
+                    },
+                    {
+                      "type": "custom:apexcharts-card",
+                      "header": {
+                        "show": true,
+                        "title": "BigNas"
+                      },
+                      "chart_type": "radialBar",
+                      "apex_config": {
+                        "legend": {
+                          "show": true,
+                          "position": "right",
+                          "fontSize": "16px"
+                        },
+                        "plotOptions": {
+                          "radialBar": {
+                            "hollow": {
+                              "size": "30%"
+                            },
+                            "dataLabels": {
+                              "show": true,
+                              "value": {
+                                "show": true,
+                                "fontSize": "16px"
+                              },
+                              "total": {
+                                "show": false
+                              }
+                            }
+                          }
+                        },
+                        "chart": {
+                          "height": "200px"
+                        }
+                      },
+                      "series": [
+                        {
+                          "entity": "sensor.bignas_utilisation_du_processeur_totale",
+                          "name": "CPU",
+                          "color": "orange"
+                        },
+                        {
+                          "entity": "sensor.bignas_utilisation_de_la_memoire_reelle",
+                          "name": "Memoire",
+                          "color": "blue"
+                        },
+                        {
+                          "entity": "sensor.bignas_volume_1_volume_utilise",
+                          "name": "Disque",
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "tile",
+                          "entity": "button.bignas_reboot",
+                          "hide_state": true
+                        },
+                        {
+                          "type": "tile",
+                          "entity": "button.bignas_shutdown",
+                          "hide_state": true
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "custom:mini-graph-card",
+                          "name": "Puissance",
+                          "font_size": 60,
+                          "entities": [
+                            {
+                              "entity": "sensor.eve_nas_puissance",
+                              "name": "Nas",
+                              "color": "violet",
+                              "show_state": true
+                            }
+                          ],
+                          "hours_to_show": 24,
+                          "points_per_hour": 2,
+                          "line_width": 2,
+                          "show": {
+                            "labels": true,
+                            "points": false
+                          }
+                        },
+                        {
+                          "type": "custom:mini-graph-card",
+                          "name": "Energie",
+                          "font_size": 60,
+                          "entities": [
+                            {
+                              "entity": "sensor.eve_nas_energie",
+                              "name": "Nas",
+                              "color": "violet",
+                              "show_state": true
+                            }
+                          ],
+                          "hours_to_show": 24,
+                          "points_per_hour": 2,
+                          "line_width": 2,
+                          "show": {
+                            "labels": true,
+                            "points": false
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "title": "NewNas - Etat",
+                      "entities": [
+                        {
+                          "entity": "sensor.newnas_volume_1_etat",
+                          "name": "Volume 1",
+                          "icon": "mdi:harddisk"
+                        },
+                        {
+                          "entity": "sensor.newnas_drive_1_etat",
+                          "name": "Disque 1",
+                          "icon": "mdi:harddisk"
+                        },
+                        {
+                          "entity": "sensor.newnas_drive_2_etat",
+                          "name": "Disque 2",
+                          "icon": "mdi:harddisk"
+                        },
+                        {
+                          "entity": "binary_sensor.newnas_drive_1_en_dessous_de_la_duree_de_vie_restante_minimale",
+                          "name": "Drive 1 - Duree de vie",
+                          "icon": "mdi:alert-circle"
+                        },
+                        {
+                          "entity": "binary_sensor.newnas_drive_1_depassement_du_nombre_maximal_de_secteurs_defectueux",
+                          "name": "Drive 1 - Secteurs defectueux",
+                          "icon": "mdi:alert"
+                        },
+                        {
+                          "entity": "binary_sensor.newnas_drive_2_en_dessous_de_la_duree_de_vie_restante_minimale",
+                          "name": "Drive 2 - Duree de vie",
+                          "icon": "mdi:alert-circle"
+                        },
+                        {
+                          "entity": "binary_sensor.newnas_drive_2_depassement_du_nombre_maximal_de_secteurs_defectueux",
+                          "name": "Drive 2 - Secteurs defectueux",
+                          "icon": "mdi:alert"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "title": "BigNas - Etat",
+                      "entities": [
+                        {
+                          "entity": "sensor.bignas_volume_1_etat",
+                          "name": "Volume 1",
+                          "icon": "mdi:harddisk"
+                        },
+                        {
+                          "entity": "sensor.bignas_drive_1_etat",
+                          "name": "Disque 1",
+                          "icon": "mdi:harddisk"
+                        },
+                        {
+                          "entity": "sensor.bignas_drive_2_etat",
+                          "name": "Disque 2",
+                          "icon": "mdi:harddisk"
+                        },
+                        {
+                          "entity": "binary_sensor.bignas_drive_1_en_dessous_de_la_duree_de_vie_restante_minimale",
+                          "name": "Drive 1 - Duree de vie",
+                          "icon": "mdi:alert-circle"
+                        },
+                        {
+                          "entity": "binary_sensor.bignas_drive_1_depassement_du_nombre_maximal_de_secteurs_defectueux",
+                          "name": "Drive 1 - Secteurs defectueux",
+                          "icon": "mdi:alert"
+                        },
+                        {
+                          "entity": "binary_sensor.bignas_drive_2_en_dessous_de_la_duree_de_vie_restante_minimale",
+                          "name": "Drive 2 - Duree de vie",
+                          "icon": "mdi:alert-circle"
+                        },
+                        {
+                          "entity": "binary_sensor.bignas_drive_2_depassement_du_nombre_maximal_de_secteurs_defectueux",
+                          "name": "Drive 2 - Secteurs defectueux",
+                          "icon": "mdi:alert"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "title": "Adresses IP",
+                      "entities": [
+                        {
+                          "entity": "input_text.ip_newnas",
+                          "name": "NewNas"
+                        },
+                        {
+                          "entity": "input_text.ip_bignas",
+                          "name": "BigNas"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "Diagnostic",
+          "path": "diagnostic",
+          "icon": "mdi:heart-pulse",
+          "show_icon_and_title": true,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "heading": "OTBR / Thread",
+                      "heading_style": "title",
+                      "icon": "mdi:stethoscope"
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "sensor.eve_poele_puissance",
+                          "name": "Eve Poêle - Puissance",
+                          "secondary_info": "last-updated"
+                        },
+                        {
+                          "entity": "sensor.eve_itinerante_puissance",
+                          "name": "Eve Itinérante - Puissance",
+                          "secondary_info": "last-updated"
+                        },
+                        {
+                          "entity": "sensor.eve_nas_puissance",
+                          "name": "Eve NAS - Puissance",
+                          "secondary_info": "last-updated"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entity",
+                      "entity": "update.openthread_border_router_mise_a_jour",
+                      "name": "OTBR - Version"
+                    },
+                    {
+                      "type": "button",
+                      "name": "Redemarrer OTBR",
+                      "icon": "mdi:restart",
+                      "tap_action": {
+                        "action": "call-service",
+                        "service": "hassio.addon_restart",
+                        "data": {
+                          "addon": "core_openthread_border_router"
+                        }
+                      },
+                      "card_mod": {
+                        "style": "ha-card {\n  height: 60px !important;\n  background: rgba(255,165,0,0.2) !important;\n}\nha-icon {\n  color: orange !important;\n}\n"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "heading": "Linky",
+                      "heading_style": "title",
+                      "icon": "mdi:stethoscope"
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "sensor.linky_index_base",
+                          "name": "Index base",
+                          "secondary_info": "last-updated"
+                        },
+                        {
+                          "entity": "sensor.linky_puissance_apparente",
+                          "name": "Puissance apparente",
+                          "secondary_info": "last-updated"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "Journal CYD",
+                  "heading_style": "title",
+                  "icon": "mdi:text-box-outline"
+                },
+                {
+                  "type": "logbook",
+                  "entities": [
+                    "sensor.cyd_log"
+                  ],
+                  "hours_to_show": 24,
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 8
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "CYD",
+          "path": "cyd",
+          "icon": "mdi:alpha-m-circle-outline",
+          "show_icon_and_title": true,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "heading": "CYD - Configuration",
+                      "heading_style": "title",
+                      "icon": "mdi:tablet"
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Status",
+                          "icon": "mdi:information",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_status"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Device",
+                          "icon": "mdi:chip",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_device"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Reboot",
+                          "icon": "mdi:restart",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_reboot"
+                          },
+                          "card_mod": {
+                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Ecran Sleep",
+                          "icon": "mdi:monitor-off",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_ecran_sleep"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Ecran Wake",
+                          "icon": "mdi:monitor",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_ecran_wake"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "input_number.cyd_veille",
+                          "name": "Veille ecran (s)"
+                        },
+                        {
+                          "entity": "input_select.cyd_serie",
+                          "name": "Serie ecran"
+                        },
+                        {
+                          "entity": "input_select.cyd_orientation",
+                          "name": "Orientation ecran"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "markdown",
+                      "content": "{{ states('input_text.cyd_status') }}\n",
+                      "card_mod": {
+                        "style": "ha-markdown {\n  white-space: pre-wrap !important;\n}\n"
+                      }
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "input_boolean.cyd_watchdog",
+                          "name": "Etat controleur"
+                        },
+                        {
+                          "entity": "input_text.cyd_alive",
+                          "name": "Dernier signal"
+                        },
+                        {
+                          "entity": "input_number.cyd_watchdog_intervalle",
+                          "name": "Intervalle ALIVE (min)"
+                        },
+                        {
+                          "entity": "input_number.cyd_watchdog_delai",
+                          "name": "Delai alerte (min)"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "CYD Aux",
+          "path": "cyd-aux",
+          "icon": "mdi:alpha-m-circle-outline",
+          "show_icon_and_title": true,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "heading": "CYD AUX - Configuration",
+                      "heading_style": "title",
+                      "icon": "mdi:tablet"
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Status",
+                          "icon": "mdi:information",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux_status"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Device",
+                          "icon": "mdi:chip",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux_device"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Reboot",
+                          "icon": "mdi:restart",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux_reboot"
+                          },
+                          "card_mod": {
+                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Ecran Sleep",
+                          "icon": "mdi:monitor-off",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux_ecran_sleep"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Ecran Wake",
+                          "icon": "mdi:monitor",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux_ecran_wake"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "input_number.cyd_aux_veille",
+                          "name": "Veille ecran (s)"
+                        },
+                        {
+                          "entity": "input_select.cyd_aux_serie",
+                          "name": "Serie ecran"
+                        },
+                        {
+                          "entity": "input_select.cyd_aux_orientation",
+                          "name": "Orientation ecran"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "markdown",
+                      "content": "{{ states('input_text.cyd_aux_status') }}\n",
+                      "card_mod": {
+                        "style": "ha-markdown {\n  white-space: pre-wrap !important;\n}\n"
+                      }
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "input_boolean.cyd_aux_watchdog",
+                          "name": "Etat controleur"
+                        },
+                        {
+                          "entity": "input_text.cyd_aux_alive",
+                          "name": "Dernier signal"
+                        },
+                        {
+                          "entity": "input_number.cyd_aux_watchdog_intervalle",
+                          "name": "Intervalle ALIVE (min)"
+                        },
+                        {
+                          "entity": "input_number.cyd_aux_watchdog_delai",
+                          "name": "Delai alerte (min)"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "CYD Aux 2",
+          "path": "cyd-aux-2",
+          "icon": "mdi:alpha-m-circle-outline",
+          "show_icon_and_title": true,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "heading": "CYD AUX 2 - Configuration",
+                      "heading_style": "title",
+                      "icon": "mdi:tablet"
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Status",
+                          "icon": "mdi:information",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux2_status"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Device",
+                          "icon": "mdi:chip",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux2_device"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Reboot",
+                          "icon": "mdi:restart",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux2_reboot"
+                          },
+                          "card_mod": {
+                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Ecran Sleep",
+                          "icon": "mdi:monitor-off",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux2_ecran_sleep"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Ecran Wake",
+                          "icon": "mdi:monitor",
+                          "tap_action": {
+                            "action": "call-service",
+                            "service": "script.cyd_aux2_ecran_wake"
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }\n"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "input_number.cyd_aux2_veille",
+                          "name": "Veille ecran (s)"
+                        },
+                        {
+                          "entity": "input_select.cyd_aux2_serie",
+                          "name": "Serie ecran"
+                        },
+                        {
+                          "entity": "input_select.cyd_aux2_orientation",
+                          "name": "Orientation ecran"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "markdown",
+                      "content": "{{ states('input_text.cyd_aux2_status') }}\n",
+                      "card_mod": {
+                        "style": "ha-markdown {\n  white-space: pre-wrap !important;\n}\n"
+                      }
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "input_boolean.cyd_aux2_watchdog",
+                          "name": "Etat controleur"
+                        },
+                        {
+                          "entity": "input_text.cyd_aux2_alive",
+                          "name": "Dernier signal"
+                        },
+                        {
+                          "entity": "input_number.cyd_aux2_watchdog_intervalle",
+                          "name": "Intervalle ALIVE (min)"
+                        },
+                        {
+                          "entity": "input_number.cyd_aux2_watchdog_delai",
+                          "name": "Delai alerte (min)"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "Paramétrage",
+          "path": "parametrage",
+          "icon": "mdi:cog",
+          "show_icon_and_title": true,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "### Capteurs\n[🔧 ThSdb](http://{{ states('input_text.ip_thsdb') }})\n[🔧 ThCave](http://{{ states('input_text.ip_thcave') }})\n[🔧 ThChRDC](http://{{ states('input_text.ip_thchrdc') }})\n[🔧 ThCh1er](http://{{ states('input_text.ip_thch1er') }})\n[🔧 ThRemise](http://{{ states('input_text.ip_thremise') }})\n[🔧 ThCYD](http://{{ states('input_text.ip_thcyd') }})\n[🔧 ThChauffageSdb](http://{{ states('sensor.c3_chauffage_sdb_ip') }})\n### CYD\n[🔧 CYD Principal](http://{{ states('input_text.ip_cyd') }})\n[🔧 CYD AUX](http://{{ states('input_text.ip_cyd_aux') }})\n[🔧 CYD AUX2](http://{{ states('input_text.ip_cyd_aux2') }})\n### Relais LoRa\n[🔧 Relais LoRa](http://{{ states('input_text.ip_relaislora') }})\n[🔧 Capteurs LoRa](http://{{ states('input_text.ip_relaislora') }}/capteurs)\n"
+                },
+                {
+                  "type": "entities",
+                  "title": "Home Assistant",
+                  "entities": [
+                    {
+                      "entity": "input_text.ip_ha",
+                      "name": "IP du RPi5"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "Calibrage",
+          "path": "calibrage",
+          "icon": "mdi:tune",
+          "show_icon_and_title": true,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "icon": "mdi:fire",
+                      "heading": "Chaudière",
+                      "heading_style": "title"
+                    },
+                    {
+                      "type": "custom:mushroom-entity-card",
+                      "entity": "sensor.coulsdb_del",
+                      "name": "Chaudiere",
+                      "icon": "mdi:fire",
+                      "icon_color": "none",
+                      "card_mod": {
+                        "style": "ha-state-icon {\n  color: {{ 'green' if states('sensor.coulsdb_del') == 'Allumee' else 'red' }} !important;\n}\n.shape {\n  background: none !important;\n}\n"
+                      }
+                    },
+                    {
+                      "type": "heading",
+                      "icon": "mdi:palette",
+                      "heading": "Couleurs",
+                      "heading_style": "title"
+                    },
+                    {
+                      "type": "glance",
+                      "show_name": true,
+                      "show_icon": true,
+                      "show_state": true,
+                      "entities": [
+                        {
+                          "entity": "sensor.coulsdb_rouge",
+                          "name": "R",
+                          "icon": "mdi:circle"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_vert",
+                          "name": "G",
+                          "icon": "mdi:circle"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_bleu",
+                          "name": "B",
+                          "icon": "mdi:circle"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_intensite_brute",
+                          "name": "Lux",
+                          "icon": "mdi:brightness-6"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

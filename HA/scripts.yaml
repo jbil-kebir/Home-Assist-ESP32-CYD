@@ -1,0 +1,151 @@
+cyd_status:
+  alias: "CYD - Status"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configuration/command"
+        payload: "STATUS"
+cyd_ecran_sleep:
+  alias: "CYD - Ecran Sleep"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configuration/command"
+        payload: "ECRAN SLEEP"
+cyd_ecran_wake:
+  alias: "CYD - Ecran Wake"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configuration/command"
+        payload: "ECRAN WAKE"
+cyd_device:
+  alias: "CYD - Device Info"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configuration/command"
+        payload: "DEVICE"
+cyd_reboot:
+  alias: "CYD - Reboot"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configuration/command"
+        payload: "REBOOT"
+cyd_aux_status:
+  alias: "CYD AUX - Status"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux/command"
+        payload: "STATUS"
+cyd_aux_ecran_sleep:
+  alias: "CYD AUX - Ecran Sleep"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux/command"
+        payload: "ECRAN SLEEP"
+cyd_aux_ecran_wake:
+  alias: "CYD AUX - Ecran Wake"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux/command"
+        payload: "ECRAN WAKE"
+cyd_aux_device:
+  alias: "CYD AUX - Device Info"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux/command"
+        payload: "DEVICE"
+cyd_aux_reboot:
+  alias: "CYD AUX - Reboot"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux/command"
+        payload: "REBOOT"
+cyd_aux2_status:
+  alias: "CYD AUX2 - Status"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux2/command"
+        payload: "STATUS"
+cyd_aux2_ecran_sleep:
+  alias: "CYD AUX2 - Ecran Sleep"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux2/command"
+        payload: "ECRAN SLEEP"
+cyd_aux2_ecran_wake:
+  alias: "CYD AUX2 - Ecran Wake"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux2/command"
+        payload: "ECRAN WAKE"
+cyd_aux2_device:
+  alias: "CYD AUX2 - Device Info"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux2/command"
+        payload: "DEVICE"
+cyd_aux2_reboot:
+  alias: "CYD AUX2 - Reboot"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "home/configaux2/command"
+        payload: "REBOOT"
+        
+chaudiere_allumer:
+  alias: "Chaudière - Activer et allumer"
+  sequence:
+    - action: switch.turn_on
+      target:
+        entity_id: switch.chaudiere_enable
+    - delay: "00:00:02"
+    - action: switch.turn_on
+      target:
+        entity_id: switch.chaudiere
+        
+chaudiere_eteindre:
+  alias: "Chaudière - Éteindre et désactiver"
+  sequence:
+    - action: switch.turn_off
+      target:
+        entity_id: switch.chaudiere
+    - delay: "00:00:02"
+    - action: switch.turn_off
+      target:
+        entity_id: switch.chaudiere_enable
+        
+# ============================================================
+# MESURE ITINÉRANTE - Démarrer une nouvelle mesure
+# À lancer à chaque fois qu'on branche la Eve sur un nouvel appareil
+# ============================================================
+demarrer_mesure:
+  alias: Démarrer une mesure
+  icon: mdi:play-circle
+  sequence:
+    # 1. Mémoriser la date/heure actuelle comme début de mesure
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.mesure_debut
+      data:
+        datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+    # 2. Mémoriser la valeur actuelle du compteur Eve (kWh cumulés)
+    - action: input_number.set_value
+      target:
+        entity_id: input_number.mesure_energie_debut
+      data:
+        value: "{{ states('sensor.eve_energy_20ebo8301_energie_2') | float(0) }}"
+        
+        

@@ -19,6 +19,8 @@ private:
 
   void handleRoot();
   void handleSave();
+  void handleCapteurs();
+  void handleCapteursSave();
   void handleNotFound();
 
 public:

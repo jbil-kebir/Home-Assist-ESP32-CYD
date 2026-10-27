@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace_dashboards",
+  "data": {
+    "items": [
+      {
+        "id": "map",
+        "icon": "mdi:map",
+        "title": "Map",
+        "url_path": "map",
+        "mode": "storage",
+        "require_admin": false,
+        "show_in_sidebar": false
+      },
+      {
+        "id": "perso_energie",
+        "show_in_sidebar": false,
+        "title": "Perso Énergie ",
+        "require_admin": false,
+        "mode": "storage",
+        "url_path": "perso-energie"
+      },
+      {
+        "id": "tableau_principal",
+        "show_in_sidebar": false,
+        "title": "Tableau principal",
+        "require_admin": false,
+        "mode": "storage",
+        "url_path": "tableau-principal"
+      },
+      {
+        "id": "dashboard_accueil",
+        "show_in_sidebar": true,
+        "icon": "mdi:home",
+        "title": "Accueil",
+        "require_admin": false,
+        "mode": "storage",
+        "url_path": "dashboard-accueil"
+      },
+      {
+        "id": "dashboard_consommation",
+        "require_admin": false,
+        "show_in_sidebar": true,
+        "icon": "mdi:home-lightning-bolt",
+        "title": "Consommation",
+        "url_path": "dashboard-consommation",
+        "mode": "storage"
+      },
+      {
+        "id": "dashboard_systeme",
+        "require_admin": false,
+        "show_in_sidebar": true,
+        "icon": "mdi:server-network",
+        "title": "Système",
+        "url_path": "dashboard-systeme",
+        "mode": "storage"
+      }
+    ]
+  }
+}

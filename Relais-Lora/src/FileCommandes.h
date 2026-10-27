@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <functional>
+#include <WebServer.h>
 #include "global.h"
 
 //
@@ -25,6 +26,14 @@ private:
     bool bDejaVu = false;               // Au moins une trame reçue depuis le démarrage
     bool bEnvoiArme = false;            // Trame reçue : envoyer après FILE_CMD_SILENCE_MS de silence
     int nbEnvois = 0;                   // Envois faits pour la commande en attente
+    String nomCapteur;                  // Nom annoncé dans la réponse CONFIG (ex : ThRemise)
+    String ip;                          // IP en fin de la dernière trame ("" en LoRa seul : 0.0.0.0)
+    String config;                      // Dernière config reçue : « sleepA:1 sleepI:30 ... »
+    unsigned long ulConfigRecue = 0;    // millis() de sa réception
+    bool bConfigConnue = false;
+    bool bGetAutoFait = false;          // GET automatique déjà demandé depuis le démarrage
+    String etat;                        // Dernière réponse STATUS : « <date> <heure> | Wdog : ... | Uptime : ... »
+    unsigned long ulEtatRecu = 0;
   };
   static const SCapteurLora mCapteurs[];
   static const int NB_CAPTEURS;
@@ -32,6 +41,7 @@ private:
 
   int indexTopic(const String& topicConfig) const;
   int indexEquipement(const String& nomEquipement) const;
+  void noteConfig(SEntree& e, const String& payload, int iConfig);
 
 public:
   // Envoi LoRa (topic, payload) et publication MQTT (topic, payload)
@@ -47,6 +57,10 @@ public:
   void noteTrame(const String& topic, const String& nomEquipement, const String& payload);
   void loop();
   String getEtat() const;  // Une ligne par capteur (dernière trame, commande en attente) pour STATUS
+
+  // Page Web « Capteurs LoRa » : config de chaque capteur, modifiable (SET) ou à relire (GET) au prochain réveil
+  String getHTML() const;
+  void loadFromWebServer(WebServer& server);
 };
 
 #endif // __FILE_COMMANDES_H__

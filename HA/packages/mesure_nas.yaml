@@ -1,0 +1,95 @@
+# ============================================================
+# PACKAGE : MESURE - NAS
+# Suffixe : nas
+# Source  : sensor.eve_nas_energie (kWh cumulés)
+# Démarrage : script.mesure_demarrer avec mesure: nas
+# ============================================================
+
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+input_datetime:
+  # Date/heure de début de la mesure
+  mesure_nas_debut:
+    name: Mesure NAS début
+    has_date: true
+    has_time: true
+
+input_number:
+  # Valeur du compteur Eve (kWh) au démarrage
+  mesure_nas_energie_debut:
+    name: Mesure NAS énergie au début
+    min: 0
+    max: 100000
+    step: 0.001
+    unit_of_measurement: kWh
+    mode: box
+
+# ------------------------------------------------------------
+# Capteurs calculés
+# ------------------------------------------------------------
+template:
+  - sensor:
+      # Temps écoulé depuis le début (h)
+      - name: "Mesure NAS durée"
+        unique_id: mesure_nas_duree
+        unit_of_measurement: h
+        icon: mdi:timer-outline
+        state: >
+          {% set debut = state_attr('input_datetime.mesure_nas_debut', 'timestamp') %}
+          {{ ((now().timestamp() - debut) / 3600) | round(1) if debut else 0 }}
+
+      # Énergie consommée depuis le démarrage (Wh)
+      # state_class: total -> statistiques long terme conservées (graphe > 10 jours)
+      - name: "Mesure NAS énergie consommée"
+        unique_id: mesure_nas_energie_consommee
+        unit_of_measurement: Wh
+        device_class: energy
+        state_class: total
+        icon: mdi:lightning-bolt
+        state: >
+          {{ ((states('sensor.eve_nas_energie') | float(0)
+              - states('input_number.mesure_nas_energie_debut') | float(0)) * 1000) | round(0) }}
+        availability: "{{ has_value('sensor.eve_nas_energie') }}"
+
+      # Puissance moyenne = énergie (Wh) / durée (h)
+      - name: "Mesure NAS puissance moyenne"
+        unique_id: mesure_nas_puissance_moyenne
+        unit_of_measurement: W
+        device_class: power
+        icon: mdi:flash
+        state: >
+          {% set h = states('sensor.mesure_nas_duree') | float(0) %}
+          {% set e = states('sensor.mesure_nas_energie_consommee') | float(0) %}
+          {{ (e / h) | round(1) if h > 0 else 0 }}
+
+      # ----- Projections -----
+      - name: "Mesure NAS projection énergie 60 jours"
+        unique_id: mesure_nas_projection_energie_60j
+        unit_of_measurement: kWh
+        icon: mdi:chart-line
+        state: >
+          {{ (states('sensor.mesure_nas_puissance_moyenne') | float(0) * 24 * 60 / 1000) | round(1) }}
+
+      - name: "Mesure NAS projection énergie 1 an"
+        unique_id: mesure_nas_projection_energie_1an
+        unit_of_measurement: kWh
+        icon: mdi:chart-line
+        state: >
+          {{ (states('sensor.mesure_nas_puissance_moyenne') | float(0) * 24 * 365 / 1000) | round(1) }}
+
+      - name: "Mesure NAS projection coût 60 jours"
+        unique_id: mesure_nas_projection_cout_60j
+        unit_of_measurement: €
+        icon: mdi:currency-eur
+        state: >
+          {% set prix = states('input_text.linky_cout_kwh') | replace(',', '.') | float(0) %}
+          {{ (states('sensor.mesure_nas_projection_energie_60_jours') | float(0) * prix) | round(2) }}
+
+      - name: "Mesure NAS projection coût 1 an"
+        unique_id: mesure_nas_projection_cout_1an
+        unit_of_measurement: €
+        icon: mdi:currency-eur
+        state: >
+          {% set prix = states('input_text.linky_cout_kwh') | replace(',', '.') | float(0) %}
+          {{ (states('sensor.mesure_nas_projection_energie_1_an') | float(0) * prix) | round(2) }}

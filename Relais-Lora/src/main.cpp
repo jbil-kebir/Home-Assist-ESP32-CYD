@@ -146,7 +146,8 @@ void setup() {
   // puis redémarrer en commentant __PREMIER_DEMARRAGE__
   #ifndef __PREMIER_DEMARRAGE__
   String signalementMsg = "DEVICE RELAIS LORA "+ String(config.nomEquipement) + " ";
-  signalementMsg += String(mDateTime.getDate()) + " " + String(mDateTime.getTime()) + "\n";
+  // IP en dernier : HA la récupère pour ses liens vers la page Web du relais
+  signalementMsg += String(mDateTime.getDate()) + " " + String(mDateTime.getTime()) + " " + WiFi.localIP().toString();
   mqtt.publish(config.topic_config_maitre_command.c_str(), signalementMsg.c_str(), false);
   #endif
 
