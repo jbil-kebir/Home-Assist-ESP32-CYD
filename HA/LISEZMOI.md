@@ -51,6 +51,15 @@ dès l'accusé du nœud ou sa connexion (« online »).
 **Ajouter un nœud** : compléter la liste `NOEUDS` de `genere_noeuds.py` (mode, capteurs unitaires, entités de mesure),
 lancer `python -I HA/genere_noeuds.py`, puis réinstaller les deux fichiers (étapes 1, 3 et 4). Un nœud LoRa doit
 aussi figurer dans `FILE_CMD_CAPTEURS` (Relais-Lora/src/global.h).
+Le générateur a besoin de **PyYAML** (pour `vue-actionneurs.yaml`) : `py -m pip install pyyaml` une fois ; sinon il
+s'arrête après avoir écrit les deux premiers fichiers (`ModuleNotFoundError: No module named 'yaml'`).
+
+**Détecteur jour / nuit** (classe `CJourNuit` du Capteur, trames `Jn<Suffixe> Jour …` et `Jn<Suffixe> Eclairement …`) :
+dans `NOEUDS`, ajouter `jn=True`, l'unité `"Jn"` et les deux mesures `sensor.jn<suffixe>_etat` / `sensor.jn<suffixe>_eclairement`
+(à créer dans `configuration.yaml`, sur le modèle de `JnCave Etat` / `JnCave Eclairement`). Effet : attributs `jn_*` de
+`sensor.<id>_config` affichés **en lecture seule** dans la carte « Jour / nuit » du nœud (avec un rappel de la syntaxe),
+modifiables par la commande libre (`SET jn_sbas 15 jn_shaut 25` …, détail dans l'aide de la vue). Seul ThCave l'a
+aujourd'hui ; l'indicateur « Cave · Jour / Nuit » de la vue Actionneurs (`CARTE_JOUR_NUIT_CAVE`) lui est propre.
 
 **Actionneur** (`type="actionneur"`, ex. nœud chauffage SdB) : pas de réglages de sommeil, hors de la vue « Nœuds
 capteurs » ; sa carte est insérée dans `vue-actionneurs.yaml` (vue Actionneurs du tableau Accueil, reprise de

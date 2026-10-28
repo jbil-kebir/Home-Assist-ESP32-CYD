@@ -10,6 +10,8 @@ HA = os.path.dirname(os.path.abspath(__file__))  # dossier HA du projet
 # trames (facultatif) = [(topic, NOM)] explicites, à la place de unites (nœud qui ne suit pas la règle du suffixe)
 # mesures = (entité, nom affiché) du bloc Mesures (entités existantes de configuration.yaml ou des paquets)
 # ip (facultatif) = entité qui contient l'IP du nœud Wi-Fi (lien vers sa page Web)
+# jn (facultatif) = nœud équipé du détecteur jour / nuit (CJourNuit) : attributs jn_* de sa config, affichés en lecture
+#   seule (modifiables par la commande libre : SET jn_sbas ...)
 # sans_retenu (facultatif) = nœud Wi-Fi toujours éveillé qui ne publie pas « online » (pas de DHT20) : commandes non
 #   retenues, sinon un REBOOT dont l'accusé se perd serait rejoué en boucle (commande perdue s'il est hors tension)
 NOEUDS = [
@@ -19,9 +21,10 @@ NOEUDS = [
                   ("sensor.flotteur_remise", "Flotteur")]),
     # ThNomade : pas encore d'entités de mesure dans configuration.yaml
     dict(id="thnomade", nom="ThNomade", suffixe="Nomade", mode="lora", unites=["Th", "Bat", "Flotteur"], mesures=[]),
-    dict(id="thcave", nom="ThCave", suffixe="Cave", mode="lora", unites=["Th", "Bat"],
+    dict(id="thcave", nom="ThCave", suffixe="Cave", mode="lora", unites=["Th", "Bat", "Jn"], jn=True,
          mesures=[("sensor.thcave_temperature", "Température"), ("sensor.thcave_humidite", "Humidité"),
-                  ("sensor.batcave_tension", "Batterie"), ("sensor.batcave_etat", "État batterie")]),
+                  ("sensor.batcave_tension", "Batterie"), ("sensor.batcave_etat", "État batterie"),
+                  ("sensor.jncave_etat", "Jour / nuit"), ("sensor.jncave_eclairement", "Éclairement")]),
     dict(id="thchrdc", nom="ThChRDC", suffixe="ChRDC", mode="wifi", unites=["Th", "Bat"], ip="input_text.ip_thchrdc",
          mesures=[("sensor.thchrdc_temperature", "Température"), ("sensor.thchrdc_humidite", "Humidité"),
                   ("sensor.batchrdc_tension", "Batterie"), ("sensor.batchrdc_etat", "État batterie")]),
@@ -52,6 +55,10 @@ SANS_RETENU = [n["id"] for n in NOEUDS if n.get("sans_retenu")]
 
 def trames(n):
     return n.get("trames") or [("home/thermometre/state", (u + n["suffixe"]).upper()) for u in n["unites"]]
+# Réglages du détecteur jour / nuit (attributs de sensor.<id>_config, lecture seule) : (clé, libellé, unité)
+PARAMS_JN = [("jn_sbas", "Seuil bas jour → nuit", "%"), ("jn_shaut", "Seuil haut nuit → jour", "%"),
+             ("jn_ecl", "Remonter l'éclairement (1 oui, 0 non)", ""), ("jn_inter", "Intervalle de mesure", "s"),
+             ("jn_force", "Délai max sans envoi", "s")]
 PARAMS = [("sleepi", "Intervalle deep sleep", 86400, "mdi:timer-outline"),
           ("sleeps", "Sommeil court (SLEEPS)", 86400, "mdi:timer-outline"),
           ("sleepm", "Sommeil moyen (SLEEPM)", 86400, "mdi:timer-outline"),
@@ -132,7 +139,8 @@ template:""")
         state: "{{{{ now().isoformat() }}}}"
         attributes:""")
         # mute : absent de la réponse d'un firmware antérieur au 28/10/2026 → none
-        for k in ["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI", "mute"]:
+        # jn_* : nœud équipé du détecteur jour / nuit seulement
+        for k in ["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI", "mute"] + ([c for c, _, _ in PARAMS_JN] if n.get("jn") else []):
             w(f"""          {k}: >-
             {{%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('{k}:(\\d+)') -%}}
             {{{{ m[0] | int if m else none }}}}""")
@@ -567,6 +575,22 @@ sections:""")
             for e, lib in n["mesures"]:
                 w(f"""              - entity: {e}
                 name: {lib}""")
+        if n.get("jn"):
+            w("""          - type: entities
+            title: Jour / nuit (réglages reçus ; SET jn_... par la commande libre)
+            entities:""")
+            for k, lib, unite in PARAMS_JN:
+                w(f"""              - type: attribute
+                entity: sensor.{i}_config
+                attribute: {k}
+                name: {lib}""")
+                if unite:
+                    w(f'                suffix: " {unite}"')
+            # Rappel de la syntaxe, sous les valeurs (détail dans l'aide en bas de la vue)
+            w("""          - type: markdown
+            content: |
+              Ex. : `SET jn_sbas 15 jn_shaut 25` (commande libre) — clés : `jn_sbas` `jn_shaut` (0 à 100 %, bas < haut),
+              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s), `jn_force` (60 à 86400 s)""")
         w(f"""          - type: markdown
             content: |
               {{% if state_attr('sensor.{i}_config', 'mute') == 1 %}}
@@ -655,6 +679,7 @@ sections:""")
           |---|---|
           | `GET` | Relit la configuration |
           | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
+          | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s), `jn_force` délai max sans envoi (60 à 86400 s) |
           | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |
@@ -776,6 +801,47 @@ cards:
         - color: |
             [[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]
 """
+# Indicateur jour / nuit de la cave (sensor.jncave_etat / sensor.jncave_eclairement de configuration.yaml), juste
+# au-dessus du bouton de la lumière cave : même présentation que l'indicateur « C3 » au-dessus du chauffage SdB
+JOUR_NUIT_CAVE_ENTITE = "sensor.jncave_etat"
+CARTE_JOUR_NUIT_CAVE = """
+type: custom:button-card
+entity: sensor.jncave_etat
+show_icon: false
+show_name: false
+show_state: false
+show_label: true
+tap_action:
+  action: none
+hold_action:
+  action: more-info
+label: |
+  [[[
+    const e = states['sensor.jncave_eclairement'];
+    const v = e ? parseFloat(e.state) : NaN;
+    if (entity && (entity.state === 'Jour' || entity.state === 'Nuit'))
+      return isNaN(v) ? `Cave · ${entity.state}` : `Cave · ${entity.state} · ${v} %`;
+    return 'Cave · —';
+  ]]]
+styles:
+  card:
+    - height: 40px
+    - background: |
+        [[[
+          if (entity && entity.state === 'Jour') return 'rgba(255,200,0,0.2)';
+          if (entity && entity.state === 'Nuit') return 'rgba(0,0,150,0.25)';
+          return 'rgba(128,128,128,0.2)';
+        ]]]
+  label:
+    - font-size: 15px
+    - font-weight: 600
+    - color: |
+        [[[
+          if (entity && entity.state === 'Jour') return 'darkorange';
+          if (entity && entity.state === 'Nuit') return 'royalblue';
+          return 'grey';
+        ]]]
+"""
 
 
 def vue_actionneurs():
@@ -801,6 +867,10 @@ def vue_actionneurs():
     # Lumière cave (prise 433 MHz du CYD) : cadenas + bouton comme le projecteur, tout en bas (peu utilisée)
     if not any(LUMIERE_CAVE_ENTITE in json.dumps(c) for c in cartes):
         cartes.append(yaml.safe_load(CARTE_LUMIERE_CAVE))
+    # Jour / nuit de la cave : juste au-dessus de la lumière cave (remplacé si présent)
+    cartes[:] = [c for c in cartes if c.get("entity") != JOUR_NUIT_CAVE_ENTITE]
+    i = next(i for i, c in enumerate(cartes) if LUMIERE_CAVE_ENTITE in json.dumps(c))
+    cartes.insert(i, yaml.safe_load(CARTE_JOUR_NUIT_CAVE))
     entete = (f"# Vue « {vue.get('title')} » du tableau Accueil (https://ha.jbil.org/dashboard-accueil/{VUE_ACTIONNEURS})\n"
               "# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_accueil + carte(s) des actionneurs.\n"
               "# Installation : tableau Accueil → ✏️ → vue Actionneurs → ⋮ → « Modifier en YAML » → remplacer par ce fichier.\n")

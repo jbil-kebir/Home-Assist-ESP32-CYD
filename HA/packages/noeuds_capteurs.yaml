@@ -271,6 +271,21 @@ template:
           mute: >-
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
             {{ m[0] | int if m else none }}
+          jn_sbas: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_sbas:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          jn_shaut: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_shaut:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          jn_ecl: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_ecl:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          jn_inter: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_inter:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          jn_force: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_force:(\d+)') -%}
+            {{ m[0] | int if m else none }}
           erreur: >-
             {%- set p = trigger.payload.split(' ERREUR ') -%}
             {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
@@ -309,6 +324,10 @@ template:
         topic: "home/thermometre/state"
         value_template: "{{ value.split(' ')[0] | upper }}"
         payload: "BATCAVE"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "JNCAVE"
       - trigger: mqtt
         topic: "home/confthcave/state"
     binary_sensor:

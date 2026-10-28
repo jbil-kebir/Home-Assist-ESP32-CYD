@@ -36,6 +36,9 @@
 #ifdef CAPTEUR_BATTERIE
 #include "MyBatterieAA.h"
 #endif
+#ifdef CAPTEUR_JOUR_NUIT
+#include "MyJourNuit.h"
+#endif
 #ifdef CAPTEUR_MICRO_MAX4466
 #include "MyMax4466.h"
 #endif
@@ -74,6 +77,9 @@ DHT20Sensor dht20(mDateTime);
 #endif
 #ifdef CAPTEUR_BATTERIE
 CBatterieAA mBatterie(BATTERIE_PIN, mDateTime);
+#endif
+#ifdef CAPTEUR_JOUR_NUIT
+CJourNuit mJourNuit(JOUR_NUIT_PIN, JOUR_NUIT_ALIM_PIN, mDateTime);
 #endif
 #ifdef FLOTTEUR_VERTICAL
 CTor mFlotteurVertical(mDateTime);  
@@ -179,6 +185,9 @@ void setup() {
       #ifdef FLOTTEUR_VERTICAL
       DEFAULT_TOR_PIN,
       #endif
+      #ifdef CAPTEUR_JOUR_NUIT
+      JOUR_NUIT_PIN, JOUR_NUIT_ALIM_PIN,
+      #endif
       #if defined(CAPTEUR_DHT20) || defined(CAPTEUR_RGB_TCS34725)
       DEFAULT_SDA_PIN, DEFAULT_SCL_PIN, // bus I2C partagé entre DHT20 et le capteur RGB
       #endif
@@ -208,6 +217,7 @@ void setup() {
     // utilisées ou non par la config active.
     const uint8_t candidatePins[] = {
       DS18B20_PIN, BATTERIE_PIN, DEFAULT_TOR_PIN,
+      JOUR_NUIT_PIN, JOUR_NUIT_ALIM_PIN,
       DEFAULT_SDA_PIN, DEFAULT_SCL_PIN,
       CAPTEUR_RGB_TCS34725_INTERRUPT, LED_CAPTEUR_RGB_PIN,
       #if IS_ESP32_C3
@@ -326,6 +336,25 @@ void setup() {
   });
   #endif
   #endif // CAPTEUR_BATTERIE
+  //================================================== Jour / nuit =================================================
+  #ifdef CAPTEUR_JOUR_NUIT
+  Serial.println("Initialisation jour/nuit...");
+  mJourNuit.setup("jn_");
+  config.mJourNuit = &mJourNuit;
+  #ifdef _WIFI_MODE_
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mJourNuit.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return publieMesureMqtt(topic, payload);
+  });
+  #endif
+  #endif
+  #ifdef _LORA_P2P_MODE_
+  config.mLoraRxTx = &mLoraRxTx;
+  mJourNuit.setLoraP2PPublishCallback([](const char* payload) -> int {
+      return publieMesureLora(payload);
+  });
+  #endif
+  #endif // CAPTEUR_JOUR_NUIT
   //================================================== DHT20 ==================================================
   #ifdef CAPTEUR_DHT20
   Serial.println("Initialisation DHT20...");
@@ -688,6 +717,28 @@ void loop() {
   #endif // CAPTEUR_BATTERIE
 
   //------------------------------------------------------------------------------------
+  // Jour / nuit
+  //------------------------------------------------------------------------------------
+  #ifdef CAPTEUR_JOUR_NUIT
+  static bool JnInactifDejaAffiche = false;
+  int retJn = mJourNuit.loop();
+  if (retJn == -1) {
+    Serial.println("[Main] mJourNuit.readEclairement() - échec");
+    JnInactifDejaAffiche = false;
+  }
+  else if (retJn == 0 || retJn == 1) {
+    Serial.println("[Main] " + mJourNuit.nomEquipement + " - " + sDate + " - " + sHeure + " - " + mJourNuit.getLastEtatTexte() + " - Eclairement " + String(mJourNuit.getLastEclairement()) + " %" + (retJn == 1 ? " remonté" : " inchangé"));
+    JnInactifDejaAffiche = false;
+  }
+  else if (retJn == -9) { // Inactif
+    if (!JnInactifDejaAffiche) {
+      Serial.println("[Main] Jour/nuit " + mJourNuit.nomEquipement + " inactif");
+      JnInactifDejaAffiche = true;
+    }
+  }
+  #endif // CAPTEUR_JOUR_NUIT
+
+  //------------------------------------------------------------------------------------
   // DHT20
   //------------------------------------------------------------------------------------
   #ifdef CAPTEUR_DHT20
@@ -855,6 +906,11 @@ void print() {
   #ifdef CAPTEUR_BATTERIE
   Serial.println("[Batterie AA]");
   mBatterie.print();
+  #endif
+
+  #ifdef CAPTEUR_JOUR_NUIT
+  Serial.println("[Jour / nuit]");
+  mJourNuit.print();
   #endif
 
   Serial.println("============================================\n");

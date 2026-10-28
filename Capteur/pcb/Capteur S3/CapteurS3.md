@@ -1,6 +1,6 @@
 # Capteur S3 — Circuit imprimé
 
-Version du 2026-10-19 (carte V 1.0 dessinée).
+Version du 2026-10-19 (carte V 1.0 dessinée) ; option détecteur jour / nuit ajoutée le 2026-10-28 (§ 1.1 d).
 **État : schéma, placement, routage, plans de masse, gouttes et sérigraphie FAITS dans EasyEDA Pro ; contrôle des règles
 (DRC) = 0 erreur ; schéma et PCB identiques. Prêt pour l'export et la commande** (détail au § 8).
 
@@ -34,8 +34,11 @@ Code : `D:\Developpement\Pilotage_Maison\Capteur`, env PlatformIO `esp32s3`, con
 | LED témoin chaudière | 44 | D7 | `LED_CAPTEUR_RGB_PIN` | chaudière |
 | Interruption TCS34725 | 43 | D6 | `CAPTEUR_RGB_TCS34725_INTERRUPT` | non câblée |
 | SPI du Wio-SX1262 | 7, 8, 9 | D8, D9, D10 | `LORA_*_PIN` | laissées libres |
+| Jour / nuit : alimentation du pont | 3 | D2 | `JOUR_NUIT_ALIM_PIN` (`CAPTEUR_JOUR_NUIT`) | option, **en fils** (§ 1.1 d) |
+| Jour / nuit : mesure (ADC1) | 4 | D3 | `JOUR_NUIT_PIN` (`CAPTEUR_JOUR_NUIT`) | option, **en fils** (§ 1.1 d) |
 
-Les broches du flotteur, de la mesure, de l'I2C et de la LED sont aussi réglables par la page Web (NVS).
+Les broches du flotteur, de la mesure, de l'I2C et de la LED sont aussi réglables par la page Web (NVS). Celles du
+détecteur jour / nuit ne le sont pas (constantes de `global.h` seulement).
 
 Schéma de principe des ajouts (le reste est celui de la carte chaudière) :
 
@@ -146,7 +149,8 @@ PILES                   |    | U1      |-(1)-- GND  |           D0  1 | o       
                                                                3V3
 ```
 
-Pattes libres : D0, D2, D3, D6, D7, 5V ; D8, D9, D10 réservées au Wio-SX1262.
+Pattes libres : D0, D2, D3, D6, D7, 5V ; D8, D9, D10 réservées au Wio-SX1262 ; D2, D3 : détecteur jour / nuit s'il est
+ajouté (§ 1.1 d).
 
 #### b) Cuve : piles + DHT20 + flotteur
 
@@ -186,7 +190,8 @@ PILES                   |    | U1      |-(1)-- GND  |       +-- D0  1 | o       
 
 - **J5 flotteur** : normalement ouvert, fermé = cuve pleine ; fils de 50 cm.
 
-Pattes libres : D2, D3, D6, D7, 5V ; D8, D9, D10 réservées au Wio-SX1262.
+Pattes libres : D2, D3, D6, D7, 5V ; D8, D9, D10 réservées au Wio-SX1262 ; D2, D3 : détecteur jour / nuit s'il est
+ajouté (§ 1.1 d).
 
 #### c) Chaudière : USB + DHT20 + TCS34725 + LED
 
@@ -228,6 +233,36 @@ Pattes libres : D0, D1, D2, D3, D6 ; D8, D9, D10 réservées au Wio-SX1262 ; 5V 
 
 Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
 
+#### d) Option : détecteur jour / nuit (ajout aux variantes a ou b)
+
+Photorésistance + résistance fixe de 10 kΩ, **sans transistor** : la patte D2 alimente le pont pendant la mesure
+seulement (5 ms), puis le coupe ; en deep sleep elle est en haute impédance, le pont ne consomme rien. Code : classe
+`CJourNuit` (`src/MyJourNuit.h`), `#define CAPTEUR_JOUR_NUIT` dans `global.h`.
+
+```
+                         XIAO ESP32-S3 (vu de dessus)
+                             +---[ USB-C ]---+
+                       D0  1 | o           o | 14  5V
+                       D1  2 | o           o | 13  GND ---------+
+   +------------------ D2  3 | o           o | 12  3V3          |
+   |               +-- D3  4 | o           o | 11  D10          |
+   |               |         ...                                |
+   |               |                                            |
+ photorésistance   |                                            |
+   |               |                                            |
+   +---------------+---- 10 kΩ ---------------------------------+
+                                                               GND
+```
+
+- **D2** (GPIO3) → photorésistance → **D3** (GPIO4, entrée ADC1) → 10 kΩ → **GND**. Plus il y a de lumière, plus la
+  tension sur D3 monte.
+- **Rien n'est prévu sur le PCB V 1.0** : D2 et D3 n'y sont reliées à rien → fils soudés directement sur les pattes du
+  XIAO (ou sur ses barrettes).
+- Résistance fixe : de l'ordre de la résistance de la photorésistance à l'éclairage de bascule (10 kΩ pour une GL5528).
+- Pas de DS18B20 en même temps (avec `CAPTEUR_DS18B20`, la mesure des piles passe sur GPIO3 : `#error` à la compilation).
+- Valeur remontée : éclairement en % de 3,3 V (0 à 100) ; état JOUR / NUIT décidé par une fenêtre d'hystérésis
+  (seuils bas 20 %, haut 30 % par défaut). Trames, réglages (`SET jn_sbas …`) : voir `Doc/mqtt.docx`.
+
 ## 2. Décisions
 
 | Sujet | Décision |
@@ -243,6 +278,7 @@ Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
 | Variantes | décrites **dans ce dossier seulement** (rien sur la sérigraphie) |
 | Boîtier | impression 3D, non étanche |
 | Composants | tout en traversant ; borniers à vis XY301V pour les piles et le flotteur, JST-XH pour l'interrupteur et les modules |
+| Détecteur jour / nuit (option, 2026-10-28) | photorésistance + 10 kΩ alimentés par D2 (coupés hors mesure, pas de transistor), mesure sur D3 ; hors PCB V 1.0 : câblé en fils |
 
 ## 3. Composants à monter selon la variante
 
@@ -339,6 +375,8 @@ Bilan : 25 composants, 12 réseaux ; netlist du schéma = PCB (57 liaisons).
   100 nF filtrent les parasites captés par le fil (constante de temps 0,1 ms, sans effet sur une mesure toutes les
   minutes). Contact fermé (cuve pleine) : 0,33 mA dans R4. Le code (`INPUT_PULLUP`) inverse la lecture : il publie
   **1 = cuve pleine, 0 = pas pleine**.
+- **Détecteur jour / nuit** : pont alimenté 5 ms par mesure, au plus 3,3 V / 10 kΩ ≈ 0,33 mA (en pleine lumière) ;
+  rien en deep sleep.
 - **Largeurs de piste** : `3V3`, `VPIL+`, `VPIL`, `VSW` à 0,6 mm ; signaux à 0,4 mm ; plan `GND` sur les 2 faces.
 
 ## 7. Boîtier et mécanique
@@ -412,6 +450,8 @@ recréés ; après redémarrage, les plans ont été recréés **une face à la 
 - [ ] Code : vérifier le sens de lecture du flotteur (1 = plein).
 - [ ] Essais : redémarrages en Wi-Fi continu sur piles (C5), tension des piles neuves sur `VSW` (< 6,0 V ?).
 - [ ] Boîtier imprimé : support 4 AA, interrupteur en paroi, passages de fils au bord haut.
+- [ ] Détecteur jour / nuit : câblé en fils sur D2 / D3 (§ 1.1 d) ; connecteur et passage de la photorésistance dans le
+  boîtier à prévoir si une V 1.1 est dessinée (à décider).
 
 ## 9. Pièces LCSC (références EasyEDA)
 

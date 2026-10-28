@@ -23,6 +23,9 @@
 #ifdef CAPTEUR_BATTERIE
 #include "MyBatterieAA.h"
 #endif
+#ifdef CAPTEUR_JOUR_NUIT
+#include "MyJourNuit.h"
+#endif
 #ifdef CAPTEUR_MICRO_MAX4466
 #include "MyMax4466.h"
 #endif
@@ -65,6 +68,9 @@ public:
   #endif
   #ifdef CAPTEUR_BATTERIE
   CBatterieAA *mBatterieAA=nullptr;
+  #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  CJourNuit *mJourNuit=nullptr;
   #endif
   #ifdef CAPTEUR_MICRO_MAX4466
   CMax4466 *mMicro=nullptr;

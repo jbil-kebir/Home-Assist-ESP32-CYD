@@ -81,6 +81,12 @@ void CMqtt::reconnect() {
         Serial.println("Abonnement à : " + mConfig.mBatterieAA->mqttSubTopicCommand);
       }
       #endif
+      #ifdef CAPTEUR_JOUR_NUIT
+      if (mConfig.mJourNuit != nullptr) {
+        client.subscribe(mConfig.mJourNuit->mqttSubTopicCommand.c_str(), 1);
+        Serial.println("Abonnement à : " + mConfig.mJourNuit->mqttSubTopicCommand);
+      }
+      #endif
       #ifdef CAPTEUR_MICRO_MAX4466
       if (mConfig.mMicro != nullptr) {
         client.subscribe(mConfig.mMicro->mqttSubTopicCommand.c_str(), 1);
@@ -198,6 +204,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   #ifdef CAPTEUR_BATTERIE
   String sBatEquipement = (mConfig.mBatterieAA != nullptr) ? mConfig.mBatterieAA->nomEquipement : ""; sBatEquipement.toUpperCase();
   #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  String sJnEquipement = (mConfig.mJourNuit != nullptr) ? mConfig.mJourNuit->nomEquipement : ""; sJnEquipement.toUpperCase();
+  #endif
 
   Serial.printf("[MQTT] void CMqtt::callback() - reçu : %s :  %s\n", topic, message.c_str());
 
@@ -253,6 +262,11 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     #ifdef CAPTEUR_BATTERIE
     else if (sBatEquipement.length() > 0 && message.startsWith(sBatEquipement)) {
       mConfig.mBatterieAA->handleMqttCommand(messageOrg);   // ex : « BatRemise MESURE »
+    }
+    #endif
+    #ifdef CAPTEUR_JOUR_NUIT
+    else if (sJnEquipement.length() > 0 && message.startsWith(sJnEquipement)) {
+      mConfig.mJourNuit->handleMqttCommand(messageOrg);   // ex : « JnCave MESURE »
     }
     #endif
     else {

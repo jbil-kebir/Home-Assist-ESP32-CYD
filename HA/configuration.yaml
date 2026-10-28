@@ -405,6 +405,34 @@ mqtt:
           {{ states('sensor.batcave_etat') }}
         {% endif %}
 
+    # Détecteur jour / nuit de ThCave (classe CJourNuit du Capteur) :
+    #   « JnCave Jour <date> <heure> 1|0 [FORCE] [IP] » et « JnCave Eclairement <date> <heure> <pct> [FORCE] [IP] »
+    - name: "JnCave Etat"
+      unique_id: jncave_etat
+      state_topic: "home/thermometre/state"
+      icon: mdi:theme-light-dark
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'JNCAVE' and parts[1]|upper == 'JOUR' %}
+          {{ 'Jour' if parts[4] == '1' else 'Nuit' }}
+        {% else %}
+          {{ states('sensor.jncave_etat') }}
+        {% endif %}
+
+    - name: "JnCave Eclairement"
+      unique_id: jncave_eclairement
+      state_topic: "home/thermometre/state"
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:brightness-6
+      value_template: >
+        {% set parts = value.split(' ') %}
+        {% if parts[0]|upper == 'JNCAVE' and parts[1]|upper == 'ECLAIREMENT' %}
+          {{ parts[4] }}
+        {% else %}
+          {{ states('sensor.jncave_eclairement') }}
+        {% endif %}
+
     - name: "BatCh1er Tension"
       unique_id: batch1er_tension
       state_topic: "home/thermometre/state"

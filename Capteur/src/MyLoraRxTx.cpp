@@ -277,6 +277,9 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
   #ifdef CAPTEUR_BATTERIE
   String sBatEquipement = (mConfig->mBatterieAA != nullptr) ? mConfig->mBatterieAA->nomEquipement : ""; sBatEquipement.toUpperCase();
   #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  String sJnEquipement = (mConfig->mJourNuit != nullptr) ? mConfig->mJourNuit->nomEquipement : ""; sJnEquipement.toUpperCase();
+  #endif
 
     // Commandes de configuration
   if (topic == mConfig->topic_config_command) {
@@ -339,6 +342,11 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
     #ifdef CAPTEUR_BATTERIE
     else if (sBatEquipement.length() > 0 && payloadUpper.startsWith(sBatEquipement)) {
       mConfig->mBatterieAA->handleMqttCommand(payload);   // ex : « BatRemise MESURE »
+    }
+    #endif
+    #ifdef CAPTEUR_JOUR_NUIT
+    else if (sJnEquipement.length() > 0 && payloadUpper.startsWith(sJnEquipement)) {
+      mConfig->mJourNuit->handleMqttCommand(payload);   // ex : « JnCave MESURE »
     }
     #endif
     else {

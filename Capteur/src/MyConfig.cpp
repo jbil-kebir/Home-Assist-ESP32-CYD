@@ -144,6 +144,10 @@ if (mFlotteurVertical != nullptr)
 if (mBatterieAA != nullptr)
   mBatterieAA->domotique_prefix = domotique_prefix;
 #endif
+#ifdef CAPTEUR_JOUR_NUIT
+if (mJourNuit != nullptr)
+  mJourNuit->domotique_prefix = domotique_prefix;
+#endif
 
  Serial.printf("CConfig::setup() - Deep sleep : %d - Durée avant : %ld\n", mbDeepSleepActive, mulWakeDuration); Serial.flush();
  Serial.printf("CConfig::setup() - Puce %s - Topic de configuration : %s\n",
@@ -438,6 +442,12 @@ void CConfig::enterDeepSleep() {
   // Flotteur vertical : supprime le pull-up interne (économise ~70 µA si pin connecté à GND)
   #ifdef FLOTTEUR_VERTICAL
   pinMode(DEFAULT_TOR_PIN, INPUT_PULLDOWN);
+  #endif
+
+  // Jour / nuit : pont de la photorésistance hors tension, entrée ADC libérée
+  #ifdef CAPTEUR_JOUR_NUIT
+  pinMode(JOUR_NUIT_ALIM_PIN, INPUT_PULLDOWN);
+  pinMode(JOUR_NUIT_PIN,      INPUT_PULLDOWN);
   #endif
 
   // Micro MAX4466 : libère l'entrée ADC et coupe la LED bleue
@@ -824,6 +834,13 @@ int CConfig::handleMqttCommand(const String& payload) {
       }
       if (setParam(cle, valeur) != 0) sErreurs += (sErreurs.length() ? " " : "") + cle + ":" + valeur;
     }
+    #ifdef CAPTEUR_JOUR_NUIT
+    if (mJourNuit != nullptr) {
+      // Fenêtre d'hystérésis vérifiée une fois toute la commande traitée (bas < haut)
+      if (!mJourNuit->valideSeuils()) sErreurs += String(sErreurs.length() ? " " : "") + "jn_sbas<jn_shaut";
+      mJourNuit->saveToNVS();
+    }
+    #endif
     saveToNVS();
     envoieConfig(sErreurs);
     if (sErreurs.length() > 0) ret = -2;
@@ -872,6 +889,14 @@ int CConfig::setParam(const String& cle, const String& valeur) {
     #endif
     mbMute = (v == "1");
   }
+  #ifdef CAPTEUR_JOUR_NUIT
+  else if (c.startsWith("JN_")) {
+    // Détecteur jour / nuit (voir CJourNuit::setParam())
+    if (mJourNuit == nullptr) return -1;
+    int r = mJourNuit->setParam(cle, v);
+    if (r != 0) return r;
+  }
+  #endif
   else return -1;
   Serial.println("CConfig::setParam() - " + cle + " = " + v);
   return 0;
@@ -885,7 +910,11 @@ String CConfig::getParams() const {
          " sleepM:" + String(mulSleepDurationM) +
          " sleepL:" + String(mulSleepDurationL) +
          " wakeI:" + String(mulWakeDuration) +
-         " mute:" + String(mbMute ? 1 : 0);
+         " mute:" + String(mbMute ? 1 : 0)
+         #ifdef CAPTEUR_JOUR_NUIT
+         + (mJourNuit != nullptr ? " " + mJourNuit->getParams() : String(""))
+         #endif
+         ;
 }
 
 // « <nom> CONFIG <paramètres> [ERREUR <cle:valeur ...>] » sur topic_config_state, par MQTT et par LoRa.
@@ -1011,6 +1040,10 @@ bool CConfig::loopWatchdog() {
   if (mBatterieAA != nullptr && mBatterieAA->active)
     if (verifieWatchdog(mBatterieAA->nomEquipement, mBatterieAA->mqttSubTopicState)) return true;
   #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (mJourNuit != nullptr && mJourNuit->active)
+    if (verifieWatchdog(mJourNuit->nomEquipement, mJourNuit->mqttSubTopicState)) return true;
+  #endif
   #ifdef CAPTEUR_MICRO_MAX4466
   if (mMicro != nullptr && mMicro->active)
     if (verifieWatchdog(mMicro->nomEquipement, mMicro->mqttSubTopicState)) return true;
@@ -1039,6 +1072,9 @@ void CConfig::relanceMesuresNonRemontees() {
   #ifdef CAPTEUR_BATTERIE
   if (mBatterieAA != nullptr && mBatterieAA->active && !mBatterieAA->mbMesureRemontee) mBatterieAA->readAndPublish(true);
   #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (mJourNuit != nullptr && mJourNuit->active && !mJourNuit->mbMesureRemontee) mJourNuit->readAndPublish(true);
+  #endif
 }
 
 bool CConfig::mesuresToutesRemontees() const {
@@ -1056,6 +1092,9 @@ bool CConfig::mesuresToutesRemontees() const {
   #endif
   #ifdef CAPTEUR_BATTERIE
   if (mBatterieAA != nullptr && mBatterieAA->active && !mBatterieAA->mbMesureRemontee) return false;
+  #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (mJourNuit != nullptr && mJourNuit->active && !mJourNuit->mbMesureRemontee) return false;
   #endif
 
   return true;

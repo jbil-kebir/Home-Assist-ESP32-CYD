@@ -347,6 +347,42 @@ sections:
     - switch.chauffage_sdb_programme
     time_step: 15
     show_header_toggle: false
+  - type: custom:button-card
+    entity: sensor.jncave_etat
+    show_icon: false
+    show_name: false
+    show_state: false
+    show_label: true
+    tap_action:
+      action: none
+    hold_action:
+      action: more-info
+    label: |
+      [[[
+        const e = states['sensor.jncave_eclairement'];
+        const v = e ? parseFloat(e.state) : NaN;
+        if (entity && (entity.state === 'Jour' || entity.state === 'Nuit'))
+          return isNaN(v) ? `Cave · ${entity.state}` : `Cave · ${entity.state} · ${v} %`;
+        return 'Cave · —';
+      ]]]
+    styles:
+      card:
+      - height: 40px
+      - background: |
+          [[[
+            if (entity && entity.state === 'Jour') return 'rgba(255,200,0,0.2)';
+            if (entity && entity.state === 'Nuit') return 'rgba(0,0,150,0.25)';
+            return 'rgba(128,128,128,0.2)';
+          ]]]
+      label:
+      - font-size: 15px
+      - font-weight: 600
+      - color: |
+          [[[
+            if (entity && entity.state === 'Jour') return 'darkorange';
+            if (entity && entity.state === 'Nuit') return 'royalblue';
+            return 'grey';
+          ]]]
   - type: horizontal-stack
     cards:
     - type: custom:button-card

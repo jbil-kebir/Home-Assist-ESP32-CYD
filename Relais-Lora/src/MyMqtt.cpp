@@ -133,7 +133,10 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
         message.startsWith("BATNOMADE") ||
         message.startsWith("FLOTTEURNOMADE") ||
         message.startsWith("THCAVE") ||
-        message.startsWith("BATCAVE")) {
+        message.startsWith("BATCAVE") ||
+        message.startsWith("JNREMISE") ||
+        message.startsWith("JNNOMADE") ||
+        message.startsWith("JNCAVE")) {
       Serial.println("Commande thermomètre reçue : " + message);
       // Envoyer la trame par Lora
       String s = "home/thermometre/command " + message;

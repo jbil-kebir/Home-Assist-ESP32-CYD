@@ -43,9 +43,9 @@
 
 //#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
-//#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
+#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
 //#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
-#define _LORA_P2P_MODE_ // Envoi par LORA
+//#define _LORA_P2P_MODE_ // Envoi par LORA
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
@@ -56,6 +56,7 @@
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF) — ThSdb (capteur chaudière) seulement
 #define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 //#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
+//#define CAPTEUR_JOUR_NUIT // Détecteur jour/nuit : photorésistance + 10 kΩ, mesure JOUR_NUIT_PIN, alimentation JOUR_NUIT_ALIM_PIN (voir MyJourNuit.h)
 
 //----------------------------------------------------------------------------
 // Décommenter en fonction des actionneurs installés
@@ -136,6 +137,18 @@
   // cette broche en setup() quand le flotteur n'est pas câblé.
   #define DEFAULT_TOR_PIN 3 // XIAO D1
 
+  // Détecteur jour/nuit (sortie analogique). Entrée ADC1 obligatoire : sur le XIAO seules
+  // D0 (GPIO2), D1 (GPIO3) et D2 (GPIO4) sont des ADC1. D2 = batterie ; D0 = broche de démarrage
+  // (doit être haute à la mise sous tension : une cellule dans l'obscurité ou en pleine lumière
+  // la tirerait vers le bas). Reste D1, partagée avec le flotteur et le micro (voir les #error).
+  // Toujours définie (même si CAPTEUR_JOUR_NUIT est désactivé) pour pouvoir neutraliser
+  // cette broche en setup().
+  #define JOUR_NUIT_PIN 3 // XIAO D1 (ADC1_CH3), connecteur du flotteur
+  // Alimentation du pont de la photorésistance (coupée hors mesure et en deep sleep).
+  // D3 (GPIO5) : libre, pas de DS18B20 sur cette carte (non câblée sur le PCB : fil à ajouter).
+  // Pas D0 (GPIO2) : le pont la tirerait vers le bas au démarrage.
+  #define JOUR_NUIT_ALIM_PIN 5 // XIAO D3
+
   // Toujours définies (même si CAPTEUR_RGB_TCS34725 / LED_CAPTEUR_RGB sont désactivés) pour
   // pouvoir neutraliser ces broches en setup().
   #define CAPTEUR_RGB_TCS34725_INTERRUPT 21 // XIAO D6, non câblée (U0TXD : messages du ROM au démarrage)
@@ -152,6 +165,12 @@
   #endif
   #if defined(CAPTEUR_MICRO_MAX4466) && (defined(CAPTEUR_DHT20) || defined(CAPTEUR_RGB_TCS34725))
     #error "BOARD_XIAO_C3 : GPIO7 utilisée à la fois par la LED du micro MAX4466 et par l'I2C (SCL)"
+  #endif
+  #if defined(CAPTEUR_JOUR_NUIT) && defined(FLOTTEUR_VERTICAL)
+    #error "BOARD_XIAO_C3 : GPIO3 utilisée à la fois par le détecteur jour/nuit et par le flotteur"
+  #endif
+  #if defined(CAPTEUR_JOUR_NUIT) && defined(CAPTEUR_MICRO_MAX4466)
+    #error "BOARD_XIAO_C3 : GPIO3 utilisée à la fois par le détecteur jour/nuit et par le micro MAX4466"
   #endif
   #if defined(ACTIONNEUR_IR) && defined(LED_CAPTEUR_RGB)
     #error "BOARD_XIAO_C3 : GPIO20 utilisée à la fois par l'actionneur IR et par la LED du capteur RGB"
@@ -176,6 +195,15 @@
   // Toujours définie (même si FLOTTEUR_VERTICAL est désactivé) pour pouvoir neutraliser
   // cette broche en setup() quand le flotteur n'est pas câblé.
   #define DEFAULT_TOR_PIN 1 // Pin 10
+
+  // Détecteur jour/nuit (sortie analogique). Entrée ADC1 obligatoire (GPIO0 à 4) : GPIO0 est
+  // la seule libre (pas une broche de démarrage, pas de quartz 32 kHz sur la Super Mini).
+  // Toujours définie (même si CAPTEUR_JOUR_NUIT est désactivé) pour pouvoir neutraliser
+  // cette broche en setup().
+  #define JOUR_NUIT_PIN 0 // GPIO0 (ADC1_CH0)
+  // Alimentation du pont de la photorésistance (coupée hors mesure et en deep sleep).
+  // GPIO10 : libre (les autres servent au CC1101, à l'I2C ou sont des broches de démarrage).
+  #define JOUR_NUIT_ALIM_PIN 10
 
   // Toujours définies (même si CAPTEUR_RGB_TCS34725 / LED_CAPTEUR_RGB sont désactivés) pour
   // pouvoir neutraliser ces broches en setup(). LED_CAPTEUR_RGB_PIN (1) partage la broche de
@@ -254,6 +282,16 @@
   // cette broche en setup() quand le flotteur n'est pas câblé.
   #define DEFAULT_TOR_PIN 1 // Pin 1
 
+  // Détecteur jour/nuit (sortie analogique). Entrée ADC1 obligatoire (GPIO1 à 10 sur le S3 ;
+  // ADC2 inutilisable avec le Wi-Fi). D3 (GPIO4) est libre : ni broche de démarrage, ni Wio-SX1262
+  // (qui prend D8-D10 = GPIO7-9 et les broches 38-42).
+  // Toujours définie (même si CAPTEUR_JOUR_NUIT est désactivé) pour pouvoir neutraliser
+  // cette broche en setup().
+  #define JOUR_NUIT_PIN 4 // XIAO D3 (ADC1_CH3)
+  // Alimentation du pont de la photorésistance (coupée hors mesure et en deep sleep).
+  // D2 (GPIO3), voisine de D3 : libre sans DS18B20 (sinon BATTERIE_PIN = 3, voir le #error).
+  #define JOUR_NUIT_ALIM_PIN 3 // XIAO D2
+
   // Toujours définies (même si CAPTEUR_RGB_TCS34725 / LED_CAPTEUR_RGB sont désactivés) pour
   // pouvoir neutraliser ces broches en setup().
   #define CAPTEUR_RGB_TCS34725_INTERRUPT 43 // Optionnel
@@ -264,6 +302,9 @@
   #endif
   #ifdef CAPTEUR_MICRO_MAX4466
     #error "CAPTEUR_MICRO_MAX4466 : broche non définie pour l'ESP32-S3"
+  #endif
+  #if defined(CAPTEUR_JOUR_NUIT) && defined(CAPTEUR_DS18B20)
+    #error "ESP32-S3 : GPIO3 utilisée à la fois par l'alimentation du détecteur jour/nuit et par la batterie (BATTERIE_PIN = 3 avec CAPTEUR_DS18B20)"
   #endif
 
 #else
@@ -286,6 +327,9 @@
 #ifdef ACTIONNEUR_IR
   #ifdef _RCSWITCH_MODE_
     #error "ACTIONNEUR_IR : GPIO20 déjà utilisée par l'alimentation du CC1101 (CC1101_POWER_GND_GPIO)"
+  #endif
+  #if !defined(BOARD_XIAO_C3) && defined(CAPTEUR_JOUR_NUIT)
+    #error "ACTIONNEUR_IR : GPIO10 (LED rouge) déjà utilisée par l'alimentation du détecteur jour/nuit (Super Mini)"
   #endif
 #endif // ACTIONNEUR_IR
 #endif // __ESP32_C3__

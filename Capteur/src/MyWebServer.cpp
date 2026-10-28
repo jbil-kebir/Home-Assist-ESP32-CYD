@@ -97,6 +97,9 @@ void MyWebServer::handleRoot() {
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) html += config.mBatterieAA->getHTML();
   #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (config.mJourNuit != nullptr) html += config.mJourNuit->getHTML();
+  #endif
 
   html +=  "</div>";
 
@@ -147,6 +150,9 @@ void MyWebServer::handleSave() {
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) config.mBatterieAA->loadFromWebServer(server);
   #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (config.mJourNuit != nullptr) config.mJourNuit->loadFromWebServer(server);
+  #endif
 
   // === SAUVEGARDE DES PARAMETRES GENERAUX ===
   config.saveToNVS();
@@ -180,6 +186,9 @@ void MyWebServer::handleSave() {
   #endif
   #ifdef CAPTEUR_BATTERIE
   if (config.mBatterieAA != nullptr) config.mBatterieAA->saveToNVS();
+  #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (config.mJourNuit != nullptr) config.mJourNuit->saveToNVS();
   #endif
 
   // Page de confirmation

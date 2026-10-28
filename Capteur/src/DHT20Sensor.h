@@ -45,6 +45,7 @@ private:
   // On mémorise la température pour n'afficher que les changements
   float lastHum = -1.0;  // Valeur invalide par défaut
   float newHum = -1.0;  // Valeur invalide par défaut
+  bool mbMesureValide = false; // Au moins une lecture réussie depuis le démarrage (sinon newTempC / newHum = valeurs invalides)
   const char* default_domotique_topic_prefix = "home/";
   const char* nvs_namespace = NVS_NAME_SPACE;  // 
   String mPrefixNVS = "thHum_";  // Préfixe par défaut

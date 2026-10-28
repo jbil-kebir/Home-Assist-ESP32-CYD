@@ -1,6 +1,6 @@
 # Capteur C3 Xiao — Circuit imprimé
 
-Version du 2026-10-19 (carte V 1.0 dessinée).
+Version du 2026-10-19 (carte V 1.0 dessinée) ; option détecteur jour / nuit ajoutée le 2026-10-28 (§ 1.3 d, non testée sur cette carte).
 **État : schéma, placement, routage, plans de masse, gouttes et sérigraphie FAITS dans EasyEDA Pro ; contrôle des règles
 (DRC) = 0 erreur ; schéma et PCB identiques. Prêt pour l'export et la commande** (détail au § 8).
 
@@ -32,8 +32,10 @@ dimensionnée pour un **fonctionnement continu** ; certains capteurs utiliseront
 | I2C SCL | 7 | D5 | `DEFAULT_SCL_PIN` | les deux |
 | LED témoin chaudière | 20 | D7 | `LED_CAPTEUR_RGB_PIN` | chaudière |
 | Interruption TCS34725 | 21 | D6 | `CAPTEUR_RGB_TCS34725_INTERRUPT` | non câblée |
+| Jour / nuit : mesure (ADC1) | 3 | **D1** | `JOUR_NUIT_PIN` (`CAPTEUR_JOUR_NUIT`) | option, **à la place du flotteur** (§ 1.3 d) |
+| Jour / nuit : alimentation du pont | 5 | D3 | `JOUR_NUIT_ALIM_PIN` (`CAPTEUR_JOUR_NUIT`) | option, **en fil** (non reliée sur le PCB) |
 | — | 2 | **D0** | — | **non câblée** |
-| — | 5, 8, 9, 10 | D3, D8, D9, D10 | — | non câblées |
+| — | 5, 8, 9, 10 | D3, D8, D9, D10 | — | non câblées (sauf D3 : option jour / nuit) |
 
 Pourquoi ce brochage (différent de la carte S3, où le flotteur est sur D0 et la mesure sur D1) :
 
@@ -43,6 +45,9 @@ Pourquoi ce brochage (différent de la carte S3, où le flotteur est sur D0 et l
 - Les entrées analogiques utilisables avec le Wi-Fi (ADC1) ne sortent sur le XIAO C3 que par **D0, D1, D2** → la mesure
   des piles va sur D2.
 - **D8 / D9 = GPIO8 / GPIO9** sont aussi des broches de démarrage (GPIO9 = bouton BOOT) : non câblées.
+- **Détecteur jour / nuit** : sa mesure doit aussi être sur ADC1 ; D2 est prise par les piles et D0 est exclue (broche de
+  démarrage) → **D1, partagée avec le flotteur** : les deux ne peuvent pas être montés ensemble (`#error` à la compilation,
+  de même avec le micro MAX4466).
 
 ### 1.2 Code
 
@@ -169,6 +174,7 @@ PILES                   |    | U1      |-(1)-- GND  |           D0  1 | o       
 ```
 
 Pattes libres : D0, D1, D3, D6, D7, D8, D9, D10, 5V. **D0, D8, D9 sont des broches de démarrage** : ne rien y câbler.
+D1 et D3 : détecteur jour / nuit s'il est ajouté (§ 1.3 d).
 
 #### b) Cuve : piles + DHT20 + flotteur
 
@@ -208,7 +214,7 @@ PILES                   |    | U1      |-(1)-- GND  |       |   D0  1 | o       
 
 - **J5 flotteur** : normalement ouvert, fermé = cuve pleine ; fils de 50 cm.
 
-Pattes libres : D0, D3, D6, D7, D8, D9, D10, 5V.
+Pattes libres : D0, D3, D6, D7, D8, D9, D10, 5V. Détecteur jour / nuit impossible avec le flotteur (D1 partagée).
 
 #### c) Chaudière : USB + DHT20 + TCS34725 + LED
 
@@ -250,6 +256,34 @@ Pattes libres : D0, D1, D2, D3, D6, D8, D9, D10 ; 5V = entrée USB, rien à y c�
 
 Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
 
+#### d) Option : détecteur jour / nuit, à la place du flotteur (câblage proposé, non testé sur cette carte)
+
+Photorésistance + résistance fixe de 10 kΩ, **sans transistor** : la patte D3 alimente le pont pendant la mesure
+seulement (5 ms), puis le coupe ; en deep sleep elle est en haute impédance, le pont ne consomme rien. Code : classe
+`CJourNuit` (`src/MyJourNuit.h`), `#define CAPTEUR_JOUR_NUIT` dans `global.h` (et pas `FLOTTEUR_VERTICAL`).
+
+La mesure passe par le circuit du flotteur (J5, R5, C7, vers D1) :
+
+```
+   D3 (GPIO5) ---- fil ---- photorésistance ----+---- J5 1 (FLOT_EXT) --- R5 1 k ---+--- D1 (GPIO3, mesure)
+                                                |                                 |
+                                              10 kΩ                           C7 100 nF
+                                                |                                 |
+                                       J5 2 (GND) / GND                          GND
+
+   R4 (10 k vers 3V3) : NON MONTÉE
+```
+
+- **Ne pas monter R4** : ce rappel vers 3V3 fausserait complètement la mesure.
+- **R5 et C7** peuvent rester : avec un pont d'au plus 10 kΩ, la constante de temps est d'environ 1,1 ms, et la mesure
+  attend 5 ms après la mise sous tension du pont.
+- **D3 n'est reliée à rien sur le PCB V 1.0** : fil soudé sur la patte du XIAO (ou sur sa barrette).
+- La résistance de 10 kΩ se soude entre les bornes 1 et 2 de J5 (ou à l'extrémité des fils, près de la photorésistance).
+- Plus il y a de lumière, plus la tension sur D1 monte. Valeur remontée : éclairement en % de 3,3 V (0 à 100) ; état
+  JOUR / NUIT décidé par une fenêtre d'hystérésis (seuils bas 20 %, haut 30 % par défaut). Trames, réglages
+  (`SET jn_sbas …`) : voir `Doc/mqtt.docx`.
+- Pas sur **D0** : le pont la tirerait vers le bas au démarrage, et la carte ne démarrerait pas.
+
 ## 2. Décisions
 
 | Sujet | Décision |
@@ -267,6 +301,7 @@ Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
 | Variantes | décrites **dans ce dossier seulement** |
 | Boîtier | impression 3D, non étanche |
 | Composants | tout en traversant ; borniers XY301V (piles, flotteur), JST-XH (interrupteur, modules) |
+| Détecteur jour / nuit (option, 2026-10-28) | à la place du flotteur : mesure sur D1 par J5 / R5 / C7 (R4 non montée), alimentation du pont par D3 en fil, sans transistor |
 
 ## 3. Composants à monter selon la variante
 
@@ -336,6 +371,8 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
   garde son ancien calibre (par exemple 4,3), à corriger par la page Web (« Calibre »). Ajuster ensuite au multimètre.
 - **Flotteur** : rappel de 10 k vers 3V3 ; R5 1 k + C7 100 nF filtrent les parasites du fil. Le code (`INPUT_PULLUP`)
   publie **1 = cuve pleine, 0 = pas pleine**. Sur D1 (GPIO3), l'état du flotteur au démarrage n'a pas d'effet.
+- **Détecteur jour / nuit** : pont alimenté 5 ms par mesure, au plus 3,3 V / 10 kΩ ≈ 0,33 mA (en pleine lumière) ;
+  rien en deep sleep.
 - **Largeurs de piste** : `3V3`, `VPIL+`, `VPIL`, `VSW` à 0,6 mm ; signaux à 0,4 mm ; plan `GND` sur les 2 faces.
 
 ## 7. Boîtier et mécanique
@@ -373,6 +410,8 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
 - [ ] Commande JLCPCB.
 - [ ] Essais : démarrage avec cuve pleine, mesure des piles sur D2 (calibre 3,2), Wi-Fi à 19,5 dBm sur piles.
 - [ ] Boîtier imprimé.
+- [ ] Détecteur jour / nuit : essayer le câblage du § 1.3 d (R4 non montée, D3 en fil) ; prévoir un vrai emplacement si
+  une V 1.1 est dessinée (à décider).
 
 ## 9. Pièces
 

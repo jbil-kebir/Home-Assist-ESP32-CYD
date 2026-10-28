@@ -48,8 +48,9 @@ int CBatterieAA::loop() {
     //lastForcageRemontee = millis(); 
     if (!active) return -9;
     ret = readAndPublish(bForce); // Lit et publie sur MQTT
-    lastForcageRemontee = millis(); 
-    bForce = false; // On remet aussi à 0 le compteur de forçage
+    // lastForcageRemontee n'est remis à zéro que par le forçage lui-même (plus haut) : le remettre à zéro
+    // à chaque mesure normale empêchait tout forçage dès que mulIntervalleMesure < mulIntervalleForcageRemonteeMesure
+    bForce = false;
   }  
   return ret;
 }

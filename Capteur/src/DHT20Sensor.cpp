@@ -88,7 +88,9 @@ int DHT20Sensor::loop() {
       }
     }
     else {
-      mbForce = false; lastForcageRemontee = millis(); 
+      // lastForcageRemontee n'est remis à zéro que par le forçage lui-même (plus haut) : le remettre à zéro
+      // à chaque fin d'envoi empêchait tout forçage dès que mulIntervalleMesure < mulIntervalleForcageRemonteeMesure
+      mbForce = false;
       bMesureNormale = false; lastRead = millis();
       bEnvoiEnCours = false;
     }
@@ -123,7 +125,7 @@ int DHT20Sensor::readAndPublish(bool force/*=false*/, bool mesurer/*=false*/) {
   if (!active) return -9;
   bool readStatus = false;
   if (mesurer) readStatus = read();
-  else readStatus = true;
+  else readStatus = mbMesureValide; // Renvoi sans mesure : seulement si une lecture a réussi (sinon -127 / -1 publiés)
 
   if (readStatus) {
     Serial.printf("newTempC : %.2f lastTempC : %.2f newHum : %.2f lastHum : %.2f \n", newTempC, lastTempC, newHum, lastHum);
@@ -428,6 +430,7 @@ bool DHT20Sensor::read() {
     if (status == DHT20_OK) {
         newTempC = dht.getTemperature(); //Serial.printf("DHT20Sensor::read() newTempC : %.2f\n", newTempC);
         newHum   = dht.getHumidity();
+        mbMesureValide = true;
 
         return true;
     }

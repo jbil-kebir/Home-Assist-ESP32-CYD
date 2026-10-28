@@ -396,6 +396,45 @@ sections:
                 name: Batterie
               - entity: sensor.batcave_etat
                 name: État batterie
+              - entity: sensor.jncave_etat
+                name: Jour / nuit
+              - entity: sensor.jncave_eclairement
+                name: Éclairement
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
+            title: Jour / nuit (réglages reçus ; SET jn_... par la commande libre)
+            entities:
+              - type: attribute
+                entity: sensor.thcave_config
+                attribute: jn_sbas
+                name: Seuil bas jour → nuit
+                suffix: " %"
+              - type: attribute
+                entity: sensor.thcave_config
+                attribute: jn_shaut
+                name: Seuil haut nuit → jour
+                suffix: " %"
+              - type: attribute
+                entity: sensor.thcave_config
+                attribute: jn_ecl
+                name: Remonter l'éclairement (1 oui, 0 non)
+              - type: attribute
+                entity: sensor.thcave_config
+                attribute: jn_inter
+                name: Intervalle de mesure
+                suffix: " s"
+              - type: attribute
+                entity: sensor.thcave_config
+                attribute: jn_force
+                name: Délai max sans envoi
+                suffix: " s"
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
+            content: |
+              Ex. : `SET jn_sbas 15 jn_shaut 25` (commande libre) — clés : `jn_sbas` `jn_shaut` (0 à 100 %, bas < haut),
+              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s), `jn_force` (60 à 86400 s)
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
@@ -1123,6 +1162,7 @@ sections:
           |---|---|
           | `GET` | Relit la configuration |
           | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
+          | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s), `jn_force` délai max sans envoi (60 à 86400 s) |
           | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |
