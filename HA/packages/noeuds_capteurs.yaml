@@ -428,6 +428,108 @@ template:
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
 
+  # ---------- ThCh1er : commande en attente = message retenu sur le topic command ----------
+  # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthch1er/command"
+    sensor:
+      - name: "ThCh1er Commande en attente"
+        unique_id: thch1er_commande_attente
+        icon: mdi:timer-sand
+        state: >-
+          {%- set p = trigger.payload | trim -%}
+          {{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}
+
+  # ---------- ThCh1er : réponse CONFIG (« ThCh1er CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthch1er/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIG"
+    sensor:
+      - name: "ThCh1er Config"
+        unique_id: thch1er_config
+        device_class: timestamp
+        icon: mdi:cog
+        state: "{{ now().isoformat() }}"
+        attributes:
+          sleepA: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepS: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepM: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepL: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          wakeI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          mute: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          erreur: >-
+            {%- set p = trigger.payload.split(' ERREUR ') -%}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+
+  # ---------- ThCh1er : réponse STATUS ----------
+  # LoRa : une ligne « ThCh1er ETAT <date> <heure> | Wdog : ... | Uptime : ...s <IP> »
+  # Wi-Fi : plusieurs lignes « === ÉTAT ThCh1er === », date, IP, Wdog, Uptime (remises sur une ligne, séparées par « | »)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthch1er/state"
+        value_template: >-
+          {{ 'ETAT' if (value.split(' ') + [''])[1] | upper in ['ETAT', 'ÉTAT'] else '' }}
+        payload: "ETAT"
+    sensor:
+      - name: "ThCh1er Rapport"
+        unique_id: thch1er_rapport
+        icon: mdi:information-outline
+        state: >-
+          {%- set p = trigger.payload -%}
+          {%- if p.startswith('===') -%}
+            {%- set s = p.split('\n')[1:] | map('trim') | reject('eq', '') | join(' | ') -%}
+          {%- else -%}
+            {%- set s = p.split(' ', 2)[2] -%}
+          {%- endif -%}
+          {{ (s | regex_replace(' {2,}', ' ') | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', ''))[:255] }}
+        attributes:
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- ThCh1er : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "THCH1ER"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ value.split(' ')[0] | upper }}"
+        payload: "BATCH1ER"
+      - trigger: mqtt
+        topic: "home/confthch1er/state"
+    binary_sensor:
+      - name: "ThCh1er Éveillé"
+        unique_id: thch1er_eveille
+        icon: mdi:sleep-off
+        state: >-
+          {%- set p = trigger.payload | upper -%}
+          {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
+        auto_off: "00:01:00"
+    sensor:
+      - name: "ThCh1er Dernière trame"
+        unique_id: thch1er_derniere_trame
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
   # ---------- ThSdb : commande en attente = message retenu sur le topic command ----------
   # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
   - trigger:
@@ -665,6 +767,14 @@ input_boolean:
     name: "ThChRDC Mesures muettes"
     icon: mdi:volume-off
 
+  # ---------- ThCh1er ----------
+  thch1er_sleepa:
+    name: "ThCh1er Deep sleep actif"
+    icon: mdi:sleep
+  thch1er_mute:
+    name: "ThCh1er Mesures muettes"
+    icon: mdi:volume-off
+
   # ---------- ThSdb ----------
   thsdb_sleepa:
     name: "ThSdb Deep sleep actif"
@@ -842,6 +952,48 @@ input_number:
     unit_of_measurement: "s"
     icon: mdi:timer-sand
 
+  # ---------- ThCh1er (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
+  thch1er_sleepi:
+    name: "ThCh1er Intervalle deep sleep"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thch1er_sleeps:
+    name: "ThCh1er Sommeil court (SLEEPS)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thch1er_sleepm:
+    name: "ThCh1er Sommeil moyen (SLEEPM)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thch1er_sleepl:
+    name: "ThCh1er Sommeil long (SLEEPL)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  thch1er_wakei:
+    name: "ThCh1er Éveil maximum"
+    min: 1
+    max: 3600
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-sand
+
   # ---------- ThSdb (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
   thsdb_sleepi:
     name: "ThSdb Intervalle deep sleep"
@@ -906,6 +1058,12 @@ input_text:
   # ---------- ThChRDC ----------
   thchrdc_commande:
     name: "ThChRDC Commande libre"
+    max: 100
+    icon: mdi:console
+
+  # ---------- ThCh1er ----------
+  thch1er_commande:
+    name: "ThCh1er Commande libre"
     max: 100
     icon: mdi:console
 
@@ -1119,6 +1277,7 @@ automation:
           - sensor.thnomade_config
           - sensor.thcave_config
           - sensor.thchrdc_config
+          - sensor.thch1er_config
           - sensor.thsdb_config
     actions:
       - variables:
@@ -1170,7 +1329,7 @@ automation:
         payload: "oui"
     variables:
       # Nœuds Wi-Fi : même liste que dans genere_noeuds.py
-      wifi: "['thchrdc', 'thsdb', 'noeud']"
+      wifi: "['thchrdc', 'thch1er', 'thsdb', 'noeud']"
       capteur: "{{ (trigger.payload.split(' ') + [''])[0] | lower }}"
     conditions:
       - condition: template

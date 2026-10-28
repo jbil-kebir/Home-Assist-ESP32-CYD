@@ -25,6 +25,9 @@ NOEUDS = [
     dict(id="thchrdc", nom="ThChRDC", suffixe="ChRDC", mode="wifi", unites=["Th", "Bat"], ip="input_text.ip_thchrdc",
          mesures=[("sensor.thchrdc_temperature", "Température"), ("sensor.thchrdc_humidite", "Humidité"),
                   ("sensor.batchrdc_tension", "Batterie"), ("sensor.batchrdc_etat", "État batterie")]),
+    dict(id="thch1er", nom="ThCh1er", suffixe="Ch1er", mode="wifi", unites=["Th", "Bat"], ip="input_text.ip_thch1er",
+         mesures=[("sensor.thch1er_temperature", "Température"), ("sensor.thch1er_humidite", "Humidité"),
+                  ("sensor.batch1er_tension", "Batterie"), ("sensor.batch1er_etat", "État batterie")]),
     # Capteur chaudière Sdb : S3 laissé en Wi-Fi (nœud critique ; basculer Wi-Fi / LoRa à terme)
     dict(id="thsdb", nom="ThSdb", suffixe="Sdb", mode="wifi", unites=["Th", "Bat", "Coul"], ip="input_text.ip_thsdb",
          mesures=[("sensor.thsdb_temperature", "Température"), ("sensor.thsdb_humidite", "Humidité"),
@@ -498,6 +501,26 @@ def bouton(nom, icone, script, i, commande=None, confirmation=None, rouge=False,
     return "\n".join(s)
 
 
+# Teinte de fond de chaque nœud (cartes entities et markdown de sa section, pas les boutons), pour les distinguer ;
+# transparence faible : lisible en thème clair comme en thème sombre
+FONDS_NOEUDS = ["rgba(33,150,243,0.15)",   # bleu
+                "rgba(76,175,80,0.15)",    # vert
+                "rgba(255,152,0,0.15)",    # orange
+                "rgba(156,39,176,0.15)",   # violet
+                "rgba(0,150,136,0.15)",    # bleu-vert
+                "rgba(233,30,99,0.15)",    # rose
+                "rgba(121,85,72,0.18)"]    # brun
+
+
+def fond_cartes(texte, couleur):
+    import re
+    # Ajoute card_mod (fond) sous chaque « - type: entities » / « - type: markdown » de la section
+    return re.sub(r"^( *)- type: (entities|markdown)$",
+                  lambda m: (f"{m.group(0)}\n{m.group(1)}  card_mod:\n"
+                             f"{m.group(1)}    style: \"ha-card {{ background: {couleur} !important; }}\""),
+                  texte, flags=re.M)
+
+
 def vue():
     o = []
     w = o.append
@@ -512,7 +535,8 @@ path: noeuds-capteurs
 icon: mdi:access-point-network
 show_icon_and_title: true
 sections:""")
-    for n in CAPTEURS:
+    for rang, n in enumerate(CAPTEURS):
+        debut = len(o)
         i, nom, wifi = n["id"], n["nom"], n["mode"] == "wifi"
         icone = "mdi:wifi" if wifi else "mdi:radio-tower"
         w(f"""  # ======================= {nom} ({'Wi-Fi' if wifi else 'LoRa'}) =======================
@@ -616,6 +640,7 @@ sections:""")
         w(bouton("Nettoyer retenu", "mdi:broom", "noeud_nettoyer_retenu", i,
                  confirmation=f"Effacer le message retenu sur home/conf{i}/command ?", indent=14))
         w("")
+        o[debut:] = [fond_cartes("\n".join(o[debut:]), FONDS_NOEUDS[rang % len(FONDS_NOEUDS)])]
     w("""  # ======================= Aide =======================
   - type: grid
     cards:

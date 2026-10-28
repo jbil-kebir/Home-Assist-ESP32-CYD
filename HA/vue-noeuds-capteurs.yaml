@@ -19,6 +19,8 @@ sections:
             heading_style: title
             icon: mdi:radio-tower
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             entities:
               - entity: binary_sensor.thremise_eveille
                 name: Éveillé
@@ -31,6 +33,8 @@ sections:
                 name: Config reçue
                 format: relative
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             title: Mesures
             entities:
               - entity: sensor.thremise_temperature
@@ -44,6 +48,8 @@ sections:
               - entity: sensor.flotteur_remise
                 name: Flotteur
           - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             content: |
               {% if state_attr('sensor.thremise_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThRemise n'émet plus ses mesures (MUTE OFF pour les rétablir).
@@ -118,6 +124,8 @@ sections:
       - type: vertical-stack
         cards:
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.thremise_sleepa
@@ -153,6 +161,8 @@ sections:
                   {% endif %}
                 }
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             title: Commande libre
             entities:
               - entity: input_text.thremise_commande
@@ -192,6 +202,8 @@ sections:
             heading_style: title
             icon: mdi:radio-tower
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(76,175,80,0.15) !important; }"
             entities:
               - entity: binary_sensor.thnomade_eveille
                 name: Éveillé
@@ -204,6 +216,8 @@ sections:
                 name: Config reçue
                 format: relative
           - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(76,175,80,0.15) !important; }"
             content: |
               {% if state_attr('sensor.thnomade_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThNomade n'émet plus ses mesures (MUTE OFF pour les rétablir).
@@ -278,6 +292,8 @@ sections:
       - type: vertical-stack
         cards:
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(76,175,80,0.15) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.thnomade_sleepa
@@ -313,6 +329,8 @@ sections:
                   {% endif %}
                 }
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(76,175,80,0.15) !important; }"
             title: Commande libre
             entities:
               - entity: input_text.thnomade_commande
@@ -352,6 +370,8 @@ sections:
             heading_style: title
             icon: mdi:radio-tower
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             entities:
               - entity: binary_sensor.thcave_eveille
                 name: Éveillé
@@ -364,6 +384,8 @@ sections:
                 name: Config reçue
                 format: relative
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             title: Mesures
             entities:
               - entity: sensor.thcave_temperature
@@ -375,6 +397,8 @@ sections:
               - entity: sensor.batcave_etat
                 name: État batterie
           - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             content: |
               {% if state_attr('sensor.thcave_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThCave n'émet plus ses mesures (MUTE OFF pour les rétablir).
@@ -449,6 +473,8 @@ sections:
       - type: vertical-stack
         cards:
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.thcave_sleepa
@@ -484,6 +510,8 @@ sections:
                   {% endif %}
                 }
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             title: Commande libre
             entities:
               - entity: input_text.thcave_commande
@@ -523,6 +551,8 @@ sections:
             heading_style: title
             icon: mdi:wifi
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
             entities:
               - entity: binary_sensor.thchrdc_eveille
                 name: Éveillé
@@ -535,6 +565,8 @@ sections:
                 name: Config reçue
                 format: relative
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
             title: Mesures
             entities:
               - entity: sensor.thchrdc_temperature
@@ -546,6 +578,8 @@ sections:
               - entity: sensor.batchrdc_etat
                 name: État batterie
           - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
             content: |
               {% if state_attr('sensor.thchrdc_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThChRDC n'émet plus ses mesures (MUTE OFF pour les rétablir).
@@ -625,6 +659,8 @@ sections:
       - type: vertical-stack
         cards:
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.thchrdc_sleepa
@@ -660,6 +696,8 @@ sections:
                   {% endif %}
                 }
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
             title: Commande libre
             entities:
               - entity: input_text.thchrdc_commande
@@ -689,6 +727,192 @@ sections:
                 card_mod:
                   style: "ha-card { height: 60px !important; }"
 
+  # ======================= ThCh1er (Wi-Fi) =======================
+  - type: grid
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: heading
+            heading: ThCh1er · Wi-Fi
+            heading_style: title
+            icon: mdi:wifi
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
+            entities:
+              - entity: binary_sensor.thch1er_eveille
+                name: Éveillé
+              - entity: sensor.thch1er_derniere_trame
+                name: Dernière trame
+                format: relative
+              - entity: sensor.thch1er_commande_en_attente
+                name: Commande en attente
+              - entity: sensor.thch1er_config
+                name: Config reçue
+                format: relative
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
+            title: Mesures
+            entities:
+              - entity: sensor.thch1er_temperature
+                name: Température
+              - entity: sensor.thch1er_humidite
+                name: Humidité
+              - entity: sensor.batch1er_tension
+                name: Batterie
+              - entity: sensor.batch1er_etat
+                name: État batterie
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
+            content: |
+              {% if state_attr('sensor.thch1er_config', 'mute') == 1 %}
+              🔇 **Mesures muettes** : ThCh1er n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {% endif %}
+              {% set ip = states('input_text.ip_thch1er') %}
+              {% if ip not in ['unknown', 'unavailable', ''] %}
+              **Page Web** : [{{ ip }}](http://{{ ip }}/)
+
+              {% endif %}
+              {% set r = states('sensor.thch1er_rapport') %}
+              {% if r not in ['unknown', 'unavailable'] %}
+              **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thch1er_rapport', 'recu'))) }}) :
+
+              {{ r | replace(' | ', '  \n') }}
+              {% else %}
+              *Pas encore de réponse au bouton État.*
+              {% endif %}
+              {% set e = state_attr('sensor.thch1er_config', 'erreur') %}
+              {% if e %}
+
+              ⚠️ **Refusé par le nœud** : {{ e }}
+              {% endif %}
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Relire
+                icon: mdi:refresh
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thch1er
+                    commande: GET
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: État
+                icon: mdi:information
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thch1er
+                    commande: STATUS
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Annuler
+                icon: mdi:cancel
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thch1er
+                    commande: ANNULER
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Redémarrer
+                icon: mdi:restart
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thch1er
+                    commande: REBOOT
+                  confirmation:
+                    text: Redémarrer ThCh1er à son prochain réveil ?
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 60px !important;
+                      background: rgba(200,0,0,0.2) !important;
+                    }
+                    ha-icon { color: red !important; }
+      - type: vertical-stack
+        cards:
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
+            title: Réglages (envoyés au prochain réveil)
+            entities:
+              - entity: input_boolean.thch1er_sleepa
+                name: Deep sleep actif
+              - entity: input_number.thch1er_sleepi
+                name: Intervalle deep sleep
+              - entity: input_number.thch1er_sleeps
+                name: Sommeil court (SLEEPS)
+              - entity: input_number.thch1er_sleepm
+                name: Sommeil moyen (SLEEPM)
+              - entity: input_number.thch1er_sleepl
+                name: Sommeil long (SLEEPL)
+              - entity: input_number.thch1er_wakei
+                name: Éveil maximum
+              - entity: input_boolean.thch1er_mute
+                name: Mesures muettes
+          - type: button
+            name: Enregistrer
+            icon: mdi:content-save
+            tap_action:
+              action: perform-action
+              perform_action: script.noeud_enregistrer
+              data:
+                capteur: thch1er
+            # Grisé et non cliquable tant qu'aucune config n'a été reçue du nœud (le script refuse aussi)
+            card_mod:
+              style: |
+                ha-card {
+                  height: 60px !important;
+                  {% if states('sensor.thch1er_config') in ['unknown', 'unavailable'] %}
+                  opacity: 0.4;
+                  pointer-events: none;
+                  {% endif %}
+                }
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
+            title: Commande libre
+            entities:
+              - entity: input_text.thch1er_commande
+                name: Commande
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Envoyer
+                icon: mdi:send
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande_libre
+                  data:
+                    capteur: thch1er
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Nettoyer retenu
+                icon: mdi:broom
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_nettoyer_retenu
+                  data:
+                    capteur: thch1er
+                  confirmation:
+                    text: Effacer le message retenu sur home/confthch1er/command ?
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+
   # ======================= ThSdb (Wi-Fi) =======================
   - type: grid
     cards:
@@ -699,6 +923,8 @@ sections:
             heading_style: title
             icon: mdi:wifi
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             entities:
               - entity: binary_sensor.thsdb_eveille
                 name: Éveillé
@@ -711,6 +937,8 @@ sections:
                 name: Config reçue
                 format: relative
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             title: Mesures
             entities:
               - entity: sensor.thsdb_temperature
@@ -732,6 +960,8 @@ sections:
               - entity: sensor.batsdb_etat
                 name: État batterie
           - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             content: |
               {% if state_attr('sensor.thsdb_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThSdb n'émet plus ses mesures (MUTE OFF pour les rétablir).
@@ -811,6 +1041,8 @@ sections:
       - type: vertical-stack
         cards:
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.thsdb_sleepa
@@ -846,6 +1078,8 @@ sections:
                   {% endif %}
                 }
           - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             title: Commande libre
             entities:
               - entity: input_text.thsdb_commande
