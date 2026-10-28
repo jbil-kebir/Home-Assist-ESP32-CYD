@@ -14,9 +14,11 @@ Dernier export : 27/10/2026.
 | `packages/` | Paquets inclus par `homeassistant: packages: !include_dir_named packages` |
 | `packages/noeuds_capteurs.yaml` | Pilotage à distance des nœuds capteurs LoRa (via Relais-Lora) et Wi-Fi (réglages, GET, STATUS, REBOOT, ANNULER, nettoyage du retenu, commande libre, éveil/sommeil) — **généré** |
 | `vue-noeuds-capteurs.yaml` | Vue « Nœuds capteurs » du tableau Système, à coller dans l'interface (pas un fichier de HA) — **générée** |
-| `genere_noeuds.py` | Générateur des deux fichiers ci-dessus à partir de la liste des nœuds (pas un fichier de HA) |
+| `vue-actionneurs.yaml` | Vue « Actionneurs » du tableau Accueil (export `.storage` + carte du nœud chauffage SdB), à coller dans l'interface — **générée** |
+| `genere_noeuds.py` | Générateur des trois fichiers ci-dessus à partir de la liste des nœuds (pas un fichier de HA) |
 | `.storage/lovelace_dashboards` | Liste des tableaux de bord |
 | `.storage/lovelace.dashboard_systeme` | Tableau « Système » (vues NAS, Diagnostic, CYD, Paramétrage) |
+| `.storage/lovelace.dashboard_accueil` | Tableau « Accueil » (vues Accueil, Actionneurs, Chaudière, Graphs, Capteurs, Caméras) |
 
 ## Règles (le dépôt GitHub est public)
 
@@ -49,6 +51,11 @@ dès l'accusé du nœud ou sa connexion (« online »).
 **Ajouter un nœud** : compléter la liste `NOEUDS` de `genere_noeuds.py` (mode, capteurs unitaires, entités de mesure),
 lancer `python -I HA/genere_noeuds.py`, puis réinstaller les deux fichiers (étapes 1, 3 et 4). Un nœud LoRa doit
 aussi figurer dans `FILE_CMD_CAPTEURS` (Relais-Lora/src/global.h).
+
+**Actionneur** (`type="actionneur"`, ex. nœud chauffage SdB) : pas de réglages de sommeil, hors de la vue « Nœuds
+capteurs » ; sa carte est insérée dans `vue-actionneurs.yaml` (vue Actionneurs du tableau Accueil, reprise de
+`.storage/lovelace.dashboard_accueil` : réexporter ce fichier avant de régénérer si la vue a été modifiée dans HA),
+à coller : Accueil → ✏️ → vue Actionneurs → ⋮ → « Modifier en YAML »). Ses commandes ne sont pas retenues (toujours éveillé quand il est sous tension).
 
 1. Dans `/config/packages/` : **supprimer `capteurs_lora.yaml`** (ancienne version, entités en double sinon) et copier
    `packages/noeuds_capteurs.yaml`.

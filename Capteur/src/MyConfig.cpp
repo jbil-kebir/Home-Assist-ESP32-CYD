@@ -233,7 +233,8 @@ void CConfig::loop() {
         bMesureRemontee = mFlotteurVertical->mbMesureRemontee;
         if (!bMesureRemontee) bDeepSleepPossible = false;
       }
-      if (mFlotteurVertical->mbAckNeeded && bLoraOk) {
+      // Mesures muettes : aucune trame du flotteur, donc aucun ACK à attendre
+      if (mFlotteurVertical->mbAckNeeded && bLoraOk && !mbMute) {
         bMesureRemontee = mFlotteurVertical->mbAckReceived;
         if (!bMesureRemontee) bDeepSleepPossible = false;
       }
@@ -500,6 +501,7 @@ void CConfig::loadFromNVS() {
   mulWatchdogPeriod = prefs.getLong((mPrefixNVS+"wdogP").c_str(), DEFAULT_WATCHDOG_PERIOD_SEC);
   mbJournalSauvegarde = prefs.getBool((mPrefixNVS+"jrnSv").c_str(), true);
   gJournal.setSauvegardeActive(mbJournalSauvegarde);
+  mbMute = prefs.getBool((mPrefixNVS+"mute").c_str(), false);
   mbConfiguree = prefs.getBool((mPrefixNVS+"conf").c_str(), prefs.isKey((mPrefixNVS+"nom").c_str()));
 
   prefs.end();
@@ -533,6 +535,7 @@ void CConfig::saveToNVS() {
   prefs.putBool((mPrefixNVS+"wdogA").c_str(), mbWatchdogActive);
   prefs.putLong((mPrefixNVS+"wdogP").c_str(), mulWatchdogPeriod);
   prefs.putBool((mPrefixNVS+"jrnSv").c_str(), mbJournalSauvegarde);
+  prefs.putBool((mPrefixNVS+"mute").c_str(), mbMute);
 
   prefs.end();
 }
@@ -551,6 +554,7 @@ void CConfig::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"wdogP").c_str())) mulWatchdogPeriod = server.arg((mPrefixNVS+"wdogP")).toInt();
   mbJournalSauvegarde = server.hasArg((mPrefixNVS+"jrnSv").c_str());
   gJournal.setSauvegardeActive(mbJournalSauvegarde);
+  setParam("mute", server.hasArg((mPrefixNVS+"mute").c_str()) ? "1" : "0"); // Refusé (sans effet) sur un actionneur
 }
 
 void CConfig::print() const {
@@ -565,6 +569,7 @@ void CConfig::print() const {
   Serial.printf("  Watchdog ALIVE          : %s\n", mbWatchdogActive ? "ACTIF" : "INACTIF");
   Serial.printf("  Période Watchdog ALIVE  : %ld s\n", mulWatchdogPeriod);
   Serial.printf("  Sauvegarde journal      : %s\n", mbJournalSauvegarde ? "ACTIVE" : "INACTIVE");
+  Serial.printf("  Mesures muettes (MUTE)  : %s\n", mbMute ? "OUI" : "NON");
   Serial.printf("  Préfixe domotique       : %s\n", domotique_prefix.c_str());
   Serial.printf("  Préfixe configuration   : %s\n", mqttSubTopic.c_str());
 
@@ -598,6 +603,7 @@ String CConfig::getHTML() {
       "</div>"
       "<div class=\"row\">"
         "<div class=\"checkbox-row\"><label>Sauvegarde du journal avant coupure (OnOff 0, IRKO)</label><input type=\"checkbox\" name=" + (mPrefixNVS+"jrnSv") + " value=\"1\"" + String(mbJournalSauvegarde ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Mesures muettes (MUTE)</label><input type=\"checkbox\" name=" + (mPrefixNVS+"mute") + " value=\"1\"" + String(mbMute ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Préfixe domotique</label><input type=\"text\" name=" + (mPrefixNVS+"domo_pref") + " value=\"" + domotique_prefix + "\"></div>"
@@ -789,6 +795,14 @@ int CConfig::handleMqttCommand(const String& payload) {
   else if (cmd == "GET") {
     envoieConfig();
   }
+  else if (cmd == "MUTE ON" || cmd == "MUTE OFF") {
+    // Mesures muettes : même traitement que SET mute:1 / mute:0 (réponse CONFIG, ERREUR mute:1 si refusé)
+    String sValeur = (cmd == "MUTE ON") ? "1" : "0";
+    bool bOk = (setParam("mute", sValeur) == 0);
+    if (bOk) saveToNVS();
+    envoieConfig(bOk ? String("") : "mute:" + sValeur);
+    if (!bOk) ret = -2;
+  }
   else if (cmd.startsWith("SET ")) {
     // SET cle valeur [cle valeur ...] ou SET cle:valeur [...] (format de la réponse CONFIG), mélange possible :
     // paramètres invalides ignorés et signalés dans la réponse
@@ -850,6 +864,14 @@ int CConfig::setParam(const String& cle, const String& valeur) {
     if (!bNombre || ul < WAKE_DURATION_MIN_SEC || ul > WAKE_DURATION_MAX_SEC) return -2;
     mulWakeDuration = ul;
   }
+  else if (c == "MUTE") {
+    if (v != "0" && v != "1") return -2;
+    #if defined(CAPTEUR_MICRO_MAX4466) || defined(ACTIONNEUR_IR)
+    // Actionneur (nœud chauffage) : le CYD pilote la séquence relais / IR d'après ses trames (OnOff, ALIVE)
+    if (v == "1") return -2;
+    #endif
+    mbMute = (v == "1");
+  }
   else return -1;
   Serial.println("CConfig::setParam() - " + cle + " = " + v);
   return 0;
@@ -862,7 +884,8 @@ String CConfig::getParams() const {
          " sleepS:" + String(mulSleepDurationS) +
          " sleepM:" + String(mulSleepDurationM) +
          " sleepL:" + String(mulSleepDurationL) +
-         " wakeI:" + String(mulWakeDuration);
+         " wakeI:" + String(mulWakeDuration) +
+         " mute:" + String(mbMute ? 1 : 0);
 }
 
 // « <nom> CONFIG <paramètres> [ERREUR <cle:valeur ...>] » sur topic_config_state, par MQTT et par LoRa.

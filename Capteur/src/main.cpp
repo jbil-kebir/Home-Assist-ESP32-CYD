@@ -93,6 +93,44 @@ CActionneurIR mActionneurIR(mDateTime);
 void print();
 void printBoardInfo();
 
+//-------------------------------------------------------------------------------------------
+// Publication des MESURES des capteurs (commande MUTE ON/OFF, clé SET mute) : en mode muet, la mesure n'est
+// pas émise mais elle est déclarée remontée (retour 0), sinon le capteur ne s'endormirait plus (mbMesureRemontee).
+// Les réponses aux commandes, CONFIG, online, REVEIL, DEEPSLEEP ON et ALIVE ne passent pas par ici : jamais muets.
+//-------------------------------------------------------------------------------------------
+#ifdef _WIFI_MODE_
+#ifndef __DESACTIVE_ENVOI_MQTT__
+int publieMesureMqtt(const char* topic, const char* payload) {
+  if (config.mbMute) {
+    Serial.printf("[MUTE] Mesure non publiée (MQTT) : %s\n", payload);
+    return 0;
+  }
+  return mqtt.publish(topic, payload);
+}
+#endif
+#endif
+#ifdef _LORA_P2P_MODE_
+// LoRa : Relais-Lora n'envoie une commande en attente qu'après avoir reçu une trame du capteur (il le sait alors
+// à l'écoute). Muet, le capteur émet donc à la place de ses mesures une trame de présence « <nom> MUET » sur son
+// topic de config, au plus une par MUTE_INTERVALLE_PRESENCE_MS : sinon il ne pourrait plus recevoir MUTE OFF.
+const unsigned long MUTE_INTERVALLE_PRESENCE_MS = 5000UL; // = FILE_CMD_NOUVEAU_REVEIL_MS du relais
+int publieMesureLora(const char* payload) {
+  if (config.mbMute) {
+    static unsigned long ulDernierePresence = 0;
+    static bool bPresenceEmise = false;
+    Serial.printf("[MUTE] Mesure non émise (LoRa) : %s\n", payload);
+    if (bPresenceEmise && millis() - ulDernierePresence < MUTE_INTERVALLE_PRESENCE_MS) return 0;
+    String sPresence = config.topic_config_state + " " + config.nomEquipement + " MUET";
+    int ret = mLoraRxTx.sendPacket(sPresence.c_str());
+    if (ret == 0) {
+      bPresenceEmise = true;
+      ulDernierePresence = millis();
+    }
+    return ret;
+  }
+  return mLoraRxTx.sendPacket(payload);
+}
+#endif
 
 
 
@@ -253,7 +291,7 @@ void setup() {
   // Thermomètre Chambre 1er - publication MQTT
   #ifndef __DESACTIVE_ENVOI_MQTT__
   ds18b20.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
-      return mqtt.publish(topic, payload);
+      return publieMesureMqtt(topic, payload);
   });
   #endif
   #endif
@@ -262,7 +300,7 @@ void setup() {
   #endif
   #ifdef _LORA_P2P_MODE_
   ds18b20.setLoraP2PPublishCallback([](const char* payload) -> int {
-      return mLoraRxTx.sendPacket(payload);
+      return publieMesureLora(payload);
   });
   #endif
   #endif // CAPTEUR_DS18B20
@@ -274,7 +312,7 @@ void setup() {
   #ifdef _WIFI_MODE_
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mBatterie.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
-      return mqtt.publish(topic, payload);
+      return publieMesureMqtt(topic, payload);
   });
   #endif
   #endif
@@ -284,7 +322,7 @@ void setup() {
   #ifdef _LORA_P2P_MODE_
   config.mLoraRxTx = &mLoraRxTx;
   mBatterie.setLoraP2PPublishCallback([](const char* payload) -> int {
-      return mLoraRxTx.sendPacket(payload);
+      return publieMesureLora(payload);
   });
   #endif
   #endif // CAPTEUR_BATTERIE
@@ -298,7 +336,7 @@ void setup() {
   #ifdef _WIFI_MODE_
   #ifndef __DESACTIVE_ENVOI_MQTT__
   dht20.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
-      return mqtt.publish(topic, payload);
+      return publieMesureMqtt(topic, payload);
   });
   #endif
   #endif
@@ -307,7 +345,7 @@ void setup() {
   #endif
   #ifdef _LORA_P2P_MODE_
   dht20.setLoraP2PPublishCallback([](const char* payload) -> int {
-      return mLoraRxTx.sendPacket(payload);
+      return publieMesureLora(payload);
   });
   #endif
   #endif // CAPTEUR_DHT20
@@ -320,7 +358,7 @@ void setup() {
   #ifdef _WIFI_MODE_
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mFlotteurVertical.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
-      return mqtt.publish(topic, payload);
+      return publieMesureMqtt(topic, payload);
   });
   #endif
   #endif // _WIFI_MODE_
@@ -329,7 +367,7 @@ void setup() {
   #endif
   #ifdef _LORA_P2P_MODE_
   mFlotteurVertical.setLoraP2PPublishCallback([](const char* payload) -> int {
-      return mLoraRxTx.sendPacket(payload);
+      return publieMesureLora(payload);
   });
   #endif
   #endif // FLOTTEUR_VERTICAL
@@ -343,7 +381,7 @@ void setup() {
   #ifdef _WIFI_MODE_
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mCapteurRGB.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
-      return mqtt.publish(topic, payload);
+      return publieMesureMqtt(topic, payload);
   });
   #endif
   #endif
@@ -352,7 +390,7 @@ void setup() {
   #endif
   #ifdef _LORA_P2P_MODE_
   mCapteurRGB.setLoraP2PPublishCallback([](const char* payload) -> int {
-      return mLoraRxTx.sendPacket(payload);
+      return publieMesureLora(payload);
   });
   #endif
   #endif // CAPTEUR_RGB_TCS34725

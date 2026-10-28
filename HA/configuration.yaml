@@ -93,6 +93,27 @@ mqtt:
       state_off: "DISABLER"
       icon: mdi:string-lights
 
+    # Lumière de la cave : prise 433 MHz (code 1FCF24, protocole 1, 301 µs) émise par le CYD principal (main_lumierecave.cpp)
+    - name: "Lumière cave"
+      unique_id: mqtt_lumiere_cave
+      command_topic: "home/lumierecave/command"
+      state_topic: "home/lumierecave/command"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_on: "ONR"
+      state_off: "OFFR"
+      icon: mdi:lightbulb
+
+    - name: "Lumière cave Enable"
+      unique_id: mqtt_lumiere_cave_enable
+      command_topic: "home/lumierecave/command"
+      state_topic: "home/lumierecave/command"
+      payload_on: "ENABLE"
+      payload_off: "DISABLE"
+      state_on: "ENABLER"
+      state_off: "DISABLER"
+      icon: mdi:lightbulb
+
     - name: "Chauffage Enable"
       unique_id: mqtt_chauffage_enable
       command_topic: "home/chauffage/command"

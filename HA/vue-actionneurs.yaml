@@ -1,0 +1,384 @@
+# Vue « Actionneurs » du tableau Accueil (https://ha.jbil.org/dashboard-accueil/lumieres)
+# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_accueil + carte(s) des actionneurs.
+# Installation : tableau Accueil → ✏️ → vue Actionneurs → ⋮ → « Modifier en YAML » → remplacer par ce fichier.
+type: sections
+max_columns: 4
+title: Actionneurs
+path: lumieres
+icon: mdi:car-light-high
+sections:
+- type: grid
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - type: vertical-stack
+        cards:
+        - type: custom:mushroom-entity-card
+          entity: sensor.coulsdb_del
+          name: Chaudiere
+          icon: mdi:fire
+          card_mod:
+            style: |
+              ha-state-icon {
+                color: {{ 'green' if states('sensor.coulsdb_del') == 'Allumee' else 'red' }} !important;
+              }
+              .shape {
+                background: none !important;
+              }
+        - type: horizontal-stack
+          cards:
+          - type: custom:button-card
+            entity: switch.chaudiere_enable
+            name: ''
+            show_name: false
+            tap_action:
+              action: toggle
+            icon: |
+              [[[return states['switch.chaudiere_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+            styles:
+              card:
+              - height: 60px
+              - background: |
+                  [[[return states['switch.chaudiere_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+              icon:
+              - color: |
+                  [[[return states['switch.chaudiere_enable'].state === 'on' ? 'green' : 'red']]]
+          - type: custom:button-card
+            entity: switch.chaudiere
+            name: ''
+            show_name: false
+            tap_action:
+              action: toggle
+            icon: mdi:power
+            styles:
+              card:
+              - height: 60px
+              - background: |
+                  [[[return states['sensor.coulsdb_del'].state === 'Allumee' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+              icon:
+              - color: |
+                  [[[return states['sensor.coulsdb_del'].state === 'Allumee' ? 'green' : 'red']]]
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        entity: switch.projecteur_enable
+        name: ''
+        show_name: false
+        tap_action:
+          action: toggle
+        icon: |
+          [[[return states['switch.projecteur_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+        styles:
+          card:
+          - height: 60px
+          - width: 60px
+          - background: |
+              [[[return states['switch.projecteur_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+          icon:
+          - color: |
+              [[[return states['switch.projecteur_enable'].state === 'on' ? 'green' : 'red']]]
+      - type: custom:button-card
+        entity: switch.projecteur
+        name: Projecteur
+        tap_action:
+          action: toggle
+        icon: mdi:projector
+        styles:
+          card:
+          - height: 60px
+          - background: |
+              [[[return states['switch.projecteur'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+          icon:
+          - color: |
+              [[[return states['switch.projecteur'].state === 'on' ? 'green' : 'red']]]
+      - type: custom:button-card
+        entity: switch.guirlande
+        name: Guirlande
+        tap_action:
+          action: toggle
+        icon: mdi:string-lights
+        styles:
+          card:
+          - height: 60px
+          - background: |
+              [[[return states['switch.guirlande'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+          icon:
+          - color: |
+              [[[return states['switch.guirlande'].state === 'on' ? 'green' : 'red']]]
+      - type: custom:button-card
+        entity: switch.guirlande_enable
+        name: ''
+        show_name: false
+        tap_action:
+          action: toggle
+        icon: |
+          [[[return states['switch.guirlande_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+        styles:
+          card:
+          - height: 60px
+          - width: 60px
+          - background: |
+              [[[return states['switch.guirlande_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+          icon:
+          - color: |
+              [[[return states['switch.guirlande_enable'].state === 'on' ? 'green' : 'red']]]
+    - type: custom:button-card
+      entity: binary_sensor.c3_chauffage_sdb
+      show_icon: false
+      show_name: false
+      show_state: false
+      show_label: true
+      tap_action:
+        action: none
+      hold_action:
+        action: more-info
+      label: |
+        [[[
+          const r = states['sensor.c3_chauffage_sdb_rssi'];
+          const v = r ? parseFloat(r.state) : NaN;
+          if (entity && entity.state === 'on' && !isNaN(v)) return `C3 · ${v} dBm`;
+          if (entity && entity.state === 'off') return 'C3 · hors ligne';
+          return 'C3 · —';
+        ]]]
+      styles:
+        card:
+        - height: 40px
+        - background: |
+            [[[
+              if (!entity) return 'rgba(128,128,128,0.2)';
+              if (entity.state === 'on') return 'rgba(0,200,0,0.2)';
+              if (entity.state === 'off') return 'rgba(200,0,0,0.2)';
+              return 'rgba(128,128,128,0.2)';
+            ]]]
+        label:
+        - font-size: 15px
+        - font-weight: 600
+        - color: "[[[\n  if (!entity) return 'grey';\n  if (entity.state === 'on') return 'green';\n  if (entity.state === 'off') return 'red';\n  return 'grey';\n]]]                \n"
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        entity: switch.chauffage_enable
+        name: ''
+        show_name: false
+        tap_action:
+          action: toggle
+        icon: |
+          [[[return states['switch.chauffage_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+        styles:
+          card:
+          - height: 60px
+          - width: 60px
+          - background: |
+              [[[return states['switch.chauffage_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+          icon:
+          - color: |
+              [[[return states['switch.chauffage_enable'].state === 'on' ? 'green' : 'red']]]
+      - type: custom:button-card
+        entity: switch.chauffage
+        name: Chauffage Sdb
+        tap_action:
+          action: toggle
+        icon: mdi:radiator
+        styles:
+          card:
+          - height: 60px
+          - background: |
+              [[[return states['switch.chauffage'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+          icon:
+          - color: |
+              [[[return states['switch.chauffage'].state === 'on' ? 'green' : 'red']]]
+      - type: custom:button-card
+        entity: switch.chauffage_enable
+        name: ''
+        show_name: false
+        tap_action:
+          action: toggle
+        icon: |
+          [[[return states['switch.chauffage_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+        styles:
+          card:
+          - height: 60px
+          - width: 60px
+          - background: |
+              [[[return states['switch.chauffage_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+          icon:
+          - color: |
+              [[[return states['switch.chauffage_enable'].state === 'on' ? 'green' : 'red']]]
+  - type: vertical-stack
+    cards:
+    - type: entities
+      title: Nœud chauffage SdB
+      icon: mdi:remote
+      entities:
+      - entity: sensor.noeud_derniere_trame
+        name: Dernière trame
+        format: relative
+      - entity: sensor.noeud_commande_en_attente
+        name: Commande en attente
+    - type: markdown
+      content: |
+        {% set ip = states('sensor.c3_chauffage_sdb_ip') %}
+        {% if ip not in ['unknown', 'unavailable', ''] %}
+        **Noeud** : [page Web](http://{{ ip }}/) · [journal](http://{{ ip }}/logs) ({{ ip }})
+
+        {% endif %}
+        {% set r = states('sensor.noeud_rapport') %}
+        {% if r not in ['unknown', 'unavailable'] %}
+        **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.noeud_rapport', 'recu'))) }}) :
+
+        {{ r | replace(' | ', '  \n') }}
+        {% else %}
+        *Pas encore de réponse au bouton État (le nœud n'est joignable que chauffage en marche).*
+        {% endif %}
+    - type: horizontal-stack
+      cards:
+      - type: button
+        name: État
+        icon: mdi:information
+        tap_action:
+          action: perform-action
+          perform_action: script.noeud_commande
+          data:
+            capteur: noeud
+            commande: STATUS
+        card_mod:
+          style: 'ha-card { height: 60px !important; }'
+      - type: button
+        name: Annuler
+        icon: mdi:cancel
+        tap_action:
+          action: perform-action
+          perform_action: script.noeud_commande
+          data:
+            capteur: noeud
+            commande: ANNULER
+        card_mod:
+          style: 'ha-card { height: 60px !important; }'
+      - type: button
+        name: Redémarrer
+        icon: mdi:restart
+        tap_action:
+          action: perform-action
+          perform_action: script.noeud_commande
+          data:
+            capteur: noeud
+            commande: REBOOT
+          confirmation:
+            text: Redémarrer le Nœud chauffage SdB (seulement s'il est sous tension) ?
+        card_mod:
+          style: |
+            ha-card {
+              height: 60px !important;
+              background: rgba(200,0,0,0.2) !important;
+            }
+            ha-icon { color: red !important; }
+    - type: entities
+      entities:
+      - entity: input_text.noeud_commande
+        name: Commande libre
+    - type: horizontal-stack
+      cards:
+      - type: button
+        name: Envoyer
+        icon: mdi:send
+        tap_action:
+          action: perform-action
+          perform_action: script.noeud_commande_libre
+          data:
+            capteur: noeud
+        card_mod:
+          style: 'ha-card { height: 60px !important; }'
+      - type: button
+        name: Nettoyer retenu
+        icon: mdi:broom
+        tap_action:
+          action: perform-action
+          perform_action: script.noeud_nettoyer_retenu
+          data:
+            capteur: noeud
+          confirmation:
+            text: Effacer le message retenu sur home/confnoeud/command ?
+        card_mod:
+          style: 'ha-card { height: 60px !important; }'
+  - type: entities
+    title: Programmes chauffage SDB
+    show_header_toggle: true
+    entities:
+    - entity: switch.schedule_lundi_q1
+      name: Lundi Q1
+    - type: attribute
+      entity: switch.schedule_lundi_q1
+      attribute: next_trigger
+      name: '  ↳ Prochain déclenchement'
+      format: datetime
+    - entity: switch.schedule_mardi_mercredi_q1
+      name: Mardi Mercredi Q1
+    - type: attribute
+      entity: switch.schedule_mardi_mercredi_q1
+      attribute: next_trigger
+      name: '  ↳ Prochain déclenchement'
+      format: datetime
+    - entity: switch.schedule_mardi_mercredi_q2
+      name: Mardi Mercredi Q2
+    - type: attribute
+      entity: switch.schedule_mardi_mercredi_q2
+      attribute: next_trigger
+      name: '  ↳ Prochain déclenchement'
+      format: datetime
+    - entity: switch.schedule_jeudi
+      name: Jeudi
+    - type: attribute
+      entity: switch.schedule_jeudi
+      attribute: next_trigger
+      name: '  ↳ Prochain déclenchement'
+      format: datetime
+    - entity: switch.schedule_vendredi_q2
+      name: Vendredi Q2
+    - type: attribute
+      entity: switch.schedule_vendredi_q2
+      attribute: next_trigger
+      name: '  ↳ Prochain déclenchement'
+      format: datetime
+  - type: custom:scheduler-card
+    title: Programmation chauffage SDB
+    include:
+    - switch.chauffage_sdb_programme
+    time_step: 15
+    show_header_toggle: false
+  - type: horizontal-stack
+    cards:
+    - type: custom:button-card
+      entity: switch.lumiere_cave_enable
+      name: ''
+      show_name: false
+      tap_action:
+        action: toggle
+      icon: |
+        [[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+      styles:
+        card:
+        - height: 60px
+        - width: 60px
+        - background: |
+            [[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+        icon:
+        - color: |
+            [[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'green' : 'red']]]
+    - type: custom:button-card
+      entity: switch.lumiere_cave
+      name: Lumière cave
+      tap_action:
+        action: toggle
+      icon: mdi:lightbulb
+      styles:
+        card:
+        - height: 60px
+        - background: |
+            [[[return states['switch.lumiere_cave'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+        icon:
+        - color: |
+            [[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]
+show_icon_and_title: true
+cards: []

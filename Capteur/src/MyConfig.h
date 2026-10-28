@@ -131,6 +131,11 @@ public:
   unsigned int mulWatchdogPeriod = DEFAULT_WATCHDOG_PERIOD_SEC; // en secondes
   // Sauvegarde du journal web en NVS avant une coupure annoncée (OnOff 0, IRKO) : voir MyJournal.h
   bool mbJournalSauvegarde = true;
+  // Mesures muettes (commande MUTE ON/OFF, clé SET mute, page Web ; enregistré en NVS) : les mesures ne sont plus
+  // émises (MQTT ni LoRa) mais comptent comme remontées ; réponses aux commandes, CONFIG, online, REVEIL,
+  // DEEPSLEEP ON et ALIVE inchangés. Voir publieMesureMqtt() / publieMesureLora() (main.cpp).
+  // Refusé sur un actionneur (micro / IR) : le CYD pilote le chauffage d'après ses trames.
+  bool mbMute = false;
   struct EtatWatchdog {
     unsigned long ulDerniereEmission = 0;   // millis() de la dernière publication de l'équipement
     bool bAliveDemarrageEnvoye = false;     // ALIVE de démarrage publié avec succès (MQTT connecté ou LoRa)

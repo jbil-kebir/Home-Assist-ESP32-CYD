@@ -45,6 +45,10 @@ sections:
                 name: Flotteur
           - type: markdown
             content: |
+              {% if state_attr('sensor.thremise_config', 'mute') == 1 %}
+              🔇 **Mesures muettes** : ThRemise n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {% endif %}
               {% set r = states('sensor.thremise_rapport') %}
               {% if r not in ['unknown', 'unavailable'] %}
               **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thremise_rapport', 'recu'))) }}) :
@@ -128,6 +132,8 @@ sections:
                 name: Sommeil long (SLEEPL)
               - entity: input_number.thremise_wakei
                 name: Éveil maximum
+              - entity: input_boolean.thremise_mute
+                name: Mesures muettes
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -199,6 +205,10 @@ sections:
                 format: relative
           - type: markdown
             content: |
+              {% if state_attr('sensor.thnomade_config', 'mute') == 1 %}
+              🔇 **Mesures muettes** : ThNomade n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {% endif %}
               {% set r = states('sensor.thnomade_rapport') %}
               {% if r not in ['unknown', 'unavailable'] %}
               **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thnomade_rapport', 'recu'))) }}) :
@@ -282,6 +292,8 @@ sections:
                 name: Sommeil long (SLEEPL)
               - entity: input_number.thnomade_wakei
                 name: Éveil maximum
+              - entity: input_boolean.thnomade_mute
+                name: Mesures muettes
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -364,6 +376,10 @@ sections:
                 name: État batterie
           - type: markdown
             content: |
+              {% if state_attr('sensor.thcave_config', 'mute') == 1 %}
+              🔇 **Mesures muettes** : ThCave n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {% endif %}
               {% set r = states('sensor.thcave_rapport') %}
               {% if r not in ['unknown', 'unavailable'] %}
               **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thcave_rapport', 'recu'))) }}) :
@@ -447,6 +463,8 @@ sections:
                 name: Sommeil long (SLEEPL)
               - entity: input_number.thcave_wakei
                 name: Éveil maximum
+              - entity: input_boolean.thcave_mute
+                name: Mesures muettes
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -529,6 +547,10 @@ sections:
                 name: État batterie
           - type: markdown
             content: |
+              {% if state_attr('sensor.thchrdc_config', 'mute') == 1 %}
+              🔇 **Mesures muettes** : ThChRDC n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {% endif %}
               {% set ip = states('input_text.ip_thchrdc') %}
               {% if ip not in ['unknown', 'unavailable', ''] %}
               **Page Web** : [{{ ip }}](http://{{ ip }}/)
@@ -617,6 +639,8 @@ sections:
                 name: Sommeil long (SLEEPL)
               - entity: input_number.thchrdc_wakei
                 name: Éveil maximum
+              - entity: input_boolean.thchrdc_mute
+                name: Mesures muettes
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -665,6 +689,192 @@ sections:
                 card_mod:
                   style: "ha-card { height: 60px !important; }"
 
+  # ======================= ThSdb (Wi-Fi) =======================
+  - type: grid
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: heading
+            heading: ThSdb · Wi-Fi
+            heading_style: title
+            icon: mdi:wifi
+          - type: entities
+            entities:
+              - entity: binary_sensor.thsdb_eveille
+                name: Éveillé
+              - entity: sensor.thsdb_derniere_trame
+                name: Dernière trame
+                format: relative
+              - entity: sensor.thsdb_commande_en_attente
+                name: Commande en attente
+              - entity: sensor.thsdb_config
+                name: Config reçue
+                format: relative
+          - type: entities
+            title: Mesures
+            entities:
+              - entity: sensor.thsdb_temperature
+                name: Température
+              - entity: sensor.thsdb_humidite
+                name: Humidité
+              - entity: sensor.coulsdb_del
+                name: Voyant chaudière
+              - entity: sensor.coulsdb_rouge
+                name: Rouge
+              - entity: sensor.coulsdb_vert
+                name: Vert
+              - entity: sensor.coulsdb_bleu
+                name: Bleu
+              - entity: sensor.coulsdb_intensite
+                name: Intensité
+              - entity: sensor.batsdb_tension
+                name: Batterie
+              - entity: sensor.batsdb_etat
+                name: État batterie
+          - type: markdown
+            content: |
+              {% if state_attr('sensor.thsdb_config', 'mute') == 1 %}
+              🔇 **Mesures muettes** : ThSdb n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {% endif %}
+              {% set ip = states('input_text.ip_thsdb') %}
+              {% if ip not in ['unknown', 'unavailable', ''] %}
+              **Page Web** : [{{ ip }}](http://{{ ip }}/)
+
+              {% endif %}
+              {% set r = states('sensor.thsdb_rapport') %}
+              {% if r not in ['unknown', 'unavailable'] %}
+              **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thsdb_rapport', 'recu'))) }}) :
+
+              {{ r | replace(' | ', '  \n') }}
+              {% else %}
+              *Pas encore de réponse au bouton État.*
+              {% endif %}
+              {% set e = state_attr('sensor.thsdb_config', 'erreur') %}
+              {% if e %}
+
+              ⚠️ **Refusé par le nœud** : {{ e }}
+              {% endif %}
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Relire
+                icon: mdi:refresh
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thsdb
+                    commande: GET
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: État
+                icon: mdi:information
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thsdb
+                    commande: STATUS
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Annuler
+                icon: mdi:cancel
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thsdb
+                    commande: ANNULER
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Redémarrer
+                icon: mdi:restart
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thsdb
+                    commande: REBOOT
+                  confirmation:
+                    text: Redémarrer ThSdb à son prochain réveil ?
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 60px !important;
+                      background: rgba(200,0,0,0.2) !important;
+                    }
+                    ha-icon { color: red !important; }
+      - type: vertical-stack
+        cards:
+          - type: entities
+            title: Réglages (envoyés au prochain réveil)
+            entities:
+              - entity: input_boolean.thsdb_sleepa
+                name: Deep sleep actif
+              - entity: input_number.thsdb_sleepi
+                name: Intervalle deep sleep
+              - entity: input_number.thsdb_sleeps
+                name: Sommeil court (SLEEPS)
+              - entity: input_number.thsdb_sleepm
+                name: Sommeil moyen (SLEEPM)
+              - entity: input_number.thsdb_sleepl
+                name: Sommeil long (SLEEPL)
+              - entity: input_number.thsdb_wakei
+                name: Éveil maximum
+              - entity: input_boolean.thsdb_mute
+                name: Mesures muettes
+          - type: button
+            name: Enregistrer
+            icon: mdi:content-save
+            tap_action:
+              action: perform-action
+              perform_action: script.noeud_enregistrer
+              data:
+                capteur: thsdb
+            # Grisé et non cliquable tant qu'aucune config n'a été reçue du nœud (le script refuse aussi)
+            card_mod:
+              style: |
+                ha-card {
+                  height: 60px !important;
+                  {% if states('sensor.thsdb_config') in ['unknown', 'unavailable'] %}
+                  opacity: 0.4;
+                  pointer-events: none;
+                  {% endif %}
+                }
+          - type: entities
+            title: Commande libre
+            entities:
+              - entity: input_text.thsdb_commande
+                name: Commande
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Envoyer
+                icon: mdi:send
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande_libre
+                  data:
+                    capteur: thsdb
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Nettoyer retenu
+                icon: mdi:broom
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_nettoyer_retenu
+                  data:
+                    capteur: thsdb
+                  confirmation:
+                    text: Effacer le message retenu sur home/confthsdb/command ?
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+
   # ======================= Aide =======================
   - type: grid
     cards:
@@ -678,7 +888,8 @@ sections:
           | Commande | Effet |
           |---|---|
           | `GET` | Relit la configuration |
-          | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600) |
+          | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
+          | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |
           | `SLEEPS` / `SLEEPM` / `SLEEPL` | Applique la durée courte / moyenne / longue |
@@ -687,6 +898,9 @@ sections:
           | `STATUS` | Rapport d'état (bouton État) |
           | `REBOOT` | Redémarre le nœud |
           | `ANNULER` | Vide la commande en attente (LoRa : traitée par le relais ; Wi-Fi : efface le message retenu) |
+
+          **Après un flash** : cliquer d'abord sur « Relire », pour que HA connaisse la config du nouveau firmware
+          (sinon Enregistrer ignore les réglages que l'ancienne config ne contenait pas, comme « Mesures muettes »).
 
           **Nettoyer retenu** : efface le message retenu du topic `home/conf<nœud>/command` (commande restée en
           retenu, ancien testament « offline »…). Sans effet sur la file du relais.

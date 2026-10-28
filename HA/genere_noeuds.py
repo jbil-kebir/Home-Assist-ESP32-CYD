@@ -7,7 +7,11 @@ HA = os.path.dirname(os.path.abspath(__file__))  # dossier HA du projet
 
 # id = th<suffixe> (topics home/conf<id>/...) ; nom = nom de l'équipement ; mode = lora / wifi
 # unites = préfixes des capteurs unitaires du nœud (trames « <Prefixe><Suffixe> ... » sur home/thermometre/state)
-# mesures = (entité, nom affiché) du bloc Mesures (entités existantes de configuration.yaml)
+# trames (facultatif) = [(topic, NOM)] explicites, à la place de unites (nœud qui ne suit pas la règle du suffixe)
+# mesures = (entité, nom affiché) du bloc Mesures (entités existantes de configuration.yaml ou des paquets)
+# ip (facultatif) = entité qui contient l'IP du nœud Wi-Fi (lien vers sa page Web)
+# sans_retenu (facultatif) = nœud Wi-Fi toujours éveillé qui ne publie pas « online » (pas de DHT20) : commandes non
+#   retenues, sinon un REBOOT dont l'accusé se perd serait rejoué en boucle (commande perdue s'il est hors tension)
 NOEUDS = [
     dict(id="thremise", nom="ThRemise", suffixe="Remise", mode="lora", unites=["Th", "Bat", "Flotteur"],
          mesures=[("sensor.thremise_temperature", "Température"), ("sensor.thremise_humidite", "Humidité"),
@@ -18,12 +22,33 @@ NOEUDS = [
     dict(id="thcave", nom="ThCave", suffixe="Cave", mode="lora", unites=["Th", "Bat"],
          mesures=[("sensor.thcave_temperature", "Température"), ("sensor.thcave_humidite", "Humidité"),
                   ("sensor.batcave_tension", "Batterie"), ("sensor.batcave_etat", "État batterie")]),
-    dict(id="thchrdc", nom="ThChRDC", suffixe="ChRDC", mode="wifi", unites=["Th", "Bat"],
+    dict(id="thchrdc", nom="ThChRDC", suffixe="ChRDC", mode="wifi", unites=["Th", "Bat"], ip="input_text.ip_thchrdc",
          mesures=[("sensor.thchrdc_temperature", "Température"), ("sensor.thchrdc_humidite", "Humidité"),
                   ("sensor.batchrdc_tension", "Batterie"), ("sensor.batchrdc_etat", "État batterie")]),
+    # Capteur chaudière Sdb : S3 laissé en Wi-Fi (nœud critique ; basculer Wi-Fi / LoRa à terme)
+    dict(id="thsdb", nom="ThSdb", suffixe="Sdb", mode="wifi", unites=["Th", "Bat", "Coul"], ip="input_text.ip_thsdb",
+         mesures=[("sensor.thsdb_temperature", "Température"), ("sensor.thsdb_humidite", "Humidité"),
+                  ("sensor.coulsdb_del", "Voyant chaudière"), ("sensor.coulsdb_rouge", "Rouge"),
+                  ("sensor.coulsdb_vert", "Vert"), ("sensor.coulsdb_bleu", "Bleu"),
+                  ("sensor.coulsdb_intensite", "Intensité"),
+                  ("sensor.batsdb_tension", "Batterie"), ("sensor.batsdb_etat", "État batterie")]),
+    # Chauffage SdB : ACTIONNEUR, pas un capteur (C3 alimenté par le relais 433 MHz quand le chauffage marche ; envoie l'IR
+    # au démarrage et sur ordre Wi-Fi, micro pour ses besoins locaux) : hors règle du suffixe (nœud « Noeud », trames
+    # « NoeudChauffageSb » sur home/noeud/state). Pas de réglages de sommeil ; carte à part pour la vue Accueil → Actionneurs
+    # (présence, RSSI et bouton du chauffage y sont déjà : voir packages/chauffage.yaml).
+    dict(id="noeud", nom="Noeud", titre="Nœud chauffage SdB", type="actionneur", suffixe="", mode="wifi", unites=[],
+         trames=[("home/noeud/state", "NOEUDCHAUFFAGESB")], ip="sensor.c3_chauffage_sdb_ip", sans_retenu=True,
+         mesures=[]),
 ]
+CAPTEURS = [n for n in NOEUDS if n.get("type") != "actionneur"]
+ACTIONNEURS = [n for n in NOEUDS if n.get("type") == "actionneur"]
 LORA = [n["id"] for n in NOEUDS if n["mode"] == "lora"]
 WIFI = [n["id"] for n in NOEUDS if n["mode"] == "wifi"]
+SANS_RETENU = [n["id"] for n in NOEUDS if n.get("sans_retenu")]
+
+
+def trames(n):
+    return n.get("trames") or [("home/thermometre/state", (u + n["suffixe"]).upper()) for u in n["unites"]]
 PARAMS = [("sleepi", "Intervalle deep sleep", 86400, "mdi:timer-outline"),
           ("sleeps", "Sommeil court (SLEEPS)", 86400, "mdi:timer-outline"),
           ("sleepm", "Sommeil moyen (SLEEPM)", 86400, "mdi:timer-outline"),
@@ -76,7 +101,8 @@ template:""")
         state: "{{{{ trigger.payload[:255] }}}}"
 """)
         else:
-            w(f"""  # ---------- {nom} : commande en attente = message retenu sur le topic command (vide = « aucune ») ----------
+            w(f"""  # ---------- {nom} : commande en attente = message retenu sur le topic command ----------
+  # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
   - trigger:
       - trigger: mqtt
         topic: "home/conf{i}/command"
@@ -84,8 +110,11 @@ template:""")
       - name: "{nom} Commande en attente"
         unique_id: {i}_commande_attente
         icon: mdi:timer-sand
-        state: "{{{{ trigger.payload[:255] if trigger.payload | trim != '' else 'aucune' }}}}"
+        state: >-
+          {{%- set p = trigger.payload | trim -%}}
+          {{{{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}}}
 """)
+        # Actionneur : pas de config de sommeil ; le sensor Config est créé quand même (inutilisé, sans effet)
         w(f"""  # ---------- {nom} : réponse CONFIG (« {nom} CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
   - trigger:
       - trigger: mqtt
@@ -99,7 +128,8 @@ template:""")
         icon: mdi:cog
         state: "{{{{ now().isoformat() }}}}"
         attributes:""")
-        for k in ["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI"]:
+        # mute : absent de la réponse d'un firmware antérieur au 28/10/2026 → none
+        for k in ["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI", "mute"]:
             w(f"""          {k}: >-
             {{%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('{k}:(\\d+)') -%}}
             {{{{ m[0] | int if m else none }}}}""")
@@ -133,11 +163,11 @@ template:""")
 
   # ---------- {nom} : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
   - trigger:""")
-        for u in n["unites"]:
+        for topic, nom_trame in trames(n):
             w(f"""      - trigger: mqtt
-        topic: "home/thermometre/state"
+        topic: "{topic}"
         value_template: "{{{{ value.split(' ')[0] | upper }}}}"
-        payload: "{(u + n['suffixe']).upper()}\"""")
+        payload: "{nom_trame}\"""")
         w(f"""      - trigger: mqtt
         topic: "home/conf{i}/state"
     binary_sensor:
@@ -156,14 +186,17 @@ template:""")
         state: "{{{{ now().isoformat() }}}}"
 """)
     w("input_boolean:")
-    for n in NOEUDS:
+    for n in CAPTEURS:
         w(f"""  # ---------- {n['nom']} ----------
   {n['id']}_sleepa:
     name: "{n['nom']} Deep sleep actif"
     icon: mdi:sleep
+  {n['id']}_mute:
+    name: "{n['nom']} Mesures muettes"
+    icon: mdi:volume-off
 """)
     w("input_number:")
-    for n in NOEUDS:
+    for n in CAPTEURS:
         w(f"  # ---------- {n['nom']} (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------")
         for k, lib, mx, ic in PARAMS:
             w(f"""  {n['id']}_{k}:
@@ -189,6 +222,7 @@ template:""")
   # LoRa : via la file d'attente du relais (envoyée au prochain réveil ; ANNULER est traité par le relais).
   # Wi-Fi : publiée en RETENU (le nœud la lit à son réveil) ; effacée par l'automatisation
   #         « Nœuds Wi-Fi - Effacer la commande retenue » ; ANNULER = effacement du message retenu.
+  #         Nœuds « sans_retenu » (toujours éveillés, sans « online ») : publiée sans retenu.
   # Refusée si une commande attend déjà (sauf ANNULER) : une nouvelle commande remplacerait celle qui attend.
   # ------------------------------------------------------------
   noeud_commande:
@@ -215,6 +249,9 @@ template:""")
           # Nœuds LoRa (les autres sont en Wi-Fi) : même liste que dans genere_noeuds.py
           lora: "{liste_yaml(LORA)}"
           wifi: "{{{{ capteur not in lora }}}}"
+          # Nœuds Wi-Fi toujours éveillés sans « online » : commande non retenue (même liste que dans genere_noeuds.py)
+          sans_retenu: "{liste_yaml(SANS_RETENU)}"
+          retenu: "{{{{ wifi and capteur not in sans_retenu }}}}"
           cmd: "{{{{ commande | trim }}}}"
           attente: "{{{{ states('sensor.' ~ capteur ~ '_commande_en_attente') }}}}"
       - if:
@@ -238,7 +275,7 @@ template:""")
         data:
           topic: "home/conf{{{{ capteur }}}}/command"
           payload: "{{{{ '' if wifi and cmd | upper == 'ANNULER' else cmd }}}}"
-          retain: "{{{{ wifi }}}}"
+          retain: "{{{{ retenu }}}}"
 
   # ------------------------------------------------------------
   # Efface le message retenu du topic command (commande restée en retenu, ancien testament « <nom> offline »...)
@@ -285,6 +322,9 @@ template:""")
             {{%- set ns = namespace(s='') -%}}
             {{%- set a = 1 if is_state('input_boolean.' ~ capteur ~ '_sleepa', 'on') else 0 -%}}
             {{%- if a != state_attr(cfg, 'sleepA') -%}}{{%- set ns.s = ns.s ~ ' sleepA:' ~ a -%}}{{%- endif -%}}
+            {{#- mute : seulement si le firmware le connaît (présent dans la dernière config reçue) -#}}
+            {{%- set m = 1 if is_state('input_boolean.' ~ capteur ~ '_mute', 'on') else 0 -%}}
+            {{%- if state_attr(cfg, 'mute') is not none and m != state_attr(cfg, 'mute') -%}}{{%- set ns.s = ns.s ~ ' mute:' ~ m -%}}{{%- endif -%}}
             {{%- for k in ['sleepI', 'sleepS', 'sleepM', 'sleepL', 'wakeI'] -%}}
               {{%- set v = states('input_number.' ~ capteur ~ '_' ~ k | lower) | float(0) | int -%}}
               {{%- if v > 0 and v != state_attr(cfg, k) -%}}{{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}}{{%- endif -%}}
@@ -370,7 +410,7 @@ automation:
     triggers:
       - trigger: state
         entity_id:""")
-    for n in NOEUDS:
+    for n in CAPTEURS:
         w(f"          - sensor.{n['id']}_config")
     w(f"""    actions:
       - variables:
@@ -383,6 +423,14 @@ automation:
               input_boolean.turn_{{{{ 'on' if state_attr(trigger.entity_id, 'sleepA') == 1 else 'off' }}}}
             target:
               entity_id: "input_boolean.{{{{ capteur }}}}_sleepa"
+      - if:
+          - condition: template
+            value_template: "{{{{ state_attr(trigger.entity_id, 'mute') is not none }}}}"
+        then:
+          - action: >-
+              input_boolean.turn_{{{{ 'on' if state_attr(trigger.entity_id, 'mute') == 1 else 'off' }}}}
+            target:
+              entity_id: "input_boolean.{{{{ capteur }}}}_mute"
       - repeat:
           for_each: ["sleepI", "sleepS", "sleepM", "sleepL", "wakeI"]
           sequence:
@@ -464,7 +512,7 @@ path: noeuds-capteurs
 icon: mdi:access-point-network
 show_icon_and_title: true
 sections:""")
-    for n in NOEUDS:
+    for n in CAPTEURS:
         i, nom, wifi = n["id"], n["nom"], n["mode"] == "wifi"
         icone = "mdi:wifi" if wifi else "mdi:radio-tower"
         w(f"""  # ======================= {nom} ({'Wi-Fi' if wifi else 'LoRa'}) =======================
@@ -496,9 +544,13 @@ sections:""")
                 w(f"""              - entity: {e}
                 name: {lib}""")
         w(f"""          - type: markdown
-            content: |""")
-        if wifi:
-            w(f"""              {{% set ip = states('input_text.ip_{i}') %}}
+            content: |
+              {{% if state_attr('sensor.{i}_config', 'mute') == 1 %}}
+              🔇 **Mesures muettes** : {nom} n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {{% endif %}}""")
+        if wifi and n.get("ip"):
+            w(f"""              {{% set ip = states('{n['ip']}') %}}
               {{% if ip not in ['unknown', 'unavailable', ''] %}}
               **Page Web** : [{{{{ ip }}}}](http://{{{{ ip }}}}/)
 
@@ -533,6 +585,8 @@ sections:""")
         for k, lib, _, _ in PARAMS:
             w(f"""              - entity: input_number.{i}_{k}
                 name: {lib}""")
+        w(f"""              - entity: input_boolean.{i}_mute
+                name: Mesures muettes""")
         w(f"""          - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -575,7 +629,8 @@ sections:""")
           | Commande | Effet |
           |---|---|
           | `GET` | Relit la configuration |
-          | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600) |
+          | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
+          | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |
           | `SLEEPS` / `SLEEPM` / `SLEEPL` | Applique la durée courte / moyenne / longue |
@@ -584,6 +639,9 @@ sections:""")
           | `STATUS` | Rapport d'état (bouton État) |
           | `REBOOT` | Redémarre le nœud |
           | `ANNULER` | Vide la commande en attente (LoRa : traitée par le relais ; Wi-Fi : efface le message retenu) |
+
+          **Après un flash** : cliquer d'abord sur « Relire », pour que HA connaisse la config du nouveau firmware
+          (sinon Enregistrer ignore les réglages que l'ancienne config ne contenait pas, comme « Mesures muettes »).
 
           **Nettoyer retenu** : efface le message retenu du topic `home/conf<nœud>/command` (commande restée en
           retenu, ancien testament « offline »…). Sans effet sur la file du relais.
@@ -595,6 +653,135 @@ sections:""")
     return "\n".join(o)
 
 
+# ============================================================ CARTE D'UN ACTIONNEUR
+# Carte (vertical-stack) à coller dans la vue de l'actionneur : complète ce qui y est déjà (présence, RSSI, bouton)
+def carte_actionneur(n):
+    i, nom, titre = n["id"], n["nom"], n.get("titre", n["nom"])
+    o = []
+    w = o.append
+    w(f"""# Carte « {titre} » pour le tableau Accueil → vue Actionneurs (https://ha.jbil.org/dashboard-accueil/lumieres)
+# Généré par genere_noeuds.py (entités et scripts : packages/noeuds_capteurs.yaml).
+# Installation : vue Actionneurs → ✏️ → « + Ajouter une carte » dans la section du chauffage → « Manuel » → coller → Enregistrer.
+type: vertical-stack
+cards:
+  # Titre porté par la carte entities : une carte heading en tête de pile était recouverte par la suivante
+  - type: entities
+    title: {titre}
+    icon: mdi:remote
+    entities:
+      - entity: sensor.{i}_derniere_trame
+        name: Dernière trame
+        format: relative
+      - entity: sensor.{i}_commande_en_attente
+        name: Commande en attente
+  - type: markdown
+    content: |
+      {{% set ip = states('{n['ip']}') %}}
+      {{% if ip not in ['unknown', 'unavailable', ''] %}}
+      **{nom}** : [page Web](http://{{{{ ip }}}}/) · [journal](http://{{{{ ip }}}}/logs) ({{{{ ip }}}})
+
+      {{% endif %}}
+      {{% set r = states('sensor.{i}_rapport') %}}
+      {{% if r not in ['unknown', 'unavailable'] %}}
+      **État** (reçu {{{{ relative_time(as_datetime(state_attr('sensor.{i}_rapport', 'recu'))) }}}}) :
+
+      {{{{ r | replace(' | ', '  \\n') }}}}
+      {{% else %}}
+      *Pas encore de réponse au bouton État (le nœud n'est joignable que chauffage en marche).*
+      {{% endif %}}
+  - type: horizontal-stack
+    cards:""")
+    w(bouton("État", "mdi:information", "noeud_commande", i, "STATUS", indent=6))
+    w(bouton("Annuler", "mdi:cancel", "noeud_commande", i, "ANNULER", indent=6))
+    w(bouton("Redémarrer", "mdi:restart", "noeud_commande", i, "REBOOT",
+             confirmation=f"Redémarrer le {titre} (seulement s'il est sous tension) ?", rouge=True, indent=6))
+    w(f"""  - type: entities
+    entities:
+      - entity: input_text.{i}_commande
+        name: Commande libre
+  - type: horizontal-stack
+    cards:""")
+    w(bouton("Envoyer", "mdi:send", "noeud_commande_libre", i, indent=6))
+    w(bouton("Nettoyer retenu", "mdi:broom", "noeud_nettoyer_retenu", i,
+             confirmation=f"Effacer le message retenu sur home/conf{i}/command ?", indent=6))
+    w("")
+    return "\n".join(o)
+
+
+# ============================================================ VUE ACCUEIL → ACTIONNEURS
+# Vue complète = celle de l'export .storage/lovelace.dashboard_accueil (à rafraîchir depuis HA avant de régénérer si la
+# vue a été modifiée dans HA) + la carte de chaque actionneur, placée juste après la pile des boutons (remplacée si présente).
+EXPORT_ACCUEIL = os.path.join(HA, ".storage", "lovelace.dashboard_accueil")
+VUE_ACTIONNEURS = "lumieres"
+# Bouton de la lumière de la cave (switch.lumiere_cave / switch.lumiere_cave_enable de configuration.yaml),
+# même présentation que le projecteur : cadenas (ENABLE / DISABLE) + bouton (ON / OFF)
+LUMIERE_CAVE_ENTITE = "switch.lumiere_cave"
+CARTE_LUMIERE_CAVE = """
+type: horizontal-stack
+cards:
+  - type: custom:button-card
+    entity: switch.lumiere_cave_enable
+    name: ''
+    show_name: false
+    tap_action:
+      action: toggle
+    icon: |
+      [[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+    styles:
+      card:
+        - height: 60px
+        - width: 60px
+        - background: |
+            [[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+      icon:
+        - color: |
+            [[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'green' : 'red']]]
+  - type: custom:button-card
+    entity: switch.lumiere_cave
+    name: Lumière cave
+    tap_action:
+      action: toggle
+    icon: mdi:lightbulb
+    styles:
+      card:
+        - height: 60px
+        - background: |
+            [[[return states['switch.lumiere_cave'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+      icon:
+        - color: |
+            [[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]
+"""
+
+
+def vue_actionneurs():
+    import json
+    import yaml
+
+    class Dumper(yaml.SafeDumper):
+        pass
+
+    # Chaînes sur plusieurs lignes (JavaScript des button-card, markdown) en bloc littéral, comme dans l'éditeur de HA
+    Dumper.add_representer(str, lambda d, s: d.represent_scalar(
+        "tag:yaml.org,2002:str", s, style="|" if "\n" in s else None))
+    cfg = json.load(open(EXPORT_ACCUEIL, encoding="utf-8"))["data"]["config"]
+    vue = next(v for v in cfg["views"] if v.get("path") == VUE_ACTIONNEURS)
+    cartes = vue["sections"][0]["cards"]
+    for n in ACTIONNEURS:
+        carte = yaml.safe_load(carte_actionneur(n))
+        titre = carte["cards"][0]["title"]
+        # Remplace la carte déjà présente (titre porté par sa 1re carte : entities, ou heading dans l'ancienne version)
+        cartes[:] = [c for c in cartes if not (c.get("type") == "vertical-stack" and c.get("cards")
+                                              and titre in (c["cards"][0].get("title"), c["cards"][0].get("heading")))]
+        cartes.insert(1, carte)
+    # Lumière cave (prise 433 MHz du CYD) : cadenas + bouton comme le projecteur, tout en bas (peu utilisée)
+    if not any(LUMIERE_CAVE_ENTITE in json.dumps(c) for c in cartes):
+        cartes.append(yaml.safe_load(CARTE_LUMIERE_CAVE))
+    entete = (f"# Vue « {vue.get('title')} » du tableau Accueil (https://ha.jbil.org/dashboard-accueil/{VUE_ACTIONNEURS})\n"
+              "# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_accueil + carte(s) des actionneurs.\n"
+              "# Installation : tableau Accueil → ✏️ → vue Actionneurs → ⋮ → « Modifier en YAML » → remplacer par ce fichier.\n")
+    return entete + yaml.dump(vue, Dumper=Dumper, allow_unicode=True, sort_keys=False, width=1000)
+
+
 def ecrit(chemin, texte):
     with open(chemin, "w", encoding="utf-8", newline="\r\n") as f:
         f.write(texte)
@@ -603,3 +790,4 @@ def ecrit(chemin, texte):
 
 ecrit(os.path.join(HA, "packages", "noeuds_capteurs.yaml"), paquet())
 ecrit(os.path.join(HA, "vue-noeuds-capteurs.yaml"), vue())
+ecrit(os.path.join(HA, "vue-actionneurs.yaml"), vue_actionneurs())
