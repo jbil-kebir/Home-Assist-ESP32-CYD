@@ -1,3 +1,9 @@
+2.0
+LoRa : fréquence 915,0 -> 868,1 MHz (bande européenne, sous-bande g1 : 1 % du temps d'émission, 14 dBm)
+    Incompatible avec les capteurs < 3.0 : reflasher le relais et tous les capteurs LoRa ensemble
+TCXO 1,8 V (LORA_TCXO_VOLTAGE, au lieu de 1,6 V en dur), comme sur les capteurs (Wio-SX1262)
+GPIO38 (RXEN, LNA de réception) pilotée par RadioLib : setRfSwitchPins, comme sur les capteurs
+
 1.3
 Journal web (http://<IP>/logs), comme sur les capteurs, en remplacement du moniteur série
     MyJournal.* (copie de Capteur) : Serial redirigé vers gSerialJournal (global.h), 100 lignes horodatées
@@ -31,4 +37,4 @@ Dans void setup(), remplacer while(!Serial) par
   while(!Serial && millis() - start < 3000); // Attend max 3 secondes
 Ceci afin de ne pas bloquer lorsque on alimente sans connecter au PC
  
-1.0
+1.0

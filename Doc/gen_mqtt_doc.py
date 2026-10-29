@@ -160,7 +160,7 @@ H('2. Trames LoRa P2P')
 H('2.1 Paramètres radio', 2)
 T(['Paramètre', 'Valeur (Capteur et Relais-Lora)'], [
     ('Module', 'SX1262 (Wio-SX1262 sur XIAO ESP32-S3), RadioLib'),
-    ('Fréquence', '915,0 MHz'),
+    ('Fréquence', '868,1 MHz'),
     ('Bande passante / SF / CR', '125 kHz / SF7 / 4/5'),
     ('Sync word / préambule', '0x12 / 8 symboles'),
     ('Puissance', '14 dBm'),

@@ -43,9 +43,9 @@
 
 //#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
-#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
+//#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
 //#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
-//#define _LORA_P2P_MODE_ // Envoi par LORA
+#define _LORA_P2P_MODE_ // Envoi par LORA
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
@@ -56,7 +56,7 @@
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF) — ThSdb (capteur chaudière) seulement
 #define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 //#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
-//#define CAPTEUR_JOUR_NUIT // Détecteur jour/nuit : photorésistance + 10 kΩ, mesure JOUR_NUIT_PIN, alimentation JOUR_NUIT_ALIM_PIN (voir MyJourNuit.h)
+#define CAPTEUR_JOUR_NUIT // Détecteur jour/nuit : photorésistance + 10 kΩ, mesure JOUR_NUIT_PIN, alimentation JOUR_NUIT_ALIM_PIN (voir MyJourNuit.h)
 
 //----------------------------------------------------------------------------
 // Décommenter en fonction des actionneurs installés
@@ -248,7 +248,7 @@
     #define LORA_RESET_PIN    42
     #define LORA_BUSY_PIN     40
 
-    #define LORA_FREQUENCE    915.0
+    #define LORA_FREQUENCE    868.1  // Europe : sous-bande g1 868,0-868,6 MHz (1 % du temps d'émission, 14 dBm)
     #define LORA_BANDWIDTH    125.0
     #define LORA_SPREADING_FACTOR 7
     #define LORA_CODING_RATE  5
@@ -357,6 +357,6 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "2.1"
+#define VERSION "3.0"
 
 #endif // __GLOBAL_H__

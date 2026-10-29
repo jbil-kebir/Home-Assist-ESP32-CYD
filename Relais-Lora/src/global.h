@@ -52,13 +52,14 @@
 #define LORA_RESET_PIN          42
 #define LORA_BUSY_PIN           40
 
-#define LORA_FREQUENCE          915.0 // Europe 868 915.0
+#define LORA_FREQUENCE          868.1 // Europe : sous-bande g1 868,0-868,6 MHz (1 % du temps d'émission, 14 dBm)
 #define LORA_BANDWIDTH          125.0
 #define LORA_SPREADING_FACTOR    7 // 12 SF12 = max portée
 #define LORA_CODING_RATE         5 // 4 ou 5
 #define LORA_SYNC_WORD          0x12
 #define LORA_OUTPUT_POWER       14.0    //17
 #define LORA_PREAMBLE_LENGTH    8   // 10
+#define LORA_TCXO_VOLTAGE       1.8 // Wio-SX1262 Seeed : TCXO 1.8V (et non 1.6V)
 
 #define START_STOP "==========" // A retirer du début et de la fin des messages reçus avant réexpédition par MQTT
 
@@ -80,7 +81,7 @@
 
 
 // Version du logiciel
-#define VERSION "1.3"
+#define VERSION "2.0"
 
 
 #endif // __GLOBAL_H__

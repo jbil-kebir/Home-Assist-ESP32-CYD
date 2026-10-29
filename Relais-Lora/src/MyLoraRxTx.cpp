@@ -45,7 +45,7 @@ int CMyLoraRxTx::setup() {
   
   while (true) { 
     int nbTentatives = 5; // 5 tentatives
-    int state = mRadio.begin(mfFrequency, mfBandwidth, mucSpreadingFactor, mucCodingRate, mucSyncWord, mfOutputPower, muiPreambleLength, 1.6, false);
+    int state = mRadio.begin(mfFrequency, mfBandwidth, mucSpreadingFactor, mucCodingRate, mucSyncWord, mfOutputPower, muiPreambleLength, LORA_TCXO_VOLTAGE, false);
 
     if (state == RADIOLIB_ERR_NONE) {
       Serial.println(F("success!"));
@@ -63,6 +63,9 @@ int CMyLoraRxTx::setup() {
       }*/
       ret = 0; 
       mbInitialized = true;
+      // Kit XIAO S3 + Wio-SX1262 : GPIO38 (LORA_DIO2_PIN) commande le commutateur d'antenne / LNA de réception (RXEN).
+      // Non pilotée, elle flottait. RadioLib la met à 1 en RX, à 0 en TX et en sommeil (comme sur les capteurs S3).
+      mRadio.setRfSwitchPins(LORA_DIO2_PIN, RADIOLIB_NC);
       // Un seul callback pour TX done et RX done
       mRadio.setPacketSentAction(setFlag);
       mRadio.setPacketReceivedAction(setFlag);

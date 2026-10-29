@@ -1,3 +1,7 @@
+3.0
+LoRa : fréquence 915,0 -> 868,1 MHz (bande européenne, sous-bande g1 : 1 % du temps d'émission, 14 dBm)
+    Incompatible avec les relais < 2.0 : reflasher le relais et tous les capteurs LoRa ensemble
+
 2.1
 Journal web (/logs) : horodatage à l'heure locale [HH:MM:SS.mmm] dès que l'heure est connue (NTP), sinon [s.mmm] depuis le démarrage
     Page /logs : champs Filtre et Masquer (plusieurs motifs séparés par |, mémorisés dans le navigateur), bouton Pause
@@ -85,4 +89,4 @@ Envoides informations de mesure par RCSwitch
 Intégration DHT20
 
 1.1
-Paramétrage : 
+Paramétrage : 
