@@ -27,6 +27,7 @@ private:
   unsigned long mulWatchDog;
 
 public:
+  unsigned long getWatchdogIntervalle() const { return mulWatchdogIntervalle; } // en secondes
   CRemoteThermo(const String& nomEqu, CEcran* ecran, 
       std::function<void(const String&, float)> callback = nullptr,
       std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : mEcran(ecran), onTemperatureChanged(callback), onMqttPublish(cbonMqttPublish) {

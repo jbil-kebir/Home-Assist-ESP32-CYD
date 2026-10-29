@@ -53,6 +53,7 @@ extern MyDHT20 dht20;
 extern CChaudiere chaudiere;
 extern CRCDevice projecteur;
 extern CRCDevice guirlande;
+extern CRCDevice lumiereCave;
 extern CNoeudChauffageIRSound  chauffageSb;
 #else // Chaudière, thermomètre principal et équipements 433 MHz distants
 extern CRemoteChaudiere mRemoteChaudiere;
@@ -72,6 +73,7 @@ extern CRemoteBatterieAA mRemoteBatSdb;
 extern CRemoteDHT20 mRemoteThCave;
 extern CRemoteTor mRemoteTor;
 extern CRemoteBatterieAA mRemoteBatCave;
+extern CRemoteJourNuit mRemoteJnCave;
 
 extern CRemoteDHT20 mRemoteThNomade;
 extern CRemoteTor mRemoteTorNomade;
@@ -116,18 +118,25 @@ void initControleursEtEsclaves() {
 //
 // Retour
 // 0 : RAS, on ajoute
-// -1 : Equipement existant, on ne fait rien
+// -1 : Equipement existant : on note seulement le contact (heure du dernier message)
 // -2 : Un champ est vide
+// attenteMax (s) : silence maximal avant retrait de la liste (voir CConfig::purgeControleurs()).
+//   Capteurs : leur intervalle de watchdog, relu à chaque message. 0 : inchangé (module existant) ou jamais retiré (nouveau).
 //
-int ajouterControleur(const String& nom, const String& ip) {
+int ajouterControleur(const String& nom, const String& ip, unsigned long attenteMax = 0) {
   //Serial.printf("int ajouterControleur() - %s %s\n", nom.c_str(), ip.c_str());
   if (nom.isEmpty() || ip.isEmpty()) return -2;
-  for (const auto& ctrl : mvsControleurs) {
+  for (auto& ctrl : mvsControleurs) {
       String sCtrl = ctrl.getNom();
       String sIp = ctrl.getIP();
-      if (sCtrl == nom && sIp == ip) return -1;
+      if (sCtrl == nom && sIp == ip) {
+        if (attenteMax > 0) ctrl.setAttenteMax(attenteMax);
+        ctrl.touche();
+        return -1;
+      }
   }
   mvsControleurs.emplace_back(nom, ip);
+  mvsControleurs.back().setAttenteMax(attenteMax);
   ecran.drawMainInterface();
   return 0;
 }
@@ -157,10 +166,10 @@ void printEsclaves();
 void print();
 
 extern void setup_chaudiere();
-extern void setup_chauffageSDB();
 extern void setup_ds18b20();
 extern void setup_projecteur();
 extern void setup_guirlande();
+extern void setup_lumiereCave();
 extern void setup_chauffageSb();
 
 extern void setup_ThCave();
@@ -204,6 +213,7 @@ void setup() {
   setup_ds18b20();
   setup_projecteur();
   setup_guirlande();
+  setup_lumiereCave(); // Sans effet hors __LOCAL_MODE__
   setup_chauffageSb();
   
   #ifdef __LOCAL_MODE__
@@ -333,6 +343,7 @@ void setup() {
   config.chaudiere->remonteStatusParMqtt();
   config.projecteur->remonteStatusParMqtt();
   config.guirlande->remonteStatusParMqtt();
+  config.lumiereCave->remonteStatusParMqtt();
   config.chauffageSb->remonteStatusParMqtt();
   #else
   // Si on n'est pas en __LOCAL_MODE__, on signale que nous venons 
@@ -377,10 +388,26 @@ void loop() {
   int retCfg = config.loop();
   if (retCfg == -10) {
     // Watchdog Alive Time : il est temps d'envoyer un Watchdog
-    String s = "ALIVEWDOG " + String(mDateTime.getDateTime());
+    // "<nom du CYD> ALIVEWDOG <date> <heure> <IP>" : le CYD principal retrouve ou ajoute ce CYD dans sa liste (série 5)
+    String s = config.nomEquipement + " ALIVEWDOG " + String(mDateTime.getDateTime());
     //Serial.println(s);
-    mqtt.publishWithIP(config.topic_config_state.c_str(), s.c_str());
-  } 
+    // CYD auxiliaire : sur le topic d'état du maître (son propre préfixe, ex. configaux2/, n'est pas écouté par le maître)
+    #ifdef __LOCAL_MODE__
+    const String& topicAlive = config.topic_config_state;
+    #else
+    const String& topicAlive = config.topic_config_maitre_state;
+    #endif
+    int retAlive = mqtt.publishWithIP(topicAlive.c_str(), s.c_str());
+    // ret : 0 publié, -1 MQTT inactif, -2 échec de publication, -3 MQTT non connecté
+    DBG(DBG_CONFIG, "ALIVEWDOG sur %s : \"%s\" -> %d\n", topicAlive.c_str(), s.c_str(), retAlive);
+  }
+
+  // Capteurs et CYD auxiliaires muets depuis trop longtemps : retirés de la liste des contrôleurs (série 5)
+  static unsigned long ulDernierePurgeControleurs = 0;
+  if (millis() - ulDernierePurgeControleurs >= 10000UL) {
+    ulDernierePurgeControleurs = millis();
+    if (config.purgeControleurs() > 0) ecran.drawMainInterface(); // Comme ajouterControleur()
+  }
 
   #ifdef __CYD__
   ecran.loop();
@@ -433,7 +460,15 @@ void loop() {
       #endif
       #endif // __LOCAL_MODE__
     }
-    else if (btnNum == BTN_CHAUFFAGE_ON_ACTIVE) { // Bouton Activation chauffage appuyé (BTN_CHAUFFAGE_OFF* : condamnés)
+    else if (btnNum == BTN_LUMIERE_CAVE_ACTIVE) { // Bouton Activation lumière cave appuyé (CYD principal seulement)
+      #ifdef __LOCAL_MODE__
+      lumiereCave.activeEquipement();
+      #ifdef __CYD__
+      ecran.activeLumiereCave(lumiereCave.active);
+      #endif
+      #endif // __LOCAL_MODE__ (CYD auxiliaire : bouton condamné)
+    }
+    else if (btnNum == BTN_CHAUFFAGE_ON_ACTIVE) { // Bouton Activation chauffage appuyé
       #ifdef __LOCAL_MODE__
       chauffageSb.activeEquipement();
       #ifdef __CYD__
@@ -489,6 +524,11 @@ void loop() {
       #else // Equipement distant
       mRemoteGuirlande.envoiOnOff();
       #endif
+    }
+    else if (btnNum == BTN_LUMIERE_CAVE_TOGGLE) { // Bouton Cave appuyé (CYD principal seulement)
+      #ifdef __LOCAL_MODE__
+      int ret = lumiereCave.envoiOnOff();
+      #endif // __LOCAL_MODE__ (CYD auxiliaire : bouton condamné)
     }
     else if (btnNum == BTN_CHAUFFAGE_ON) { // Bouton SB appuyé : marche ou arrêt selon l'état
       #ifdef __LOCAL_MODE__
@@ -560,6 +600,9 @@ void print() {
   DBG(DBG_CONFIG, "   Appareil 2\n");
   guirlande.print();
 
+  DBG(DBG_CONFIG, "   Appareil 2 bis (lumière cave)\n");
+  lumiereCave.print();
+
   DBG(DBG_CONFIG, "   Appareil 3\n");
   chauffageSb.print();
 
@@ -601,6 +644,7 @@ void print() {
   mRemoteThCave.print();
   mRemoteTor.print();
   mRemoteBatCave.print();
+  mRemoteJnCave.print();
 
   mRemoteThNomade.print();
   mRemoteTorNomade.print();

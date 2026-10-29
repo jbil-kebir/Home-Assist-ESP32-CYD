@@ -1,3 +1,12 @@
+1.3
+File d'attente des commandes de configuration par capteur LoRa
+    La commande est réémise dès que le capteur se manifeste (fenêtre d'écoute après son émission)
+Page web « Capteurs LoRa » : état des capteurs, lecture et modification de leur configuration
+Pilotage depuis Home Assistant (vue « Nœuds capteurs ») : GET / SET / MUTE relayés en LoRa
+Dates : jetons DATE TIME du capteur, heure d'hiver gérée par le relais
+Nouveaux équipements relayés : THCAVE (S3 LoRa), JNCAVE (jour / nuit)
+setBufferSize MQTT, attente du port série portée à 10 s
+
 1.2
 Mise en place de MQTT ==> Lora
 On écoute sur MQTT les topics :

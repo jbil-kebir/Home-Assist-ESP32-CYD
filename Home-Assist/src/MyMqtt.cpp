@@ -61,6 +61,9 @@ client.publish("home/chaudiere/status",  "", true);*/
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.guirlande->mqttSubTopicCommand);
       client.subscribe(mConfig.guirlande->mqttSubTopicCommand.c_str());
 
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.lumiereCave->mqttSubTopicCommand);
+      client.subscribe(mConfig.lumiereCave->mqttSubTopicCommand.c_str());
+
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.chauffageSb->mqttSubTopicCommand);
       client.subscribe(mConfig.chauffageSb->mqttSubTopicCommand.c_str());
 
@@ -133,15 +136,24 @@ int CMqtt::publish(const char* topic, const char* payload) {
   return 0;
 }
 
+// Retour :
+// 0 : publié
+// -1 : MQTT inactif
+// -2 : échec de la publication (ex. message plus long que le tampon de PubSubClient)
+// -3 : MQTT non connecté
 int CMqtt::publishWithIP(const char* topic, const char* payload, bool retained) {
   if (!active) return -1;
   String s = payload + String(" ") + WiFi.localIP().toString();
   if (client.connected()) {
-    client.publish(topic, s.c_str(), retained);
+    if (!client.publish(topic, s.c_str(), retained)) {
+      DBG(DBG_MQTT, "MQTT — échec de publication sur %s : %s\n", topic, s.c_str());
+      return -2;
+    }
     DBG(DBG_MQTT, "MQTT publié (retained=%d) sur %s : %s\n", retained, topic, payload);
   }
   else {
     DBG(DBG_MQTT, "MQTT non connecté — publication ignorée\n");
+    return -3;
   }
   return 0;
 }
@@ -149,9 +161,7 @@ int CMqtt::publishWithIP(const char* topic, const char* payload, bool retained) 
 
 // Garde aussi la version sans retained (pour compatibilité)
 int CMqtt::publishWithIP(const char* topic, const char* payload) {
-  if (!active) return -1;
-  publishWithIP(topic, payload, false);
-  return 0;
+  return publishWithIP(topic, payload, false);
 }
 /*void CMqtt::setonEquipementCallback(std::function<int(const String& nom, const String& ip)> onEqu) {
   onEquipement = onEqu;
@@ -179,6 +189,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == mConfig.guirlande->mqttSubTopicCommand) {
     //Serial.println("CMqtt::callback() - Guirlande - Topic : " + topicStr + " - Msg : " + message);
     mConfig.guirlande->handleMqttCommand(messageOrg);
+  }
+  else if (topicStr == mConfig.lumiereCave->mqttSubTopicCommand) {
+    mConfig.lumiereCave->handleMqttCommand(messageOrg);
   }
   else if (topicStr == mConfig.chauffageSb->mqttSubTopicCommand) {
     //Serial.println("CMqtt::callback() - Chauffage - Topic : " + topicStr + " - Msg : " + message);
@@ -238,6 +251,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     }
     else if (message.startsWith("BATCAVE")) {
       mConfig.mRemoteBatCave->handleMqttState(messageOrg);
+    }
+    else if (message.startsWith("JNCAVE")) {
+      if (mConfig.mRemoteJnCave != nullptr) mConfig.mRemoteJnCave->handleMqttState(messageOrg);
     }
     else if (message.startsWith("THNOMADE")) {
       mConfig.mRemoteThNomade->handleMqttState(messageOrg);
@@ -299,6 +315,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       statusMsg += "Keep-alive    : " + String(mConfig.chaudiere->enableKeepAlive ? "ACTIVÉ" : "DÉSACtivé") + "\n";
       statusMsg += "Projecteur    : " + String(mConfig.projecteur->active ? "ACTIF" : "INACTIF") + " - " + mConfig.projecteur->etatStr + "\n";
       statusMsg += "Guirlande     : " + String(mConfig.guirlande->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.guirlande->etatStr + "\n";
+      statusMsg += "Lumière cave  : " + String(mConfig.lumiereCave->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.lumiereCave->etatStr + "\n";
       statusMsg += "Salle de bain : " + String(mConfig.chauffageSb->active ? "ACTIF" : "INACTIF") + " - " + mConfig.chauffageSb->etatStr + "\n";
       #else // Chaudière, thermomètre principal et équipements 433 MHz
       statusMsg += "Chaudière     : " + String(mConfig.mRemoteChaudiere->active ? "ACTIVE" : "INACTIVE") + " - "  + mConfig.mRemoteChaudiere->etatStr + "\n";
@@ -371,6 +388,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.chaudiere->remonteStatusParMqtt();
       mConfig.projecteur->remonteStatusParMqtt();
       mConfig.guirlande->remonteStatusParMqtt();
+      mConfig.lumiereCave->remonteStatusParMqtt();
       mConfig.chauffageSb->remonteStatusParMqtt();
 
       #ifdef __LOCAL_DS18B20__
@@ -384,6 +402,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
 
       mConfig.mRemoteThCave->remonteStatusParMqtt();
       mConfig.mRemoteBatCave->remonteStatusParMqtt();
+      if (mConfig.mRemoteJnCave != nullptr) mConfig.mRemoteJnCave->remonteStatusParMqtt();
 
       mConfig.mRemoteThSdb->remonteStatusParMqtt();
       mConfig.mRemoteCoulSdb->remonteStatusParMqtt();
@@ -404,7 +423,19 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.mRemoteNewNas->remonteStatusParMqtt();
       mConfig.mRemoteBigNas->remonteStatusParMqtt();
 
-      mConfig.remonteCYDInfoToEcran(messageOrg);
+      if (message.startsWith("DEVICE CYD ")) {
+        // CYD auxiliaire : "DEVICE CYD <nom> <date> <heure> 0 <IP>". Le nom (qui peut contenir des espaces)
+        // est rangé dans la liste tel quel, comme pour ses ALIVEWDOG (voir CConfig::purgeControleurs()).
+        ParsedMqttMessage msg;
+        msg.parse(messageOrg);
+        String nom;
+        int nbMots = msg.mvsMesure.size();
+        if (nbMots > 0 && msg.mvsMesure[nbMots - 1] == "0") nbMots--; // "0" final
+        for (int i = 1; i < nbMots; i++) nom += (nom.isEmpty() ? "" : " ") + msg.mvsMesure[i]; // mvsMesure[0] = "CYD"
+        mConfig.noteContactCydAuxiliaire(nom, msg.msIp);
+      }
+      else
+        mConfig.remonteCYDInfoToEcran(messageOrg); // Application ("DEVICE APP ...")
       #endif
     }
     else if (message.startsWith("NONCONFIGURE ")) { // Puce capteur neuve : "NONCONFIGURE <modèle>-<fin MAC> [<date> <heure>] <IP>"
@@ -423,7 +454,22 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     }
     // Tu pourras ajouter d’autres commandes plus tard
   }
-  
+  #ifdef __LOCAL_MODE__
+  // Etats de configuration : "<nom du CYD> ALIVEWDOG <date> <heure> <IP>" publié périodiquement par chaque CYD.
+  // Le nom peut contenir des espaces : c'est tout ce qui précède " ALIVEWDOG".
+  // Ancien format sans nom ("ALIVEWDOG <date> <heure> <IP>", CYD auxiliaire pas encore mis à jour) : contact noté d'après l'IP.
+  else if (topicStr == mConfig.topic_config_state) {
+    int iAlive = message.indexOf("ALIVEWDOG");
+    if (iAlive >= 0) {
+      ParsedMqttMessage msg;
+      msg.parse(messageOrg);
+      String nom = messageOrg.substring(0, iAlive);
+      nom.trim();
+      mConfig.noteContactCydAuxiliaire(nom, msg.msIp);
+    }
+  }
+  #endif
+
 }
 
 void CMqtt::loadFromNVS() {

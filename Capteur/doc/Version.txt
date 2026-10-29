@@ -1,3 +1,35 @@
+2.0
+Cibles XIAO ESP32-C3 (Wi-Fi) et XIAO ESP32-S3 + Wio-SX1262 (LoRa) ; plateforme espressif32@6.9.0
+Profils de compilation par nœud dans global.h (ThCave, ThRemise, ThChRDC, ThCh1er, ThSdb...)
+Identifiants Wi-Fi / MQTT dans secret.h (exclu de Git), modèle secret.exemple.h
+
+Deep sleep
+    XIAO C3 : éveil 11 s -> 2,5 s (IP fixe, canal mémorisé), sommeil 43-47 µA
+    S3 LoRa : sommeil 56 µA, éveil 2,8 s (radio endormie, RXEN GPIO38 maintenue basse, fin d'éveil anticipée)
+    Diagnostic des cycles (« Préc : » dans le message REVEIL)
+    Plus de mesures en double au réveil ; date envoyée seulement si l'heure est fiable (NTP)
+Mesure batterie étalonnée (pont 220k / 100k, calibre 3,2)
+
+Configuration à distance (Wi-Fi et LoRa via le relais)
+    Accusé de réception des commandes de configuration
+    GET / SET des paramètres (clés NVS), CONFIG renvoyée pour la vue HA « Nœuds capteurs »
+    MUTE ON / MUTE OFF : coupe les mesures seulement ; trame « <nom> MUET »
+    Puce neuve : composants désactivés, annonce NONCONFIGURE <puce>-<MAC> toutes les 60 s
+En LoRa : jetons DATE TIME du capteur
+
+Nouveaux composants
+    CMax4466 : micro, détection des bips ON/OFF du chauffage SdB (LED témoin)
+    CActionneurIR : marche / arrêt du chauffage SdB par IR, journal web
+    CJourNuit : détecteur jour / nuit (photorésistance, hystérésis, état en RTC + NVS, clés SET jn_*)
+Wi-Fi : puissance d'émission réglable par profil (NVS wifi_i_txpw), RSSI à la fin des ALIVE
+Reconnexion Wi-Fi et notification MQTT après coupure
+
+Corrections
+    Forçage de la remontée rétabli (CBatterieAA, DHT20Sensor)
+    DHT20 : plus de valeurs -127 / -1 en cas d'échec de lecture
+    LoRa : la température n'est plus écrasée par l'humidité (attente de fin d'émission)
+    Anomalies des trames MQTT / LoRa 1 à 7 (voir Doc/mqtt.docx)
+
 1.9
 Ajout SLEEPS, SLEEPM et SLEEPL
 home/confthremise/command SLEEPM programme un deep-sleep égal à la valeur paramétrée par Web

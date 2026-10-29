@@ -17,7 +17,7 @@ extern CMyDateTime mDateTime;
 CRemoteDHT20 mRemoteThRemise(String("ThRemise"), &ecran);
 CRemoteBatterieAA mRemoteBatRemise(String("BatRemise"), &ecran);
 
-extern int ajouterControleur(const String& nom, const String& ip);
+extern int ajouterControleur(const String& nom, const String& ip, unsigned long attenteMax = 0);
 
 void setup_ThRemise() {
   mRemoteThRemise.begin("threm_"); // Type, etage, lieu (thermomètre, 1er, chanmre)
@@ -48,7 +48,7 @@ void setup_ThRemise() {
       return mqtt.publish(topic, payload);
   });
   mRemoteThRemise.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-      return ajouterControleur(nom, ip);
+      return ajouterControleur(nom, ip, mRemoteThRemise.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
 
 }

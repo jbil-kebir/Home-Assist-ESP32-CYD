@@ -48,9 +48,17 @@ void CMyBouton::draw() {
 
 // Disque coloré cerclé de blanc : reste visible sur un bouton de la même couleur
 void CMyBouton::drawPastille() {
-    if (mbCondamne || !mfEtatPastille) return;
-    int etat = mfEtatPastille();
-    unsigned int couleur = (etat == 1) ? TFT_GREEN : (etat == 0) ? TFT_RED : TFT_LIGHTGREY;
+    if (mbCondamne || (!mfEtatPastille && !mfCouleurPastille)) return;
+    unsigned int couleur;
+    if (mfCouleurPastille) {
+      int c = mfCouleurPastille();
+      if (c < 0) return;
+      couleur = (unsigned int)c;
+    }
+    else {
+      int etat = mfEtatPastille();
+      couleur = (etat == 1) ? TFT_GREEN : (etat == 0) ? TFT_RED : TFT_LIGHTGREY;
+    }
     int x = muiPosX + muiWidth - 9;
     int y = muiPosY + 9;
     mTft.fillCircle(x, y, 5, TFT_WHITE);

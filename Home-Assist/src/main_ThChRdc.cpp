@@ -17,7 +17,7 @@ extern CMyDateTime mDateTime;
 CRemoteDHT20 mRemoteThChRdc(String("ThChRdc"), &ecran);
 CRemoteBatterieAA mRemoteBatChRdc(String("BatChRdc"), &ecran);
 
-extern int ajouterControleur(const String& nom, const String& ip);
+extern int ajouterControleur(const String& nom, const String& ip, unsigned long attenteMax = 0);
 
 void setup_ThChRdc() {
   mRemoteThChRdc.begin("thcui_"); // Préfixe NVS historique (ex-ThCuisine) conservé pour garder la config
@@ -48,7 +48,7 @@ void setup_ThChRdc() {
       return mqtt.publish(topic, payload);
   });
   mRemoteThChRdc.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-      return ajouterControleur(nom, ip);
+      return ajouterControleur(nom, ip, mRemoteThChRdc.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
 
 }

@@ -12,6 +12,9 @@
 #define COLOR_KO_MESURE TFT_RED
 #define COLOR_OK_BATTERIE TFT_GREEN
 #define COLOR_KO_BATTERIE TFT_RED
+#define COLOR_JOUR TFT_YELLOW   // Détecteur jour / nuit (à la place de la batterie, voir drawJourNuit()) : texte jaune sur le fond de la zone
+#define COLOR_NUIT TFT_WHITE    // Nuit : texte blanc...
+#define COLOR_FOND_NUIT TFT_NAVY // ... sur fond bleu marine
 #
 class CZoneMesureDouble {
     private:
@@ -20,6 +23,7 @@ class CZoneMesureDouble {
         String msNom="";
         float mfOldMesure1 = 0.0, mfOldMesure2 = 0.0, mfOldValBatterie = 0.0;
         int miEtatBatterie = 0;
+        int miOldEclairement = -2, miOldEtatJourNuit = -2; // -2 : rien affiché
         // Valeurs déduites par tests
         unsigned int muiLabelX, muiLabelY, muiLabelFont; // Position et Police du texte (nom du capteur)
 
@@ -43,6 +47,7 @@ class CZoneMesureDouble {
         int drawMesure1(float val, const String& nom="");
         int drawMesure2(float val, const String& nom="");
         int drawEtatBatterie(float val, int iEtatBat, const String& nom="");
+        int drawJourNuit(int eclairement, int etat);
         
 
 };

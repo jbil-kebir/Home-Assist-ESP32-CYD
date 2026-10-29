@@ -13,6 +13,13 @@ class CEcran;  // Forward declaration
 class CRCDevice : public CMyRCSwitch, public CEquipementBase  {
 protected:
   CEcran* mEcran = nullptr;
+  // Valeurs par défaut quand le NVS est vide (setDefauts()) ; valeurs historiques pour projecteur et guirlande
+  unsigned long mulCodeDefaut = 0x3D3B72;
+  int miProtocoleDefaut = 1;
+  int miImpulsionDefaut = 349;
+  String msNomDefaut = "";       // vide : celui de CEquipementBase::loadFromNVS()
+  String msLibelleDefaut = "Projecteur";
+  String msSubTopicDefaut = "";  // vide : celui de CEquipementBase::loadFromNVS()
 
 public:
   CRCDevice() = default;
@@ -36,6 +43,8 @@ public:
 
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
 
+  void setDefauts(unsigned long codeDef, int protocoleDef, int impulsionDef, const String& nomDef,
+                  const String& libelleDef, const String& subTopicDef); // Avant setup()
   void setup(const String pref);
   void loop();
   void loadFromNVS();

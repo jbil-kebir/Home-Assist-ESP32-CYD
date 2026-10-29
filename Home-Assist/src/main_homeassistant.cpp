@@ -10,7 +10,7 @@ extern CEcran ecran;
 extern CMqtt mqtt;
 extern CMyDateTime mDateTime;
 
-extern int ajouterControleur(const String& nom, const String& ip);
+extern int ajouterControleur(const String& nom, const String& ip, unsigned long attenteMax = 0);
 
 CRemoteTor mRemoteNewNas(String("NewNas"), &ecran);
 CRemoteTor mRemoteBigNas(String("BigNas"), &ecran);
@@ -36,7 +36,7 @@ void setup_homeassistant() {
     return mqtt.publish(topic, payload);
   });
   mRemoteNewNas.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-    return ajouterControleur(nom, ip);
+    return ajouterControleur(nom, ip, mRemoteNewNas.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
 
   mRemoteBigNas.setDisplayCallback([](const String& exp, int val) {
@@ -46,7 +46,7 @@ void setup_homeassistant() {
     return mqtt.publish(topic, payload);
   });
   mRemoteBigNas.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-    return ajouterControleur(nom, ip);
+    return ajouterControleur(nom, ip, mRemoteBigNas.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
 
 }

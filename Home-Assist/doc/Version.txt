@@ -1,3 +1,34 @@
+3.1
+Purge des contrôleurs muets (série 5)
+    Les CYD auxiliaires publient "<nom> ALIVEWDOG <date> <heure> <IP>" sur home/configuration/state
+    Le CYD principal retire de la liste ceux qui ne répondent plus : CConfig::purgeControleurs() toutes les 10 s
+    Page web : « Attente max des CYD auxiliaires » (NVS cfg_cydMax, 600 s par défaut, 0 = jamais)
+    Généralisé aux capteurs : attente max = intervalle watchdog de chaque capteur (RemoteTh, RemoteDHT20)
+    Libellés « Intervalle Watchdog (min) » corrigés en « (s) »
+Lumière cave (433 MHz, code 0x1FCF24, protocole 1, 301 µs), en __LOCAL_MODE__
+    main_lumierecave.cpp : CRCDevice lumiereCave, préfixe NVS lcav_, topic home/lumierecave/command
+    CRCDevice::setDefauts() : valeurs d'un appareil neuf (NVS vide)
+    Écran : les anciens boutons SB OFF + cadenas deviennent « Cave » + cadenas (condamnés sur CYD auxiliaire)
+    Page web et HA : switch.lumiere_cave et switch.lumiere_cave_enable
+Détecteur jour / nuit (JNCAVE)
+    Classe CRemoteJourNuit, zone CZoneMesureDouble, affichage en vue 3 et pastille sur le bouton Cave
+    Section sur la page web du CYD
+platformio.ini : plateforme fixée à espressif32@6.9.0 (Arduino 2.0.17)
+    « espressif32 » sans version désignait pioarduino (Arduino 3.3.x) : 'FS' was not declared avec TFT_eSPI
+Debug : gDebugFlags = DBG_NOEUD (DBG_CONFIG temporaire retiré)
+
+3.0
+Nœud chauffage SdB (XIAO ESP32-C3 : IR + micro + relais 433 MHz)
+    Un seul bouton « SB » (bascule), pastille de présence du nœud (vert / rouge / gris)
+    SB OFF et son cadenas condamnés (CMyBoutonBase::setCondamne), réservés à un autre appareil
+    Page web : bouton unique « SB » (/chauffage_sb), messages de refus
+    OnOff 1 ignoré si le chauffage est DISABLE (bips parasites du micro)
+    Une absence du nœud n'annule plus la coupure différée ; bornes des paramètres vérifiées
+Puce neuve non configurée : trame NONCONFIGURE <puce>-<MAC> affichée en série 5 avec son IP
+RCSwitch : DRate 50 pendant l'émission (fronts quantifiés à 52 µs en 2.4)
+Wi-Fi : diagnostic de connexion, ESP.restart() après 30 s d'échec
+Identifiants Wi-Fi / MQTT de secours dans secret.h (exclu de Git), modèle secret.exemple.h
+
 2.9
 ThCh1er : remplacement du DS18B20 par un DHT20 (température + humidité)
     Colonne Ouest (séries 1 à 3) : zone double température / humidité / batterie

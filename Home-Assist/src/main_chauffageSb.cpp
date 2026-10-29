@@ -18,7 +18,7 @@ extern CEcran ecran;
 extern CMqtt mqtt;
 extern CMyDateTime mDateTime;
 
-extern int ajouterControleur(const String& nom, const String& ip);
+extern int ajouterControleur(const String& nom, const String& ip, unsigned long attenteMax = 0);
 
 #ifdef __LOCAL_MODE__
 //CRCDevice  chauffageSb(String("Chauffage"), ecran);
@@ -69,7 +69,7 @@ void setup_chauffageSb() {
       return mqtt.publish(topic, payload);
   });
   mRemoteTorChauffageSb.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-      return ajouterControleur(nom, ip);
+      return ajouterControleur(nom, ip, mRemoteTorChauffageSb.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
   // Echec de l'actionneur IR du noeud
   mRemoteTorChauffageSb.onIrko = []() {

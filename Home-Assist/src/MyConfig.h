@@ -14,6 +14,7 @@
 #else
 #include "RemoteChaudiere.h"
 #include "RemoteRCDevice.h"
+#include "MyRemoteNoeudChauffageIRSound.h"
 #endif
 #include "global.h"
 #include "MyWifi.h"
@@ -22,6 +23,7 @@
 #include "RemoteTCS34725.h"
 #include "RemoteBatAA.h"
 #include "RemoteTor.h"
+#include "RemoteJourNuit.h"
 #include "MyDateTime.h"
 #include "MyIPModule.h"
 
@@ -31,6 +33,7 @@ class CRemoteDHT20;
 class CRemoteTCS34725;
 class CRemoteBatterieAA;
 class CRemoteTor;
+class CRemoteJourNuit;
 
 #define CONFIG_SUB_TOPIC "configuration/"
 #define CONFIG_SUB_TOPIC_MAITRE "configuration/"
@@ -56,6 +59,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   // === APPAREILS 433 MHz ===
   CRCDevice *projecteur=nullptr;
   CRCDevice  *guirlande=nullptr;
+  CRCDevice  *lumiereCave=nullptr; // Bouton « Cave » de l'écran + Home Assistant (main_lumierecave.cpp)
 //  CRCDevice  *chauffageSb=nullptr;
   CNoeudChauffageIRSound  *chauffageSb=nullptr;
 
@@ -87,6 +91,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   CRemoteDHT20 *mRemoteThCave=nullptr;
   CRemoteTor *mRemoteTor=nullptr;
   CRemoteBatterieAA *mRemoteBatCave=nullptr;
+  CRemoteJourNuit *mRemoteJnCave=nullptr; // Détecteur jour / nuit de ThCave
 
   CRemoteDHT20 *mRemoteThNomade=nullptr;
   CRemoteTor *mRemoteTorNomade=nullptr;
@@ -132,6 +137,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
 
   String mqttConfigMaitreSubTopic; // configuration/ Pour pouvoir s'adresser au maître
   String  topic_config_maitre_command; // home/configuration/command
+  String  topic_config_maitre_state;   // home/configuration/state : ALIVEWDOG des CYD auxiliaires, lus par le maître
 
   // Deep sleep
   const unsigned int DEFAULT_SLEEP_DURATION_SEC = 120;   // 2 minutes par défaut  
@@ -146,6 +152,14 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   
   #define DEFAULT_WATCHDOG_ALIVE_PERIOD (5*60UL) // 5 minutes
   unsigned long mulWatchDogAlivePeriod = DEFAULT_WATCHDOG_ALIVE_PERIOD; // Intervalle Watchdog. On envoie ALIVE par MQTT
+  #ifdef __LOCAL_MODE__
+  // CYD principal : un CYD auxiliaire dont aucun ALIVEWDOG n'est reçu depuis ce délai est retiré
+  // de la liste des contrôleurs (série 5). Doit dépasser l'intervalle Watchdog Alive des auxiliaires. 0 : jamais.
+  #define DEFAULT_ATTENTE_MAX_CYD_AUX 600UL // s
+  unsigned long mulAttenteMaxCydAux = DEFAULT_ATTENTE_MAX_CYD_AUX;
+  int noteContactCydAuxiliaire(const String& nom, const String& ip);
+  #endif
+  int purgeControleurs(); // Retire de la série 5 les modules muets depuis plus que leur attente max
 
   // MQTT callback pour le deep-sleep
   std::function<int(const char*, const char*)> onMqttPublish;    

@@ -12,14 +12,14 @@
     mBtnProjecteur(cfg, tft, touch, BOUTON_P_X, BOUTON_P_Y, BOUTON_P_W, BOUTON_P_H, TFT_DARKGREY, BOUTON_P_N), 
     mBtnGuirlande(cfg, tft, touch, BOUTON_G_X, BOUTON_G_Y, BOUTON_G_W, BOUTON_G_H, TFT_DARKGREY, BOUTON_G_N),
     mBtnChauffageON(cfg, tft, touch, BOUTON_SB_ON_X, BOUTON_SB_ON_Y, BOUTON_SB_ON_W, BOUTON_SB_ON_H, TFT_DARKGREY, BOUTON_SB_ON_N),
-    mBtnChauffageOFF(cfg, tft, touch, BOUTON_SB_OFF_X, BOUTON_SB_OFF_Y, BOUTON_SB_OFF_W, BOUTON_SB_OFF_H, TFT_DARKGREY, BOUTON_SB_OFF_N),
+    mBtnLumiereCave(cfg, tft, touch, BOUTON_LC_X, BOUTON_LC_Y, BOUTON_LC_W, BOUTON_LC_H, TFT_DARKGREY, BOUTON_LC_N),
     mBtnChaudiereON(cfg, tft, touch, BOUTON_ON_X, BOUTON_ON_Y, BOUTON_ON_W, BOUTON_ON_H, TFT_DARKGREY, BOUTON_ON_N),
     mBtnChaudiereOFF(cfg, tft, touch, BOUTON_OFF_X, BOUTON_OFF_Y, BOUTON_OFF_W, BOUTON_OFF_H, TFT_DARKGREY, BOUTON_OFF_N),
 
     mBtnProjecteurActif(cfg, tft, touch, BOUTON_PA_X, BOUTON_PA_Y, BOUTON_PA_W, BOUTON_PA_H, TFT_GREENYELLOW, BOUTON_PA_N),
     mBtnGuirlandeActif(cfg, tft, touch, BOUTON_GA_X, BOUTON_GA_Y, BOUTON_GA_W, BOUTON_GA_H, TFT_GREENYELLOW, BOUTON_GA_N),
     mBtnChauffageONActif(cfg, tft, touch, BOUTON_SBA_ON_X, BOUTON_SBA_ON_Y, BOUTON_SBA_ON_W, BOUTON_SBA_ON_H, TFT_GREENYELLOW, BOUTON_SBA_ON_N),
-    mBtnChauffageOFFActif(cfg, tft, touch, BOUTON_SBA_OFF_X, BOUTON_SBA_OFF_Y, BOUTON_SBA_OFF_W, BOUTON_SBA_OFF_H, TFT_GREENYELLOW, BOUTON_SBA_OFF_N),
+    mBtnLumiereCaveActif(cfg, tft, touch, BOUTON_LCA_X, BOUTON_LCA_Y, BOUTON_LCA_W, BOUTON_LCA_H, TFT_GREENYELLOW, BOUTON_LCA_N),
     mBtnChaudiereONActif(cfg, tft, touch, BOUTON_ONA_X, BOUTON_ONA_Y, BOUTON_ONA_W, BOUTON_ONA_H, TFT_GREENYELLOW, BOUTON_ONA_N),
     mBtnChaudiereOFFActif(cfg, tft, touch, BOUTON_OFFA_X, BOUTON_OFFA_Y, BOUTON_OFFA_W, BOUTON_OFFA_H, TFT_GREENYELLOW, BOUTON_OFFA_N),
       
@@ -61,12 +61,14 @@
     mBtnProjecteur.mDevice = mConfig.projecteur;
     mBtnGuirlande.mDevice = mConfig.guirlande;
     mBtnChauffageON.mDevice = mConfig.chauffageSb;
+    mBtnLumiereCave.mDevice = mConfig.lumiereCave;
     mBtnChaudiereON.mDevice = mConfig.chaudiere;
     mBtnChaudiereOFF.mDevice = mConfig.chaudiere;
 
     mBtnProjecteurActif.mDevice = mConfig.projecteur;
     mBtnGuirlandeActif.mDevice = mConfig.guirlande;
     mBtnChauffageONActif.mDevice = mConfig.chauffageSb;
+    mBtnLumiereCaveActif.mDevice = mConfig.lumiereCave;
     mBtnChaudiereONActif.mDevice = mConfig.chaudiere;
     mBtnChaudiereOFFActif.mDevice = mConfig.chaudiere;
     #else
@@ -82,9 +84,11 @@
     mBtnChaudiereONActif.mDevice = mConfig.mRemoteChaudiere;
     mBtnChaudiereOFFActif.mDevice = mConfig.mRemoteChaudiere;
     #endif
-    // Boutons SB OFF condamnés (réservés à un autre appareil) : le bouton SB suffit au chauffage
-    mBtnChauffageOFF.setCondamne(true);
-    mBtnChauffageOFFActif.setCondamne(true);
+    #ifndef __LOCAL_MODE__
+    // CYD auxiliaire : pas de lumière de la cave (appareil du seul CYD principal) → boutons condamnés
+    mBtnLumiereCave.setCondamne(true);
+    mBtnLumiereCaveActif.setCondamne(true);
+    #endif
 
     int i = 0;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnProjecteurActif; i++;
@@ -93,8 +97,8 @@
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnGuirlande; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChauffageONActif; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChauffageON; i++;
-    mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChauffageOFFActif; i++;
-    mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChauffageOFF; i++;
+    mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnLumiereCaveActif; i++;
+    mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnLumiereCave; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChaudiereONActif; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChaudiereON; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChaudiereOFFActif; i++;
@@ -226,6 +230,18 @@ void CEcran::activeGuirlande(bool activ/*=true*/, bool bDrawInterface/*=true*/) 
   drawMainInterface();
   drawStatus("Guirlande activee", false);
 }
+void CEcran::desactiveLumiereCave(bool bDrawInterface/*=true*/) {
+  drawMainInterface();
+  drawStatus("Lumiere cave desactivee", false);
+}
+void CEcran::activeLumiereCave(bool activ/*=true*/, bool bDrawInterface/*=true*/) {
+  if (!activ) {
+    desactiveLumiereCave (bDrawInterface);
+    return;
+  }
+  drawMainInterface();
+  drawStatus("Lumiere cave activee", false);
+}
 void CEcran::desactiveChauffageSb(bool bDrawInterface/*=true*/) {
   drawMainInterface();
   drawStatus("Chauffage desactive", false);
@@ -243,6 +259,11 @@ void CEcran::activeChauffageSb(bool activ/*=true*/, bool bDrawInterface/*=true*/
 void CEcran::updatePastilleChauffageSb() {
   if (mucSerieAffichageEnCours < 3)
     mBtnChauffageON.drawPastille();
+}
+// Pastille jour / nuit de la cave sur le bouton Cave (séries 1 et 2 seulement)
+void CEcran::updatePastilleLumiereCave() {
+  if (mucSerieAffichageEnCours < 3)
+    mBtnLumiereCave.drawPastille();
 }
 
 
@@ -416,8 +437,8 @@ void CEcran::drawMainInterface() {
 
     mBtnChauffageONActif.draw();
     mBtnChauffageON.draw();
-    mBtnChauffageOFFActif.draw();
-    mBtnChauffageOFF.draw();
+    mBtnLumiereCaveActif.draw();
+    mBtnLumiereCave.draw();
 
     mBtnChaudiereONActif.draw();
     mBtnChaudiereON.draw();
@@ -531,6 +552,8 @@ void CEcran::updateAppareilsDeMesure() {
   updateRemoteDevice_ThCaveH(mConfig.mRemoteThCave->nomEquipement, mConfig.mRemoteThCave->getLastHumidite());
   updateRemoteDevice_ThCaveTor(mConfig.mRemoteTor->nomEquipement, mConfig.mRemoteTor->getLastMesure());
   updateRemoteBat_ThCave(mConfig.mRemoteBatCave->nomEquipement, mConfig.mRemoteBatCave->miLastEtatBatterie, mConfig.mRemoteBatCave->getLastTension());
+  if (mConfig.mRemoteJnCave != nullptr)
+    updateRemoteJourNuit_ThCave(mConfig.mRemoteJnCave->getLastEclairement(), mConfig.mRemoteJnCave->getLastEtat());
 
   updateRemoteDevice_ThChRdc(mConfig.mRemoteThChRdc->nomEquipement, mConfig.mRemoteThChRdc->getLastTemperature());
   updateRemoteDevice_ThChRdcH(mConfig.mRemoteThChRdc->nomEquipement, mConfig.mRemoteThChRdc->getLastHumidite());
@@ -711,10 +734,15 @@ void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
   mZoneFlotteur.drawMesure(val, nom);
 }
 
-// Batterie du thermomètre Cave (à la place de thermomètre Chambre 1er)
+// Batterie du thermomètre Cave (à la place de thermomètre Chambre 1er). Série 3 : jour / nuit à sa place
 void CEcran::updateRemoteBat_ThCave(const String& nom, int etatBatterie, float val) {
-  if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
+  if (mucSerieAffichageEnCours != 2) return;
   mZoneMesureDoubleEst.drawEtatBatterie(val, etatBatterie, nom);
+}
+// Détecteur jour / nuit de la cave (série 3, ligne de la batterie). etat -2 : watchdog
+void CEcran::updateRemoteJourNuit_ThCave(int eclairement, int etat) {
+  if (mucSerieAffichageEnCours != 3) return;
+  mZoneMesureDoubleEst.drawJourNuit(eclairement, etat);
 }
 
 //============================================================================================

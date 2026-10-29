@@ -35,6 +35,8 @@ class CMyBouton : public CMyBoutonBase {
         // Pastille d'état dans le coin haut droit (optionnelle) :
         // 1 : vert, 0 : rouge, -1 : gris (inconnu). Non définie : pas de pastille.
         std::function<int()> mfEtatPastille = nullptr;
+        // Variante : couleur TFT de la pastille fournie directement (prioritaire sur mfEtatPastille), -1 : pas de pastille
+        std::function<int()> mfCouleurPastille = nullptr;
         void drawPastille();
 
         void draw();

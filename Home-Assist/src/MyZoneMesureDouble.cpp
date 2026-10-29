@@ -134,3 +134,43 @@ int CZoneMesureDouble::drawEtatBatterie(float val, int iEtatBat, const String& n
   return 0;
 }
 
+
+//
+// Détecteur jour / nuit, sur la ligne de la batterie, centré : « 60% JOUR » (jaune sur le fond de la zone)
+// ou « 12% NUIT » (blanc sur bleu marine).
+// eclairement : en %, -1 si non reçu (capteur qui ne remonte que l'état : « JOUR » seul)
+// etat : 1 jour, 0 nuit, -1 inconnu (KO), -2 watchdog (WDG)
+// Retour
+// -1 : Rien de changé, on ne fait rien
+// 0 : RAS
+//
+int CZoneMesureDouble::drawJourNuit(int eclairement, int etat) {
+  // Evite de trop nombreux raffraichisssements (comme drawEtatBatterie() : seulement tant que rien n'est connu,
+  // sinon la zone ne serait pas redessinée après un changement de série)
+  if (etat == -1 && miOldEtatJourNuit == -1) return -1;
+  miOldEclairement = eclairement;
+  miOldEtatJourNuit = etat;
+  unsigned int uiFond = (etat == 0) ? COLOR_FOND_NUIT : muiBatBgColor;
+  mTft.fillRect(muiPosBatX, muiPosBatY, muiBatWidth, muiBatHight, uiFond);  // Efface zone
+  String sVal;
+  if (etat == -2) {
+    mTft.setTextColor(muiKOColorBatterie);
+    sVal = "WDG";
+  }
+  else if (etat < 0) {
+    mTft.setTextColor(muiKOColorBatterie);
+    sVal = "KO";
+  }
+  else {
+    mTft.setTextColor(etat == 1 ? COLOR_JOUR : COLOR_NUIT);
+    String sEtat = (etat == 1) ? "JOUR" : "NUIT";
+    sVal = (eclairement >= 0) ? String(eclairement) + "% " + sEtat : sEtat;
+    // Zone étroite (80 px) : « 100% JOUR » peut déborder sur la zone voisine → état abrégé (J / N)
+    if (mTft.textWidth(sVal, muiValBatterieFont) > (int)muiBatWidth - 4 && eclairement >= 0)
+      sVal = String(eclairement) + "% " + sEtat.substring(0, 1);
+  }
+  int x = muiPosBatX + ((int)muiBatWidth - mTft.textWidth(sVal, muiValBatterieFont)) / 2;
+  if (x < (int)muiPosBatX + 2) x = muiPosBatX + 2;
+  mTft.drawString(sVal, x, muiValBatterieY, muiValBatterieFont);
+  return 0;
+}

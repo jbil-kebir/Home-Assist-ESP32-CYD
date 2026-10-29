@@ -19,7 +19,7 @@ CRemoteThermo mRemoteThSdb(String("ThSdb"), &ecran);
 CRemoteTCS34725 mRemoteCoulSdb(String("CoulSdb"), &ecran);
 CRemoteBatterieAA mRemoteBatSdb(String("BatSdb"), &ecran);
 
-extern int ajouterControleur(const String& nom, const String& ip);
+extern int ajouterControleur(const String& nom, const String& ip, unsigned long attenteMax = 0);
 
 void setup_ThSdb() {
   mRemoteThSdb.begin("t0Sdb_"); // Type, etage, lieu (thermomètre, 1er, chanmre)
@@ -66,7 +66,7 @@ void setup_ThSdb() {
       return mqtt.publish(topic, payload);
   });
   mRemoteThSdb.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-      return ajouterControleur(nom, ip);
+      return ajouterControleur(nom, ip, mRemoteThSdb.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
 }
 

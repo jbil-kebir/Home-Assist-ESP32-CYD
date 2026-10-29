@@ -2,6 +2,7 @@
 #include "MyConfig.h"
 #include "ParsedMqttMessage.h"
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
+#include <WiFi.h> // Notre IP (CYD auxiliaires)
 
 
 void CConfig::setup(const String pref, std::vector<CIPModule> *ctrl, std::vector<CIPModule> *escl) {
@@ -19,6 +20,7 @@ void CConfig::setup(const String pref, std::vector<CIPModule> *ctrl, std::vector
   // C'est home/configuration/command. 
   #ifndef __LOCAL_MODE__
   topic_config_maitre_command = domotique_prefix + mqttConfigMaitreSubTopic + "command";
+  topic_config_maitre_state   = domotique_prefix + mqttConfigMaitreSubTopic + "state";
   #endif
 }
 
@@ -185,9 +187,12 @@ void CConfig::loadFromNVS() {
   mulDateReveil = prefs.getLong((mPrefixNVS+"dtRev").c_str(), 0UL);
   mulWakeDuration = prefs.getLong((mPrefixNVS+"wakeI").c_str(), DEFAULT_WAKE_DURATION_SEC);
   mulWatchDogAlivePeriod = prefs.getLong((mPrefixNVS+"wdog").c_str(), DEFAULT_WATCHDOG_ALIVE_PERIOD);
+  #ifdef __LOCAL_MODE__
+  mulAttenteMaxCydAux = prefs.getLong((mPrefixNVS+"cydMax").c_str(), DEFAULT_ATTENTE_MAX_CYD_AUX);
+  #endif
 
   prefs.end();
-   
+
 }
 void CConfig::saveToNVS() {
   prefs.begin(nvs_namespace, false);
@@ -206,6 +211,9 @@ void CConfig::saveToNVS() {
   prefs.putLong((mPrefixNVS+"dtSom").c_str(), mulDateMiseEnSommeil);
   prefs.putLong((mPrefixNVS+"dtRev").c_str(), mulDateReveil);
   prefs.putLong((mPrefixNVS+"wdog").c_str(), mulWatchDogAlivePeriod);
+  #ifdef __LOCAL_MODE__
+  prefs.putLong((mPrefixNVS+"cydMax").c_str(), mulAttenteMaxCydAux);
+  #endif
 
   prefs.end();
 }
@@ -215,6 +223,60 @@ void CConfig::handleMqttCommand(const String& payload) {
   cmd.toUpperCase();
   cmd.trim();
       
+}
+
+#ifdef __LOCAL_MODE__
+//--------------------------------------------------------------------------
+// CYD auxiliaires (liste des contrôleurs, série 5)
+//
+// noteContactCydAuxiliaire() : message reçu d'un CYD auxiliaire
+//   ("DEVICE CYD <nom> ..." à son démarrage, "<nom> ALIVEWDOG ..." périodiquement)
+//   Ajoute le CYD à la liste s'il est inconnu (ex. après un redémarrage du CYD principal),
+//   lui donne l'attente max des CYD auxiliaires et note le contact.
+//   nom vide (ancien format "ALIVEWDOG <date> <heure> <IP>") : contact noté d'après l'IP seulement.
+//   Nos propres messages (notre IP) sont ignorés : le CYD principal n'est jamais retiré.
+// Retour : nombre de modules mis à jour
+//--------------------------------------------------------------------------
+int CConfig::noteContactCydAuxiliaire(const String& nom, const String& ip) {
+  if (mvsControleurs == nullptr || ip.isEmpty()) return 0;
+  if (ip == WiFi.localIP().toString()) return 0;
+  if (!nom.isEmpty() && onEquipement != nullptr)
+    onEquipement(nom, ip); // Ajout si inconnu, sinon contact noté (ajouterControleur())
+  int n = 0;
+  for (auto& module : *mvsControleurs) {
+    if (module.getIP() != ip) continue;
+    if (!nom.isEmpty() && module.getNom() != nom) continue;
+    module.setAttenteMax(mulAttenteMaxCydAux); // Relu à chaque contact : une modification de la page Web s'applique tout de suite
+    module.touche();
+    n++;
+  }
+  DBG(DBG_CONFIG, "CConfig::noteContactCydAuxiliaire() - nom \"%s\" - IP %s - %d module(s) mis à jour - attente max %lu s\n",
+      nom.c_str(), ip.c_str(), n, mulAttenteMaxCydAux);
+  return n;
+}
+#endif // __LOCAL_MODE__
+
+//--------------------------------------------------------------------------
+// Retire de la liste des contrôleurs (série 5) les modules muets depuis plus que leur attente max :
+// capteurs (leur intervalle de watchdog) et CYD auxiliaires (CYD principal seulement).
+// Les modules d'attente max nulle ne sont jamais retirés.
+// Retour : nombre de modules retirés
+//--------------------------------------------------------------------------
+int CConfig::purgeControleurs() {
+  if (mvsControleurs == nullptr) return 0;
+  unsigned long now = millis();
+  int n = 0;
+  for (auto it = mvsControleurs->begin(); it != mvsControleurs->end(); ) {
+    unsigned long ulAttente = it->getAttenteMax();
+    if (ulAttente > 0 && now - it->getDernierContact() > ulAttente * 1000UL) {
+      DBG(DBG_CONFIG, "CConfig::purgeControleurs() - %s (%s) retiré : muet depuis %lu s (attente max %lu s)\n",
+          it->getNom().c_str(), it->getIP().c_str(), (now - it->getDernierContact()) / 1000UL, ulAttente);
+      it = mvsControleurs->erase(it);
+      n++;
+    }
+    else ++it;
+  }
+  return n;
 }
 
 void CConfig::loadFromWebServer (WebServer& server) {
@@ -229,6 +291,9 @@ void CConfig::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"wakeI").c_str())) mulWakeDuration = server.arg((mPrefixNVS+"wakeI")).toInt();
   if (server.hasArg((mPrefixNVS+"wakeI").c_str())) mulWakeDuration = server.arg((mPrefixNVS+"wakeI")).toInt();
   if (server.hasArg((mPrefixNVS+"wdog").c_str())) mulWatchDogAlivePeriod = server.arg((mPrefixNVS+"wdog")).toInt();
+  #ifdef __LOCAL_MODE__
+  if (server.hasArg((mPrefixNVS+"cydMax").c_str())) mulAttenteMaxCydAux = server.arg((mPrefixNVS+"cydMax")).toInt();
+  #endif
 
   DBG(DBG_CONFIG, "CConfig::loadFromWebServer () - Nom equ : %s\n", nomEquipement.c_str());
 }
@@ -248,8 +313,11 @@ String CConfig::getHTML() {
         "<div><label>Préfixe Configuration</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_pre") + " value=\"" + mqttConfigSubTopic + "\"></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Intervalle de remontée Watchdog Alive (s)</label><input type=\"text\" name=" + (mPrefixNVS+"wdog") + " value=\"" + mulWatchDogAlivePeriod + "\"></div>"
-      "</div>";
+        "<div><label>Intervalle de remontée Watchdog Alive (s)</label><input type=\"text\" name=" + (mPrefixNVS+"wdog") + " value=\"" + mulWatchDogAlivePeriod + "\"></div>";
+    #ifdef __LOCAL_MODE__
+    html += "<div><label>Attente max des CYD auxiliaires (s, 0 = jamais retirés)</label><input type=\"text\" name=" + (mPrefixNVS+"cydMax") + " value=\"" + mulAttenteMaxCydAux + "\"></div>";
+    #endif
+    html += "</div>";
     #ifndef __LOCAL_MODE__
     html +=  "<div class=\"row\">"
         "<div><label>Préfixe Configuration du Maître</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_mai") + " value=\"" + mqttConfigMaitreSubTopic + "\"></div>"
@@ -265,7 +333,10 @@ void CConfig::print() const {
   DBG(DBG_CONFIG, "  Deep Sleep                : %s\n", mbDeepSleepActive ? "ACTIF" : "INACTIF");
   DBG(DBG_CONFIG, "  Intervalle Deep Sleep     : %ld min\n", mulSleepDuration);
   DBG(DBG_CONFIG, "  Intervalle Entre Sleep    : %ld min\n", mulWakeDuration);
-  DBG(DBG_CONFIG, "  Intervalle Watchdog Alive : %ld ms\n", mulWatchDogAlivePeriod);
+  DBG(DBG_CONFIG, "  Intervalle Watchdog Alive : %ld s\n", mulWatchDogAlivePeriod);
+  #ifdef __LOCAL_MODE__
+  DBG(DBG_CONFIG, "  Attente max CYD auxiliaires : %ld s\n", mulAttenteMaxCydAux);
+  #endif
   DBG(DBG_CONFIG, "  Préfixe domotique         : %s\n", domotique_prefix.c_str());
   DBG(DBG_CONFIG, "  Préfixe configuration     : %s\n", mqttConfigSubTopic.c_str());
   #ifndef __LOCAL_MODE__

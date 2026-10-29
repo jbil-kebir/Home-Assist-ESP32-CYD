@@ -108,6 +108,7 @@ void MyWebServer::handleRoot() {
   #ifdef __LOCAL_MODE__
   html += config.projecteur->getHTML();
   html += config.guirlande->getHTML();
+  html += config.lumiereCave->getHTML();
   html += config.chauffageSb->getHTML();
 
   #ifdef __LOCAL_DS18B20__
@@ -135,6 +136,7 @@ void MyWebServer::handleRoot() {
 
   html += config.mRemoteThCave->getHTML();
   html += config.mRemoteBatCave->getHTML();
+  if (config.mRemoteJnCave != nullptr) html += config.mRemoteJnCave->getHTML();
 
   html += config.mRemoteThNomade->getHTML();
   html += config.mRemoteBatNomade->getHTML();
@@ -184,6 +186,7 @@ void MyWebServer::handleSave() {
   config.chaudiere->loadFromWebServer(server);
   config.projecteur->loadFromWebServer(server);
   config.guirlande->loadFromWebServer(server);
+  config.lumiereCave->loadFromWebServer(server);
   config.chauffageSb->loadFromWebServer(server);
   #ifdef __LOCAL_DS18B20__
   config.ds18b20->loadFromWebServer(server);
@@ -209,6 +212,7 @@ void MyWebServer::handleSave() {
   config.mRemoteThCave->loadFromWebServer(server);
   config.mRemoteTor->loadFromWebServer(server);
   config.mRemoteBatCave->loadFromWebServer(server);
+  if (config.mRemoteJnCave != nullptr) config.mRemoteJnCave->loadFromWebServer(server);
 
   config.mRemoteThNomade->loadFromWebServer(server);
   config.mRemoteTorNomade->loadFromWebServer(server);
@@ -246,6 +250,7 @@ void MyWebServer::handleSave() {
  // === SAUVEGARDE DES APPAREILS 433 MHz ===
   config.projecteur->saveToNVS();
   config.guirlande->saveToNVS();
+  config.lumiereCave->saveToNVS();
   config.chauffageSb->saveToNVS();
   #ifdef __LOCAL_DS18B20__
   // === SAUVEGARDE DU THERMOMETRE LOCAL ===
@@ -274,6 +279,7 @@ void MyWebServer::handleSave() {
   config.mRemoteThCave->saveToNVS();
   config.mRemoteTor->saveToNVS();
   config.mRemoteBatCave->saveToNVS();
+  if (config.mRemoteJnCave != nullptr) config.mRemoteJnCave->saveToNVS();
 
   config.mRemoteThNomade->saveToNVS();
   config.mRemoteTorNomade->saveToNVS();

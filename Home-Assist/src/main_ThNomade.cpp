@@ -19,7 +19,7 @@ CRemoteDHT20 mRemoteThNomade(String("ThNomade"), &ecran);
 CRemoteBatterieAA mRemoteBatNomade(String("BatNomade"), &ecran);
 CRemoteTor mRemoteTorNomade(String("TorNomade"), &ecran);
 
-extern int ajouterControleur(const String& nom, const String& ip);
+extern int ajouterControleur(const String& nom, const String& ip, unsigned long attenteMax = 0);
 
 void setup_ThNomade() {
   mRemoteThNomade.begin("thnmf_"); // Type, etage, lieu (thermomètre, 1er, chanmre)
@@ -65,10 +65,10 @@ void setup_ThNomade() {
       return mqtt.publish(topic, payload);
   });
   mRemoteThNomade.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-      return ajouterControleur(nom, ip);
+      return ajouterControleur(nom, ip, mRemoteThNomade.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
   mRemoteTorNomade.setonEquipementCallback([](const String& nom, const String& ip) -> int {
-      return ajouterControleur(nom, ip);
+      return ajouterControleur(nom, ip, mRemoteTorNomade.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog
   });
 
 }

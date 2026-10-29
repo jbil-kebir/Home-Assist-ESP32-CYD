@@ -31,8 +31,8 @@ enum {
   BTN_GUIRLANDE_TOGGLE,
   BTN_CHAUFFAGE_ON_ACTIVE,
   BTN_CHAUFFAGE_ON,
-  BTN_CHAUFFAGE_OFF_ACTIVE,
-  BTN_CHAUFFAGE_OFF,
+  BTN_LUMIERE_CAVE_ACTIVE,
+  BTN_LUMIERE_CAVE_TOGGLE,
   BTN_CHAUDIERE_ON_ACTIVE,
   BTN_CHAUDIERE_ON,
   BTN_CHAUDIERE_OFF_ACTIVE,
@@ -50,14 +50,14 @@ private:
   CMyBouton   mBtnProjecteur,
               mBtnGuirlande,
               mBtnChauffageON,
-              mBtnChauffageOFF,
+              mBtnLumiereCave,
               mBtnChaudiereON,
               mBtnChaudiereOFF;
 
   CMyBoutonActif  mBtnProjecteurActif,
                   mBtnGuirlandeActif,
                   mBtnChauffageONActif,
-                  mBtnChauffageOFFActif,
+                  mBtnLumiereCaveActif,
                   mBtnChaudiereONActif,
                   mBtnChaudiereOFFActif;
 
@@ -133,10 +133,15 @@ public:
   void activeProjecteur(bool activ=true, bool bDrawInterface=true);
   void desactiveGuirlande(bool bDrawInterface=true);
   void activeGuirlande(bool activ=true, bool bDrawInterface=true);
+  void desactiveLumiereCave(bool bDrawInterface=true);
+  void activeLumiereCave(bool activ=true, bool bDrawInterface=true);
   void desactiveChauffageSb(bool bDrawInterface=true);
   void activeChauffageSb(bool activ=true, bool bDrawInterface=true);
   void setEtatPastilleChauffageSb(std::function<int()> f) { mBtnChauffageON.mfEtatPastille = f; } // Présence du C3
   void updatePastilleChauffageSb();
+  // Jour / nuit de la cave sur le bouton Cave : couleur de la pastille (voir CMyBouton::mfCouleurPastille)
+  void setCouleurPastilleLumiereCave(std::function<int()> f) { mBtnLumiereCave.mfCouleurPastille = f; }
+  void updatePastilleLumiereCave();
   void updateSleepTimeout(int32_t st);
   //String setLastStatusMessage(String& s);
   //String getLastStatusMessage();
@@ -178,6 +183,7 @@ public:
   void updateRemoteDevice_ThCaveH(const String& nom, float val);
   void updateRemoteDevice_ThCaveTor(const String& nom, int val);
   void updateRemoteBat_ThCave(const String& nom, int etatBatterie, float val);
+  void updateRemoteJourNuit_ThCave(int eclairement, int etat);
 
   void updateRemoteDevice_ThNomade(const String& nom, float val);
   void updateRemoteDevice_ThNomadeH(const String& nom, float val);

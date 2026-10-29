@@ -23,20 +23,41 @@ int CRCDevice::activeEquipement() {
   return ret;
 }
 
+// Valeurs par défaut d'un appareil neuf (NVS vide), à appeler avant setup().
+// Sans appel : valeurs historiques (code du projecteur, sous-topic « thermometre/ » de CEquipementBase).
+void CRCDevice::setDefauts(unsigned long codeDef, int protocoleDef, int impulsionDef, const String& nomDef,
+                           const String& libelleDef, const String& subTopicDef) {
+  mulCodeDefaut = codeDef;
+  miProtocoleDefaut = protocoleDef;
+  miImpulsionDefaut = impulsionDef;
+  msNomDefaut = nomDef;
+  msLibelleDefaut = libelleDef;
+  msSubTopicDefaut = subTopicDef;
+}
+
 void CRCDevice::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
 
-  code = prefs.getULong((mPrefixNVS+"code").c_str(), 0x3D3B72);
-  protocol = prefs.getInt((mPrefixNVS+"proto").c_str(), 1);
-  pulseLength = prefs.getInt((mPrefixNVS+"pulse").c_str(), 349);
+  code = prefs.getULong((mPrefixNVS+"code").c_str(), mulCodeDefaut);
+  protocol = prefs.getInt((mPrefixNVS+"proto").c_str(), miProtocoleDefaut);
+  pulseLength = prefs.getInt((mPrefixNVS+"pulse").c_str(), miImpulsionDefaut);
   repeat = prefs.getInt((mPrefixNVS+"repeat").c_str(), 5);
   frequency = prefs.getFloat((mPrefixNVS+"freq").c_str(), 433.92);
-  buttonName = prefs.getString((mPrefixNVS+"name").c_str(), "Projecteur");
+  buttonName = prefs.getString((mPrefixNVS+"name").c_str(), msLibelleDefaut);
 //  etat = prefs.getBool((mPrefixNVS+"st").c_str(), false);
-  
+  bool bNomEnregistre = prefs.isKey((mPrefixNVS+"nom").c_str());
+  bool bSubTopicEnregistre = prefs.isKey((mPrefixNVS+"subtopic").c_str());
+
   prefs.end();
-   
+
   CEquipementBase::loadFromNVS();
+  // Appareil neuf : nom et sous-topic par défaut de l'appareil (sinon « Thermomètre » / « thermometre/ »)
+  if (!bNomEnregistre && msNomDefaut.length() > 0) nomEquipement = msNomDefaut;
+  if (!bSubTopicEnregistre && msSubTopicDefaut.length() > 0) {
+    mqttSubTopic = msSubTopicDefaut;
+    mqttSubTopicCommand = domotique_prefix + mqttSubTopic + "command";
+    mqttSubTopicState   = domotique_prefix + mqttSubTopic + "state";
+  }
   etatStr = etat ? "ON" : "OFF"; // etat est récupéré depuis CEquipementBase
 
 }
