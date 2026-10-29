@@ -66,7 +66,7 @@ void MyWebServer::handleRoot() {
         "<form action=\"/force_off\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-off\">Forcer OFF</button></form>"
         "<form action=\"/toggle_p\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-orange\">Projecteur</button></form>"
         "<form action=\"/toggle_g\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-yellow\">Guirlande</button></form>"
-        "<form action=\"/logs\" method=\"GET\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-gray\">Logs</button></form>"
+        "<form action=\"/logs\" method=\"GET\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-gray\">Journal</button></form>"
       "</div>"
 
       "<hr style=\"margin: 40px 0;\">"
@@ -507,44 +507,89 @@ void MyWebServer::handleForceOff() {
   server.send(200, "text/html", html);
 }
 
+//------------------------------------------------------------------------------
+// Journal : page /logs, rafraîchie toutes les 3 s depuis /logs/data (voir MyJournal.h).
+// Filtre / Masquer : tri des lignes dans le navigateur (mémorisé dans le navigateur) ; le journal garde tout.
+// Cases DBG : changent gDebugFlags en direct (/logs/dbg), sans NVS : retour à la valeur de main.cpp au redémarrage.
+//------------------------------------------------------------------------------
 void MyWebServer::handleLogs() {
   String html = F(
     "<!DOCTYPE html><html lang=\"fr\"><head>"
     "<meta charset=\"UTF-8\">"
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-    "<title>Logs</title>"
+    "<title>Journal</title>"
     "<style>"
     "body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:20px;background:#f0f0f0;}"
     "h1{text-align:center;color:#333;}"
-    ".controls{display:flex;gap:10px;margin-bottom:15px;align-items:center;flex-wrap:wrap;}"
+    ".controls{display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;}"
     ".btn{padding:10px 22px;font-size:15px;color:white;border:none;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-block;}"
-    ".btn-gray{background:#6c757d;}.btn-red{background:#dc3545;}"
+    ".btn-gray{background:#6c757d;}.btn-red{background:#dc3545;}.btn-orange{background:#fd7e14;}"
+    ".champ{flex:1;min-width:160px;padding:8px;font-size:14px;border:1px solid #ccc;border-radius:6px;}"
     "#logbox{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:13px;"
     "padding:15px;border-radius:8px;height:500px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}"
-    "#status{font-size:12px;color:#888;margin-top:6px;text-align:right;}"
+    "#status{font-size:12px;color:#888;margin-top:6px;display:flex;justify-content:space-between;}"
     "label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:15px;}"
+    ".dbg{background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px 12px;font-size:14px;}"
+    ".dbg label{font-size:14px;}"
     "</style></head><body>"
-    "<h1>Journal de logs</h1>"
+    "<h1>Journal</h1>"
     "<div class=\"controls\">"
     "<a href=\"/\" class=\"btn btn-gray\">Retour</a>"
+    "<button type=\"button\" id=\"pause\" class=\"btn btn-gray\">Pause</button>"
     "<form action=\"/logs/clear\" method=\"POST\" style=\"margin:0\">"
     "<button type=\"submit\" class=\"btn btn-red\">Vider</button></form>"
     "<label><input type=\"checkbox\" id=\"autoscroll\" checked> Auto-scroll</label>"
     "</div>"
+    "<div class=\"controls\">"
+    "<input type=\"text\" id=\"filtre\" class=\"champ\" placeholder=\"Filtre : lignes contenant… (a|b)\">"
+    "<input type=\"text\" id=\"masque\" class=\"champ\" placeholder=\"Masquer : lignes contenant… (a|b)\">"
+    "</div>"
+  );
+  // Catégories de traces DBG (global.h)
+  static const struct { uint32_t bit; const char* nom; } dbg[] = {
+    {DBG_MQTT, "MQTT"}, {DBG_CAPTEURS, "Capteurs"}, {DBG_ACTIONNEURS, "Actionneurs"}, {DBG_CHAUDIERE, "Chaudière"},
+    {DBG_CONFIG, "Config"}, {DBG_RESEAU, "Réseau"}, {DBG_ECRAN, "Écran"}, {DBG_NOEUD, "Nœud SdB"}
+  };
+  html += F("<div class=\"controls dbg\" id=\"dbg\"><b>Traces DBG :</b>");
+  for (const auto& d : dbg) {
+    html += "<label><input type=\"checkbox\" data-b=\"" + String(d.bit) + "\"" + String((gDebugFlags & d.bit) ? " checked" : "") + "> " + d.nom + "</label>";
+  }
+  html += F("<span style=\"color:#888;font-size:12px\">(jusqu'au prochain redémarrage)</span></div>");
+  html += F(
     "<div id=\"logbox\">(chargement...)</div>"
-    "<div id=\"status\"></div>"
+    "<div id=\"status\"><span id=\"nb\"></span><span id=\"maj\"></span></div>"
     "<script>"
-    "const box=document.getElementById('logbox');"
-    "const status=document.getElementById('status');"
-    "const as=document.getElementById('autoscroll');"
+    "const box=document.getElementById('logbox'),maj=document.getElementById('maj'),nb=document.getElementById('nb');"
+    "const as=document.getElementById('autoscroll'),fi=document.getElementById('filtre'),ma=document.getElementById('masque'),pb=document.getElementById('pause');"
+    "let brut='',pause=false;"
+    "function lire(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}"
+    "function ecrire(k,v){try{localStorage.setItem(k,v);}catch(e){}}"
+    "fi.value=lire('jrnl_filtre');ma.value=lire('jrnl_masque');"
+    "function motifs(s){return s.toLowerCase().split('|').map(x=>x.trim()).filter(x=>x);}"
+    "function affiche(){"
+    "const f=motifs(fi.value),m=motifs(ma.value);"
+    "const lignes=brut.split('\\n').filter(l=>l);"
+    "const g=lignes.filter(l=>{const b=l.toLowerCase();return (!f.length||f.some(x=>b.includes(x)))&&!m.some(x=>b.includes(x));});"
+    "box.textContent=g.join('\\n');"
+    "if(as.checked)box.scrollTop=box.scrollHeight;"
+    "nb.textContent=g.length+' / '+lignes.length+' lignes';"
+    "}"
+    "fi.oninput=function(){ecrire('jrnl_filtre',fi.value);affiche();};"
+    "ma.oninput=function(){ecrire('jrnl_masque',ma.value);affiche();};"
+    "pb.onclick=function(){pause=!pause;pb.textContent=pause?'Reprendre':'Pause';pb.className='btn '+(pause?'btn-orange':'btn-gray');if(!pause)refresh();};"
     "async function refresh(){"
+    "if(pause)return;"
     "try{"
     "const r=await fetch('/logs/data');"
-    "box.textContent=await r.text();"
-    "if(as.checked)box.scrollTop=box.scrollHeight;"
-    "status.textContent='Mis à jour : '+new Date().toLocaleTimeString();"
-    "}catch(e){status.textContent='Erreur de connexion';}"
+    "brut=await r.text();affiche();"
+    "maj.textContent='Mis à jour : '+new Date().toLocaleTimeString();"
+    "}catch(e){maj.textContent='Erreur de connexion';}"
     "}"
+    "document.querySelectorAll('#dbg input').forEach(function(c){c.onchange=async function(){"
+    "let f=0;document.querySelectorAll('#dbg input:checked').forEach(function(x){f+=parseInt(x.dataset.b);});"
+    "try{await fetch('/logs/dbg',{method:'POST',body:new URLSearchParams({f:f})});maj.textContent='Traces DBG modifiées';}"
+    "catch(e){maj.textContent='Erreur de connexion';}"
+    "};});"
     "refresh();setInterval(refresh,3000);"
     "</script></body></html>"
   );
@@ -552,13 +597,22 @@ void MyWebServer::handleLogs() {
 }
 
 void MyWebServer::handleLogsData() {
-  server.send(200, "text/plain; charset=utf-8", gLogger.getContent());
+  server.send(200, "text/plain; charset=utf-8", gJournal.getContenu());
 }
 
 void MyWebServer::handleLogsClear() {
-  gLogger.clear();
+  gJournal.vide();
   server.send(200, "text/html",
     F("<html><head><meta http-equiv='refresh' content='0;url=/logs'></head><body></body></html>"));
+}
+
+// Cases DBG de la page /logs : nouvelle valeur de gDebugFlags (non sauvegardée)
+void MyWebServer::handleLogsDbg() {
+  if (server.hasArg("f")) {
+    gDebugFlags = (uint32_t)strtoul(server.arg("f").c_str(), nullptr, 10);
+    Serial.printf("Traces DBG : gDebugFlags = 0x%08lX\n", (unsigned long)gDebugFlags);
+  }
+  server.send(200, "text/plain", String(gDebugFlags));
 }
 
 void MyWebServer::handleNotFound() {
@@ -576,6 +630,7 @@ void MyWebServer::setup() {
   server.on("/logs",       HTTP_GET,  [this]() { handleLogs(); });
   server.on("/logs/data",  HTTP_GET,  [this]() { handleLogsData(); });
   server.on("/logs/clear", HTTP_POST, [this]() { handleLogsClear(); });
+  server.on("/logs/dbg",   HTTP_POST, [this]() { handleLogsDbg(); });
   server.onNotFound([this]() { handleNotFound(); });
   server.begin();
   DBG(DBG_RESEAU, "Serveur web démarré\n");

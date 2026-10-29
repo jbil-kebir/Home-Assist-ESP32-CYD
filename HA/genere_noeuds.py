@@ -149,8 +149,8 @@ template:""")
             {{{{ p[1] | regex_replace(' \\d{{1,3}}(\\.\\d{{1,3}}){{3}}$', '') if p | length > 1 else '' }}}}
 
   # ---------- {nom} : réponse STATUS ----------
-  # LoRa : une ligne « {nom} ETAT <date> <heure> | Wdog : ... | Uptime : ...s <IP> »
-  # Wi-Fi : plusieurs lignes « === ÉTAT {nom} === », date, IP, Wdog, Uptime (remises sur une ligne, séparées par « | »)
+  # Wi-Fi et LoRa : une ligne « {nom} ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
+  # Ancien firmware Wi-Fi (avant Capteur 2.1) : plusieurs lignes « === ÉTAT {nom} === » (remises sur une ligne, séparées par « | »)
   - trigger:
       - trigger: mqtt
         topic: "home/conf{i}/state"

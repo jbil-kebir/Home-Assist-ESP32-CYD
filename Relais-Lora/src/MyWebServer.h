@@ -21,6 +21,9 @@ private:
   void handleSave();
   void handleCapteurs();
   void handleCapteursSave();
+  void handleLogs();      // Journal (voir MyJournal.h)
+  void handleLogsData();
+  void handleLogsClear();
   void handleNotFound();
 
 public:

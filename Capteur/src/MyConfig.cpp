@@ -987,9 +987,20 @@ void CConfig::setWatchdogPeriod(unsigned long st) {
   Serial.println("Watchdog ALIVE - Nouvelle période : " + String(mulWatchdogPeriod) + " s");
 }
 
-// Ligne ajoutée aux messages STATUS (MQTT et LoRa)
-String CConfig::getWatchdogStatus() const {
-  return "Wdog   : " + String(mbWatchdogActive ? "ACTIF " : "INACTIF ") + String(mulWatchdogPeriod) + "s" + String(mbDeepSleepActive ? " (ignoré : deep sleep)" : "") + "\n";
+// Réponse à STATUS, identique en Wi-Fi (MQTT) et en LoRa :
+//   "<nom> ETAT <date> <heure> | IP : <ip> | Wdog : ACTIF 600s (ignoré : deep sleep) | Uptime : 3s"
+// Une seule ligne et aucun '=' : Relais-Lora refuse un '=' entre les bordures START_STOP.
+// Sans heure valide (LoRa seul), getDate() / getTime() rendent les jetons DATE et TIME, remplacés par le relais.
+String CConfig::getStatusLigne() const {
+  String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+  String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+  String s = nomEquipement + " ETAT " + sDate + " " + sTime;
+  if (WiFi.status() == WL_CONNECTED) { // On peut être en Lora et avoir une adresse IP (voir commutateur _WIFI_MODE_ dans global.h)
+    s += " | IP : " + WiFi.localIP().toString();
+  }
+  s += " | Wdog : " + String(mbWatchdogActive ? "ACTIF " : "INACTIF ") + String(mulWatchdogPeriod) + "s" + String(mbDeepSleepActive ? " (ignoré : deep sleep)" : "");
+  s += " | Uptime : " + String(millis() / 1000) + "s";
+  return s;
 }
 
 //

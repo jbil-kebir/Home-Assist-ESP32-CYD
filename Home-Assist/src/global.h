@@ -1,6 +1,19 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+//------------------------------------------------------------------------------
+// Journal web (http://<IP>/logs) : Serial est redirigé vers gSerialJournal, qui écrit
+// sur le port série ET dans le journal (voir MyJournal.h, même fichier que Capteur et Relais-Lora).
+// Arduino.h doit être inclus avant le #define (il déclare le vrai Serial).
+// Les fichiers qui n'incluent pas global.h écrivent seulement sur le port série.
+//------------------------------------------------------------------------------
+#include <Arduino.h>
+#include "MyJournal.h"
+#ifdef Serial
+#undef Serial
+#endif
+#define Serial gSerialJournal
+
 //----------------------------------------------------------------------------
 // Si cette ligne est commentée, le CC1101 et le capteur de température doivent 
 // être présents.
@@ -109,12 +122,14 @@
 
 
 // Version du logiciel
-#define VERSION "3.1"
+#define VERSION "3.2"
 
 
 //----------------------------------------------------------------------------
 // Système de debug par catégories (bitmask cumulatif)
 // Usage dans main.cpp : gDebugFlags = DBG_MQTT | DBG_CAPTEURS;
+// Modifiable en direct par les cases de la page /logs (non sauvegardé : valeur de main.cpp au redémarrage).
+// Une trace DBG va sur Serial (donc dans le journal web) et est publiée sur MQTT home/log (MyLogger).
 //----------------------------------------------------------------------------
 #include <Arduino.h>
 #include "MyLogger.h"

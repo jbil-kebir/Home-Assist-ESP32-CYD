@@ -2,10 +2,12 @@
 #define MYJOURNAL_H
 
 //------------------------------------------------------------------------------
-// Journal consultable sur la page web du capteur (http://<IP>/logs)
+// Journal consultable sur la page web (http://<IP>/logs).
+// Même fichier dans Capteur, Relais-Lora et Home-Assist (src/MyJournal.*) : garder les trois copies identiques.
 //
 // global.h redirige Serial vers gSerialJournal : tout ce qui est écrit sur Serial part sur le
-// port série ET dans le journal, ligne par ligne, horodaté (secondes depuis le démarrage).
+// port série ET dans le journal, ligne par ligne, horodaté : heure locale [HH:MM:SS.mmm] dès que
+// l'heure est connue (NTP et fuseau réglés), sinon secondes depuis le démarrage [s.mmm].
 //
 // Les dernières lignes sont aussi copiées en mémoire RTC (RTC_NOINIT), qui survit à un
 // redémarrage logiciel (plantage, watchdog, ESP.restart(), souvent brownout) : au démarrage
@@ -20,12 +22,14 @@
 // Ce fichier ne doit pas inclure global.h (MyJournal.cpp utilise le vrai Serial).
 //------------------------------------------------------------------------------
 #include <Arduino.h>
+#include <time.h>
 
 constexpr uint8_t JOURNAL_NB_LIGNES      = 100;
 constexpr uint8_t JOURNAL_LONG_LIGNE     = 160;
 constexpr uint8_t JOURNAL_NB_LIGNES_RTC  = 24;  // Mémoire RTC limitée (8 Ko sur ESP32-C3)
 constexpr uint8_t JOURNAL_LONG_LIGNE_RTC = 120;
 constexpr size_t  JOURNAL_TAILLE_NVS     = 3800; // Octets max sauvegardés en NVS (chaîne NVS : 4000 max)
+constexpr time_t  JOURNAL_HEURE_VALIDE   = 1704067200; // 01/01/2024 : avant, l'heure système n'est pas réglée
 
 class CJournal {
 public:

@@ -29,6 +29,7 @@ private:
   void handleLogs();
   void handleLogsData();
   void handleLogsClear();
+  void handleLogsDbg();   // Cases des catégories DBG de la page /logs
 
 public:
   MyWebServer(CConfig& cfg, CEcran& ecr, CMqtt& mq, CWifi *wifi) : server(80), config(cfg), ecran(ecr), mqtt(mq), mWifi(wifi)/*, rcSwitch(rc)*/ {}

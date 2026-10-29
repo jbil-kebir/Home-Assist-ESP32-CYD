@@ -52,7 +52,7 @@ void MyWebServer::handleRoot() {
         "<form action=\"/toggle_g\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-yellow\">Guirlande</button></form>"
       "</div>"*/
 
-    html +=    "<p class=\"status\"><a href=\"/capteurs\">Capteurs LoRa</a></p>"
+    html +=    "<p class=\"status\"><a href=\"/capteurs\">Capteurs LoRa</a> &nbsp;|&nbsp; <a href=\"/logs\">Journal</a></p>"
       "<hr style=\"margin: 40px 0;\">"
 
       "<form action=\"/save\" method=\"POST\">";
@@ -222,6 +222,89 @@ void MyWebServer::handleCapteursSave() {
   server.send(303);
 }
 
+//------------------------------------------------------------------------------
+// Journal : page /logs, rafraîchie toutes les 3 s depuis /logs/data (voir MyJournal.h).
+// Filtre / Masquer : tri des lignes dans le navigateur (mémorisé dans le navigateur) ; le journal garde tout.
+//------------------------------------------------------------------------------
+void MyWebServer::handleLogs() {
+  String html = F(
+    "<!DOCTYPE html><html lang=\"fr\"><head>"
+    "<meta charset=\"UTF-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+    "<title>Journal</title>"
+    "<style>"
+    "body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:20px;background:#f0f0f0;}"
+    "h1{text-align:center;color:#333;}"
+    ".controls{display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;}"
+    ".btn{padding:10px 22px;font-size:15px;color:white;border:none;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-block;}"
+    ".btn-gray{background:#6c757d;}.btn-red{background:#dc3545;}.btn-orange{background:#fd7e14;}"
+    ".champ{flex:1;min-width:160px;padding:8px;font-size:14px;border:1px solid #ccc;border-radius:6px;}"
+    "#logbox{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:13px;"
+    "padding:15px;border-radius:8px;height:500px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}"
+    "#status{font-size:12px;color:#888;margin-top:6px;display:flex;justify-content:space-between;}"
+    "label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:15px;}"
+    ".dbg{background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px 12px;font-size:14px;}"
+    ".dbg label{font-size:14px;}"
+    "</style></head><body>"
+    "<h1>Journal</h1>"
+    "<div class=\"controls\">"
+    "<a href=\"/\" class=\"btn btn-gray\">Retour</a>"
+    "<button type=\"button\" id=\"pause\" class=\"btn btn-gray\">Pause</button>"
+    "<form action=\"/logs/clear\" method=\"POST\" style=\"margin:0\">"
+    "<button type=\"submit\" class=\"btn btn-red\">Vider</button></form>"
+    "<label><input type=\"checkbox\" id=\"autoscroll\" checked> Auto-scroll</label>"
+    "</div>"
+    "<div class=\"controls\">"
+    "<input type=\"text\" id=\"filtre\" class=\"champ\" placeholder=\"Filtre : lignes contenant… (a|b)\">"
+    "<input type=\"text\" id=\"masque\" class=\"champ\" placeholder=\"Masquer : lignes contenant… (a|b)\">"
+    "</div>"
+  );
+  html += F(
+    "<div id=\"logbox\">(chargement...)</div>"
+    "<div id=\"status\"><span id=\"nb\"></span><span id=\"maj\"></span></div>"
+    "<script>"
+    "const box=document.getElementById('logbox'),maj=document.getElementById('maj'),nb=document.getElementById('nb');"
+    "const as=document.getElementById('autoscroll'),fi=document.getElementById('filtre'),ma=document.getElementById('masque'),pb=document.getElementById('pause');"
+    "let brut='',pause=false;"
+    "function lire(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}"
+    "function ecrire(k,v){try{localStorage.setItem(k,v);}catch(e){}}"
+    "fi.value=lire('jrnl_filtre');ma.value=lire('jrnl_masque');"
+    "function motifs(s){return s.toLowerCase().split('|').map(x=>x.trim()).filter(x=>x);}"
+    "function affiche(){"
+    "const f=motifs(fi.value),m=motifs(ma.value);"
+    "const lignes=brut.split('\\n').filter(l=>l);"
+    "const g=lignes.filter(l=>{const b=l.toLowerCase();return (!f.length||f.some(x=>b.includes(x)))&&!m.some(x=>b.includes(x));});"
+    "box.textContent=g.join('\\n');"
+    "if(as.checked)box.scrollTop=box.scrollHeight;"
+    "nb.textContent=g.length+' / '+lignes.length+' lignes';"
+    "}"
+    "fi.oninput=function(){ecrire('jrnl_filtre',fi.value);affiche();};"
+    "ma.oninput=function(){ecrire('jrnl_masque',ma.value);affiche();};"
+    "pb.onclick=function(){pause=!pause;pb.textContent=pause?'Reprendre':'Pause';pb.className='btn '+(pause?'btn-orange':'btn-gray');if(!pause)refresh();};"
+    "async function refresh(){"
+    "if(pause)return;"
+    "try{"
+    "const r=await fetch('/logs/data');"
+    "brut=await r.text();affiche();"
+    "maj.textContent='Mis à jour : '+new Date().toLocaleTimeString();"
+    "}catch(e){maj.textContent='Erreur de connexion';}"
+    "}"
+    "refresh();setInterval(refresh,3000);"
+    "</script></body></html>"
+  );
+  server.send(200, "text/html", html);
+}
+
+void MyWebServer::handleLogsData() {
+  server.send(200, "text/plain; charset=utf-8", gJournal.getContenu());
+}
+
+void MyWebServer::handleLogsClear() {
+  gJournal.vide();
+  server.send(200, "text/html",
+    F("<html><head><meta http-equiv='refresh' content='0;url=/logs'></head><body></body></html>"));
+}
+
 void MyWebServer::handleNotFound() {
   server.send(404, "text/plain", "Not found");
 }
@@ -231,6 +314,9 @@ void MyWebServer::setup() {
   server.on("/save", HTTP_POST, [this]() { handleSave(); });
   server.on("/capteurs", HTTP_GET, [this]() { handleCapteurs(); });
   server.on("/capteurs_save", HTTP_POST, [this]() { handleCapteursSave(); });
+  server.on("/logs",       HTTP_GET,  [this]() { handleLogs(); });
+  server.on("/logs/data",  HTTP_GET,  [this]() { handleLogsData(); });
+  server.on("/logs/clear", HTTP_POST, [this]() { handleLogsClear(); });
   server.onNotFound([this]() { handleNotFound(); });
   server.begin();
   Serial.println("Serveur web démarré");

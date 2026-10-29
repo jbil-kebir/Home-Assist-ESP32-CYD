@@ -3,6 +3,8 @@
 #include <esp_system.h>
 #include <esp_attr.h>
 #include <Preferences.h>
+#include <sys/time.h>
+#include <time.h>
 
 static const char* JOURNAL_NVS_NAMESPACE = "journal";
 static const char* JOURNAL_NVS_CLE       = "session";
@@ -149,10 +151,21 @@ bool CJournal::sauvegarde(const char* raison) {
   return ok;
 }
 
+// Horodatage : heure locale si l'heure système est réglée (NTP) et le fuseau connu (variable TZ, posée par
+// configTzTime / configTime), sinon secondes depuis le démarrage (au réveil, avant MyDateTime::setup()).
 void CJournal::ajoute(const char* ligne) {
   char buf[JOURNAL_LONG_LIGNE];
-  unsigned long ms = millis();
-  snprintf(buf, sizeof(buf), "[%lu.%03lu] %s", ms / 1000, ms % 1000, ligne);
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  if (tv.tv_sec > JOURNAL_HEURE_VALIDE && getenv("TZ") != nullptr) {
+    struct tm t;
+    localtime_r(&tv.tv_sec, &t);
+    snprintf(buf, sizeof(buf), "[%02d:%02d:%02d.%03ld] %s", t.tm_hour, t.tm_min, t.tm_sec, (long)(tv.tv_usec / 1000), ligne);
+  }
+  else {
+    unsigned long ms = millis();
+    snprintf(buf, sizeof(buf), "[%lu.%03lu] %s", ms / 1000, ms % 1000, ligne);
+  }
   ajouteBrut(buf);
   rtcAjoute(buf);
 }

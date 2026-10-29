@@ -1,3 +1,12 @@
+2.1
+Journal web (/logs) : horodatage à l'heure locale [HH:MM:SS.mmm] dès que l'heure est connue (NTP), sinon [s.mmm] depuis le démarrage
+    Page /logs : champs Filtre et Masquer (plusieurs motifs séparés par |, mémorisés dans le navigateur), bouton Pause
+    MyJournal.* : même fichier dans Capteur, Relais-Lora et Home-Assist
+STATUS : réponse sur une seule ligne en Wi-Fi aussi, même format qu'en LoRa
+    <nom> ETAT <date> <heure> | IP : <ip> | Wdog : ACTIF 600s (ignoré : deep sleep) | Uptime : 3s
+    Construite par CConfig::getStatusLigne() (remplace getWatchdogStatus), appelée par MyMqtt et MyLoraRxTx
+    HA lit toujours l'ancien rapport multiligne « === ÉTAT <nom> === » des nœuds non reflashés
+
 2.0
 Cibles XIAO ESP32-C3 (Wi-Fi) et XIAO ESP32-S3 + Wio-SX1262 (LoRa) ; plateforme espressif32@6.9.0
 Profils de compilation par nœud dans global.h (ThCave, ThRemise, ThChRDC, ThCh1er, ThSdb...)

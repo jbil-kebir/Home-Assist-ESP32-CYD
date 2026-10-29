@@ -1,4 +1,8 @@
 1.3
+Journal web (http://<IP>/logs), comme sur les capteurs, en remplacement du moniteur série
+    MyJournal.* (copie de Capteur) : Serial redirigé vers gSerialJournal (global.h), 100 lignes horodatées
+    Lignes gardées en mémoire RTC et reprises après un plantage / watchdog / brownout, avec la cause du redémarrage
+    Page /logs : Filtre, Masquer, Pause, Vider, Auto-scroll ; lien « Journal » sur la page d'accueil
 File d'attente des commandes de configuration par capteur LoRa
     La commande est réémise dès que le capteur se manifeste (fenêtre d'écoute après son émission)
 Page web « Capteurs LoRa » : état des capteurs, lecture et modification de leur configuration

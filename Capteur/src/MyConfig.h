@@ -188,7 +188,7 @@ public:
   void setWatchdog(bool active);
   void setWatchdogPeriod(unsigned long st);
   void noteEmission(const String& message, bool bAvecTopic = false);
-  String getWatchdogStatus() const;
+  String getStatusLigne() const;
   bool loopWatchdog();
   bool verifieWatchdog(const String& nom, const String& topic);
   bool mesuresToutesRemontees() const;

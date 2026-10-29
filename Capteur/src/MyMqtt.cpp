@@ -221,11 +221,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       client.publish(mConfig.topic_config_state.c_str(), sAccuse.c_str(), false);
     }
     if (message == "STATUS") {
-      String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
-      statusMsg += String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getDate() : "DATE") + " " + String(mConfig.mDateTime != nullptr ? mConfig.mDateTime->getTime() : "TIME") + "\n";
-      statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
-      statusMsg += mConfig.getWatchdogStatus();
-      statusMsg += "Uptime : " + String(millis() / 1000) + "s";
+      String statusMsg = mConfig.getStatusLigne();
 
       client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
       Serial.println("STATUS publié sur " + mConfig.topic_config_state);

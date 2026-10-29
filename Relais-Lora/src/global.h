@@ -1,6 +1,19 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+//------------------------------------------------------------------------------
+// Journal web (http://<IP>/logs) : Serial est redirigé vers gSerialJournal, qui écrit
+// sur le port série ET dans le journal (voir MyJournal.h, copie de Capteur/src/MyJournal.*).
+// Arduino.h doit être inclus avant le #define (il déclare le vrai Serial, parfois sous forme de macro
+// quand ARDUINO_USB_CDC_ON_BOOT=1 : d'où le #undef).
+//------------------------------------------------------------------------------
+#include <Arduino.h>
+#include "MyJournal.h"
+#ifdef Serial
+#undef Serial
+#endif
+#define Serial gSerialJournal
+
 
 //----------------------------------------------------------------------------
 // A décommenter au premier démarrage.
@@ -67,7 +80,7 @@
 
 
 // Version du logiciel
-#define VERSION "1.0"
+#define VERSION "1.3"
 
 
 #endif // __GLOBAL_H__

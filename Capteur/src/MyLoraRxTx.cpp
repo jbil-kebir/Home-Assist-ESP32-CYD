@@ -292,20 +292,7 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
       sendPacket((mConfig->topic_config_state + " " + sAccuse).c_str());
     }
     if (payloadUpper == "STATUS") {
-      // Une seule ligne et aucun '=' : Relais-Lora refuse un '=' entre les bordures START_STOP.
-      // Sans heure valide (LoRa seul), getDate() / getTime() rendent les jetons DATE et TIME, remplacés par le relais.
-      String sDate = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getDate() : "DATE";
-      String sTime = (mConfig->mDateTime != nullptr) ? mConfig->mDateTime->getTime() : "TIME";
-      String statusMsg = String(mConfig->nomEquipement) + " ETAT " + sDate + " " + sTime;
-      if (WiFi.status() == WL_CONNECTED) { // On peut être en Lora et avoir une adresse IP (voir commutateur _WIFI_MODE_ dans global.h)
-        statusMsg += " | IP : " + WiFi.localIP().toString();
-      }
-      String sWdog = mConfig->getWatchdogStatus();
-      sWdog.trim();
-      sWdog.replace("\n", " | ");
-      sWdog.replace("   ", " ");
-      statusMsg += " | " + sWdog;
-      statusMsg += " | Uptime : " + String(millis() / 1000) + "s";
+      String statusMsg = mConfig->getStatusLigne(); // Une seule ligne, sans '=' (voir CConfig::getStatusLigne)
 
       sendPacket((mConfig->topic_config_state + " " + statusMsg).c_str());
       Serial.println("STATUS publié sur " + mConfig->topic_config_state);

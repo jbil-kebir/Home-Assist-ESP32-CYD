@@ -1,3 +1,14 @@
+3.2
+Journal web (/logs) : affiche désormais tout ce qui passe par Serial (comme le moniteur série), plus seulement les traces DBG
+    MyJournal.* (même fichier que Capteur et Relais-Lora) : Serial redirigé vers gSerialJournal (global.h), 100 lignes
+    Horodatage à l'heure locale dès que l'heure est connue (NTP), sinon secondes depuis le démarrage
+    Lignes gardées en mémoire RTC et reprises après un plantage / watchdog / brownout, avec la cause du redémarrage
+    Page /logs : Filtre, Masquer, Pause, Vider, Auto-scroll
+    Cases des catégories DBG (MQTT, Capteurs, ..., Nœud SdB) : changent gDebugFlags en direct, sans NVS
+        (retour à la valeur de main.cpp au redémarrage)
+    MyLogger ne garde plus de lignes : il publie seulement les traces DBG sur MQTT home/log
+    Bouton « Logs » de la page d'accueil renommé « Journal »
+
 3.1
 Purge des contrôleurs muets (série 5)
     Les CYD auxiliaires publient "<nom> ALIVEWDOG <date> <heure> <IP>" sur home/configuration/state
