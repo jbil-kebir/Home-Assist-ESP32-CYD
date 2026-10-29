@@ -467,6 +467,134 @@
                   ]
                 },
                 {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "title": "Nœud chauffage SdB",
+                      "icon": "mdi:remote",
+                      "entities": [
+                        {
+                          "entity": "sensor.noeud_derniere_trame",
+                          "name": "Dernière trame",
+                          "format": "relative"
+                        },
+                        {
+                          "entity": "sensor.noeud_commande_en_attente",
+                          "name": "Commande en attente"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "markdown",
+                      "content": "{% set ip = states('sensor.c3_chauffage_sdb_ip') %}\n{% if ip not in ['unknown', 'unavailable', ''] %}\n**Noeud** : [page Web](http://{{ ip }}/) · [journal](http://{{ ip }}/logs) ({{ ip }})\n\n{% endif %}\n{% set r = states('sensor.noeud_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.noeud_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État (le nœud n'est joignable que chauffage en marche).*\n{% endif %}\n"
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "État",
+                          "icon": "mdi:information",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "noeud",
+                              "commande": "STATUS"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Annuler",
+                          "icon": "mdi:cancel",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "noeud",
+                              "commande": "ANNULER"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Redémarrer",
+                          "icon": "mdi:restart",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "noeud",
+                              "commande": "REBOOT"
+                            },
+                            "confirmation": {
+                              "text": "Redémarrer le Nœud chauffage SdB (seulement s'il est sous tension) ?"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "input_text.noeud_commande",
+                          "name": "Commande libre"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Envoyer",
+                          "icon": "mdi:send",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande_libre",
+                            "data": {
+                              "capteur": "noeud"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Nettoyer retenu",
+                          "icon": "mdi:broom",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_nettoyer_retenu",
+                            "data": {
+                              "capteur": "noeud"
+                            },
+                            "confirmation": {
+                              "text": "Effacer le message retenu sur home/confnoeud/command ?"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
                   "type": "entities",
                   "title": "Programmes chauffage SDB",
                   "show_header_toggle": true,
@@ -536,6 +664,99 @@
                   ],
                   "time_step": 15,
                   "show_header_toggle": false
+                },
+                {
+                  "type": "custom:button-card",
+                  "entity": "sensor.jncave_etat",
+                  "show_icon": false,
+                  "show_name": false,
+                  "show_state": false,
+                  "show_label": true,
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "more-info"
+                  },
+                  "label": "[[[\n  const e = states['sensor.jncave_eclairement'];\n  const v = e ? parseFloat(e.state) : NaN;\n  if (entity && (entity.state === 'Jour' || entity.state === 'Nuit'))\n    return isNaN(v) ? `Cave · ${entity.state}` : `Cave · ${entity.state} · ${v} %`;\n  return 'Cave · —';\n]]]\n",
+                  "styles": {
+                    "card": [
+                      {
+                        "height": "40px"
+                      },
+                      {
+                        "background": "[[[\n  if (entity && entity.state === 'Jour') return 'rgba(255,200,0,0.2)';\n  if (entity && entity.state === 'Nuit') return 'rgba(0,0,150,0.25)';\n  return 'rgba(128,128,128,0.2)';\n]]]\n"
+                      }
+                    ],
+                    "label": [
+                      {
+                        "font-size": "15px"
+                      },
+                      {
+                        "font-weight": 600
+                      },
+                      {
+                        "color": "[[[\n  if (entity && entity.state === 'Jour') return 'darkorange';\n  if (entity && entity.state === 'Nuit') return 'royalblue';\n  return 'grey';\n]]]\n"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "horizontal-stack",
+                  "cards": [
+                    {
+                      "type": "custom:button-card",
+                      "entity": "switch.lumiere_cave_enable",
+                      "name": "",
+                      "show_name": false,
+                      "tap_action": {
+                        "action": "toggle"
+                      },
+                      "icon": "[[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]\n",
+                      "styles": {
+                        "card": [
+                          {
+                            "height": "60px"
+                          },
+                          {
+                            "width": "60px"
+                          },
+                          {
+                            "background": "[[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]\n"
+                          }
+                        ],
+                        "icon": [
+                          {
+                            "color": "[[[return states['switch.lumiere_cave_enable'].state === 'on' ? 'green' : 'red']]]\n"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "custom:button-card",
+                      "entity": "switch.lumiere_cave",
+                      "name": "Lumière cave",
+                      "tap_action": {
+                        "action": "toggle"
+                      },
+                      "icon": "mdi:lightbulb",
+                      "styles": {
+                        "card": [
+                          {
+                            "height": "60px"
+                          },
+                          {
+                            "background": "[[[return states['switch.lumiere_cave'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]\n"
+                          }
+                        ],
+                        "icon": [
+                          {
+                            "color": "[[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]\n"
+                          }
+                        ]
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -1236,11 +1457,14 @@
               "type": "grid",
               "cards": [
                 {
+                  "type": "heading",
+                  "heading": "RLC-843A"
+                },
+                {
                   "type": "tile",
                   "entity": "sensor.rlc_843a_etat_jour_nuit"
                 }
-              ],
-              "title": "RLC-843A"
+              ]
             }
           ]
         }

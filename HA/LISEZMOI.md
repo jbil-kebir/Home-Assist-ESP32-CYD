@@ -14,6 +14,8 @@ Dernier export : 27/10/2026.
 | `packages/` | Paquets inclus par `homeassistant: packages: !include_dir_named packages` |
 | `packages/noeuds_capteurs.yaml` | Pilotage à distance des nœuds capteurs LoRa (via Relais-Lora) et Wi-Fi (réglages, GET, STATUS, REBOOT, ANNULER, nettoyage du retenu, commande libre, éveil/sommeil) — **généré** |
 | `vue-noeuds-capteurs.yaml` | Vue « Nœuds capteurs » du tableau Système, à coller dans l'interface (pas un fichier de HA) — **générée** |
+| `tableau-accueil-complet.yaml` | Tableau Accueil **entier** (6 vues, même contenu que `vue-accueil.yaml` pour la vue Accueil), pour l'**éditeur de configuration brute** (qui remplace tout le tableau) |
+| `vue-accueil.yaml` | Vue « Accueil » du tableau Accueil (export `.storage` du 30/10/2026 + carte « Lumière cave » : état MESURÉ par ThCave, sensor.jncave_etat Jour = Allumée / Nuit = Éteinte, à côté de Chaudière et Cuve), à coller dans l'interface |
 | `vue-actionneurs.yaml` | Vue « Actionneurs » du tableau Accueil (export `.storage` + carte du nœud chauffage SdB), à coller dans l'interface — **générée** |
 | `genere_noeuds.py` | Générateur des trois fichiers ci-dessus à partir de la liste des nœuds (pas un fichier de HA) |
 | `.storage/lovelace_dashboards` | Liste des tableaux de bord |

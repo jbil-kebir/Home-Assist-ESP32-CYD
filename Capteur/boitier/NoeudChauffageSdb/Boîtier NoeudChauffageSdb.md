@@ -14,7 +14,7 @@ Source OpenSCAD commentée : `boitier_noeud.scad` (réglages dans Fenêtre > Cus
 | Pose | dans la salle de bain, à l'abri ; à plat contre le mur, **couvercle face au chauffage** (≈ 1,80 m) |
 | Fixation | 4 vis : 4 oreilles, vis à bois Ø 4 à tête fraisée |
 | Prise USB-C | à gauche, fente |
-| Câble 12 V | seul câble sortant, à droite : fente + serre-câble à l'intérieur |
+| Câble USB 5 V (12 V à l'origine) | seul câble sortant, à droite : fente + serre-câble à l'intérieur |
 | Micro et LED IR | **à l'intérieur**, sous le couvercle : grille devant le micro, LED IR passées dans le couvercle |
 | LED témoins D6 / D7 | visibles par 2 trous du couvercle |
 | Couvercle | vissé |
@@ -37,9 +37,9 @@ Vue de face (posé contre le mur, couvercle vers soi) :
 ```
             (oreille)                         (oreille)
   ◯─────────────────────────────────────────────────◯
-  │                                         [pont]   ╞═ câble 12 V
+  │                                         [pont]   ╞═ câble 5 V
   │ ┌──────────────────────────────────────────────┐ │  (fente ouverte vers le haut)
-  │ │          J5 micro   J6 LED IR      J1 12 V   │ │
+  │ │          J5 micro   J6 LED IR      J1 5 V    │ │
   │ │                   ┌──────┐                   │ │
  ═╡ │ ┌──────┐          │micro │     (IR)   (IR)   │ │
 USB │ │ XIAO │          │ grille                   │ │
@@ -63,14 +63,14 @@ intérieur.
 - Carte vue composants vers soi, **tournée de 180°** par rapport au dessin EasyEDA : XIAO et prise USB-C à gauche,
   prises J1 / J5 / J6 en haut, LED témoins en bas. Le placement de la carte n'a pas été modifié.
 - Bord de la carte à 1 mm des parois gauche et droite, à 4 mm de la paroi basse (antenne) et à 10 mm de la paroi
-  haute (fiches JST, câble 12 V).
+  haute (fiches JST, câble 5 V).
 
 ### 3.2 Prise USB-C (paroi gauche)
 
 - Fente 13 × 8 mm à coins arrondis, centrée sur la prise : Y = 23 mm, **Z = 22,1 mm** (plots 4 + carte 1,6 + 16,5 mm
   mesurés sur le XIAO monté sur barrette femelle, comme pour le Linky).
 
-### 3.3 Câble 12 V (paroi droite)
+### 3.3 Câble d'alimentation USB 5 V (paroi droite)
 
 - Le câble entre dans le bornier J1 par le haut (bornier en haut à droite de la carte), fait un coude et sort par la
   paroi droite : **fente de 5 mm, ouverte vers le haut** (le couvercle la referme), fond arrondi à 8 mm du fond
@@ -128,13 +128,13 @@ intérieur.
 5. Coller l'antenne contre la paroi basse (appui dessous), brancher son câble sur le XIAO.
 6. Couvercle : visser le micro (2 vis M2 × 6, rondelle de mousse autour de la capsule), passer et coller les 2 LED IR.
 7. Brancher les fiches du micro (J5) et des LED IR (J6).
-8. Poser le câble 12 V dans la fente, sur le pont, le serrer avec le collier, le visser dans J1 (+ à droite).
+8. Poser le câble USB 5 V dans la fente, sur le pont, le serrer avec le collier, le visser dans J1 (+ à droite).
 9. Brancher le câble USB-C si besoin, fermer le couvercle (4 vis M3 × 8) en guidant D6 / D7 dans leurs tubes.
 
 ## 5. À vérifier avant impression
 
 - Hauteur réelle de la prise USB-C du XIAO sur la carte montée (22,1 mm prévu).
-- Diamètre du câble 12 V (fente de 5 mm prévue).
+- Diamètre du câble USB 5 V (fente de 5 mm prévue ; un câble USB courant fait 3 à 4 mm).
 - Hauteur réelle des composants sous le micro (C6, C10, JP2 avec cavalier : ≈ 12 mm prévus au-dessus de la carte).
 - Diamètre de la capsule du micro (Ø 10 mesuré ; les plots Ø 3,4 la frôlent à 0,1 mm près).
 - Fiche du câble USB-C utilisé (fente 13 × 8).

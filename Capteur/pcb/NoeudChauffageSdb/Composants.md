@@ -8,10 +8,10 @@ Liste d'achat pour **une carte**. La liste exacte des composants dessinés sur l
 | Repère | Composant | Référence | Qté |
 |---|---|---|---|
 | A1 | Seeed XIAO ESP32-C3 (antenne externe U.FL) | – | 1 |
-| J1 | Bornier à vis 2 points pas 5,0 (bloc secteur 12 V) | XY301V-A-5.0-2P | 1 |
+| J1 | Bornier à vis 2 points pas 5,0 (bloc USB 5 V) | XY301V-A-5.0-2P | 1 |
 | D1, DA | Diode Schottky | 1N5819 | 2 |
 | C1 | Électrolytique 47 µF 25 V (Ø 5, pas 2,0) | 25YXF47MEFC5X11 | 1 |
-| U1 | Régulateur à découpage 5 V 1 A | R-78E5.0-1.0 (Recom) | 1 |
+| U1 | **Non monté** (alimentation USB 5 V) : fil entre les pastilles 1 et 3 | ~~R-78E5.0-1.0 (Recom)~~ | 0 |
 | C6, C10 | Électrolytique 100 µF 16 V (Ø 6,3, pas 2,5) | KM101M016E110A | 2 |
 | C7, C9 | Céramique 100 nF | C320C104K5R5TA | 2 |
 | C8 | Électrolytique 10 µF 16 V (Ø 5, pas 2,0) | UVR1C100MDD | 1 |
@@ -21,7 +21,7 @@ Liste d'achat pour **une carte**. La liste exacte des composants dessinés sur l
 | Q1 | Transistor NPN TO-92 (E-B-C) | 2N2222A | 1 |
 | R1 | Résistance 220 Ω 1/4 W | PCF14JT220R | 1 |
 | R2 | Résistance 10 kΩ 1/4 W | PCF14JT10K0 | 1 |
-| R3 | Résistance 22 Ω 1/4 W | PCF14JT22R0 | 1 |
+| R3 | Résistance 18 Ω 1/4 W (22 Ω avec un bloc 12 V) | PCF14JT18R0 | 1 |
 | R4 | Résistance 100 Ω 1/4 W | PCF14JT100R | 1 |
 | R5 | Résistance 330 Ω 1/4 W | PCF14JT330R | 1 |
 | D6 | LED bleue 5 mm (son) | XL-502UBC | 1 |
@@ -41,7 +41,7 @@ Liste d'achat pour **une carte**. La liste exacte des composants dessinés sur l
 
 | Pièce | Qté | Remarque |
 |---|---|---|
-| Bloc secteur 12 V (tension à vide < 16 V) | 1 | deux fils vers J1 |
+| Bloc USB 5 V ≥ 1 A + câble USB coupé ou adaptateur USB-C vers bornier | 1 | deux fils vers J1 (+ et −) ; **jamais de bloc 12 V** avec U1 ponté (2026-10-29) |
 | Module micro MAX4466 | 1 | sur fil, face au haut-parleur du chauffage |
 | Câble JST-XH 3 broches serti | 1 | vers J5 (3V3, GND, MICRO) |
 | LED infrarouge Everlight IR333C-A (5 mm, 940 nm) | 2 | en série, sur fil, dans le couvercle face au chauffage |
@@ -50,4 +50,4 @@ Liste d'achat pour **une carte**. La liste exacte des composants dessinés sur l
 | Gaine thermorétractable | – | soudures du micro et des LED IR |
 | Boîtier imprimé en 3D | 1 | `Capteur/boitier/NoeudChauffageSdb/` (boîte + couvercle, PETG) |
 | Vis du boîtier | – | 4 vis à bois Ø 4 fraisées (mur), 4 M3 × 6 (carte), 4 M3 × 8 (couvercle), 2 M2 × 6 (micro) |
-| Collier de serrage 2,5 mm, rondelle de mousse | 1 + 1 | serre-câble 12 V ; mousse autour de la capsule du micro |
+| Collier de serrage 2,5 mm, rondelle de mousse | 1 + 1 | serre-câble d'alimentation ; mousse autour de la capsule du micro |

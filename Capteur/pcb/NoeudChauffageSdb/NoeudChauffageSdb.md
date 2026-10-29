@@ -1,6 +1,7 @@
 # NoeudChauffageSdb — Circuit imprimé
 
-Version du 2026-10-18 (carte V 1.0 dessinée) ; mise à jour le 2026-10-24 (LED IR IR333C-A, boîtier tracé : § 6).
+Version du 2026-10-18 (carte V 1.0 dessinée) ; mise à jour le 2026-10-24 (LED IR IR333C-A, boîtier tracé : § 6) et le 2026-10-29 (**alimentation par bloc USB 5 V**
+au lieu du bloc 12 V, circuit imprimé inchangé : § 4.1 et § 5.1).
 **État : schéma, placement, routage, gouttes et sérigraphie FAITS dans EasyEDA Pro ; contrôle des règles (DRC) = 0 erreur ;
 schéma et PCB identiques. Prêt pour l'export .epro2 et la commande** (détail au § 8).
 
@@ -12,7 +13,8 @@ réutilisables seront vus plus tard) ; les mesures faites à l'usage (§ 7) diro
 
 - Commande le chauffage de la salle de bain par **infrarouge** (protocole NEC) depuis la domotique (MQTT).
 - Vérifie que l'ordre a été reçu en écoutant les **bips** du chauffage (≈ 3 950 Hz) avec un micro MAX4466.
-- Écoute continue (pas de veille profonde) → **alimentation secteur** par bloc 12 V.
+- Écoute continue (pas de veille profonde) → **alimentation secteur** par bloc USB 5 V (≥ 1 A) sur le bornier J1
+  (bloc 12 V abandonné le 2026-10-29).
 
 Code : `D:\Developpement\Pilotage_Maison\Capteur`, projet multi-modules ; seule la configuration active de
 `src/global.h` compte ici : `CAPTEUR_MICRO_MAX4466` + `ACTIONNEUR_IR`, carte XIAO ESP32-C3 (env `esp32c3`).
@@ -31,7 +33,7 @@ Les broches du micro et de l'IR sont modifiables par la page Web (NVS) ; les val
 | Sujet | Décision |
 |---|---|
 | Carte | XIAO ESP32-C3 sur barrettes femelles (fiche personnelle « XIAO ESP32-C3 (THT) ») |
-| Alimentation | bloc secteur 12 V (tension à vide < 16 V) → bornier → régulateur à découpage 5 V |
+| Alimentation | **bloc USB 5 V ≥ 1 A → bornier J1 → D1 → pont à la place de U1** (2026-10-29) ; prévu à l'origine : bloc 12 V → régulateur à découpage R-78E |
 | Interrupteur | aucun (nœud fixe) |
 | Micro et LED IR | sur FIL (placés face au chauffage et à son haut-parleur), prises JST-XH |
 | LED IR | 2 × **Everlight IR333C-A** (5 mm, 940 nm) en série ; les HIR204C de l'IR Box sont des 3 mm |
@@ -47,7 +49,7 @@ Les broches du micro et de l'IR sont modifiables par la page Web (NVS) ; les val
 | XIAO avec Wi-Fi | ≈ 100 mA en moyenne, pointes ≈ 350 mA |
 | LED IR | ≈ 100 mA en impulsions (§ 5.2) |
 | LED témoins + micro | < 10 mA |
-| **Total en pointe** | **≈ 0,5 A** (≈ 0,25 A côté 12 V) |
+| **Total en pointe** | **≈ 0,5 A** (fourni directement par le bloc USB) |
 
 Le régulateur choisi (1 A) laisse environ deux fois la pointe estimée.
 
@@ -64,6 +66,11 @@ Le régulateur choisi (1 A) laisse environ deux fois la pointe estimée.
 | JP1 | barrette mâle 2 broches + cavalier, mesure du courant total | barrette 1 × 2 | 1 → `5V_REG` ; 2 → `+5V` |
 | C6 | électrolytique 100 µF 16 V | KM101M016E110A | + → `+5V` ; − → `GND` |
 | C7 | céramique 100 nF | C320C104K5R5TA | `+5V` → `GND` |
+
+**Montage retenu le 2026-10-29 : alimentation USB 5 V, circuit imprimé inchangé.** J1 reçoit le 5 V d'un bloc USB (câble USB
+coupé ou adaptateur USB-C vers bornier) ; **U1 n'est pas monté** : un fil relie ses pastilles 1 (+Vin) et 3 (+Vout), la
+pastille 2 reste vide. D1 garde la protection contre l'inversion des fils. Les réseaux gardent leur nom (`V12` vaut alors
+≈ 4,6 V). Ne **jamais** brancher un bloc 12 V sur une carte montée ainsi : le 12 V arriverait sur le XIAO et les LED IR.
 
 ### 4.2 Page CARTE
 
@@ -119,6 +126,11 @@ Hors carte, non dessinés (connecteurs nommés « vers … ») : bloc secteur 12
   exclu.
 - DA : même rôle que sur la borne Squash (XIAO alimenté par sa broche 5V, USB branché pour le reflashage).
 
+**Alimentation USB 5 V (2026-10-29)** : tout le nœud fonctionne en 5 V ; le 12 V ne servait qu'au R-78E. Budget de tension
+avec U1 remplacé par un pont : bloc 5 V − D1 (0,35 à 0,45 V à 0,5 A) → `+5V` ≈ 4,6 V ; − DA → XIAO ≈ 4,2 V, suffisant pour
+son régulateur 3,3 V. Bloc USB d'au moins 1 A (pointe ≈ 0,5 A). Alimenter par la prise USB-C du XIAO ne convient pas : DA
+empêche cette prise d'alimenter `+5V`, donc les LED IR resteraient éteintes (DA ne doit pas être pontée).
+
 ### 5.2 Émission IR
 
 LED posées : **IR333C-A** (fiche technique : `U:\Info-Developpement\Composants\LED\IR333C-A`) : 940 nm, angle 20°,
@@ -129,7 +141,7 @@ d'essai actuel (HIR204C) fonctionne à 1,80 m avec environ 15 mA (6 V, 197 Ω en
 
 | Repère | Calcul | Valeur | IR Box ESP32 1.0 |
 |---|---|---|---|
-| R3 (série LED) | (5 − 2 × 1,4 − 0,2) / 0,1 A = 20 Ω | 22 Ω 1/4 W (≈ 90 mA) | 5 Ω (≈ 0,35 A) |
+| R3 (série LED) | alimentation USB : (4,6 − 2 × 1,4 − 0,2) / 0,09 A ≈ 18 Ω (bloc 12 V : (5 − 2,8 − 0,2) / 0,1 = 20 Ω) | **18 Ω** 1/4 W (≈ 90 mA) ; 22 Ω avec le bloc 12 V | 5 Ω (≈ 0,35 A) |
 | R1 (base) | courant de base = 100 mA / 10 = 10 mA ; (3,3 − 0,8) / 10 mA = 250 Ω | 220 Ω (≈ 11 mA) | 197 Ω |
 | R2 (rappel) | LED IR éteinte tant que la broche n'est pas pilotée | 10 kΩ | absente |
 | R4 (LED bleue) | (3,3 − ≈ 2,9) / 4 mA | 100 Ω (2 à 5 mA) | — |
@@ -151,7 +163,7 @@ STL, aperçus, fiche « Boîtier NoeudChauffageSdb.md » avec le détail, le mon
 
 - Fixé à plat au mur de la salle de bain (à l'abri), par 4 oreilles ; **couvercle face au chauffage** (≈ 1,80 m).
 - Carte tournée de 180° : prise USB-C à gauche (fente), J1 / J5 / J6 en haut, LED témoins en bas ; placement inchangé.
-- Seul le câble 12 V sort, par la paroi droite (fente + serre-câble).
+- Seul le câble d'alimentation (USB 5 V depuis le 2026-10-29) sort, par la paroi droite (fente + serre-câble).
 - **Micro et LED IR à l'intérieur**, sous le couvercle : micro vissé (M2) derrière une grille de 7 trous, LED IR passées
   dans 2 trous du couvercle (le PETG opaque arrête l'infrarouge).
 - LED témoins D6 / D7 visibles par 2 trous du couvercle : **les souder avec 16,4 mm de patte** entre la carte et la
@@ -170,8 +182,8 @@ But : connaître les vraies limites hautes en puissance pour dimensionner les ca
 | Courant IR | JP2 | idem pendant une émission (valeur moyenne à l'ampèremètre, crête à l'oscilloscope sur R3) |
 | Impulsions IR | point de test `IR_K` | oscilloscope : forme et tension de saturation du 2N2222A |
 | Tensions | points de test `V12`, `+5V`, `3V3` | stabilité pendant les pointes Wi-Fi et IR |
-| Portée IR | — | essais de R3 : 47 Ω, puis 22 Ω, puis 15 Ω, à la distance réelle (1,80 m) |
-| Échauffement | U1, R3, Q1 | au doigt ou thermomètre après une série d'émissions |
+| Portée IR | — | essais de R3 : 47 Ω, puis 18 Ω, puis 15 Ω, à la distance réelle (1,80 m) |
+| Échauffement | D1, R3, Q1 | au doigt ou thermomètre après une série d'émissions |
 
 ## 8. Circuit imprimé réalisé (EasyEDA Pro)
 

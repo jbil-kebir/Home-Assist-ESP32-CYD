@@ -1,0 +1,132 @@
+# Vue « Accueil » du tableau dashboard-accueil — générée depuis .storage/lovelace.dashboard_accueil (export du 30/10/2026)
+# + carte « Lumière cave » (état mesuré par ThCave : sensor.jncave_etat Jour = Allumée, Nuit = Éteinte) à côté de Chaudière et Cuve.
+# À coller : ✏️ → vue Accueil → ⋮ → « Modifier en YAML » → tout remplacer.
+type: sections
+max_columns: 4
+title: Accueil
+path: accueil
+icon: mdi:home-account
+sections:
+  - type: grid
+    cards:
+      - show_current: true
+        show_forecast: true
+        type: weather-forecast
+        entity: weather.meteo_france_forecast_for_city_bischwiller_alsace_67_fr_bischwiller
+        forecast_type: hourly
+      - type: horizontal-stack
+        cards:
+          - type: custom:mini-graph-card
+            name: Températures inérieures
+            font_size: 60
+            entities:
+              - entity: sensor.thchrdc_temperature
+                name: RDC
+                color: orange
+                show_state: true
+              - entity: sensor.thch1er_temperature
+                name: 1er
+                color: blue
+                y_axis: secondary
+                show_state: true
+              - entity: sensor.thsdb_temperature
+                name: Sdb
+                color: red
+                y_axis: secondary
+                show_state: true
+            hours_to_show: 24
+            points_per_hour: 2
+            line_width: 2
+            show:
+              labels: true
+              points: false
+          - type: custom:mini-graph-card
+            name: Températures extérieures
+            font_size: 60
+            entities:
+              - entity: sensor.thcave_temperature
+                name: Cave
+                color: green
+                y_axis: secondary
+                show_state: true
+              - entity: sensor.thremise_temperature
+                name: Remise
+                color: yellow
+                y_axis: secondary
+                show_state: true
+            hours_to_show: 24
+            points_per_hour: 2
+            line_width: 2
+            show:
+              labels: true
+              points: false
+      - type: heading
+        icon: mdi:alert-outline
+        heading_style: title
+        heading: Alertes
+      - type: horizontal-stack
+        cards:
+          - type: markdown
+            content: |
+              {% if states('sensor.newnas_sante') == 'ok' %} 🟢 **NewNas : Santé OK** {% else %} 🔴 **NewNas : Problème détecté !** {% endif %}
+            card_mod:
+              style: |
+                ha-markdown {
+                  text-align: center;
+                  padding: 8px;
+                  color: {{ 'green' if states('sensor.newnas_sante') == 'ok' else 'red' }} !important;
+                }  
+          - type: markdown
+            content: |
+              {% if states('sensor.bignas_sante') == 'ok' %} 🟢 **BigNas : Santé OK** {% else %} 🔴 **BigNas : Problème détecté !** {% endif %}
+            card_mod:
+              style: |
+                ha-markdown {
+                  text-align: center;
+                  padding: 8px;
+                  color: {{ 'green' if states('sensor.bignas_sante') == 'ok' else 'red' }} !important;
+                }  
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: sensor.coulsdb_del
+                name: Chaudiere
+                icon: mdi:fire
+                card_mod:
+                  style: |
+                    ha-state-icon {
+                      color: {{ 'green' if states('sensor.coulsdb_del') == 'Allumee' else 'red' }} !important;
+                    }
+                    .shape {
+                      background: none !important;
+                    }
+              - type: custom:mushroom-entity-card
+                entity: sensor.flotteur_remise
+                name: Cuve
+                icon: mdi:water-circle
+                icon_color: none
+                card_mod:
+                  style: |
+                    ha-state-icon {
+                      color: {{ 'green' if states('sensor.flotteur_remise') == 'Cuve vide' else 'red' }} !important;
+                    }
+                    .shape {
+                      background: none !important;
+                    }
+              - type: custom:mushroom-template-card
+                entity: sensor.jncave_etat
+                primary: Lumière cave
+                secondary: "{{ 'Allumée' if is_state('sensor.jncave_etat', 'Jour') else ('Éteinte' if is_state('sensor.jncave_etat', 'Nuit') else 'Inconnu') }}"
+                icon: mdi:lightbulb
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-state-icon {
+                      color: {{ 'gold' if is_state('sensor.jncave_etat', 'Jour') else ('navy' if is_state('sensor.jncave_etat', 'Nuit') else 'grey') }} !important;
+                    }
+                    .shape {
+                      background: none !important;
+                    }
