@@ -8,8 +8,7 @@ class CMyDateTime {
     private:
         // Configuration NTP
         const char* ntpServer = "pool.ntp.org";
-        const long gmtOffset_sec = 3600;  // GMT+1 pour la France
-        const int daylightOffset_sec = 3600;  // Heure d'été
+        const char* tzFrance = "CET-1CEST,M3.5.0,M10.5.0/3"; // Heure d'été/hiver automatique
     public:
         int setup();
         String getDateTime();

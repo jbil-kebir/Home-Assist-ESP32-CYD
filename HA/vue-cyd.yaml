@@ -1,0 +1,176 @@
+# Vue « CYD » du tableau Système (https://ha.jbil.org/dashboard-systeme/cyd)
+# À coller : Système → ✏️ → vue CYD → ⋮ → « Modifier en YAML » → tout remplacer.
+# Nécessite packages/cyd.yaml (sensor.cyd_etat, binary_sensor.cyd_ecran, binary_sensor.cyd_connexion, binary_sensor.cyd_redemarrage, script.cyd_ecran_bascule) et l'automatisation « CYD - Recevoir Alive » corrigée.
+type: sections
+max_columns: 4
+title: CYD
+path: cyd
+icon: mdi:alpha-m-circle-outline
+show_icon_and_title: true
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: CYD principal
+        heading_style: title
+        icon: mdi:tablet
+      - type: markdown
+        content: |
+          {% set ip = states('input_text.ip_cyd') %}
+          {% if is_state('binary_sensor.cyd_connexion', 'on') %}🟢 **Connecté**{% else %}🔴 **Déconnecté**{% endif %} · IP **{{ ip }}**<br>
+          Dernier signal : {{ states('input_text.cyd_alive') }}
+
+          [🌐 Page Web](http://{{ ip }}/) · [📜 Journal](http://{{ ip }}/logs)
+      # Redémarrer : deux boutons, un seul visible selon binary_sensor.cyd_redemarrage
+      # (pendant le redémarrage, bouton non cliquable)
+      - type: button
+        name: Redémarrer
+        icon: mdi:restart
+        tap_action:
+          action: perform-action
+          perform_action: script.cyd_reboot
+          confirmation:
+            text: Redémarrer le CYD principal ?
+        hold_action:
+          action: none
+        visibility:
+          - condition: state
+            entity: binary_sensor.cyd_redemarrage
+            state_not: "on"
+        grid_options:
+          columns: full
+          rows: 1
+        card_mod:
+          style: |
+            ha-card {
+              height: 100% !important;
+              background: rgba(200,0,0,0.2) !important;
+            }
+            ha-icon, ha-state-icon { color: red !important; }
+      - type: button
+        name: Redémarrage en cours…
+        icon: mdi:timer-sand
+        tap_action:
+          action: none
+        hold_action:
+          action: none
+        visibility:
+          - condition: state
+            entity: binary_sensor.cyd_redemarrage
+            state: "on"
+        grid_options:
+          columns: full
+          rows: 1
+        card_mod:
+          style: |
+            ha-card {
+              height: 100% !important;
+              background: rgba(255,140,0,0.2) !important;
+              cursor: default !important;
+            }
+            ha-icon, ha-state-icon { color: orange !important; }
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.cyd_ecran
+        primary: Écran
+        secondary: >-
+          {% if is_state(entity, 'on') %}Allumé · toucher pour le mettre en veille
+          {%- elif is_state(entity, 'off') %}En veille · toucher pour le réveiller
+          {%- else %}État inconnu · toucher pour le réveiller{% endif %}
+        icon: "{{ 'mdi:monitor' if is_state(entity, 'on') else 'mdi:monitor-off' }}"
+        icon_color: "{{ 'green' if is_state(entity, 'on') else 'grey' }}"
+        tap_action:
+          action: perform-action
+          perform_action: script.cyd_ecran_bascule
+        grid_options:
+          columns: full
+          rows: 1
+      - type: entities
+        title: Écran
+        entities:
+          - entity: input_number.cyd_veille
+            name: Veille de l'écran (s)
+          - entity: input_select.cyd_serie
+            name: Série affichée
+          - entity: input_select.cyd_orientation
+            name: Orientation
+      - type: entities
+        title: Surveillance
+        entities:
+          - entity: input_number.cyd_watchdog_intervalle
+            name: Intervalle des signaux (min)
+          - entity: input_number.cyd_watchdog_delai
+            name: Délai avant alerte (min)
+      - type: markdown
+        content: >-
+          **Intervalle des signaux** : le CYD envoie un signal de vie toutes les N minutes
+          (réglage transmis au CYD dès qu'on le change).<br>
+          **Délai avant alerte** : sans signal pendant ce délai, le CYD passe à 🔴 **Déconnecté**.
+          Le régler à 2 ou 3 fois l'intervalle, pour tolérer un signal perdu.
+  - type: grid
+    cards:
+      - type: heading
+        heading: État du CYD
+        heading_style: title
+        icon: mdi:clipboard-list-outline
+      - type: button
+        name: Demander l'état
+        grid_options:
+          columns: full
+          rows: 1
+        icon: mdi:information
+        tap_action:
+          action: perform-action
+          perform_action: script.cyd_status
+        card_mod:
+          style: |
+            ha-card { height: 100% !important; }
+      - type: markdown
+        content: |
+          {%- set t = state_attr('sensor.cyd_etat', 'texte') -%}
+          {%- if not t -%}
+          Aucun état reçu : appuyer sur **Demander l'état**.
+          {%- else -%}
+          {%- set ns = namespace(eq=[], ctrl=[], info=[]) -%}
+          {%- for l in t.split('\n') -%}
+            {%- if ' ==> ' in l -%}
+              {%- set p = l.split(' ==> ') -%}
+              {%- set ns.ctrl = ns.ctrl + [[p[0] | trim, p[1] | trim]] -%}
+            {%- elif ' : ' in l -%}
+              {%- set p = l.split(' : ', 1) -%}
+              {%- set k = p[0] | trim -%}
+              {%- set v = p[1] | trim -%}
+              {%- if ' - ' in v and (v.startswith('ACTI') or v.startswith('INACTI')) -%}
+                {%- set q = v.split(' - ', 1) -%}
+                {#- Chaudière et lumière cave : état réel mesuré (433 MHz sans retour, le CYD ne connaît que sa dernière commande) -#}
+                {#- Capteur pas encore remonté : « Inconnu » (jamais la dernière commande du CYD) -#}
+                {%- set mesures = {'Chaudière': {'Allumee': 'ON', 'Eteinte': 'OFF'}.get(states('sensor.coulsdb_del'), 'Inconnu'),
+                                   'Lumière cave': {'Jour': 'ON', 'Nuit': 'OFF'}.get(states('sensor.jncave_etat'), 'Inconnu')} -%}
+                {%- set ns.eq = ns.eq + [[k, q[0].startswith('ACTI'), mesures.get(k, q[1] | trim)]] -%}
+              {%- elif k == 'Uptime' -%}
+                {%- set s = v | replace('s', '') | int(0) -%}
+                {%- set ns.info = ns.info + [['En marche depuis', (s // 86400) ~ ' j ' ~ ((s % 86400) // 3600) ~ ' h ' ~ ((s % 3600) // 60) ~ ' min']] -%}
+              {%- elif k != 'IP' -%}
+                {%- set ns.info = ns.info + [[k, v]] -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          Reçu le **{{ as_timestamp(states('sensor.cyd_etat')) | timestamp_custom('%d/%m à %H:%M:%S') }}**
+
+          | Équipement | Activé | État |
+          |:--|:--:|:--:|
+          {% for e in ns.eq -%}
+          | {{ e[0] }} | {{ '✅' if e[1] else '⛔' }} | {{ e[2] }} |
+          {% endfor %}
+          | Information | Valeur |
+          |:--|:--|
+          {% for i in ns.info -%}
+          | {{ i[0] }} | {{ i[1] }} |
+          {% endfor -%}
+          {%- if ns.ctrl %}
+          | Contrôleur / capteur connu | IP |
+          |:--|:--|
+          {% for c in ns.ctrl -%}
+          | {{ c[0] }} | {{ c[1] }} |
+          {% endfor -%}
+          {%- endif -%}
+          {%- endif -%}

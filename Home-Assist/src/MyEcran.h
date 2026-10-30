@@ -89,6 +89,7 @@ private:
   CMyBoutonBase *mListBoutonsPtr[_TOTAL_BTN_]; // Liste de pointeurs vers les boutons.
 
   bool mbEcranAllume;
+  void setEcranAllume(bool allume); // Rétroéclairage + publication « ECRAN ALLUME / ETEINT » si l'état change
   // S'il y a plus de trois mesures à afficher, ces deux paramètres permettent de choisir la série à afficher
   unsigned char mucNbAffichagesMax = 1;
   unsigned char mucSerieAffichageEnCours = 1;
@@ -161,7 +162,8 @@ public:
   int  remonteEcranSerieParMqtt();
   int  remonteOrientationEcranParMqtt();
   int  remonteVeilleEcranParMqtt();
-  int  remonteStatusParMqtt(); // Appelle les 3 méthodes au-dessus
+  int  remonteEtatEcranParMqtt(); // « ECRAN ALLUME » / « ECRAN ETEINT » sur topic_config_state
+  int  remonteStatusParMqtt(); // Appelle les 4 méthodes au-dessus
 
   void updateAppareilsDeMesure();
   void updateThermometreLocal();

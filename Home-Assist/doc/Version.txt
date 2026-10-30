@@ -1,3 +1,12 @@
+3.4
+Heure : règle française d'heure d'été / d'hiver (configTzTime, comme Capteur et Relais-Lora) au lieu d'un décalage fixe
+    (GMT+1 + 1 h d'été toute l'année : le CYD avançait d'une heure depuis le 25/10/2026)
+MQTT : MQTT_MAX_PACKET_SIZE 512 -> 1024 (platformio.ini) : le STATUS du contrôleur principal (avec la liste des
+    contrôleurs et capteurs connus) dépassait 512 octets et n'était jamais publié
+Écran : publie « ECRAN ALLUME » / « ECRAN ETEINT » sur topic_config_state à chaque changement (veille après délai,
+    réveil au toucher, ECRAN SLEEP / WAKE) et au démarrage (CEcran::setEcranAllume, remonteEtatEcranParMqtt)
+    HA : binary_sensor.cyd_ecran + script.cyd_ecran_bascule (un seul bouton qui bascule)
+
 3.3
 Contrôleur principal (__LOCAL_MODE__) : confirme chaque trame d'un flotteur (« <nom> OnOff ... ») en publiant « <nom> ACK »
     sur home/thermometre/command (TOPIC_CONFIRMATION_FLOTTEUR) ; Relais-Lora le transmet au nœud par LoRa

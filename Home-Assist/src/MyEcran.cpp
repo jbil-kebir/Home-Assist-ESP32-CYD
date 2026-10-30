@@ -138,8 +138,7 @@
       if (mbEcranAllume && millis() - mulDernierTouch > (unsigned long)sleep_timeout * 1000UL) {
         updateStatus("Veille ecran...");
         delay(1000);
-        digitalWrite(TFT_BL, LOW);
-        mbEcranAllume = false;
+        setEcranAllume(false);
       }
     }
 
@@ -174,14 +173,12 @@ unsigned char CEcran::getOrientationEcran() {
 }
 void CEcran::forceSleep() {
   updateStatus("Veille forcee par MQTT", false);
-  digitalWrite(TFT_BL, LOW);
-  mbEcranAllume = false;
+  setEcranAllume(false);
 }
 
 void CEcran::forceWake() {
   mulDernierTouch = millis();
-  digitalWrite(TFT_BL, HIGH);
-  mbEcranAllume = true;
+  setEcranAllume(true);
   drawStatus("Reveille par MQTT", false);
   delay(2000);
 }
@@ -295,8 +292,7 @@ bool CEcran::isTouched() {
     mulDernierTouch = millis();  // Réinitialise le timer
   // Si l'écran était éteint, on le rallume
     if (!mbEcranAllume) {
-      digitalWrite(TFT_BL, HIGH);
-      mbEcranAllume = true;
+      setEcranAllume(true);
       drawMainInterface();
       drawStatus();
     }
@@ -523,11 +519,28 @@ int CEcran::remonteVeilleEcranParMqtt() {
   }
   return ret;
 } 
+int CEcran::remonteEtatEcranParMqtt() {
+  int ret = 0;
+  String s = mbEcranAllume ? "ECRAN ALLUME" : "ECRAN ETEINT";
+  if (mConfig.onMqttPublish != nullptr) {
+    DBG(DBG_ECRAN, "void CEcran::remonteEtatEcranParMqtt() %s : %s\n", mConfig.topic_config_state.c_str(), s.c_str());
+    mConfig.onMqttPublish(mConfig.topic_config_state.c_str(), s.c_str());
+  }
+  return ret;
+}
+// Allume / éteint le rétroéclairage ; publie le nouvel état s'il change (veille, toucher, commande MQTT)
+void CEcran::setEcranAllume(bool allume) {
+  digitalWrite(TFT_BL, allume ? HIGH : LOW);
+  if (mbEcranAllume == allume) return;
+  mbEcranAllume = allume;
+  remonteEtatEcranParMqtt();
+}
 int CEcran::remonteStatusParMqtt() {
   int ret = 0;
   ret = remonteEcranSerieParMqtt();
   ret = remonteOrientationEcranParMqtt();
   ret = remonteVeilleEcranParMqtt();
+  ret = remonteEtatEcranParMqtt();
   delay(200);
   return ret;
 } 

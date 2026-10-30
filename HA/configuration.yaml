@@ -516,10 +516,6 @@ mqtt:
           {{ states('sensor.flotteur_remise') }}
         {% endif %}
         
-    - name: "CYD Status"
-      unique_id: cyd_status
-      state_topic: "home/configuration/state"
-
     - name: "BatCYD Tension"
       unique_id: batcyd_tension
       state_topic: "home/thermometre/state"
@@ -550,10 +546,6 @@ mqtt:
       value_template: "{{ value }}"
 
 input_boolean:
-  cyd_watchdog:
-    name: "CYD Watchdog"
-    icon: mdi:heart-pulse
-
   cyd_aux_watchdog:
     name: "CYD AUX Watchdog"
     icon: mdi:heart-pulse
@@ -688,9 +680,6 @@ input_select:
 
 
 input_text:
-  cyd_status:
-    name: "CYD Status"
-    max: 255
   cyd_alive:
     name: "CYD Alive"
     max: 50

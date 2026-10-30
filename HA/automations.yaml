@@ -33,31 +33,6 @@
       payload: '{{ ''ECRAN '' + states(''input_select.cyd_orientation'') }}'
     action: mqtt.publish
   mode: single
-- id: '1774715979427'
-  alias: CYD - Recevoir Status
-  triggers:
-  - topic: home/configuration/state
-    trigger: mqtt
-  actions:
-  - target:
-      entity_id: input_text.cyd_status
-    data:
-      value: '{{ trigger.payload[:255] }}'
-    action: input_text.set_value
-  mode: single
-- id: '1774715981022'
-  alias: CYD - Recevoir Status
-  description: ''
-  triggers:
-  - topic: home/configuration/state
-    trigger: mqtt
-  actions:
-  - target:
-      entity_id: input_text.cyd_status
-    data:
-      value: '{{ trigger.payload }}'
-    action: input_text.set_value
-  mode: single
 - id: '1774734954643'
   alias: CYD - Recevoir Veille
   triggers:
@@ -95,10 +70,8 @@
     trigger: mqtt
   conditions:
   - condition: template
-    value_template: '{{ trigger.payload.upper().startswith(''ECRAN'') and not trigger.payload.upper().startswith(''ECRAN
-      SERIE'') }}
-
-      '
+    value_template: '{% set p = trigger.payload.split('' '') %}{{ p | length == 2 and p[0] | upper == ''ECRAN''
+      and p[1].isdigit() }}'
   actions:
   - action: input_select.select_option
     target:
@@ -108,12 +81,14 @@
   mode: single
 - id: '1774736517752'
   alias: CYD - Recevoir Alive
+  description: 'Trame « <nom du CYD> ALIVEWDOG <date> <heure> <IP> » : seulement celle du
+    CYD principal (« CYD HA ») ; les CYD auxiliaires publient aussi sur ce topic.'
   triggers:
   - topic: home/configuration/state
     trigger: mqtt
   conditions:
   - condition: template
-    value_template: '{{ trigger.payload.upper().startswith(''ALIVEWDOG'') }}'
+    value_template: '{{ trigger.payload.split('' ALIVEWDOG '')[0] == ''CYD HA'' }}'
   actions:
   - action: input_text.set_value
     target:
@@ -138,28 +113,6 @@
       topic: home/configuration/command
       payload: '{{ ''ALIVE '' + states(''input_number.cyd_watchdog_intervalle'') |
         int | string }}'
-  mode: single
-- id: '1774745201658'
-  alias: CYD - Watchdog check
-  description: ''
-  triggers:
-  - trigger: time_pattern
-    seconds: /30
-  actions:
-  - action: input_boolean.turn_on
-    target:
-      entity_id: input_boolean.cyd_watchdog
-    data: {}
-  - if:
-    - condition: template
-      value_template: '{{ (as_timestamp(now()) - as_timestamp(states.input_text.cyd_alive.last_updated))
-        > (states(''input_number.cyd_watchdog_delai'') | int * 60) }}
-
-        '
-    then:
-    - action: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.cyd_watchdog
   mode: single
 - id: '1774746177112'
   alias: CYD - Recevoir Intervalle Alive
@@ -280,10 +233,8 @@
     trigger: mqtt
   conditions:
   - condition: template
-    value_template: '{{ trigger.payload.upper().startswith(''ECRAN'') and not trigger.payload.upper().startswith(''ECRAN
-      SERIE'') }}
-
-      '
+    value_template: '{% set p = trigger.payload.split('' '') %}{{ p | length == 2 and p[0] | upper == ''ECRAN''
+      and p[1].isdigit() }}'
   actions:
   - action: input_select.select_option
     target:
@@ -451,10 +402,8 @@
     trigger: mqtt
   conditions:
   - condition: template
-    value_template: '{{ trigger.payload.upper().startswith(''ECRAN'') and not trigger.payload.upper().startswith(''ECRAN
-      SERIE'') }}
-
-      '
+    value_template: '{% set p = trigger.payload.split('' '') %}{{ p | length == 2 and p[0] | upper == ''ECRAN''
+      and p[1].isdigit() }}'
   actions:
   - action: input_select.select_option
     target:
