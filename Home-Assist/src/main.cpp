@@ -61,6 +61,7 @@ extern CRemoteThermo mRemoteThMain;
 extern CRemoteBatterieAA mRemoteBatMain;
 extern CRemoteRCDevice mRemoteProjecteur;
 extern CRemoteRCDevice mRemoteGuirlande;
+extern CRemoteRCDevice mRemoteLumiereCave;
 extern CRemoteNoeudChauffageIRSound mRemoteChauffage;
 #endif // __LOCAL_MODE__
 
@@ -96,7 +97,7 @@ extern CRemoteBatterieAA mRemoteBatChRdc;
 // DBG_ALL
 //uint32_t gDebugFlags = DBG_CHAUDIERE|DBG_MQTT;
 //uint32_t gDebugFlags = DBG_ALL;
-uint32_t gDebugFlags = DBG_NOEUD;
+uint32_t gDebugFlags = DBG_ACTIONNEURS;
 
 CMyDateTime mDateTime;
 
@@ -281,8 +282,8 @@ void setup() {
   config.setWifi(&mWifi[i]);
   ecran.updateTitleWithIP(WiFi.localIP().toString());
   ecran.updateStatus("...WiFi OK");
-  // On enregistre l'IP
-  ajouterControleur(NOM_EQUIPEMENT, WiFi.localIP().toString());
+  // On enregistre l'IP, sous le nom réglé sur la page Web (NVS ; NOM_EQUIPEMENT n'est que la valeur par défaut)
+  ajouterControleur(config.nomEquipement, WiFi.localIP().toString());
   
   printControleurs();
   printEsclaves();
@@ -460,13 +461,18 @@ void loop() {
       #endif
       #endif // __LOCAL_MODE__
     }
-    else if (btnNum == BTN_LUMIERE_CAVE_ACTIVE) { // Bouton Activation lumière cave appuyé (CYD principal seulement)
+    else if (btnNum == BTN_LUMIERE_CAVE_ACTIVE) { // Bouton Activation lumière cave appuyé
       #ifdef __LOCAL_MODE__
       lumiereCave.activeEquipement();
       #ifdef __CYD__
       ecran.activeLumiereCave(lumiereCave.active);
       #endif
-      #endif // __LOCAL_MODE__ (CYD auxiliaire : bouton condamné)
+      #else // Equipement distant
+      mRemoteLumiereCave.activeEquipement();
+      #ifdef __CYD__
+      ecran.activeLumiereCave(mRemoteLumiereCave.active);
+      #endif
+      #endif // __LOCAL_MODE__
     }
     else if (btnNum == BTN_CHAUFFAGE_ON_ACTIVE) { // Bouton Activation chauffage appuyé
       #ifdef __LOCAL_MODE__
@@ -525,10 +531,12 @@ void loop() {
       mRemoteGuirlande.envoiOnOff();
       #endif
     }
-    else if (btnNum == BTN_LUMIERE_CAVE_TOGGLE) { // Bouton Cave appuyé (CYD principal seulement)
+    else if (btnNum == BTN_LUMIERE_CAVE_TOGGLE) { // Bouton Cave appuyé
       #ifdef __LOCAL_MODE__
       int ret = lumiereCave.envoiOnOff();
-      #endif // __LOCAL_MODE__ (CYD auxiliaire : bouton condamné)
+      #else // Equipement distant
+      mRemoteLumiereCave.envoiOnOff();
+      #endif
     }
     else if (btnNum == BTN_CHAUFFAGE_ON) { // Bouton SB appuyé : marche ou arrêt selon l'état
       #ifdef __LOCAL_MODE__
@@ -623,6 +631,9 @@ void print() {
 
   DBG(DBG_CONFIG, "   Appareil 2\n");
   mRemoteGuirlande.print();
+
+  DBG(DBG_CONFIG, "   Appareil 2 bis (lumière cave)\n");
+  mRemoteLumiereCave.print();
 
   DBG(DBG_CONFIG, "   Appareil 3\n");
   mRemoteChauffage.print();

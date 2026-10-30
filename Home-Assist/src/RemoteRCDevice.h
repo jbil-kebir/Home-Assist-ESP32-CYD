@@ -33,6 +33,11 @@ public:
   String etatStr = "OFF";
   String buttonName = "Appareil";
 
+  // Nom et sous-topic quand le NVS ne les a pas encore enregistrés (sinon « Thermomètre » / « thermometre/ »)
+  String msNomDefaut = "";
+  String msSubTopicDefaut = "";
+  void setDefauts(const String& nomDef, const String& subTopicDef) { msNomDefaut = nomDef; msSubTopicDefaut = subTopicDef; }
+
   int toggleDevice();
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
 

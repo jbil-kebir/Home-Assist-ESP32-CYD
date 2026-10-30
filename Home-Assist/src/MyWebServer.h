@@ -30,6 +30,8 @@ private:
   void handleLogsData();
   void handleLogsClear();
   void handleLogsDbg();   // Cases des catégories DBG de la page /logs
+  void handleNvs();       // Occupation de la NVS et liste des clés
+  void handleNvsPurge();  // Bouton de /nvs : suppression des clés obsolètes
 
 public:
   MyWebServer(CConfig& cfg, CEcran& ecr, CMqtt& mq, CWifi *wifi) : server(80), config(cfg), ecran(ecr), mqtt(mq), mWifi(wifi)/*, rcSwitch(rc)*/ {}

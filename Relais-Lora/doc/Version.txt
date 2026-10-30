@@ -1,3 +1,8 @@
+2.2
+Journal (MyJournal.cpp, identique dans Capteur, Relais-Lora, Home-Assist) : Serial.setTxTimeoutMs(0) sur l'USB natif
+    Branché sur un PC dont personne ne lit le port série, chaque écriture attendait son délai d'expiration :
+    2 à 10 s par ligne sur le relais le 30/10/2026 (MQTT coupé par le broker, trames LoRa publiées puis perdues)
+
 2.1
 Page « Capteurs LoRa » : libellés lisibles pour mute, les réglages du flotteur (mfv_rev, mfv_revmin, mfv_ack, mfv_ackn,
     Capteur 3.1) et ceux du détecteur jour / nuit (jn_sbas, jn_shaut, jn_ecl, jn_inter, jn_force)

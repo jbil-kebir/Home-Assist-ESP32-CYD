@@ -77,6 +77,8 @@ client.publish("home/chaudiere/status",  "", true);*/
       client.subscribe(mConfig.mRemoteProjecteur->mqttSubTopicCommand.c_str());
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteGuirlande->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteGuirlande->mqttSubTopicCommand.c_str());
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteLumiereCave->mqttSubTopicCommand);
+      client.subscribe(mConfig.mRemoteLumiereCave->mqttSubTopicCommand.c_str());
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteChauffage->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteChauffage->mqttSubTopicCommand.c_str());
       #endif
@@ -209,6 +211,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == mConfig.mRemoteGuirlande->mqttSubTopicCommand) {
     mConfig.mRemoteGuirlande->handleMqttCommand(messageOrg);
   }
+  else if (topicStr == mConfig.mRemoteLumiereCave->mqttSubTopicCommand) {
+    mConfig.mRemoteLumiereCave->handleMqttCommand(messageOrg);
+  }
   else if (topicStr == mConfig.mRemoteChauffage->mqttSubTopicCommand) {
     mConfig.mRemoteChauffage->handleMqttCommand(messageOrg);
   }
@@ -331,6 +336,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       //statusMsg += "Keep-alive    : " + String(mConfig.mRemoteChaudiere->enableKeepAlive ? "ACTIVÉ" : "DÉSACtivé") + "\n";
       statusMsg += "Projecteur    : " + String(mConfig.mRemoteProjecteur->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteProjecteur->etatStr + "\n";
       statusMsg += "Guirlande     : " + String(mConfig.mRemoteGuirlande->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.mRemoteGuirlande->etatStr + "\n";
+      statusMsg += "Lumière cave  : " + String(mConfig.mRemoteLumiereCave->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.mRemoteLumiereCave->etatStr + "\n";
       statusMsg += "Salle de bain : " + String(mConfig.mRemoteChauffage->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteChauffage->etatStr + "\n";
       #endif
       String statusMsgBis = "=== ÉTAT Home Assisstant "+ String(mConfig.nomEquipement) +" (Suite) ===\n";

@@ -7,6 +7,9 @@
 #include "MyEcran.h"
 #include "MyMqtt.h"
 #include "MyWebServer.h"
+#include <nvs.h>
+#include <vector>
+#include <algorithm>
 
 
 void MyWebServer::handleRoot() {
@@ -121,6 +124,7 @@ void MyWebServer::handleRoot() {
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   html += config.mRemoteProjecteur->getHTML();
   html += config.mRemoteGuirlande->getHTML();
+  html += config.mRemoteLumiereCave->getHTML();
   html += config.mRemoteChauffage->getHTML();
   html += config.mRemoteThMain->getHTML();
   //html += config.mRemoteBatMain->getHTML();
@@ -197,6 +201,7 @@ void MyWebServer::handleSave() {
   config.mRemoteChaudiere->loadFromWebServer(server);
   config.mRemoteProjecteur->loadFromWebServer(server);
   config.mRemoteGuirlande->loadFromWebServer(server);
+  config.mRemoteLumiereCave->loadFromWebServer(server);
   config.mRemoteChauffage->loadFromWebServer(server);
   config.mRemoteThMain->loadFromWebServer(server);
   //config.mRemoteBatMain->loadFromWebServer(server);
@@ -263,6 +268,7 @@ void MyWebServer::handleSave() {
   config.mRemoteChaudiere->saveToNVS();
   config.mRemoteProjecteur->saveToNVS();
   config.mRemoteGuirlande->saveToNVS();
+  config.mRemoteLumiereCave->saveToNVS();
   config.mRemoteChauffage->saveToNVS();
   config.mRemoteThMain->saveToNVS();
   config.mRemoteBatMain->saveToNVS();
@@ -615,6 +621,220 @@ void MyWebServer::handleLogsDbg() {
   server.send(200, "text/plain", String(gDebugFlags));
 }
 
+//------------------------------------------------------------------------------
+// Page /nvs : occupation de la partition NVS (20 Ko par défaut, ≈ 500 entrées utiles) et liste des clés.
+// Une entrée fait 32 octets : 1 par nombre, 1 + 1 par tranche de 32 octets pour une chaîne, ≈ 2 + 1 par tranche
+// de 32 octets pour un blob (float, journal). Quand il n'y a plus de place, les put…() échouent (NOT_ENOUGH_SPACE)
+// et le réglage est perdu au redémarrage.
+// Valeurs affichées pour nos espaces de noms seulement (pas pour le Wi-Fi du système), mots de passe masqués.
+//------------------------------------------------------------------------------
+struct SEntreeNvs { String ns; String cle; nvs_type_t type; };
+
+static const char* nomTypeNvs(nvs_type_t t) {
+  switch (t) {
+    case NVS_TYPE_U8:  return "u8";   case NVS_TYPE_I8:  return "i8";
+    case NVS_TYPE_U16: return "u16";  case NVS_TYPE_I16: return "i16";
+    case NVS_TYPE_U32: return "u32";  case NVS_TYPE_I32: return "i32";
+    case NVS_TYPE_U64: return "u64";  case NVS_TYPE_I64: return "i64";
+    case NVS_TYPE_STR: return "str";  case NVS_TYPE_BLOB: return "blob";
+    default: return "?";
+  }
+}
+
+static String echappeHtml(const String& s) {
+  String r;
+  r.reserve(s.length());
+  for (size_t i = 0; i < s.length(); i++) {
+    char c = s[i];
+    if (c == '<') r += "&lt;"; else if (c == '>') r += "&gt;"; else if (c == '&') r += "&amp;"; else if (c == '"') r += "&quot;";
+    else r += c;
+  }
+  return r;
+}
+
+// Valeur lisible et nombre d'entrées (≈) occupées par la clé
+static String valeurNvs(nvs_handle_t h, const SEntreeNvs& e, bool bAfficheValeur, int& nbEntrees) {
+  nbEntrees = 1;
+  const char* k = e.cle.c_str();
+  String v;
+  switch (e.type) {
+    case NVS_TYPE_U8:  { uint8_t x;  if (nvs_get_u8(h, k, &x) == ESP_OK)  v = String(x); break; }
+    case NVS_TYPE_I8:  { int8_t x;   if (nvs_get_i8(h, k, &x) == ESP_OK)  v = String(x); break; }
+    case NVS_TYPE_U16: { uint16_t x; if (nvs_get_u16(h, k, &x) == ESP_OK) v = String(x); break; }
+    case NVS_TYPE_I16: { int16_t x;  if (nvs_get_i16(h, k, &x) == ESP_OK) v = String(x); break; }
+    case NVS_TYPE_U32: { uint32_t x; if (nvs_get_u32(h, k, &x) == ESP_OK) v = String(x); break; }
+    case NVS_TYPE_I32: { int32_t x;  if (nvs_get_i32(h, k, &x) == ESP_OK) v = String(x); break; }
+    case NVS_TYPE_U64: { uint64_t x; if (nvs_get_u64(h, k, &x) == ESP_OK) v = String((unsigned long)x); break; }
+    case NVS_TYPE_I64: { int64_t x;  if (nvs_get_i64(h, k, &x) == ESP_OK) v = String((long)x); break; }
+    case NVS_TYPE_STR: {
+      size_t lg = 0;
+      if (nvs_get_str(h, k, nullptr, &lg) == ESP_OK) {
+        nbEntrees = 1 + (lg + 31) / 32;
+        if (bAfficheValeur && lg <= 200) {
+          char buf[201];
+          if (nvs_get_str(h, k, buf, &lg) == ESP_OK) v = "\"" + String(buf) + "\"";
+        } else {
+          v = "(" + String(lg) + " octets)";
+        }
+      }
+      break;
+    }
+    case NVS_TYPE_BLOB: {
+      size_t lg = 0;
+      if (nvs_get_blob(h, k, nullptr, &lg) == ESP_OK) {
+        nbEntrees = 2 + (lg + 31) / 32;
+        float f;
+        if (bAfficheValeur && lg == sizeof(float) && nvs_get_blob(h, k, &f, &lg) == ESP_OK) v = String(f, 3) + " (float)";
+        else v = "(" + String(lg) + " octets)";
+      }
+      break;
+    }
+    default: break;
+  }
+  if (!bAfficheValeur && e.type != NVS_TYPE_STR && e.type != NVS_TYPE_BLOB) v = "";
+  return v;
+}
+
+void MyWebServer::handleNvs() {
+  nvs_stats_t st;
+  bool bStats = (nvs_get_stats(NULL, &st) == ESP_OK);
+
+  // Toutes les clés, triées par espace de noms puis par clé
+  std::vector<SEntreeNvs> entrees;
+  nvs_iterator_t it = nvs_entry_find(NVS_DEFAULT_PART_NAME, NULL, NVS_TYPE_ANY);
+  while (it != NULL) {
+    nvs_entry_info_t info;
+    nvs_entry_info(it, &info);
+    entrees.push_back({String(info.namespace_name), String(info.key), info.type});
+    it = nvs_entry_next(it); // libère l'itérateur en fin de liste
+  }
+  std::sort(entrees.begin(), entrees.end(), [](const SEntreeNvs& a, const SEntreeNvs& b) {
+    return (a.ns != b.ns) ? (a.ns < b.ns) : (a.cle < b.cle);
+  });
+
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "text/html", "");
+  String html = F(
+    "<!DOCTYPE html><html lang=\"fr\"><head>"
+    "<meta charset=\"UTF-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+    "<title>NVS</title>"
+    "<style>"
+    "body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:20px;background:#f0f0f0;}"
+    "h1{text-align:center;color:#333;}"
+    ".btn{padding:10px 22px;font-size:15px;color:white;border:none;border-radius:6px;text-decoration:none;display:inline-block;background:#6c757d;}"
+    ".resume{background:#fff;border:1px solid #ddd;border-radius:6px;padding:10px 14px;margin:12px 0;}"
+    "table{border-collapse:collapse;width:100%;background:#fff;margin-bottom:16px;font-size:13px;}"
+    "th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;}th{background:#e9ecef;}"
+    "td.n{text-align:right;}code{font-size:13px;}"
+    ".plein{color:#dc3545;font-weight:bold;}"
+    "</style></head><body>"
+    "<h1>Mémoire NVS</h1>"
+    "<a href=\"/\" class=\"btn\">Retour</a>"
+  );
+
+  // Résumé
+  html += F("<div class=\"resume\">");
+  if (bStats) {
+    size_t utiles = st.total_entries > 126 ? st.total_entries - 126 : st.total_entries; // une page reste libre
+    int pct = utiles ? (int)(100UL * st.used_entries / utiles) : 0;
+    html += "<b>Entrées utilisées :</b> " + String(st.used_entries) + " / " + String(utiles) + " utiles (" + String(pct) + " %)";
+    if (st.free_entries <= 126) html += F(" <span class=\"plein\">— PLEINE</span>");
+    html += "<br><b>Libres :</b> " + String(st.free_entries) + " (dont 126 réservées)"
+            "<br><b>Total :</b> " + String(st.total_entries) + " entrées de 32 octets"
+            "<br><b>Espaces de noms :</b> " + String(st.namespace_count);
+  } else {
+    html += F("nvs_get_stats() en échec");
+  }
+  html += "<br><b>Clés :</b> " + String(entrees.size()) + "</div>";
+  html += F("<form action=\"/nvs/purge\" method=\"POST\" style=\"margin:0 0 12px\" "
+            "onsubmit=\"return confirm('Supprimer les clés obsolètes et les espaces de noms deep_sleep et cydmon ?')\">"
+            "<button type=\"submit\" class=\"btn\" style=\"background:#dc3545;cursor:pointer\">Supprimer les clés obsolètes</button></form>");
+  server.sendContent(html);
+
+  // Une table par espace de noms
+  size_t i = 0;
+  while (i < entrees.size()) {
+    const String ns = entrees[i].ns;
+    bool bNotre = (ns == NVS_NAME_SPACE) || (ns == "journal");
+    nvs_handle_t h;
+    bool bOuvert = (nvs_open(ns.c_str(), NVS_READONLY, &h) == ESP_OK);
+    String corps = "<h3>" + echappeHtml(ns) + "</h3><table><tr><th>Clé</th><th>Type</th><th>Entrées ≈</th><th>Valeur</th></tr>";
+    int total = 0, nbCles = 0;
+    for (; i < entrees.size() && entrees[i].ns == ns; i++) {
+      const SEntreeNvs& e = entrees[i];
+      String cleMin = e.cle;
+      cleMin.toLowerCase();
+      bool bSecret = cleMin.indexOf("pass") >= 0 || cleMin.indexOf("pwd") >= 0;
+      int nb = 1;
+      String v = bOuvert ? valeurNvs(h, e, bNotre && !bSecret, nb) : String("");
+      if (bSecret && bNotre) v = "(masqué)";
+      total += nb;
+      nbCles++;
+      corps += "<tr><td><code>" + echappeHtml(e.cle) + "</code></td><td>" + nomTypeNvs(e.type) + "</td><td class=\"n\">" +
+               String(nb) + "</td><td>" + echappeHtml(v) + "</td></tr>";
+      if (corps.length() > 3000) { // envoi par morceaux (tas limité)
+        server.sendContent(corps);
+        corps = "";
+      }
+    }
+    if (bOuvert) nvs_close(h);
+    corps += "<tr><th colspan=\"2\">" + String(nbCles) + " clés</th><th class=\"n\">" + String(total) + "</th><th></th></tr></table>";
+    server.sendContent(corps);
+  }
+
+  server.sendContent(F("</body></html>"));
+  server.sendContent("");
+}
+
+// Bouton de la page /nvs : suppression des clés qu'aucune version actuelle du code ne lit (relevé du 30/10/2026)
+// et des espaces de noms d'autres programmes (deep_sleep, cydmon : CydMonitor). Une clé absente est ignorée.
+void MyWebServer::handleNvsPurge() {
+  static const char* espacesObsoletes[] = { "deep_sleep", "cydmon" };
+  static const char* clesObsoletes[] = {
+    "wifi_active", "wifi_nom", "wifi_password", "wifi_ssid", "wifi_subtopic",              // avant wifi_0_ / wifi_1_ / wifi_2_
+    "thnmd_active", "thnmd_id", "thnmd_nom", "thnmd_st", "thnmd_subtopic", "thnmd_wdog",   // remplacé par thnmf_
+    "pre_active", "pre_nom", "pre_subtopic", "pre_wdog",
+    "thCh1er_active", "thCh1er_nom",
+    "ecraff", "ecraff_max", "ecror_ecran", "ecrsleep_tout",                               // MyEcran : aff, or_ecran… sans préfixe
+    "wdog", "on_keep_size", "off_keep_size",
+    "Chactive", "Chst", "guirl_st", "guirlande_state", "csdb_st", "pr_active",
+    "Pr_active", "Pr_st", "Gu_active", "Gu_st",                                            // préfixe provisoire du constructeur
+    "bat_active", "bat_nom", "bat_st", "bat_subtopic", "bat_wdog",
+    "ecr_act", "ecr_max", "ecr_ecr_act", "ecr_ecr_max", "ecr_or_ecran", "ecr_sleep_tout",
+    "ecrecr_act", "ecrecr_max", "ecrihm"
+  };
+  int nbSupprimees = 0;
+  nvs_handle_t h;
+  if (nvs_open(NVS_NAME_SPACE, NVS_READWRITE, &h) == ESP_OK) {
+    for (const char* k : clesObsoletes) {
+      if (nvs_erase_key(h, k) == ESP_OK) nbSupprimees++;
+    }
+    nvs_commit(h);
+    nvs_close(h);
+  }
+  String sEspaces;
+  for (const char* ns : espacesObsoletes) {
+    // Ouverture en lecture d'abord : en écriture, un espace de noms absent serait créé (une entrée de plus)
+    bool bPresent = (nvs_open(ns, NVS_READONLY, &h) == ESP_OK);
+    if (bPresent) nvs_close(h);
+    bool bVide = false;
+    if (bPresent && nvs_open(ns, NVS_READWRITE, &h) == ESP_OK) {
+      bVide = (nvs_erase_all(h) == ESP_OK);
+      nvs_commit(h);
+      nvs_close(h);
+    }
+    sEspaces += String(ns) + " : " + (bVide ? "vidé" : (bPresent ? "ÉCHEC" : "absent")) + "<br>";
+    Serial.printf("NVS : espace de noms %s %s\n", ns, bVide ? "vidé" : (bPresent ? "ECHEC" : "absent"));
+  }
+  Serial.printf("NVS : %d clés obsolètes supprimées\n", nbSupprimees);
+  server.send(200, "text/html",
+    "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/nvs\"></head>"
+    "<body style=\"font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;\">"
+    "<h1>" + String(nbSupprimees) + " clés supprimées</h1><p>" + sEspaces +
+    "Retour à la page NVS dans 3 secondes.</p></body></html>");
+}
+
 void MyWebServer::handleNotFound() {
   server.send(404, "text/plain", "Not found");
 }
@@ -631,6 +851,8 @@ void MyWebServer::setup() {
   server.on("/logs/data",  HTTP_GET,  [this]() { handleLogsData(); });
   server.on("/logs/clear", HTTP_POST, [this]() { handleLogsClear(); });
   server.on("/logs/dbg",   HTTP_POST, [this]() { handleLogsDbg(); });
+  server.on("/nvs",        HTTP_GET,  [this]() { handleNvs(); });
+  server.on("/nvs/purge",  HTTP_POST, [this]() { handleNvsPurge(); });
   server.onNotFound([this]() { handleNotFound(); });
   server.begin();
   DBG(DBG_RESEAU, "Serveur web démarré\n");

@@ -1,3 +1,8 @@
+3.2
+Journal (MyJournal.cpp, identique dans Capteur, Relais-Lora, Home-Assist) : Serial.setTxTimeoutMs(0) sur l'USB natif
+    Branché sur un PC dont personne ne lit le port série, chaque écriture attendait son délai d'expiration :
+    2 à 10 s par ligne sur le relais le 30/10/2026 (MQTT coupé par le broker, trames LoRa publiées puis perdues)
+
 3.1
 Flotteur (ThRemise) : réveil du deep sleep par le flotteur, dans les deux sens (cuve pleine, cuve vide), ESP32-S3 (EXT1)
     Anti-rafale : pas de nouveau réveil par le flotteur moins de mfv_revmin secondes (300) après le précédent

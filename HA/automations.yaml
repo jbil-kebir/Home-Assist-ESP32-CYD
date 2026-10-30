@@ -180,19 +180,6 @@
       payload: '{{ ''ALIVE '' + states(''input_number.cyd_aux_watchdog_intervalle'')
         | int | string }}'
   mode: single
-- id: '1774753192103'
-  alias: CYD AUX - Recevoir Status
-  description: ''
-  triggers:
-  - topic: home/configaux/state
-    trigger: mqtt
-  actions:
-  - action: input_text.set_value
-    target:
-      entity_id: input_text.cyd_aux_status
-    data:
-      value: '{{ trigger.payload[:255] }}'
-  mode: single
 - id: '1774753212715'
   alias: CYD AUX - Recevoir Veille
   description: ''
@@ -244,12 +231,14 @@
   mode: single
 - id: '1774753272051'
   alias: CYD AUX - Recevoir Alive
+  description: 'Trame « <nom du CYD> ALIVEWDOG <date> <heure> <IP> » publiée par le CYD Aux sur le topic
+    du principal : seulement celle de « Home Assistant Aux ».'
   triggers:
-  - topic: home/configaux/state
+  - topic: home/configuration/state
     trigger: mqtt
   conditions:
   - condition: template
-    value_template: '{{ trigger.payload.upper().startswith(''ALIVEWDOG'') }}'
+    value_template: '{{ trigger.payload.split('' ALIVEWDOG '')[0] == ''Home Assistant Aux'' }}'
   actions:
   - action: input_text.set_value
     target:
@@ -277,27 +266,6 @@
       entity_id: input_number.cyd_aux_watchdog_intervalle
     data:
       value: '{{ trigger.payload.split('' '')[1] | int }}'
-  mode: single
-- id: '1774753306995'
-  alias: CYD AUX - Watchdog check
-  description: ''
-  triggers:
-  - trigger: time_pattern
-    seconds: /30
-  actions:
-  - action: input_boolean.turn_on
-    target:
-      entity_id: input_boolean.cyd_aux_watchdog
-  - if:
-    - condition: template
-      value_template: '{{ (as_timestamp(now()) - as_timestamp(states.input_text.cyd_aux_alive.last_updated))
-        > (states(''input_number.cyd_aux_watchdog_delai'') | int * 60) }}
-
-        '
-    then:
-    - action: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.cyd_aux_watchdog
   mode: single
 - id: '1774753328247'
   alias: CYD AUX2 - Changer veille ecran
@@ -349,19 +317,6 @@
       payload: '{{ ''ALIVE '' + states(''input_number.cyd_aux2_watchdog_intervalle'')
         | int | string }}'
   mode: single
-- id: '1774753403999'
-  alias: CYD AUX2 - Recevoir Status
-  description: ''
-  triggers:
-  - topic: home/configaux2/state
-    trigger: mqtt
-  actions:
-  - action: input_text.set_value
-    target:
-      entity_id: input_text.cyd_aux2_status
-    data:
-      value: '{{ trigger.payload[:255] }}'
-  mode: single
 - id: '1774753420634'
   alias: CYD AUX2 - Recevoir Veille
   description: ''
@@ -398,7 +353,7 @@
   alias: CYD AUX2 - Recevoir Orientation
   description: ''
   triggers:
-  - topic: home/cydaux2/state
+  - topic: home/configaux2/state
     trigger: mqtt
   conditions:
   - condition: template
@@ -413,12 +368,14 @@
   mode: single
 - id: '1774753471630'
   alias: CYD AUX2 - Recevoir Alive
+  description: 'Trame « <nom du CYD> ALIVEWDOG <date> <heure> <IP> » publiée par le CYD Aux2 sur le topic
+    du principal : seulement celle de « Home Assistant Aux2 ».'
   triggers:
-  - topic: home/configaux2/state
+  - topic: home/configuration/state
     trigger: mqtt
   conditions:
   - condition: template
-    value_template: '{{ trigger.payload.upper().startswith(''ALIVEWDOG'') }}'
+    value_template: '{{ trigger.payload.split('' ALIVEWDOG '')[0] == ''Home Assistant Aux2'' }}'
   actions:
   - action: input_text.set_value
     target:
@@ -446,27 +403,6 @@
       entity_id: input_number.cyd_aux2_watchdog_intervalle
     data:
       value: '{{ trigger.payload.split('' '')[1] | int }}'
-  mode: single
-- id: '1774753505954'
-  alias: CYD AUX2 - Watchdog check
-  description: ''
-  triggers:
-  - trigger: time_pattern
-    seconds: /30
-  actions:
-  - action: input_boolean.turn_on
-    target:
-      entity_id: input_boolean.cyd_aux2_watchdog
-  - if:
-    - condition: template
-      value_template: '{{ (as_timestamp(now()) - as_timestamp(states.input_text.cyd_aux2_alive.last_updated))
-        > (states(''input_number.cyd_aux2_watchdog_delai'') | int * 60) }}
-
-        '
-    then:
-    - action: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.cyd_aux2_watchdog
   mode: single
 - id: '1774818864542'
   alias: Capteurs - Recevoir IP ThCave

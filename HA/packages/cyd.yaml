@@ -1,5 +1,5 @@
 # ============================================================
-# Package : CYD (contrôleurs à écran)
+# Package : CYD (contrôleurs à écran) : CYD principal (cyd_*), CYD Aux (cyd_aux_*), CYD Aux2 (cyd_aux2_*)
 #  - sensor.cyd_etat : réponse complète à la commande STATUS du CYD principal.
 #      État = heure de réception ; attribut « texte » = trame entière
 #      (un input_text est limité à 255 caractères, le STATUS en fait plus de 600).
@@ -81,6 +81,146 @@ template:
         auto_off:
           minutes: 2
 
+  # ============================================================
+  # CYD Aux (« Home Assistant Aux », profil cyd-aux) : mêmes entités, préfixe cyd_aux_, topics home/configaux/.
+  # Ses ALIVEWDOG arrivent sur home/configuration/state (topic du principal), voir « CYD AUX - Recevoir Alive ».
+  # ============================================================
+  # ---------- STATUS du CYD Aux ----------
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux/state
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload.startswith('=== ') }}"
+    sensor:
+      - name: "CYD Aux État"
+        unique_id: cyd_aux_etat
+        icon: mdi:tablet
+        device_class: timestamp
+        state: "{{ now().isoformat() }}"
+        attributes:
+          texte: "{{ trigger.payload }}"
+
+  # ---------- Écran du CYD Aux : allumé / éteint ----------
+  # Trame « ECRAN ALLUME » / « ECRAN ETEINT » (Home-Assist 3.4) publiée à chaque changement
+  # (veille après délai, réveil au toucher, commande MQTT) et au démarrage.
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux/state
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload in ['ECRAN ALLUME', 'ECRAN ETEINT'] }}"
+    binary_sensor:
+      - name: "CYD Aux Écran"
+        unique_id: cyd_aux_ecran
+        icon: mdi:monitor
+        state: "{{ trigger.payload == 'ECRAN ALLUME' }}"
+
+  # ---------- Connexion du CYD Aux ----------
+  # Connecté si le dernier ALIVEWDOG (input_text.cyd_aux_alive, mis à jour par « CYD AUX - Recevoir Alive »)
+  # date de moins que le délai d'alerte. Recalculé chaque minute (now()). Remplace input_boolean.cyd_aux_watchdog
+  # et l'automatisation « CYD AUX - Watchdog check ».
+  - binary_sensor:
+      - name: "CYD Aux Connexion"
+        unique_id: cyd_aux_connexion
+        device_class: connectivity
+        state: >
+          {% set alive = states.input_text.cyd_aux_alive %}
+          {{ alive is not none and (now() - alive.last_updated).total_seconds()
+             < states('input_number.cyd_aux_watchdog_delai') | int(30) * 60 }}
+
+  # ---------- Redémarrage du CYD Aux en cours ----------
+  # Allumé à la commande REBOOT (bouton de la vue ou autre), éteint quand le CYD republie son état d'écran au
+  # démarrage (« VEILLE <s> », ~10 s après), ou au bout de 2 min s'il ne revient pas.
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux/command
+        payload: "REBOOT"
+        id: debut
+      - trigger: mqtt
+        topic: home/configaux/state
+        id: fin
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'debut' or trigger.payload.startswith('VEILLE ') }}"
+    binary_sensor:
+      - name: "CYD Aux Redémarrage"
+        unique_id: cyd_aux_redemarrage
+        icon: mdi:restart
+        state: "{{ trigger.id == 'debut' }}"
+        auto_off:
+          minutes: 2
+
+  # ============================================================
+  # CYD Aux2 (« Home Assistant Aux2 », profil cyd-aux) : mêmes entités, préfixe cyd_aux2_, topics home/configaux2/.
+  # Ses ALIVEWDOG arrivent sur home/configuration/state (topic du principal), voir « CYD AUX2 - Recevoir Alive ».
+  # ============================================================
+  # ---------- STATUS du CYD Aux2 ----------
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux2/state
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload.startswith('=== ') }}"
+    sensor:
+      - name: "CYD Aux2 État"
+        unique_id: cyd_aux2_etat
+        icon: mdi:tablet
+        device_class: timestamp
+        state: "{{ now().isoformat() }}"
+        attributes:
+          texte: "{{ trigger.payload }}"
+
+  # ---------- Écran du CYD Aux2 : allumé / éteint ----------
+  # Trame « ECRAN ALLUME » / « ECRAN ETEINT » (Home-Assist 3.4) publiée à chaque changement
+  # (veille après délai, réveil au toucher, commande MQTT) et au démarrage.
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux2/state
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload in ['ECRAN ALLUME', 'ECRAN ETEINT'] }}"
+    binary_sensor:
+      - name: "CYD Aux2 Écran"
+        unique_id: cyd_aux2_ecran
+        icon: mdi:monitor
+        state: "{{ trigger.payload == 'ECRAN ALLUME' }}"
+
+  # ---------- Connexion du CYD Aux2 ----------
+  # Connecté si le dernier ALIVEWDOG (input_text.cyd_aux2_alive, mis à jour par « CYD AUX2 - Recevoir Alive »)
+  # date de moins que le délai d'alerte. Recalculé chaque minute (now()). Remplace input_boolean.cyd_aux2_watchdog
+  # et l'automatisation « CYD AUX2 - Watchdog check ».
+  - binary_sensor:
+      - name: "CYD Aux2 Connexion"
+        unique_id: cyd_aux2_connexion
+        device_class: connectivity
+        state: >
+          {% set alive = states.input_text.cyd_aux2_alive %}
+          {{ alive is not none and (now() - alive.last_updated).total_seconds()
+             < states('input_number.cyd_aux2_watchdog_delai') | int(30) * 60 }}
+
+  # ---------- Redémarrage du CYD Aux2 en cours ----------
+  # Allumé à la commande REBOOT (bouton de la vue ou autre), éteint quand le CYD republie son état d'écran au
+  # démarrage (« VEILLE <s> », ~10 s après), ou au bout de 2 min s'il ne revient pas.
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux2/command
+        payload: "REBOOT"
+        id: debut
+      - trigger: mqtt
+        topic: home/configaux2/state
+        id: fin
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'debut' or trigger.payload.startswith('VEILLE ') }}"
+    binary_sensor:
+      - name: "CYD Aux2 Redémarrage"
+        unique_id: cyd_aux2_redemarrage
+        icon: mdi:restart
+        state: "{{ trigger.id == 'debut' }}"
+        auto_off:
+          minutes: 2
+
 script:
   # Bascule l'écran du CYD principal (réveil si l'état est inconnu)
   cyd_ecran_bascule:
@@ -91,3 +231,23 @@ script:
         data:
           topic: home/configuration/command
           payload: "{{ 'ECRAN SLEEP' if is_state('binary_sensor.cyd_ecran', 'on') else 'ECRAN WAKE' }}"
+
+  # Bascule l'écran du CYD Aux (réveil si l'état est inconnu)
+  cyd_aux_ecran_bascule:
+    alias: "CYD Aux - Basculer l'écran"
+    icon: mdi:monitor
+    sequence:
+      - action: mqtt.publish
+        data:
+          topic: home/configaux/command
+          payload: "{{ 'ECRAN SLEEP' if is_state('binary_sensor.cyd_aux_ecran', 'on') else 'ECRAN WAKE' }}"
+
+  # Bascule l'écran du CYD Aux2 (réveil si l'état est inconnu)
+  cyd_aux2_ecran_bascule:
+    alias: "CYD Aux2 - Basculer l'écran"
+    icon: mdi:monitor
+    sequence:
+      - action: mqtt.publish
+        data:
+          topic: home/configaux2/command
+          payload: "{{ 'ECRAN SLEEP' if is_state('binary_sensor.cyd_aux2_ecran', 'on') else 'ECRAN WAKE' }}"

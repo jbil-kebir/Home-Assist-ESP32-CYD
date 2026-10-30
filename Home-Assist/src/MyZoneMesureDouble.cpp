@@ -49,24 +49,34 @@ CZoneMesureDouble::CZoneMesureDouble(/*CConfig& cfg, */TFT_eSPI& tft, unsigned i
 // -1 : Mesure invalide, on ne fait rien
 // 0 : RAS
 //
-int CZoneMesureDouble::drawMesure1(float val, const String& nom/*=""*/) { 
-  if (val == -127.0 && mfOldMesure1 == -127.0) return -1; // Evite de trop nombreux raffraichisssements;
+// eveil : EVEIL_SANS_BANDEAU (comportement d'origine) ou état du nœud (EVEIL_INCONNU / ENDORMI / EVEILLE) :
+// bandeau vert / rouge / gris derrière le nom, la mesure garde ses couleurs
+int CZoneMesureDouble::drawMesure1(float val, const String& nom/*=""*/, int eveil/*=EVEIL_SANS_BANDEAU*/) {
+  if (val == -127.0 && mfOldMesure1 == -127.0 && eveil == miOldEveil) return -1; // Evite de trop nombreux raffraichisssements;
   mfOldMesure1 = val;
+  miOldEveil = eveil;
 
+  bool bKO = (val == -127.0 || val == -254.0);
   mTft.fillRect(muiPosX, muiPosY, muiWidth, muiHight, muiBgColor);  // TFT_BLACK Efface zone
+  // Nom
+  unsigned int couleurNom = bKO ? muiKOColorMesure : muiOKColorMesure;
+  if (eveil != EVEIL_SANS_BANDEAU) {
+    unsigned int fond = (eveil == EVEIL_EVEILLE) ? COLOR_BANDEAU_EVEILLE :
+                        (eveil == EVEIL_ENDORMI) ? COLOR_BANDEAU_ENDORMI : COLOR_BANDEAU_INCONNU;
+    mTft.fillRect(muiPosX, muiPosY, muiWidth, BANDEAU_NOM_HAUTEUR, fond);
+    couleurNom = (eveil == EVEIL_EVEILLE) ? TFT_BLACK : TFT_WHITE;
+  }
+  mTft.setTextColor(couleurNom);
+  mTft.drawString(nom, muiLabelX, muiLabelY, muiLabelFont);
+  // Mesure
+  mTft.setTextColor(bKO ? muiKOColorMesure : muiOKColorMesure);
   if (val == -127.0) {
-    mTft.setTextColor(muiKOColorMesure);
-    mTft.drawString(nom, muiLabelX, muiLabelY, muiLabelFont);
     mTft.drawString("KO", muiValMesure1X, muiValMesure1Y, muiValMesure1Font);
-  } 
+  }
   else if (val == -254.0) { // Watchdog Error
-    mTft.setTextColor(muiKOColorMesure);
-    mTft.drawString(nom, muiLabelX, muiLabelY, muiLabelFont);
     mTft.drawString("WDG", muiValMesure1X, muiValMesure1Y, muiValMesure1Font);
-  } 
+  }
   else {
-    mTft.setTextColor(muiOKColorMesure);
-    mTft.drawString(nom, muiLabelX, muiLabelY, muiLabelFont);
     mTft.drawString(String(val, 1) + " °C", muiValMesure1X, muiValMesure1Y, muiValMesure1Font);
   }
 

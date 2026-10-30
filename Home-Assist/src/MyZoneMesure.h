@@ -5,6 +5,7 @@
 #include <XPT2046_Touchscreen.h>
 
 #include "ecranConstantesPosition.h"
+#include "MyZoneMesureDouble.h" // EVEIL_* et couleurs du bandeau derrière le nom
 
 #define MESURE_BATTERIE_HAUTEUR 20
 #define COLOR_OK_MESURE TFT_WHITE
@@ -19,6 +20,7 @@ class CZoneMesure {
         String msNom="";
         float mfOldMesure = 0.0, mfOldValBatterie = 0.0;
         int miEtatBatterie = 0;
+        int miOldEveil = -3; // -3 : rien affiché
         // Valeurs déduites par tests
         unsigned int muiLabelX, muiLabelY, muiLabelFont; // Position et Police du texte (nom du capteur)
 
@@ -34,7 +36,7 @@ class CZoneMesure {
         void calculeCoordonnees();
         CZoneMesure(/*CConfig& cfg, */TFT_eSPI& tft, unsigned int x, unsigned int y, unsigned int w, unsigned int h, unsigned int bgcolor, String name=""); 
 
-        int drawMesure(float val, const String& nom="");
+        int drawMesure(float val, const String& nom="", int eveil=EVEIL_SANS_BANDEAU);
         int drawEtatBatterie(float val, int iEtatBat, const String& nom="");
         
 

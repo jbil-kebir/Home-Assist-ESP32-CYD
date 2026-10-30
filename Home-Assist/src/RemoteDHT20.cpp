@@ -114,6 +114,17 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
   }
   inactifAffiche = false;
 
+  // État éveillé / endormi (bandeau derrière le nom sur le CYD) : « <nom> DEEPSLEEP ON … » = endormi,
+  // toute autre trame du nœud = éveillé. Au changement, la zone est redessinée avec la dernière température.
+  int iEspace = payload.indexOf(' ');
+  if (iEspace > 0 && payload.substring(0, iEspace).equalsIgnoreCase(nomEquipement)) {
+    int eveil = payload.substring(iEspace + 1).startsWith("DEEPSLEEP ON") ? 0 : 1;
+    if (eveil != miEveil) {
+      miEveil = eveil;
+      if (onTemperatureChanged != nullptr) onTemperatureChanged(nomEquipement, lastTempC);
+    }
+  }
+
   ParsedMqttMessage msg;
   msg.parse(payload);
   int n = msg.miTailleMesure;

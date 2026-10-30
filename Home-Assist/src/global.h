@@ -15,16 +15,30 @@
 #define Serial gSerialJournal
 
 //----------------------------------------------------------------------------
-// Si cette ligne est commentée, le CC1101 et le capteur de température doivent 
-// être présents.
-// Sinon, tout est à distance.
+// Contrôleur principal (__LOCAL_MODE__) : le CC1101 et le capteur de température
+// doivent être présents. CYD auxiliaire : tout est à distance.
+// Choisi par le profil de compilation de platformio.ini :
+//   cyd-principal, principal-sans-cyd -> __LOCAL_MODE__ ; cyd-aux (-DCYD_AUXILIAIRE) -> auxiliaire.
 //----------------------------------------------------------------------------
+#ifndef CYD_AUXILIAIRE
 #define __LOCAL_MODE__
 //----------------------------------------------------------------------------
-// Ligne à décommenter si le module est un écran CYD
-// Si cette ligne est décommentée, il faut aussi que #define __LOCAL_MODE__ le soit
+// Switch pour le DS18B20 local. Voir plus loin la Pin
+// Ne l'activer qu'en mode __LOCAL_MODE__
+// Si la ligne est commentée en mode __LOCAL_MODE__, le thermomètre local
+// est un DHT20 (I2C). Voir plus loin les pins SDA/SCL.
 //----------------------------------------------------------------------------
+#define __LOCAL_DS18B20__
+#endif
+//----------------------------------------------------------------------------
+// Module à écran CYD : tous les profils sauf principal-sans-cyd (-DSANS_CYD).
+//----------------------------------------------------------------------------
+#ifndef SANS_CYD
 #define __CYD__
+#endif
+#if defined(SANS_CYD) && defined(CYD_AUXILIAIRE)
+#error "Un CYD auxiliaire a forcement un ecran : SANS_CYD et CYD_AUXILIAIRE sont incompatibles"
+#endif
 //----------------------------------------------------------------------------
 // Si ce commutateur n'est pas commenté, il n'y a pas d'émission RF mais 
 // tout le processus de commande est exécuté.
@@ -37,12 +51,8 @@
 //#define DISABLE_EFFECTEUR_RC_SWITCH
 
 //----------------------------------------------------------------------------
-// Switch pour le DS18B20 local. Voir plus loin la Pin
-// Ne l'activer qu'en mode __LOCAL_MODE__
-// Si la ligne est commentée en mode __LOCAL_MODE__, le thermomètre local
-// est un DHT20 (I2C). Voir plus loin les pins SDA/SCL.
+// En mode __LOCAL_MODE__, si le DS18B20 n'est pas utilisé, le DHT20 est utilisé.
 //----------------------------------------------------------------------------
-#define __LOCAL_DS18B20__
 #if defined(__LOCAL_MODE__) && !defined(__LOCAL_DS18B20__)
 #define __LOCAL_DHT20__
 #endif

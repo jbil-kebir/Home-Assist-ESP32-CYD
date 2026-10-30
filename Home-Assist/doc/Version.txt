@@ -6,6 +6,21 @@ MQTT : MQTT_MAX_PACKET_SIZE 512 -> 1024 (platformio.ini) : le STATUS du contrôl
 Écran : publie « ECRAN ALLUME » / « ECRAN ETEINT » sur topic_config_state à chaque changement (veille après délai,
     réveil au toucher, ECRAN SLEEP / WAKE) et au démarrage (CEcran::setEcranAllume, remonteEtatEcranParMqtt)
     HA : binary_sensor.cyd_ecran + script.cyd_ecran_bascule (un seul bouton qui bascule)
+Profils PlatformIO : cyd-principal (défaut), cyd-aux (-DCYD_AUXILIAIRE, CYD Aux et Aux 2), principal-sans-cyd (-DSANS_CYD) ;
+    __LOCAL_MODE__ et __CYD__ ne se règlent plus à la main dans global.h
+Liste des contrôleurs : le CYD s'y inscrit sous son nom réglé (config.nomEquipement) et non plus NOM_EQUIPEMENT
+    (un CYD auxiliaire apparaissait sous « CYD HA »)
+Lumière cave sur les CYD auxiliaires : boutons « Cave » + cadenas actifs (plus condamnés), pastille jour / nuit
+    CRemoteRCDevice mRemoteLumiereCave (main_lumierecave.cpp), topic home/lumierecave/, comme la guirlande ;
+    STATUS, page Web ; CRemoteRCDevice::setDefauts() : nom et sous-topic par défaut si le NVS est vide
+433 MHz : SmartRC-CC1101-Driver-Lib copiée dans lib/ (v2.5.7 avec spi renommé bSpi, conflit avec TFT_eSPI) ; les
+    profils, environnements neufs, avaient téléchargé la 3.0.2, dont Init() bloque : plus aucune émission 433 MHz
+NVS : page /nvs (occupation, clés par espace de noms, valeurs, mots de passe masqués) et bouton « Supprimer les clés
+    obsolètes » (/nvs/purge, espaces deep_sleep et cydmon d'autres programmes) ; la NVS du principal était pleine
+    (504/504) : les nouveaux réglages (lumière cave, JnCave, état chaudière) n'étaient plus enregistrés
+Nœuds capteurs : bandeau derrière le nom selon l'état instantané : vert éveillé (toute trame du nœud), rouge
+    endormi (« <nom> DEEPSLEEP ON »), gris inconnu (rien depuis le démarrage) ; ThCh1er, ThSdb, ThRemise, ThCave,
+    ThChRDC, ThNomade (CRemoteThermo / CRemoteDHT20::miEveil, CZoneMesureDouble::drawMesure1)
 
 3.3
 Contrôleur principal (__LOCAL_MODE__) : confirme chaque trame d'un flotteur (« <nom> OnOff ... ») en publiant « <nom> ACK »

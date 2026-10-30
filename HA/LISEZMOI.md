@@ -13,8 +13,10 @@ Dernier export : 27/10/2026.
 | `scripts.yaml` | Scripts |
 | `packages/` | Paquets inclus par `homeassistant: packages: !include_dir_named packages` |
 | `packages/noeuds_capteurs.yaml` | Pilotage à distance des nœuds capteurs LoRa (via Relais-Lora) et Wi-Fi (réglages, GET, STATUS, REBOOT, ANNULER, nettoyage du retenu, commande libre, éveil/sommeil) — **généré** |
-| `packages/cyd.yaml` | CYD principal : `sensor.cyd_etat` (réponse complète au STATUS, attribut `texte`), `binary_sensor.cyd_ecran` (écran allumé / éteint, Home-Assist 3.4), `binary_sensor.cyd_connexion` (dernier ALIVEWDOG plus récent que le délai d'alerte), `binary_sensor.cyd_redemarrage` (REBOOT en cours), `script.cyd_ecran_bascule` |
+| `packages/cyd.yaml` | CYD principal (`cyd_*`, topics `home/configuration/`) et CYD Aux (`cyd_aux_*`, topics `home/configaux/`, nom « Home Assistant Aux ») et CYD Aux2 (`cyd_aux2_*`, topics `home/configaux2/`, nom « Home Assistant Aux2 ») ; pour chacun : `sensor.cyd_etat` (réponse complète au STATUS, attribut `texte`), `binary_sensor.cyd_ecran` (écran allumé / éteint, Home-Assist 3.4), `binary_sensor.cyd_connexion` (dernier ALIVEWDOG plus récent que le délai d'alerte), `binary_sensor.cyd_redemarrage` (REBOOT en cours), `script.cyd_ecran_bascule` |
 | `vue-cyd.yaml` | Vue « CYD » du tableau Système (connexion, IP, liens Page Web / Journal, redémarrage avec confirmation, bascule de l'écran, réglages, état en tableaux — chaudière et lumière cave : état mesuré par CoulSdb / JnCave), à coller dans l'interface |
+| `vue-cyd-aux.yaml` | Vue « CYD Aux » : même contenu que `vue-cyd.yaml` (substitution `cyd_` → `cyd_aux_`), à coller dans l'interface |
+| `vue-cyd-aux2.yaml` | Vue « CYD Aux 2 » : idem avec `cyd_aux2_`, à coller dans l'interface |
 | `vue-noeuds-capteurs.yaml` | Vue « Nœuds capteurs » du tableau Système, à coller dans l'interface (pas un fichier de HA) — **générée** |
 | `tableau-accueil-complet.yaml` | Tableau Accueil **entier** (6 vues, même contenu que `vue-accueil.yaml` pour la vue Accueil), pour l'**éditeur de configuration brute** (qui remplace tout le tableau) |
 | `vue-accueil.yaml` | Vue « Accueil » du tableau Accueil (export `.storage` du 30/10/2026 + carte « Lumière cave » : état MESURÉ par ThCave, sensor.jncave_etat Jour = Allumée / Nuit = Éteinte, à côté de Chaudière et Cuve), à coller dans l'interface |

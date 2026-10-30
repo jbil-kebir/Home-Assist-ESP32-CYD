@@ -546,12 +546,6 @@ mqtt:
       value_template: "{{ value }}"
 
 input_boolean:
-  cyd_aux_watchdog:
-    name: "CYD AUX Watchdog"
-    icon: mdi:heart-pulse
-  cyd_aux2_watchdog:
-    name: "CYD AUX2 Watchdog"
-    icon: mdi:heart-pulse
 
 input_number:
   cyd_veille:
@@ -684,15 +678,9 @@ input_text:
     name: "CYD Alive"
     max: 50
 
-  cyd_aux_status:
-    name: "CYD AUX Status"
-    max: 255
   cyd_aux_alive:
     name: "CYD AUX Alive"
     max: 50
-  cyd_aux2_status:
-    name: "CYD AUX2 Status"
-    max: 255
   cyd_aux2_alive:
     name: "CYD AUX2 Alive"
     max: 50

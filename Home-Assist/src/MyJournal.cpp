@@ -200,6 +200,12 @@ void CJournal::vide() {
 //------------------------------------------------------------------------------
 void CSerialJournal::begin(unsigned long baud) {
   Serial.begin(baud);
+  #if ARDUINO_USB_CDC_ON_BOOT && ARDUINO_USB_MODE
+  // Port série sur l'USB natif (XIAO C3 / S3) : branché sur un PC dont personne ne lit le port, chaque écriture
+  // attendait son délai d'expiration (2 à 10 s par ligne sur le relais le 30/10/2026 : MQTT coupé, trames LoRa perdues).
+  // Délai nul : l'écriture est abandonnée aussitôt ; le journal web reçoit tout quand même.
+  Serial.setTxTimeoutMs(0);
+  #endif
   gJournal.demarrage();
 }
 

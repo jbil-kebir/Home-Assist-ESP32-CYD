@@ -12,7 +12,7 @@ void CRemoteRCDevice::setup(const String pref) {
 }
 
 void CRemoteRCDevice::loop() {
-    
+
 }
 
 int CRemoteRCDevice::activeEquipement() {
@@ -29,11 +29,20 @@ void CRemoteRCDevice::loadFromNVS() {
   buttonName = prefs.getString((mPrefixNVS+"name").c_str(), "Equipement");
   etat = prefs.getBool((mPrefixNVS+"st").c_str(), false);
   etatStr = etat ? "ON" : "OFF";
+  bool bNomEnregistre = prefs.isKey((mPrefixNVS+"nom").c_str());
+  bool bSubTopicEnregistre = prefs.isKey((mPrefixNVS+"subtopic").c_str());
 
   prefs.end();
- 
+
   CEquipementBase::loadFromNVS();
-  
+  // Appareil jamais enregistré sur ce CYD : nom et sous-topic par défaut (setDefauts())
+  if (!bNomEnregistre && msNomDefaut.length() > 0) nomEquipement = msNomDefaut;
+  if (!bSubTopicEnregistre && msSubTopicDefaut.length() > 0) {
+    mqttSubTopic = msSubTopicDefaut;
+    mqttSubTopicCommand = domotique_prefix + mqttSubTopic + "command";
+    mqttSubTopicState   = domotique_prefix + mqttSubTopic + "state";
+  }
+
 }
 
 void CRemoteRCDevice::saveToNVS() {

@@ -74,20 +74,17 @@
     #else
     mBtnProjecteur.mDevice = mConfig.mRemoteProjecteur;
     mBtnGuirlande.mDevice = mConfig.mRemoteGuirlande;
+    mBtnLumiereCave.mDevice = mConfig.mRemoteLumiereCave;
     mBtnChauffageON.mDevice = mConfig.mRemoteChauffage;
     mBtnChaudiereON.mDevice = mConfig.mRemoteChaudiere;
     mBtnChaudiereOFF.mDevice = mConfig.mRemoteChaudiere;
 
     mBtnProjecteurActif.mDevice = mConfig.mRemoteProjecteur;
     mBtnGuirlandeActif.mDevice = mConfig.mRemoteGuirlande;
+    mBtnLumiereCaveActif.mDevice = mConfig.mRemoteLumiereCave;
     mBtnChauffageONActif.mDevice = mConfig.mRemoteChauffage;
     mBtnChaudiereONActif.mDevice = mConfig.mRemoteChaudiere;
     mBtnChaudiereOFFActif.mDevice = mConfig.mRemoteChaudiere;
-    #endif
-    #ifndef __LOCAL_MODE__
-    // CYD auxiliaire : pas de lumière de la cave (appareil du seul CYD principal) → boutons condamnés
-    mBtnLumiereCave.setCondamne(true);
-    mBtnLumiereCaveActif.setCondamne(true);
     #endif
 
     int i = 0;
@@ -602,7 +599,8 @@ void CEcran::updateThermometreLocal() {
   nom = "";
   temp = -127.0;
   #endif
-  mZoneMesureEst.drawMesure(temp, nom);
+  // Thermomètre du CYD lui-même : toujours éveillé quand l'écran l'affiche
+  mZoneMesureEst.drawMesure(temp, nom, nom.isEmpty() ? EVEIL_SANS_BANDEAU : EVEIL_EVEILLE);
 }
 //============================================================================================
 // Affichage mesure et batterie - emplacement OUEST
@@ -610,7 +608,12 @@ void CEcran::updateThermometreLocal() {
 //-------------------------------------- DS18B20 (ThCYD) --------------------------------------
 void CEcran::updateRemoteDevice_DS18B20(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 1 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureEst.drawMesure(val, nom);
+  // CYD auxiliaire : trames « ThCYD … » du principal (pas de rouge : son DEEPSLEEP ON part sous le nom du CYD)
+  #ifdef __LOCAL_MODE__
+  mZoneMesureEst.drawMesure(val, nom, EVEIL_EVEILLE); // mRemoteThMain n'existe qu'hors __LOCAL_MODE__
+  #else
+  mZoneMesureEst.drawMesure(val, nom, mConfig.mRemoteThMain ? mConfig.mRemoteThMain->getEveil() : EVEIL_SANS_BANDEAU);
+  #endif
 }
 void CEcran::updateRemoteBat_DS18B20(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 1 && mucSerieAffichageEnCours != 3) return;
@@ -620,7 +623,7 @@ void CEcran::updateRemoteBat_DS18B20(const String& nom, int etatBatterie, float 
 //-------------------------------------- ThCh1er --------------------------------------
 void CEcran::updateRemoteDevice_ThCh1er(const String& nom, float val) {
   if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
-  mZoneMesureOuest.drawMesure1(val, nom);
+  mZoneMesureOuest.drawMesure1(val, nom, mConfig.mRemoteThCh1er ? mConfig.mRemoteThCh1er->getEveil() : EVEIL_SANS_BANDEAU);
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThCh1erH(const String& nom, float val) {
@@ -640,7 +643,7 @@ void CEcran::updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float 
 //-------------------------------------- ThSdb --------------------------------------
 void CEcran::updateRemoteDevice_ThSdb(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 1 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureCentre.drawMesure1(val, nom);
+  mZoneMesureCentre.drawMesure1(val, nom, mConfig.mRemoteThSdb ? mConfig.mRemoteThSdb->getEveil() : EVEIL_SANS_BANDEAU);
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThSdbH(const String& nom, float val) {
@@ -699,7 +702,7 @@ void CEcran::updateRemoteDevice_ChauffageSb(const String& nom, int val) {
 //-------------------------------------- ThRemise --------------------------------------
 void CEcran::updateRemoteDevice_ThRemise(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleCentre.drawMesure1(val, nom);
+  mZoneMesureDoubleCentre.drawMesure1(val, nom, mConfig.mRemoteThRemise ? mConfig.mRemoteThRemise->getEveil() : EVEIL_SANS_BANDEAU);
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThRemiseH(const String& nom, float val) {
@@ -717,7 +720,7 @@ void CEcran::updateRemoteBat_ThRemise(const String& nom, int etatBatterie, float
 //============================================================================================
 void CEcran::updateRemoteDevice_ThCave(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleEst.drawMesure1(val, nom);
+  mZoneMesureDoubleEst.drawMesure1(val, nom, mConfig.mRemoteThCave ? mConfig.mRemoteThCave->getEveil() : EVEIL_SANS_BANDEAU);
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThCaveH(const String& nom, float val) {
@@ -763,7 +766,7 @@ void CEcran::updateRemoteJourNuit_ThCave(int eclairement, int etat) {
 //============================================================================================
 void CEcran::updateRemoteDevice_ThChRdc(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleOuest.drawMesure1(val, nom);
+  mZoneMesureDoubleOuest.drawMesure1(val, nom, mConfig.mRemoteThChRdc ? mConfig.mRemoteThChRdc->getEveil() : EVEIL_SANS_BANDEAU);
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThChRdcH(const String& nom, float val) {
@@ -781,7 +784,7 @@ void CEcran::updateRemoteBat_ThChRdc(const String& nom, int etatBatterie, float 
 //============================================================================================
 void CEcran::updateRemoteDevice_ThNomade(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 4) return;
-  mZoneMesureDoubleBas.drawMesure1(val, nom);
+  mZoneMesureDoubleBas.drawMesure1(val, nom, mConfig.mRemoteThNomade ? mConfig.mRemoteThNomade->getEveil() : EVEIL_SANS_BANDEAU);
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThNomadeH(const String& nom, float val) {

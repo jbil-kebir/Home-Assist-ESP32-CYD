@@ -74,6 +74,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   CRemoteChaudiere *mRemoteChaudiere=nullptr;
   CRemoteRCDevice *mRemoteProjecteur=nullptr;
   CRemoteRCDevice *mRemoteGuirlande=nullptr;
+  CRemoteRCDevice *mRemoteLumiereCave=nullptr; // Bouton « Cave » d'un CYD auxiliaire (main_lumierecave.cpp)
   CRemoteNoeudChauffageIRSound *mRemoteChauffage=nullptr;
 //  CRemoteRCDevice *mRemoteChauffage=nullptr;
   CRemoteThermo *mRemoteThMain=nullptr;

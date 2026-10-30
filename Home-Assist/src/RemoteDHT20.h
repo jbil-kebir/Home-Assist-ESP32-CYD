@@ -35,8 +35,11 @@ private:
   _ST_MESURE_ mStMesures[NB_CODES_RCS]; // Mesures décodées
   unsigned char mucNbCodesRecus = 0; // Nombre de codes reçus
 
+  int miEveil = -1; // État instantané du nœud : -1 inconnu, 0 endormi, 1 éveillé (EVEIL_* de MyZoneMesureDouble.h)
+
 public:
   unsigned long getWatchdogIntervalle() const { return mulWatchdogIntervalle; } // en secondes
+  int getEveil() const { return miEveil; }
   CRemoteDHT20(const String& nomEqu, CEcran* ecran,
       std::function<void(const String&, float)> callbackTemerature = nullptr, 
       std::function<void(const String&, float)> callbackHumidite = nullptr,
