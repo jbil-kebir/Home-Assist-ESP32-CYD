@@ -63,6 +63,11 @@ dans `NOEUDS`, ajouter `jn=True`, l'unité `"Jn"` et les deux mesures `sensor.jn
 modifiables par la commande libre (`SET jn_sbas 15 jn_shaut 25` …, détail dans l'aide de la vue). Seul ThCave l'a
 aujourd'hui ; l'indicateur « Cave · Jour / Nuit » de la vue Actionneurs (`CARTE_JOUR_NUIT_CAVE`) lui est propre.
 
+**Flotteur avec réveil et confirmation** (Capteur 3.1, classe `CTor`, préfixe `mfv_`) : dans `NOEUDS`, ajouter `fl=True`.
+Effet : attributs `mfv_rev`, `mfv_revmin`, `mfv_ack`, `mfv_ackn` de `sensor.<id>_config` affichés **en lecture seule** dans
+la carte « Flotteur » du nœud, modifiables par la commande libre (`SET mfv_revmin 300 mfv_ack 1` …). Seul ThRemise l'a.
+La confirmation (« FlotteurRemise ACK ») est envoyée par le contrôleur principal (Home-Assist 3.3), plus par HA.
+
 **Actionneur** (`type="actionneur"`, ex. nœud chauffage SdB) : pas de réglages de sommeil, hors de la vue « Nœuds
 capteurs » ; sa carte est insérée dans `vue-actionneurs.yaml` (vue Actionneurs du tableau Accueil, reprise de
 `.storage/lovelace.dashboard_accueil` : réexporter ce fichier avant de régénérer si la vue a été modifiée dans HA),
@@ -70,8 +75,8 @@ capteurs » ; sa carte est insérée dans `vue-actionneurs.yaml` (vue Actionneur
 
 1. Dans `/config/packages/` : **supprimer `capteurs_lora.yaml`** (ancienne version, entités en double sinon) et copier
    `packages/noeuds_capteurs.yaml`.
-2. Remplacer `/config/automations.yaml` (l'automatisation « Cuve - SLEEP et ACK flotteur » n'envoie plus son SLEEP
-   quand une commande attend), sauf si des automatisations ont été modifiées dans HA depuis l'export.
+2. `/config/automations.yaml` : l'automatisation « Cuve - SLEEP et ACK flotteur » a été **supprimée** le 30/10/2026
+   (remplacée par le réveil par le flotteur et la confirmation par le contrôleur principal, Capteur 3.1 / Home-Assist 3.3).
 3. Outils de développement → YAML → « Vérifier la configuration », puis redémarrer HA.
 4. Tableau Système → ✏️ → vue « Capteurs LoRa » (ou « + » nouvelle vue) → ⋮ → « Modifier en YAML » → remplacer par
    `vue-noeuds-capteurs.yaml` → Enregistrer (nouvelle adresse : `/dashboard-systeme/noeuds-capteurs`).

@@ -641,35 +641,6 @@
     data:
       value: '{{ states(''sensor.system_monitor_adresse_ipv4_end0'') }}'
   mode: single
-- id: '1775399513935'
-  alias: Cuve - SLEEP et ACK flotteur
-  triggers:
-  - trigger: mqtt
-    topic: home/thermometre/state
-    value_template: '{{ value.split('' '')[0] | upper }}'
-    payload: FLOTTEURREMISE
-  actions:
-  - if:
-    - condition: template
-      value_template: '{{ states(''sensor.thremise_commande_en_attente'') in [''aucune'',
-        ''unknown'', ''unavailable'', ''''] }}'
-    then:
-    - action: mqtt.publish
-      data:
-        topic: home/confthremise/command
-        payload: '{{ ''SLEEP SLEEPS'' if states(''sensor.meteo_france_forecast_for_city_bischwiller_alsace_67_fr_bischwiller_rain_chance'')
-          | int > 80 or states(''sensor.meteo_france_rain_for_city_bischwiller_alsace_67_fr_bischwiller_next_rain'')
-          != ''unknown'' else ''SLEEP SLEEPL'' }}
-
-          '
-        retain: false
-  - delay: 00:00:02
-  - action: mqtt.publish
-    data:
-      topic: home/thermometre/command
-      payload: FLOTTEURREMISE ACK
-      retain: false
-  mode: single
 - id: '1775853470108'
   alias: Chaudière - Allumer si froid
   description: ''
@@ -738,7 +709,8 @@
   mode: single
 - id: '1777300000001'
   alias: Relais LoRa - Recevoir IP
-  description: Annonce de démarrage du relais « DEVICE RELAIS LORA <nom> <date> <heure> <IP> »
+  description: Annonce de démarrage du relais « DEVICE RELAIS LORA <nom> <date> <heure>
+    <IP> »
   triggers:
   - topic: home/configuration/command
     trigger: mqtt

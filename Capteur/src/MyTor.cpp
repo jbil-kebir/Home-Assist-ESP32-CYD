@@ -1,6 +1,16 @@
 #include <Arduino.h>
 #include "MyTor.h"
 #ifdef FLOTTEUR_VERTICAL
+#include <time.h>
+#include "esp_sleep.h"
+#if IS_ESP32_S3
+#include "driver/rtc_io.h"
+#endif
+
+// Anti-rafale : heure du dernier réveil par le flotteur (heure système, qui continue à avancer pendant le deep sleep)
+RTC_DATA_ATTR static bool   rtcbReveilFlotteurConnu = false;
+RTC_DATA_ATTR static time_t rtcDernierReveilFlotteur = 0;
+
 bool CTor::setup(const String pref) {
   mPrefixNVS = pref;
   mbMesureRemontee = false;
@@ -10,6 +20,18 @@ bool CTor::setup(const String pref) {
 
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+
+  #if IS_ESP32_S3
+  // Après un réveil EXT1, la broche est encore routée vers le domaine RTC : retour en GPIO normale
+  if (rtc_gpio_is_valid_gpio((gpio_num_t)mucPin)) rtc_gpio_deinit((gpio_num_t)mucPin);
+  #endif
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1) {
+    rtcDernierReveilFlotteur = time(nullptr);
+    rtcbReveilFlotteurConnu = true;
+    Serial.println("CTor::setup() - Réveil par le flotteur");
+  }
+  mucNbEnvoisFaits = 0;
+  mbAckReceived = false;
 
   pinMode(mucPin, mucPinMode);
   _initialized = true;
@@ -129,7 +151,11 @@ int CTor::readAndPublish(bool force/*=false*/, bool mesurer/*=false*/) {
       //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
       #endif
       #ifdef _LORA_P2P_MODE_
-      mbMesureRemontee = publieParLoraP2P(force); 
+      mbMesureRemontee = publieParLoraP2P(force);
+      if (mbMesureRemontee) {
+        mucNbEnvoisFaits++;               // Compte les envois pour la confirmation (confirmationTerminee())
+        mulDateDernierEnvoi = millis();
+      }
       #endif
       #ifdef _WIFI_MODE_
       #ifndef __DESACTIVE_ENVOI_MQTT__
@@ -382,9 +408,14 @@ void CTor::loadFromNVS() {
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
   mucNbEnvois = prefs.getUShort((mPrefixNVS+"renvois").c_str(), 1);
   mulIntervalleEnvoi = prefs.getLong((mPrefixNVS+"interr").c_str(), mulDefaultIntervalleEnvoi);
-  mbAckNeeded = prefs.getBool((mPrefixNVS+"ack").c_str(), false);
+  mbAckNeeded = prefs.getBool((mPrefixNVS+"ack").c_str(), FLOTTEUR_ACK_DEFAUT);
+  mucAckEssais = prefs.getUChar((mPrefixNVS+"ackn").c_str(), FLOTTEUR_ACK_ESSAIS_DEFAUT);
+  mbReveil = prefs.getBool((mPrefixNVS+"rev").c_str(), FLOTTEUR_REVEIL_DEFAUT);
+  mulReveilMinS = prefs.getULong((mPrefixNVS+"revmin").c_str(), FLOTTEUR_REVEIL_MIN_S_DEFAUT);
+  if (mucAckEssais < 1 || mucAckEssais > FLOTTEUR_ACK_ESSAIS_MAX) mucAckEssais = FLOTTEUR_ACK_ESSAIS_DEFAUT;
+  if (mulReveilMinS > FLOTTEUR_REVEIL_MIN_S_MAX) mulReveilMinS = FLOTTEUR_REVEIL_MIN_S_DEFAUT;
 
-  
+
   // On forme les subtopic MQTT
 //  domotique_prefix = prefs.getString("domo_prefix", default_domotique_topic_prefix);
   domotique_prefix = "home/";
@@ -410,6 +441,9 @@ void CTor::saveToNVS() {
   prefs.putUShort((mPrefixNVS+"renvois").c_str(), mucNbEnvois);
   prefs.putLong((mPrefixNVS+"interr").c_str(), mulIntervalleEnvoi);
   prefs.putBool((mPrefixNVS+"ack").c_str(), mbAckNeeded);
+  prefs.putUChar((mPrefixNVS+"ackn").c_str(), mucAckEssais);
+  prefs.putBool((mPrefixNVS+"rev").c_str(), mbReveil);
+  prefs.putULong((mPrefixNVS+"revmin").c_str(), mulReveilMinS);
 
   prefs.end();
 }
@@ -454,6 +488,10 @@ void CTor::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"renvois").c_str())) mucNbEnvois = server.arg((mPrefixNVS+"renvois")).toInt();
   if (server.hasArg((mPrefixNVS+"interr").c_str())) mulIntervalleEnvoi = server.arg((mPrefixNVS+"interr")).toInt();
   if (server.hasArg((mPrefixNVS+"ack").c_str())) mbAckNeeded = true; else mbAckNeeded = false;
+  // Réveil et confirmation : mêmes contrôles que la commande SET (setParam)
+  setParam(mPrefixNVS+"rev", server.hasArg((mPrefixNVS+"rev").c_str()) ? "1" : "0");
+  for (const char* cle : {"revmin", "ackn"})
+    if (server.hasArg((mPrefixNVS+cle).c_str())) setParam(mPrefixNVS+cle, server.arg((mPrefixNVS+cle).c_str()));
 }
 
 String CTor::getHTML() {
@@ -464,7 +502,12 @@ String CTor::getHTML() {
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div class=\"checkbox-row\"><label>Acknoledge</label><input type=\"checkbox\" name=" + (mPrefixNVS+"ack") + " value=\"1\"" + String(mbAckNeeded ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Confirmation par le contrôleur</label><input type=\"checkbox\" name=" + (mPrefixNVS+"ack") + " value=\"1\"" + String(mbAckNeeded ? " checked" : "") + "></div>"
+        "<div><label>Nombre d'essais de confirmation (1 à " + String(FLOTTEUR_ACK_ESSAIS_MAX) + ")</label><input type=\"text\" name=" + (mPrefixNVS+"ackn") + " value=\"" + mucAckEssais + "\"></div>"
+      "</div>"
+      "<div class=\"row\">"
+        "<div class=\"checkbox-row\"><label>Réveil par le flotteur</label><input type=\"checkbox\" name=" + (mPrefixNVS+"rev") + " value=\"1\"" + String(mbReveil ? " checked" : "") + "></div>"
+        "<div><label>Délai anti-rafale (s)</label><input type=\"text\" name=" + (mPrefixNVS+"revmin") + " value=\"" + mulReveilMinS + "\"></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>ID</label><input type=\"text\" name=" + (mPrefixNVS+"id") + " value=\"" + mucCapteurID + "\"></div>"
@@ -493,7 +536,8 @@ void CTor::print() const {
   Serial.printf("     Nom                  : %s\n", nomEquipement.c_str());
   Serial.printf("     ID                   : %d\n", mucCapteurID);
   Serial.printf("     Actif                : %s\n", active ? "OUI" : "NON");
-  Serial.printf("     Acknoledge           : %s\n", mbAckNeeded ? "OUI" : "NON");
+  Serial.printf("     Confirmation         : %s (%d essais)\n", mbAckNeeded ? "OUI" : "NON", mucAckEssais);
+  Serial.printf("     Réveil par flotteur  : %s (anti-rafale %lu s)\n", mbReveil ? "OUI" : "NON", mulReveilMinS);
   Serial.printf("     Pin                  : %d\n", mucPin);
   Serial.printf("     Mode                 : %s\n", mucPinMode == INPUT_PULLUP ? "INPUT_PULLUP" : "INPUT_PULLDOWN");
   Serial.printf("     Intervalle mesures   : %ld s\n", mulIntervalleMesure);
@@ -556,6 +600,94 @@ int CTor::handleMqttCommand(const String& payload) {
       ret = readAndPublish(true);
     }
     return ret;
+}
+
+//
+// Paramètre modifiable à distance (SET <préfixe>rev 1) ou par la page Web. Nom de clé = nom NVS (casse indifférente).
+// Retour
+//  0 : paramètre modifié (en RAM ; saveToNVS() à la charge de l'appelant)
+// -1 : clé inconnue (autre préfixe, ou clé non modifiable à distance)
+// -2 : valeur invalide ou hors bornes
+//
+int CTor::setParam(const String& cle, const String& valeur) {
+  String c = cle; c.toUpperCase();
+  String p = mPrefixNVS; p.toUpperCase();
+  if (!c.startsWith(p)) return -1;
+  c = c.substring(p.length());
+  String v = valeur; v.trim();
+  bool bNombre = v.length() > 0 && v.length() <= 6;
+  for (char ch : v) if (!isdigit(ch)) bNombre = false;
+  long l = bNombre ? v.toInt() : -1;
+
+  if (c == "REV")         { if (v != "0" && v != "1") return -2; mbReveil = (v == "1"); }
+  else if (c == "REVMIN") { if (!bNombre || l > FLOTTEUR_REVEIL_MIN_S_MAX) return -2; mulReveilMinS = l; }
+  else if (c == "ACK")    { if (v != "0" && v != "1") return -2; mbAckNeeded = (v == "1"); }
+  else if (c == "ACKN")   { if (!bNombre || l < 1 || l > FLOTTEUR_ACK_ESSAIS_MAX) return -2; mucAckEssais = l; }
+  else return -1;
+  Serial.println("CTor::setParam() - " + cle + " = " + v);
+  return 0;
+}
+
+// Séparateur « : » : Relais-Lora refuse un '=' dans une trame
+String CTor::getParams() const {
+  return mPrefixNVS + "rev:" + String(mbReveil ? 1 : 0) +
+         " " + mPrefixNVS + "revmin:" + String(mulReveilMinS) +
+         " " + mPrefixNVS + "ack:" + String(mbAckNeeded ? 1 : 0) +
+         " " + mPrefixNVS + "ackn:" + String(mucAckEssais);
+}
+
+//
+// Appelée par CConfig::loop() avant le deep sleep, une fois les mesures émises.
+// Retour true : le deep sleep peut avoir lieu (confirmation reçue, inutile, ou tous les essais faits sans réponse).
+// Sinon, renvoie la trame du flotteur après FLOTTEUR_ACK_ATTENTE_MS sans confirmation, jusqu'à mucAckEssais envois.
+//
+bool CTor::confirmationTerminee() {
+  if (!active || !mbAckNeeded || mbAckReceived) return true;
+  if (mucNbEnvoisFaits == 0) return true;                                // Aucune trame envoyée : rien à confirmer
+  if (millis() - mulDateDernierEnvoi < FLOTTEUR_ACK_ATTENTE_MS) return false; // Confirmation peut-être en route
+  if (mucNbEnvoisFaits < mucAckEssais) {
+    Serial.printf("CTor::confirmationTerminee() - Pas de confirmation : nouvel envoi (%d/%d)\n", mucNbEnvoisFaits + 1, mucAckEssais);
+    readAndPublish(true, false);   // Renvoie le dernier état lu (trame marquée FORCE)
+    return false;
+  }
+  Serial.printf("CTor::confirmationTerminee() - Pas de confirmation après %d envois : deep sleep quand même\n", mucNbEnvoisFaits);
+  return true;
+}
+
+//
+// Appelée par CConfig::enterDeepSleep(). Arme le réveil EXT1 sur le niveau opposé à l'état actuel du flotteur
+// (cuve vide → réveil quand elle devient pleine, et inversement), sauf pendant l'anti-rafale.
+// Retour true : le tirage interne doit rester actif pendant le sommeil → domaine RTC_PERIPH alimenté.
+// Sinon, la broche est mise en tirage vers la masse (aucun courant dans le tirage interne, comme avant la 3.1).
+//
+bool CTor::prepareReveil(bool autorise) {
+  #if IS_ESP32_S3
+  gpio_num_t g = (gpio_num_t)mucPin;
+  bool bArme = _initialized && active && mbReveil && autorise && rtc_gpio_is_valid_gpio(g);
+  if (bArme && rtcbReveilFlotteurConnu && mulReveilMinS > 0) {
+    time_t ecart = time(nullptr) - rtcDernierReveilFlotteur;
+    if (ecart >= 0 && (unsigned long)ecart < mulReveilMinS) {
+      Serial.printf("CTor::prepareReveil() - Anti-rafale : dernier réveil par le flotteur il y a %ld s (< %lu s), réveil non armé\n",
+                    (long)ecart, mulReveilMinS);
+      bArme = false;
+    }
+  }
+  if (bArme) {
+    pinMode(mucPin, mucPinMode);
+    delay(2);
+    int niveau = digitalRead(mucPin);
+    // Une seule broche : ANY_LOW (0) = ALL_LOW sur ESP32-S3
+    esp_sleep_ext1_wakeup_mode_t mode = (niveau == HIGH) ? (esp_sleep_ext1_wakeup_mode_t)0 : ESP_EXT1_WAKEUP_ANY_HIGH;
+    esp_sleep_enable_ext1_wakeup(1ULL << mucPin, mode);
+    if (mucPinMode == INPUT_PULLUP) { rtc_gpio_pulldown_dis(g); rtc_gpio_pullup_en(g); }
+    else                            { rtc_gpio_pullup_dis(g);   rtc_gpio_pulldown_en(g); }
+    Serial.printf("CTor::prepareReveil() - Réveil par le flotteur armé (GPIO %d %s → réveil au niveau %s)\n",
+                  mucPin, niveau == HIGH ? "HAUT" : "BAS", niveau == HIGH ? "BAS" : "HAUT");
+    return true;
+  }
+  #endif
+  pinMode(mucPin, INPUT_PULLDOWN);   // Pas de courant dans le tirage interne (~70 µA si le flotteur est fermé)
+  return false;
 }
 
 #endif // FLOTTEUR_VERTICAL

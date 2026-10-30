@@ -220,6 +220,15 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   }*/ 
   #endif
   else if (topicStr == mConfig.mRemoteThCh1er->mqttSubTopicState) {  // Tous les thermomètres utilisent le même canal que mRemoteThCh1er->mqttSubTopicState... ()"home/thermometre/state")
+    #ifdef __LOCAL_MODE__
+    // Contrôleur principal seul : confirme chaque trame d'un flotteur (« <nom> OnOff ... ») au nœud, qui l'attend
+    // avant son deep sleep (case « Confirmation par le contrôleur » du Capteur) ; Relais-Lora la transmet par LoRa
+    if (message.startsWith("FLOTTEUR") && message.indexOf(" ONOFF ") > 0) {
+      String sAck = messageOrg.substring(0, messageOrg.indexOf(' ')) + " ACK";
+      client.publish(TOPIC_CONFIRMATION_FLOTTEUR, sAck.c_str(), false);
+      DBGLN(DBG_MQTT, "CMqtt::callback() - Confirmation du flotteur : " + sAck);
+    }
+    #endif
     if (message.startsWith("THCYD")) {                                              // On les différencie par le nom. A améliorer ?
       #ifdef __LOCAL_MODE__
       // On est en local. Le thermomètre correspondant dialogue directement avec i'interface

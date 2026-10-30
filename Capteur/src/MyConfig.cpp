@@ -84,6 +84,19 @@ void CConfig::traiteReveil() {
     int retdht20 = onMqttPublish(dht20->mqttSubTopicState.c_str(), sMqttMsg.c_str());
   #endif
 
+  #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+  // LoRa seul : REVEIL envoyé seulement si la cause n'est pas la minuterie (réveil par le flotteur, reset...),
+  // sans le diagnostic « Préc » (trame LoRa limitée à 255 octets)
+  #ifdef CAPTEUR_DHT20
+  if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_TIMER &&
+      mLoraRxTx != nullptr && mLoraRxTx->isInitialized() && dht20 != nullptr) {
+    String sLora = sMqttMsg;
+    int iPrec = sLora.indexOf(" Préc : ");
+    if (iPrec >= 0) sLora = sLora.substring(0, iPrec);
+    mLoraRxTx->sendPacket((dht20->mqttSubTopicState + " " + sLora).c_str());
+  }
+  #endif
+  #endif
 }
 
 String CConfig::causeReveil() {
@@ -237,11 +250,9 @@ void CConfig::loop() {
         bMesureRemontee = mFlotteurVertical->mbMesureRemontee;
         if (!bMesureRemontee) bDeepSleepPossible = false;
       }
-      // Mesures muettes : aucune trame du flotteur, donc aucun ACK à attendre
-      if (mFlotteurVertical->mbAckNeeded && bLoraOk && !mbMute) {
-        bMesureRemontee = mFlotteurVertical->mbAckReceived;
-        if (!bMesureRemontee) bDeepSleepPossible = false;
-      }
+      // Confirmation par le contrôleur : nombre d'envois limité (renvoi de la trame si besoin), puis deep sleep quand
+      // même. Mesures muettes : aucune trame du flotteur, donc rien à confirmer
+      if (bLoraOk && !mbMute && !mFlotteurVertical->confirmationTerminee()) bDeepSleepPossible = false;
     }
     #endif
 
@@ -439,9 +450,12 @@ void CConfig::enterDeepSleep() {
   pinMode(DEFAULT_SCL_PIN, INPUT_PULLDOWN);
   #endif
 
-  // Flotteur vertical : supprime le pull-up interne (économise ~70 µA si pin connecté à GND)
+  // Flotteur vertical : réveil par le flotteur armé (tirage interne gardé : domaine RTC_PERIPH alimenté), sinon
+  // tirage vers la masse (économise ~70 µA si le flotteur est fermé). Mesures muettes : pas de réveil par le flotteur
+  bool bRtcPeriph = false;
   #ifdef FLOTTEUR_VERTICAL
-  pinMode(DEFAULT_TOR_PIN, INPUT_PULLDOWN);
+  if (mFlotteurVertical != nullptr) bRtcPeriph = mFlotteurVertical->prepareReveil(!mbMute);
+  else pinMode(DEFAULT_TOR_PIN, INPUT_PULLDOWN);
   #endif
 
   // Jour / nuit : pont de la photorésistance hors tension, entrée ADC libérée
@@ -469,8 +483,8 @@ void CConfig::enterDeepSleep() {
   adc_power_acquire();
   adc_power_release();
 
-  // RTC periph : inutile si uniquement timer wakeup
-  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
+  // RTC periph : inutile si uniquement timer wakeup ; gardé pour le tirage interne du flotteur (réveil EXT1)
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, bRtcPeriph ? ESP_PD_OPTION_ON : ESP_PD_OPTION_OFF);
 
   // ---- ESP32-S3 : désactive le PHY USB Serial/JTAG avant deep-sleep ----
   // BIT(14) = USB_PAD_ENABLE dans USB_SERIAL_JTAG_CONF0_REG (évite la dépendance au nom de constante)
@@ -841,6 +855,9 @@ int CConfig::handleMqttCommand(const String& payload) {
       mJourNuit->saveToNVS();
     }
     #endif
+    #ifdef FLOTTEUR_VERTICAL
+    if (mFlotteurVertical != nullptr) mFlotteurVertical->saveToNVS();
+    #endif
     saveToNVS();
     envoieConfig(sErreurs);
     if (sErreurs.length() > 0) ret = -2;
@@ -889,15 +906,17 @@ int CConfig::setParam(const String& cle, const String& valeur) {
     #endif
     mbMute = (v == "1");
   }
-  #ifdef CAPTEUR_JOUR_NUIT
-  else if (c.startsWith("JN_")) {
-    // Détecteur jour / nuit (voir CJourNuit::setParam())
-    if (mJourNuit == nullptr) return -1;
-    int r = mJourNuit->setParam(cle, v);
+  else {
+    // Paramètres des capteurs, reconnus à leur préfixe NVS (jn_ : CJourNuit::setParam(), mfv_ : CTor::setParam())
+    int r = -1;
+    #ifdef CAPTEUR_JOUR_NUIT
+    if (r == -1 && mJourNuit != nullptr) r = mJourNuit->setParam(cle, v);
+    #endif
+    #ifdef FLOTTEUR_VERTICAL
+    if (r == -1 && mFlotteurVertical != nullptr) r = mFlotteurVertical->setParam(cle, v);
+    #endif
     if (r != 0) return r;
   }
-  #endif
-  else return -1;
   Serial.println("CConfig::setParam() - " + cle + " = " + v);
   return 0;
 }
@@ -913,6 +932,9 @@ String CConfig::getParams() const {
          " mute:" + String(mbMute ? 1 : 0)
          #ifdef CAPTEUR_JOUR_NUIT
          + (mJourNuit != nullptr ? " " + mJourNuit->getParams() : String(""))
+         #endif
+         #ifdef FLOTTEUR_VERTICAL
+         + (mFlotteurVertical != nullptr ? " " + mFlotteurVertical->getParams() : String(""))
          #endif
          ;
 }

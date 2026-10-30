@@ -121,8 +121,11 @@
 #define MESURE_TENSIOIN  2
 
 
+// Confirmation des trames des flotteurs (contrôleur principal, __LOCAL_MODE__) : « <nom> ACK » sur ce topic
+#define TOPIC_CONFIRMATION_FLOTTEUR "home/thermometre/command"
+
 // Version du logiciel
-#define VERSION "3.2"
+#define VERSION "3.3"
 
 
 //----------------------------------------------------------------------------

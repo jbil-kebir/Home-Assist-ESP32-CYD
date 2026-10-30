@@ -1,3 +1,7 @@
+2.1
+Page « Capteurs LoRa » : libellés lisibles pour mute, les réglages du flotteur (mfv_rev, mfv_revmin, mfv_ack, mfv_ackn,
+    Capteur 3.1) et ceux du détecteur jour / nuit (jn_sbas, jn_shaut, jn_ecl, jn_inter, jn_force)
+
 2.0
 LoRa : fréquence 915,0 -> 868,1 MHz (bande européenne, sous-bande g1 : 1 % du temps d'émission, 14 dBm)
     Incompatible avec les capteurs < 3.0 : reflasher le relais et tous les capteurs LoRa ensemble
@@ -37,4 +41,4 @@ Dans void setup(), remplacer while(!Serial) par
   while(!Serial && millis() - start < 3000); // Attend max 3 secondes
 Ceci afin de ne pas bloquer lorsque on alimente sans connecter au PC
  
-1.0
+1.0

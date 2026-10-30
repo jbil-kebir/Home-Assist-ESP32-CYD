@@ -47,6 +47,34 @@ sections:
                 name: État batterie
               - entity: sensor.flotteur_remise
                 name: Flotteur
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            title: Flotteur (réglages reçus ; SET mfv_... par la commande libre)
+            entities:
+              - type: attribute
+                entity: sensor.thremise_config
+                attribute: mfv_rev
+                name: Réveil par le flotteur (1 oui, 0 non)
+              - type: attribute
+                entity: sensor.thremise_config
+                attribute: mfv_revmin
+                name: Anti-rafale
+                suffix: " s"
+              - type: attribute
+                entity: sensor.thremise_config
+                attribute: mfv_ack
+                name: Confirmation par le contrôleur (1 oui, 0 non)
+              - type: attribute
+                entity: sensor.thremise_config
+                attribute: mfv_ackn
+                name: Essais de confirmation
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            content: |
+              Ex. : `SET mfv_revmin 300 mfv_ack 1` (commande libre) — clés : `mfv_rev` 0/1 (réveil par le flotteur),
+              `mfv_revmin` (0 à 86400 s), `mfv_ack` 0/1 (confirmation par le contrôleur), `mfv_ackn` (1 à 10 envois)
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
@@ -1163,6 +1191,7 @@ sections:
           | `GET` | Relit la configuration |
           | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
           | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s), `jn_force` délai max sans envoi (60 à 86400 s) |
+          | `SET mfv_revmin 300 mfv_ack 1` | Flotteur (ThRemise, Capteur 3.1) : `mfv_rev` réveil par le flotteur 0/1, `mfv_revmin` anti-rafale (0 à 86400 s), `mfv_ack` confirmation par le contrôleur 0/1, `mfv_ackn` nombre d'envois sans confirmation avant de dormir (1 à 10) |
           | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |

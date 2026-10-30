@@ -51,12 +51,12 @@
 //----------------------------------------------------------------------------
 #define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
-//#define FLOTTEUR_VERTICAL // ThRemise seulement (ThCave / ThNomade : pas de flotteur)
+#define FLOTTEUR_VERTICAL // ThRemise seulement (ThCave / ThNomade : pas de flotteur)
 //#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C — ThSdb (capteur chaudière) seulement
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF) — ThSdb (capteur chaudière) seulement
 #define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 //#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
-#define CAPTEUR_JOUR_NUIT // Détecteur jour/nuit : photorésistance + 10 kΩ, mesure JOUR_NUIT_PIN, alimentation JOUR_NUIT_ALIM_PIN (voir MyJourNuit.h)
+//#define CAPTEUR_JOUR_NUIT // Détecteur jour/nuit : photorésistance + 10 kΩ, mesure JOUR_NUIT_PIN, alimentation JOUR_NUIT_ALIM_PIN (voir MyJourNuit.h)
 
 //----------------------------------------------------------------------------
 // Décommenter en fonction des actionneurs installés
@@ -340,6 +340,16 @@
 #endif // _RCSWITCH_MODE_
 #ifdef FLOTTEUR_VERTICAL
     #define DEFAULT_TOR_PULL_UP_DOWN_MODE INPUT_PULLUP
+    // Réveil du deep sleep par le flotteur, dans les deux sens (cuve pleine, cuve vide) : ESP32-S3 seulement (EXT1).
+    // Valeurs par défaut ; réglables par la page Web et par SET (mfv_rev, mfv_revmin, mfv_ack, mfv_ackn).
+    #define FLOTTEUR_REVEIL_DEFAUT          true    // Réveil par le flotteur actif
+    #define FLOTTEUR_REVEIL_MIN_S_DEFAUT    300     // Anti-rafale : délai minimal entre deux réveils par le flotteur (s)
+    #define FLOTTEUR_REVEIL_MIN_S_MAX       86400
+    // Confirmation par le contrôleur principal (« <nom du flotteur> ACK ») de chaque trame du flotteur, en LoRa
+    #define FLOTTEUR_ACK_DEFAUT             true    // Confirmation attendue avant le deep sleep
+    #define FLOTTEUR_ACK_ESSAIS_DEFAUT      3       // Envois de la trame sans confirmation avant de dormir quand même
+    #define FLOTTEUR_ACK_ESSAIS_MAX         10
+    #define FLOTTEUR_ACK_ATTENTE_MS         2000    // Attente de la confirmation après chaque envoi (ms)
 #endif
 
 // -----------------------------------------------------------------------------
@@ -357,6 +367,6 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "3.0"
+#define VERSION "3.1"
 
 #endif // __GLOBAL_H__

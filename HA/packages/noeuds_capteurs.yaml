@@ -65,6 +65,18 @@ template:
           mute: >-
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
             {{ m[0] | int if m else none }}
+          mfv_rev: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_rev:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          mfv_revmin: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_revmin:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          mfv_ack: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_ack:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          mfv_ackn: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_ackn:(\d+)') -%}
+            {{ m[0] | int if m else none }}
           erreur: >-
             {%- set p = trigger.payload.split(' ERREUR ') -%}
             {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}

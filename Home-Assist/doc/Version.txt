@@ -1,3 +1,8 @@
+3.3
+Contrôleur principal (__LOCAL_MODE__) : confirme chaque trame d'un flotteur (« <nom> OnOff ... ») en publiant « <nom> ACK »
+    sur home/thermometre/command (TOPIC_CONFIRMATION_FLOTTEUR) ; Relais-Lora le transmet au nœud par LoRa
+    Remplace l'automatisation HA « Cuve - SLEEP et ACK flotteur » (à supprimer). Nœud : Capteur 3.1, case « Confirmation par le contrôleur »
+
 3.2
 Journal web (/logs) : affiche désormais tout ce qui passe par Serial (comme le moniteur série), plus seulement les traces DBG
     MyJournal.* (même fichier que Capteur et Relais-Lora) : Serial redirigé vers gSerialJournal (global.h), 100 lignes

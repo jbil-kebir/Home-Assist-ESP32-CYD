@@ -1,3 +1,12 @@
+3.1
+Flotteur (ThRemise) : réveil du deep sleep par le flotteur, dans les deux sens (cuve pleine, cuve vide), ESP32-S3 (EXT1)
+    Anti-rafale : pas de nouveau réveil par le flotteur moins de mfv_revmin secondes (300) après le précédent
+    Tirage interne maintenu pendant le sommeil (domaine RTC_PERIPH allumé seulement quand le réveil est armé)
+Confirmation par le contrôleur (ex-case « Acknoledge ») : mfv_ackn envois (3) au plus, puis deep sleep quand même
+    (l'ancienne attente sans limite empêchait le sommeil si l'ACK n'arrivait jamais)
+Nouveaux paramètres (page Web, SET, CONFIG) : mfv_rev, mfv_revmin, mfv_ack, mfv_ackn
+LoRa seul : trame REVEIL (cause du réveil et du dernier reset) envoyée quand la cause n'est pas la minuterie
+
 3.0
 LoRa : fréquence 915,0 -> 868,1 MHz (bande européenne, sous-bande g1 : 1 % du temps d'émission, 14 dBm)
     Incompatible avec les relais < 2.0 : reflasher le relais et tous les capteurs LoRa ensemble
@@ -89,4 +98,4 @@ Envoides informations de mesure par RCSwitch
 Intégration DHT20
 
 1.1
-Paramétrage : 
+Paramétrage : 

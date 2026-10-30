@@ -82,10 +82,17 @@ Constats :
 
 ## 5. Suite et pistes
 
+Mesure des pertes (2026-10-30, ThRemise, sommeil 30 s, 35 min d'écoute MQTT sans toucher au relais) : **63 réveils,
+1 trame perdue sur 315** (0,3 %) ; trame du flotteur et accusé du contrôleur reçus 63 fois sur 63 au premier envoi.
+Pendant une surveillance qui interrogeait la page `/logs/data` du relais toutes les 3 s, environ une trame sur dix se perdait :
+pendant qu'il sert une page Web, le relais ne lit plus le module radio, et une trame de la rafale (150 ms d'écart) est
+écrasée par la suivante. **Ne pas laisser la page Journal du relais ouverte** (rafraîchissement automatique) ou la mettre
+en Pause. Amélioration possible : lire la trame dès l'interruption de réception (jugée inutile à ce taux de pertes).
+
 À faire :
-- **Compter les pertes sur 24 h** (T7) : trames manquantes par nœud dans HA ou dans le journal du relais.
-- Remettre la **veille profonde** sur ThRemise et ThCave (actuellement désactivée pour les essais) quand ils passeront
-  sur piles, puis vérifier la tension de batterie de ThCave (≈ 3 V attendus).
+- Compter les pertes sur 24 h avec un sommeil de 600 s (ThRemise, ThCave).
+- Veille profonde remise sur ThRemise et ThCave le 2026-10-30 ; vérifier la tension de batterie de ThCave (≈ 3 V attendus)
+  quand il passera sur piles.
 - Refaire les mesures si un nouveau capteur LoRa est posé loin du centre.
 
 Si la portée manquait (marge de SNR < 5 dB, pertes régulières), dans cet ordre :

@@ -12,10 +12,12 @@ HA = os.path.dirname(os.path.abspath(__file__))  # dossier HA du projet
 # ip (facultatif) = entité qui contient l'IP du nœud Wi-Fi (lien vers sa page Web)
 # jn (facultatif) = nœud équipé du détecteur jour / nuit (CJourNuit) : attributs jn_* de sa config, affichés en lecture
 #   seule (modifiables par la commande libre : SET jn_sbas ...)
+# fl (facultatif) = nœud équipé du flotteur avec réveil et confirmation (Capteur 3.1) : attributs mfv_* de sa config,
+#   affichés en lecture seule (modifiables par la commande libre : SET mfv_revmin ...)
 # sans_retenu (facultatif) = nœud Wi-Fi toujours éveillé qui ne publie pas « online » (pas de DHT20) : commandes non
 #   retenues, sinon un REBOOT dont l'accusé se perd serait rejoué en boucle (commande perdue s'il est hors tension)
 NOEUDS = [
-    dict(id="thremise", nom="ThRemise", suffixe="Remise", mode="lora", unites=["Th", "Bat", "Flotteur"],
+    dict(id="thremise", nom="ThRemise", suffixe="Remise", mode="lora", unites=["Th", "Bat", "Flotteur"], fl=True,
          mesures=[("sensor.thremise_temperature", "Température"), ("sensor.thremise_humidite", "Humidité"),
                   ("sensor.batremise_tension", "Batterie"), ("sensor.batremise_etat", "État batterie"),
                   ("sensor.flotteur_remise", "Flotteur")]),
@@ -59,6 +61,9 @@ def trames(n):
 PARAMS_JN = [("jn_sbas", "Seuil bas jour → nuit", "%"), ("jn_shaut", "Seuil haut nuit → jour", "%"),
              ("jn_ecl", "Remonter l'éclairement (1 oui, 0 non)", ""), ("jn_inter", "Intervalle de mesure", "s"),
              ("jn_force", "Délai max sans envoi", "s")]
+# Réglages du flotteur (Capteur 3.1, attributs de sensor.<id>_config, lecture seule) : (clé, libellé, unité)
+PARAMS_FL = [("mfv_rev", "Réveil par le flotteur (1 oui, 0 non)", ""), ("mfv_revmin", "Anti-rafale", "s"),
+             ("mfv_ack", "Confirmation par le contrôleur (1 oui, 0 non)", ""), ("mfv_ackn", "Essais de confirmation", "")]
 PARAMS = [("sleepi", "Intervalle deep sleep", 86400, "mdi:timer-outline"),
           ("sleeps", "Sommeil court (SLEEPS)", 86400, "mdi:timer-outline"),
           ("sleepm", "Sommeil moyen (SLEEPM)", 86400, "mdi:timer-outline"),
@@ -139,8 +144,10 @@ template:""")
         state: "{{{{ now().isoformat() }}}}"
         attributes:""")
         # mute : absent de la réponse d'un firmware antérieur au 28/10/2026 → none
-        # jn_* : nœud équipé du détecteur jour / nuit seulement
-        for k in ["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI", "mute"] + ([c for c, _, _ in PARAMS_JN] if n.get("jn") else []):
+        # jn_* : nœud équipé du détecteur jour / nuit seulement ; mfv_* : nœud équipé du flotteur (fl) seulement
+        for k in (["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI", "mute"]
+                  + ([c for c, _, _ in PARAMS_JN] if n.get("jn") else [])
+                  + ([c for c, _, _ in PARAMS_FL] if n.get("fl") else [])):
             w(f"""          {k}: >-
             {{%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('{k}:(\\d+)') -%}}
             {{{{ m[0] | int if m else none }}}}""")
@@ -591,6 +598,21 @@ sections:""")
             content: |
               Ex. : `SET jn_sbas 15 jn_shaut 25` (commande libre) — clés : `jn_sbas` `jn_shaut` (0 à 100 %, bas < haut),
               `jn_ecl` 0/1, `jn_inter` (1 à 3600 s), `jn_force` (60 à 86400 s)""")
+        if n.get("fl"):
+            w("""          - type: entities
+            title: Flotteur (réglages reçus ; SET mfv_... par la commande libre)
+            entities:""")
+            for k, lib, unite in PARAMS_FL:
+                w(f"""              - type: attribute
+                entity: sensor.{i}_config
+                attribute: {k}
+                name: {lib}""")
+                if unite:
+                    w(f'                suffix: " {unite}"')
+            w("""          - type: markdown
+            content: |
+              Ex. : `SET mfv_revmin 300 mfv_ack 1` (commande libre) — clés : `mfv_rev` 0/1 (réveil par le flotteur),
+              `mfv_revmin` (0 à 86400 s), `mfv_ack` 0/1 (confirmation par le contrôleur), `mfv_ackn` (1 à 10 envois)""")
         w(f"""          - type: markdown
             content: |
               {{% if state_attr('sensor.{i}_config', 'mute') == 1 %}}
@@ -680,6 +702,7 @@ sections:""")
           | `GET` | Relit la configuration |
           | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
           | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s), `jn_force` délai max sans envoi (60 à 86400 s) |
+          | `SET mfv_revmin 300 mfv_ack 1` | Flotteur (ThRemise, Capteur 3.1) : `mfv_rev` réveil par le flotteur 0/1, `mfv_revmin` anti-rafale (0 à 86400 s), `mfv_ack` confirmation par le contrôleur 0/1, `mfv_ackn` nombre d'envois sans confirmation avant de dormir (1 à 10) |
           | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |

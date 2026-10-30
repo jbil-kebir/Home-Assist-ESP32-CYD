@@ -55,6 +55,12 @@ private:
   CMyDateTime *mDateTime=nullptr;
   unsigned char mucCapteurID=0;
   unsigned int mDelai_Inter_Envoi = 350; // A mettre dans NVS et page Web
+  // Réveil par le flotteur et confirmation (NVS <préfixe>rev, revmin, ack, ackn ; SET <préfixe>rev...)
+  bool mbReveil = FLOTTEUR_REVEIL_DEFAUT;                    // Réveil du deep sleep par le flotteur (deux sens)
+  unsigned long mulReveilMinS = FLOTTEUR_REVEIL_MIN_S_DEFAUT; // Anti-rafale (s)
+  unsigned char mucAckEssais = FLOTTEUR_ACK_ESSAIS_DEFAUT;    // Envois sans confirmation avant de dormir quand même
+  unsigned char mucNbEnvoisFaits = 0;                         // Trames du flotteur envoyées depuis le réveil
+  unsigned long mulDateDernierEnvoi = 0;                      // millis() du dernier envoi (attente de la confirmation)
 
 public:
     CTor(CMyDateTime& dateTime,
@@ -69,8 +75,8 @@ public:
   String mqttSubTopic = "tor";
   bool active = false;
   bool mbMesureRemontee = false; // Permet d'empêcher le deep sleep tant qu'une mesure n'a pas été remontée
-  bool mbAckNeeded = false; // Indique si un ACK est nécessaire (dépend du capteur). A mettre dans NVS et page Web
-  bool mbAckReceived = false; // Pour le suivi des ACK en Lora P2P
+  bool mbAckNeeded = FLOTTEUR_ACK_DEFAUT; // Confirmation par le contrôleur attendue avant le deep sleep (NVS <préfixe>ack)
+  bool mbAckReceived = false; // Confirmation « <nom> ACK » reçue depuis le réveil
   String mqttSubTopicCommand;
   String mqttSubTopicState;
   #ifdef _RCSWITCH_MODE_
@@ -106,6 +112,16 @@ public:
   int getLastMesure() const;
 
   int handleMqttCommand(const String& payload);
+
+  // Paramètres modifiables à distance (SET <préfixe>rev 0|1, <préfixe>revmin, <préfixe>ack 0|1, <préfixe>ackn)
+  int setParam(const String& cle, const String& valeur);
+  String getParams() const;
+  // Confirmation : true quand le deep sleep peut avoir lieu (confirmation reçue, inutile, ou essais épuisés) ;
+  // renvoie la trame tant que les essais ne sont pas épuisés
+  bool confirmationTerminee();
+  // Avant le deep sleep : arme le réveil par le flotteur (niveau opposé à l'état actuel) si autorisé.
+  // Retour true : le domaine RTC_PERIPH doit rester alimenté (tirage interne de la broche pendant le sommeil)
+  bool prepareReveil(bool autorise);
   bool publieSurMqtt(bool force=false);
   bool publieParLoraP2P(bool force=false);
   bool publieParCC1101(bool force=false);

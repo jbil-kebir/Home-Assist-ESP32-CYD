@@ -2,6 +2,11 @@
 
 Capteurs avec flotteur (ThRemise, ThNomade) — octobre 2026.
 
+> **HISTORIQUE — 30/10/2026 : l'automatisation « Cuve - SLEEP et ACK flotteur » est SUPPRIMÉE.** Elle est remplacée par
+> le réveil par le flotteur et la confirmation par le contrôleur principal (Capteur 3.1, Home-Assist 3.3 : voir
+> `pcb/Capteur S3/CapteurS3.md` § 1). L'intervalle de deep sleep n'est plus modifié par Home Assistant ; ce qui suit ne
+> sert plus qu'à comprendre les anciennes notes.
+
 ## 1. Symptôme
 
 Sur la page Web du capteur, on modifie « Intervalle deep sleep » et on enregistre. Quelques minutes plus tard, la

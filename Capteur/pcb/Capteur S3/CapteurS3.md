@@ -64,6 +64,21 @@ Schéma de principe des ajouts (le reste est celui de la carte chaudière) :
      Flotteur normalement ouvert, FERMÉ = CUVE PLEINE
 ```
 
+**Réveil par le flotteur et confirmation (Capteur 3.1, testés sur ThRemise le 2026-10-30)** :
+- Avant le deep sleep, le nœud lit le flotteur et arme un réveil EXT1 sur l'état inverse : il se réveille aussitôt quand
+  la cuve devient pleine **et** quand elle se vide. Le tirage de la broche reste actif pendant le sommeil (domaine
+  RTC_PERIPH alimenté seulement dans ce cas).
+- **Anti-rafale** : pas de nouveau réveil par le flotteur moins de `mfv_revmin` secondes (300) après le précédent ;
+  pendant ce délai, l'état est remonté par le réveil minuterie suivant.
+- **Confirmation par le contrôleur** : chaque trame du flotteur est acquittée par le contrôleur principal
+  (« FlotteurRemise ACK », Home-Assist 3.3). Sans accusé sous 2 s, le nœud renvoie la trame, au plus `mfv_ackn` envois
+  (3), puis dort quand même (≈ 7 s d'éveil si le contrôleur est absent).
+- Réglages (page Web, `SET`, réponse `CONFIG`) : `mfv_rev` 0/1, `mfv_revmin` 0 à 86400 s, `mfv_ack` 0/1 (case
+  « Confirmation par le contrôleur »), `mfv_ackn` 1 à 10. En LoRa seul, un réveil autre que la minuterie envoie aussi
+  une trame `REVEIL … Cause réveil : EXT1`.
+- Remplace l'automatisation HA « Cuve - SLEEP et ACK flotteur » (sommeil selon la météo), supprimée : le besoin
+  (alerte dans les 30 min après la fermeture du flotteur) est couvert même avec un sommeil de 600 s.
+
 ### 1.1 Schémas de câblage par variante
 
 Un dessin complet par variante, d'après le schéma EasyEDA (`Capteur_S3_Projet_2026-10-19.epro2`). Le XIAO est vu de dessus, USB-C en haut ;
@@ -373,8 +388,8 @@ Bilan : 25 composants, 12 réseaux ; netlist du schéma = PCB (57 liaisons).
   à corriger par la page Web (« Calibre »). Ajuster ensuite au multimètre (ThRemise : 3,3).
 - **Flotteur** : rappel de 10 k vers 3V3 (le rappel interne du S3, ≈ 45 k, est faible pour 50 cm de fil) ; R5 1 k + C7
   100 nF filtrent les parasites captés par le fil (constante de temps 0,1 ms, sans effet sur une mesure toutes les
-  minutes). Contact fermé (cuve pleine) : 0,33 mA dans R4. Le code (`INPUT_PULLUP`) inverse la lecture : il publie
-  **1 = cuve pleine, 0 = pas pleine**.
+  minutes). Contact fermé (cuve pleine) : 0,33 mA dans R4, aussi pendant le sommeil. Valeur publiée : voir § 8.6
+  (constaté sur ThRemise : 1 = cuve vide, 0 = cuve pleine).
 - **Détecteur jour / nuit** : pont alimenté 5 ms par mesure, au plus 3,3 V / 10 kΩ ≈ 0,33 mA (en pleine lumière) ;
   rien en deep sleep.
 - **Largeurs de piste** : `3V3`, `VPIL+`, `VPIL`, `VSW` à 0,6 mm ; signaux à 0,4 mm ; plan `GND` sur les 2 faces.
@@ -447,7 +462,9 @@ recréés ; après redémarrage, les plans ont été recréés **une face à la 
 - [ ] Commit (procédure NAS de Pilotage_Maison, sans `global.h`).
 - [ ] Commande JLCPCB.
 - [x] Code : calibre par défaut de la mesure des piles à 3,2 (pont 220 k / 100 k).
-- [ ] Code : vérifier le sens de lecture du flotteur (1 = plein).
+- [x] Code : sens de lecture du flotteur vérifié sur ThRemise (2026-10-30, montage d'essai, flotteur direct sur D0) :
+  **1 = flotteur ouvert = cuve vide**, 0 = cuve pleine ; Home Assistant affiche « Cuve vide » pour une valeur > 0.
+  À revérifier sur la carte (R4 10 k) avant de changer quoi que ce soit.
 - [ ] Essais : redémarrages en Wi-Fi continu sur piles (C5), tension des piles neuves sur `VSW` (< 6,0 V ?).
 - [ ] Boîtier imprimé : support 4 AA, interrupteur en paroi, passages de fils au bord haut.
 - [ ] Détecteur jour / nuit : câblé en fils sur D2 / D3 (§ 1.1 d) ; connecteur et passage de la photorésistance dans le

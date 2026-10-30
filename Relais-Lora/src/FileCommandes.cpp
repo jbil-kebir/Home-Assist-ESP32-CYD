@@ -198,6 +198,18 @@ static String libelle(const String& cle) {
   if (cle == "sleepM") return "Sommeil moyen SLEEPM (s)";
   if (cle == "sleepL") return "Sommeil long SLEEPL (s)";
   if (cle == "wakeI")  return "Éveil maximum (s)";
+  if (cle == "mute")   return "Mesures muettes (0 / 1)";
+  // Flotteur (Capteur 3.1, préfixe mfv_)
+  if (cle == "mfv_rev")    return "Réveil par le flotteur (0 / 1)";
+  if (cle == "mfv_revmin") return "Anti-rafale du flotteur (s)";
+  if (cle == "mfv_ack")    return "Confirmation par le contrôleur (0 / 1)";
+  if (cle == "mfv_ackn")   return "Essais de confirmation (1 à 10)";
+  // Détecteur jour / nuit (préfixe jn_)
+  if (cle == "jn_sbas")  return "Jour / nuit : seuil bas (%)";
+  if (cle == "jn_shaut") return "Jour / nuit : seuil haut (%)";
+  if (cle == "jn_ecl")   return "Jour / nuit : remonter l'éclairement (0 / 1)";
+  if (cle == "jn_inter") return "Jour / nuit : intervalle de mesure (s)";
+  if (cle == "jn_force") return "Jour / nuit : forçage de la remontée (s)";
   return cle;
 }
 
