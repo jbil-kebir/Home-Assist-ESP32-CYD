@@ -1,3 +1,10 @@
+3.5
+Version du firmware avec la date et l'heure de compilation (« 3.5 31/10/2026 14:05 », MyVersion.cpp, comme Capteur 3.4) :
+    trame « <nom> VERSION 3.5 31/10/2026 14:05 » sur topic_config_state (home/configuration/state, home/configaux/state…)
+    au démarrage et en réponse à STATUS (ligne « Version : » ajoutée aussi dans le STATUS)
+    page Web : titre = nom du CYD + ligne de version ; page Journal (/logs) : « Journal <nom> » + version
+    version_build.py (extra_scripts, [env]) : MyVersion.cpp recompilé à chaque compilation, date et heure toujours à jour
+
 3.4
 Heure : règle française d'heure d'été / d'hiver (configTzTime, comme Capteur et Relais-Lora) au lieu d'un décalage fixe
     (GMT+1 + 1 h d'été toute l'année : le CYD avançait d'une heure depuis le 25/10/2026)

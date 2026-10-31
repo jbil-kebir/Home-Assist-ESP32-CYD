@@ -13,6 +13,10 @@
 # Entités : sensor.<id>_config (attributs sleepA, sleepI, sleepS, sleepM, sleepL, wakeI, erreur)
 #           sensor.<id>_rapport (réponse STATUS), sensor.<id>_commande_en_attente
 #           sensor.<id>_derniere_trame, binary_sensor.<id>_eveille
+#           sensor.<id>_version (firmware, trame « <nom> VERSION 3.4 31/10/2026 13:13 » : Capteur 3.4),
+#           sensor.relaislora_version (Relais-Lora 2.3), binary_sensor.relaislora_connexion,
+#           sensor.relaislora_dernier_signal, sensor.relaislora_testament, sensor.relaislora_etat (réponse STATUS,
+#           attribut texte) : vue Relais LoRa ; connexion = signal de moins de 3 min (ALIVE toutes les 60 s)
 #           input_boolean.<id>_sleepa, input_number.<id>_sleepi / _sleeps / _sleepm / _sleepl / _wakei
 #           input_text.<id>_commande (commande libre)
 # Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
@@ -105,7 +109,7 @@ template:
         attributes:
           recu: "{{ now().isoformat() }}"
 
-  # ---------- ThRemise : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- ThRemise : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:
       - trigger: mqtt
         topic: "home/thermometre/state"
@@ -128,13 +132,30 @@ template:
         state: >-
           {%- set p = trigger.payload | upper -%}
           {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
-        auto_off: "00:01:00"
     sensor:
       - name: "ThRemise Dernière trame"
         unique_id: thremise_derniere_trame
         device_class: timestamp
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
+
+  # ---------- ThRemise : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthremise/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "ThRemise Version"
+        unique_id: thremise_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- ThNomade : commande en attente dans le relais (« STATUS (envoi 1/10) » ou « aucune », retenu) ----------
   - trigger:
@@ -208,7 +229,7 @@ template:
         attributes:
           recu: "{{ now().isoformat() }}"
 
-  # ---------- ThNomade : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- ThNomade : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:
       - trigger: mqtt
         topic: "home/thermometre/state"
@@ -231,13 +252,30 @@ template:
         state: >-
           {%- set p = trigger.payload | upper -%}
           {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
-        auto_off: "00:01:00"
     sensor:
       - name: "ThNomade Dernière trame"
         unique_id: thnomade_derniere_trame
         device_class: timestamp
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
+
+  # ---------- ThNomade : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthnomade/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "ThNomade Version"
+        unique_id: thnomade_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- ThCave : commande en attente dans le relais (« STATUS (envoi 1/10) » ou « aucune », retenu) ----------
   - trigger:
@@ -326,7 +364,7 @@ template:
         attributes:
           recu: "{{ now().isoformat() }}"
 
-  # ---------- ThCave : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- ThCave : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:
       - trigger: mqtt
         topic: "home/thermometre/state"
@@ -349,13 +387,30 @@ template:
         state: >-
           {%- set p = trigger.payload | upper -%}
           {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
-        auto_off: "00:01:00"
     sensor:
       - name: "ThCave Dernière trame"
         unique_id: thcave_derniere_trame
         device_class: timestamp
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
+
+  # ---------- ThCave : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthcave/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "ThCave Version"
+        unique_id: thcave_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- ThChRDC : commande en attente = message retenu sur le topic command ----------
   # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
@@ -432,7 +487,7 @@ template:
         attributes:
           recu: "{{ now().isoformat() }}"
 
-  # ---------- ThChRDC : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- ThChRDC : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:
       - trigger: mqtt
         topic: "home/thermometre/state"
@@ -451,13 +506,30 @@ template:
         state: >-
           {%- set p = trigger.payload | upper -%}
           {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
-        auto_off: "00:01:00"
     sensor:
       - name: "ThChRDC Dernière trame"
         unique_id: thchrdc_derniere_trame
         device_class: timestamp
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
+
+  # ---------- ThChRDC : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthchrdc/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "ThChRDC Version"
+        unique_id: thchrdc_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- ThCh1er : commande en attente = message retenu sur le topic command ----------
   # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
@@ -534,7 +606,7 @@ template:
         attributes:
           recu: "{{ now().isoformat() }}"
 
-  # ---------- ThCh1er : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- ThCh1er : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:
       - trigger: mqtt
         topic: "home/thermometre/state"
@@ -553,13 +625,30 @@ template:
         state: >-
           {%- set p = trigger.payload | upper -%}
           {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
-        auto_off: "00:01:00"
     sensor:
       - name: "ThCh1er Dernière trame"
         unique_id: thch1er_derniere_trame
         device_class: timestamp
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
+
+  # ---------- ThCh1er : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthch1er/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "ThCh1er Version"
+        unique_id: thch1er_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- ThSdb : commande en attente = message retenu sur le topic command ----------
   # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
@@ -636,7 +725,7 @@ template:
         attributes:
           recu: "{{ now().isoformat() }}"
 
-  # ---------- ThSdb : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- ThSdb : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:
       - trigger: mqtt
         topic: "home/thermometre/state"
@@ -659,13 +748,30 @@ template:
         state: >-
           {%- set p = trigger.payload | upper -%}
           {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
-        auto_off: "00:01:00"
     sensor:
       - name: "ThSdb Dernière trame"
         unique_id: thsdb_derniere_trame
         device_class: timestamp
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
+
+  # ---------- ThSdb : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthsdb/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "ThSdb Version"
+        unique_id: thsdb_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- Noeud : commande en attente = message retenu sur le topic command ----------
   # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
@@ -742,7 +848,7 @@ template:
         attributes:
           recu: "{{ now().isoformat() }}"
 
-  # ---------- Noeud : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- Noeud : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:
       - trigger: mqtt
         topic: "home/noeud/state"
@@ -757,13 +863,114 @@ template:
         state: >-
           {%- set p = trigger.payload | upper -%}
           {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
-        auto_off: "00:01:00"
     sensor:
       - name: "Noeud Dernière trame"
         unique_id: noeud_derniere_trame
         device_class: timestamp
         icon: mdi:access-point
         state: "{{ now().isoformat() }}"
+
+  # ---------- Noeud : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confnoeud/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "Noeud Version"
+        unique_id: noeud_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- RelaisLora : version du firmware (au démarrage et après STATUS) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confrelaislora/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "RelaisLora Version"
+        unique_id: relaislora_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- Relais LoRa : connexion (dernier signal récent, pas de testament plus récent) ----------
+  - binary_sensor:
+      - name: "RelaisLora Connexion"
+        unique_id: relaislora_connexion
+        device_class: connectivity
+        state: >-
+          {%- if has_value('sensor.relaislora_dernier_signal') -%}
+            {%- set d = as_datetime(states('sensor.relaislora_dernier_signal')) -%}
+            {%- set t = as_datetime(states('sensor.relaislora_testament')) if has_value('sensor.relaislora_testament') else none -%}
+            {{ (now() - d).total_seconds() < 180 and (t is none or t < d) }}
+          {%- else -%}
+            false
+          {%- endif -%}
+
+  # ---------- Relais LoRa : testament (connexion MQTT perdue) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confrelaislora/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' - Reconnect le ' in trigger.payload }}"
+    sensor:
+      - name: "RelaisLora Testament"
+        unique_id: relaislora_testament
+        device_class: timestamp
+        icon: mdi:lan-disconnect
+        state: "{{ now().isoformat() }}"
+
+  # ---------- Relais LoRa : dernier signal (ALIVE, toute autre trame du relais, trame LoRa relayée) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confrelaislora/state"
+      - trigger: mqtt
+        topic: "home/configuration/command"
+        value_template: "{{ 'oui' if value.upper().startswith('DEVICE RELAIS LORA') else 'non' }}"
+        payload: "oui"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ 'oui' if value.endswith(' 0.0.0.0') else 'non' }}"
+        payload: "oui"
+    conditions:
+      - condition: template
+        value_template: "{{ ' - Reconnect le ' not in trigger.payload }}"
+    sensor:
+      - name: "RelaisLora Dernier signal"
+        unique_id: relaislora_dernier_signal
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
+  # ---------- Relais LoRa : réponse au STATUS (« === ÉTAT <nom> === », version, IP, uptime, files d'attente) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confrelaislora/state"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload.startswith('=== ') }}"
+    sensor:
+      - name: "RelaisLora État"
+        unique_id: relaislora_etat
+        device_class: timestamp
+        icon: mdi:router-wireless
+        state: "{{ now().isoformat() }}"
+        attributes:
+          texte: "{{ trigger.payload }}"
 
 input_boolean:
   # ---------- ThRemise ----------

@@ -135,7 +135,7 @@
 #define TOPIC_CONFIRMATION_FLOTTEUR "home/thermometre/command"
 
 // Version du logiciel
-#define VERSION "3.4"
+#define VERSION "3.5"
 
 
 //----------------------------------------------------------------------------

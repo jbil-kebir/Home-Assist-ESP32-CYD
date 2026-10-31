@@ -1,6 +1,7 @@
 
 #include "MyConfig.h"
 #include "Diagnostic.h"
+#include "MyVersion.h"
 #ifdef _WIFI_MODE_
 #include <WiFi.h> // RSSI dans les ALIVE
 #endif
@@ -97,6 +98,9 @@ void CConfig::traiteReveil() {
   }
   #endif
   #endif
+
+  // Mise sous tension ou reset (pas un réveil de deep sleep) : version du firmware (un téléversement passe toujours par là)
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED) envoieVersion();
 }
 
 String CConfig::causeReveil() {
@@ -583,7 +587,7 @@ void CConfig::loadFromWebServer (WebServer& server) {
 
 void CConfig::print() const {
   Serial.println("[LOGICIEL]");
-  Serial.printf("  VERSION                 : %s\n", String(VERSION).c_str());
+  Serial.printf("  VERSION                 : %s\n", versionComplete().c_str());
   Serial.printf("  Deep Sleep              : %s\n", mbDeepSleepActive ? "ACTIF" : "INACTIF");
   Serial.printf("  Intervalle Deep Sleep   : %ld s\n", mulSleepDuration);
   Serial.printf("  Intervalle Deep SleepS  : %ld s\n", mulSleepDurationS);
@@ -818,6 +822,7 @@ int CConfig::handleMqttCommand(const String& payload) {
   }
   else if (cmd == "GET") {
     envoieConfig();
+    envoieVersion();
   }
   else if (cmd == "MUTE ON" || cmd == "MUTE OFF") {
     // Mesures muettes : même traitement que SET mute:1 / mute:0 (réponse CONFIG, ERREUR mute:1 si refusé)
@@ -945,6 +950,19 @@ void CConfig::envoieConfig(const String& sErreurs) {
   String sMsg = nomEquipement + " CONFIG " + getParams();
   if (sErreurs.length() > 0) sMsg += " ERREUR " + sErreurs;
   Serial.println("CConfig::envoieConfig() - " + sMsg);
+  if (onMqttPublish != nullptr)
+    onMqttPublish(topic_config_state.c_str(), sMsg.c_str());
+  #ifdef _LORA_P2P_MODE_
+  if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized())
+    mLoraRxTx->sendPacket((topic_config_state + " " + sMsg).c_str());
+  #endif
+}
+
+// « <nom> VERSION <version> <date> <heure de compilation> » sur topic_config_state, par MQTT et par LoRa :
+// au démarrage (pas au réveil d'un deep sleep, voir traiteReveil) et en réponse à GET. Jamais muette (MUTE).
+void CConfig::envoieVersion() {
+  String sMsg = nomEquipement + " VERSION " + versionComplete();
+  Serial.println("CConfig::envoieVersion() - " + sMsg);
   if (onMqttPublish != nullptr)
     onMqttPublish(topic_config_state.c_str(), sMsg.c_str());
   #ifdef _LORA_P2P_MODE_

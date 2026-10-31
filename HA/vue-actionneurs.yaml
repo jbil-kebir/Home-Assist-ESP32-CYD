@@ -217,6 +217,12 @@ sections:
         format: relative
       - entity: sensor.noeud_commande_en_attente
         name: Commande en attente
+      - entity: sensor.noeud_version
+        name: Firmware
+      - type: attribute
+        entity: sensor.noeud_version
+        attribute: compilation
+        name: Compilé le
     - type: markdown
       content: |
         {% set ip = states('sensor.c3_chauffage_sdb_ip') %}

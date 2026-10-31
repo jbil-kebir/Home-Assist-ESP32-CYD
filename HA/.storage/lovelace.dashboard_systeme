@@ -451,134 +451,156 @@
               "type": "grid",
               "cards": [
                 {
-                  "type": "vertical-stack",
-                  "cards": [
+                  "type": "heading",
+                  "heading": "CYD principal",
+                  "heading_style": "title",
+                  "icon": "mdi:tablet"
+                },
+                {
+                  "type": "markdown",
+                  "content": "{% set ip = states('input_text.ip_cyd') %}\n{% if is_state('binary_sensor.cyd_connexion', 'on') %}🟢 **Connecté**{% else %}🔴 **Déconnecté**{% endif %} · IP **{{ ip }}**<br>\nDernier signal : {{ states('input_text.cyd_alive') }}\n\n[🌐 Page Web](http://{{ ip }}/) · [📜 Journal](http://{{ ip }}/logs)\n"
+                },
+                {
+                  "type": "button",
+                  "name": "Redémarrer",
+                  "icon": "mdi:restart",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_reboot",
+                    "confirmation": {
+                      "text": "Redémarrer le CYD principal ?"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
                     {
-                      "type": "heading",
-                      "heading": "CYD - Configuration",
-                      "heading_style": "title",
-                      "icon": "mdi:tablet"
+                      "condition": "state",
+                      "entity": "binary_sensor.cyd_redemarrage",
+                      "state_not": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "card_mod": {
+                    "style": "ha-card {\n  height: 100% !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon, ha-state-icon { color: red !important; }\n"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Redémarrage en cours…",
+                  "icon": "mdi:timer-sand",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.cyd_redemarrage",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "card_mod": {
+                    "style": "ha-card {\n  height: 100% !important;\n  background: rgba(255,140,0,0.2) !important;\n  cursor: default !important;\n}\nha-icon, ha-state-icon { color: orange !important; }\n"
+                  }
+                },
+                {
+                  "type": "custom:mushroom-template-card",
+                  "entity": "binary_sensor.cyd_ecran",
+                  "primary": "Écran",
+                  "secondary": "{% if is_state(entity, 'on') %}Allumé · toucher pour le mettre en veille {%- elif is_state(entity, 'off') %}En veille · toucher pour le réveiller {%- else %}État inconnu · toucher pour le réveiller{% endif %}",
+                  "icon": "{{ 'mdi:monitor' if is_state(entity, 'on') else 'mdi:monitor-off' }}",
+                  "icon_color": "{{ 'green' if is_state(entity, 'on') else 'grey' }}",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_ecran_bascule"
+                  },
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  }
+                },
+                {
+                  "type": "entities",
+                  "title": "Écran",
+                  "entities": [
+                    {
+                      "entity": "input_number.cyd_veille",
+                      "name": "Veille de l'écran (s)"
                     },
                     {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Status",
-                          "icon": "mdi:information",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_status"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Device",
-                          "icon": "mdi:chip",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_device"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Reboot",
-                          "icon": "mdi:restart",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_reboot"
-                          },
-                          "card_mod": {
-                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
-                          }
-                        }
-                      ]
+                      "entity": "input_select.cyd_serie",
+                      "name": "Série affichée"
                     },
                     {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Ecran Sleep",
-                          "icon": "mdi:monitor-off",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_ecran_sleep"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Ecran Wake",
-                          "icon": "mdi:monitor",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_ecran_wake"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "type": "entities",
-                      "entities": [
-                        {
-                          "entity": "input_number.cyd_veille",
-                          "name": "Veille ecran (s)"
-                        },
-                        {
-                          "entity": "input_select.cyd_serie",
-                          "name": "Serie ecran"
-                        },
-                        {
-                          "entity": "input_select.cyd_orientation",
-                          "name": "Orientation ecran"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "markdown",
-                      "content": "{{ states('input_text.cyd_status') }}\n",
-                      "card_mod": {
-                        "style": "ha-markdown {\n  white-space: pre-wrap !important;\n}\n"
-                      }
-                    },
-                    {
-                      "type": "entities",
-                      "entities": [
-                        {
-                          "entity": "input_boolean.cyd_watchdog",
-                          "name": "Etat controleur"
-                        },
-                        {
-                          "entity": "input_text.cyd_alive",
-                          "name": "Dernier signal"
-                        },
-                        {
-                          "entity": "input_number.cyd_watchdog_intervalle",
-                          "name": "Intervalle ALIVE (min)"
-                        },
-                        {
-                          "entity": "input_number.cyd_watchdog_delai",
-                          "name": "Delai alerte (min)"
-                        }
-                      ]
+                      "entity": "input_select.cyd_orientation",
+                      "name": "Orientation"
                     }
                   ]
+                },
+                {
+                  "type": "entities",
+                  "title": "Surveillance",
+                  "entities": [
+                    {
+                      "entity": "input_number.cyd_watchdog_intervalle",
+                      "name": "Intervalle des signaux (min)"
+                    },
+                    {
+                      "entity": "input_number.cyd_watchdog_delai",
+                      "name": "Délai avant alerte (min)"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "**Intervalle des signaux** : le CYD envoie un signal de vie toutes les N minutes (réglage transmis au CYD dès qu'on le change).<br> **Délai avant alerte** : sans signal pendant ce délai, le CYD passe à 🔴 **Déconnecté**. Le régler à 2 ou 3 fois l'intervalle, pour tolérer un signal perdu."
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "État du CYD",
+                  "heading_style": "title",
+                  "icon": "mdi:clipboard-list-outline"
+                },
+                {
+                  "type": "button",
+                  "name": "Demander l'état",
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "icon": "mdi:information",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_status"
+                  },
+                  "card_mod": {
+                    "style": "ha-card { height: 100% !important; }\n"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "{%- set t = state_attr('sensor.cyd_etat', 'texte') -%}\n{%- if not t -%}\nAucun état reçu : appuyer sur **Demander l'état**.\n{%- else -%}\n{%- set ns = namespace(eq=[], ctrl=[], info=[]) -%}\n{%- for l in t.split('\\n') -%}\n  {%- if ' ==> ' in l -%}\n    {%- set p = l.split(' ==> ') -%}\n    {%- set ns.ctrl = ns.ctrl + [[p[0] | trim, p[1] | trim]] -%}\n  {%- elif ' : ' in l -%}\n    {%- set p = l.split(' : ', 1) -%}\n    {%- set k = p[0] | trim -%}\n    {%- set v = p[1] | trim -%}\n    {%- if ' - ' in v and (v.startswith('ACTI') or v.startswith('INACTI')) -%}\n      {%- set q = v.split(' - ', 1) -%}\n      {#- Chaudière et lumière cave : état réel mesuré (433 MHz sans retour, le CYD ne connaît que sa dernière commande) -#}\n      {#- Capteur pas encore remonté : « Inconnu » (jamais la dernière commande du CYD) -#}\n      {%- set mesures = {'Chaudière': {'Allumee': 'ON', 'Eteinte': 'OFF'}.get(states('sensor.coulsdb_del'), 'Inconnu'),\n                         'Lumière cave': {'Jour': 'ON', 'Nuit': 'OFF'}.get(states('sensor.jncave_etat'), 'Inconnu')} -%}\n      {%- set ns.eq = ns.eq + [[k, q[0].startswith('ACTI'), mesures.get(k, q[1] | trim)]] -%}\n    {%- elif k == 'Uptime' -%}\n      {%- set s = v | replace('s', '') | int(0) -%}\n      {%- set ns.info = ns.info + [['En marche depuis', (s // 86400) ~ ' j ' ~ ((s % 86400) // 3600) ~ ' h ' ~ ((s % 3600) // 60) ~ ' min']] -%}\n    {%- elif k != 'IP' -%}\n      {%- set ns.info = ns.info + [[k, v]] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor -%}\nReçu le **{{ as_timestamp(states('sensor.cyd_etat')) | timestamp_custom('%d/%m à %H:%M:%S') }}**\n\n| Équipement | Activé | État |\n|:--|:--:|:--:|\n{% for e in ns.eq -%}\n| {{ e[0] }} | {{ '✅' if e[1] else '⛔' }} | {{ e[2] }} |\n{% endfor %}\n| Information | Valeur |\n|:--|:--|\n{% for i in ns.info -%}\n| {{ i[0] }} | {{ i[1] }} |\n{% endfor -%}\n{%- if ns.ctrl %}\n| Contrôleur / capteur connu | IP |\n|:--|:--|\n{% for c in ns.ctrl -%}\n| {{ c[0] }} | {{ c[1] }} |\n{% endfor -%}\n{%- endif -%}\n{%- endif -%}\n"
                 }
               ]
             }
-          ]
+          ],
+          "cards": []
         },
         {
           "type": "sections",
@@ -592,134 +614,156 @@
               "type": "grid",
               "cards": [
                 {
-                  "type": "vertical-stack",
-                  "cards": [
+                  "type": "heading",
+                  "heading": "CYD Aux",
+                  "heading_style": "title",
+                  "icon": "mdi:tablet"
+                },
+                {
+                  "type": "markdown",
+                  "content": "{% set ip = states('input_text.ip_cyd_aux') %}\n{% if is_state('binary_sensor.cyd_aux_connexion', 'on') %}🟢 **Connecté**{% else %}🔴 **Déconnecté**{% endif %} · IP **{{ ip }}**<br>\nDernier signal : {{ states('input_text.cyd_aux_alive') }}\n\n[🌐 Page Web](http://{{ ip }}/) · [📜 Journal](http://{{ ip }}/logs)\n"
+                },
+                {
+                  "type": "button",
+                  "name": "Redémarrer",
+                  "icon": "mdi:restart",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_aux_reboot",
+                    "confirmation": {
+                      "text": "Redémarrer le CYD Aux ?"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
                     {
-                      "type": "heading",
-                      "heading": "CYD AUX - Configuration",
-                      "heading_style": "title",
-                      "icon": "mdi:tablet"
+                      "condition": "state",
+                      "entity": "binary_sensor.cyd_aux_redemarrage",
+                      "state_not": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "card_mod": {
+                    "style": "ha-card {\n  height: 100% !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon, ha-state-icon { color: red !important; }\n"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Redémarrage en cours…",
+                  "icon": "mdi:timer-sand",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.cyd_aux_redemarrage",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "card_mod": {
+                    "style": "ha-card {\n  height: 100% !important;\n  background: rgba(255,140,0,0.2) !important;\n  cursor: default !important;\n}\nha-icon, ha-state-icon { color: orange !important; }\n"
+                  }
+                },
+                {
+                  "type": "custom:mushroom-template-card",
+                  "entity": "binary_sensor.cyd_aux_ecran",
+                  "primary": "Écran",
+                  "secondary": "{% if is_state(entity, 'on') %}Allumé · toucher pour le mettre en veille {%- elif is_state(entity, 'off') %}En veille · toucher pour le réveiller {%- else %}État inconnu · toucher pour le réveiller{% endif %}",
+                  "icon": "{{ 'mdi:monitor' if is_state(entity, 'on') else 'mdi:monitor-off' }}",
+                  "icon_color": "{{ 'green' if is_state(entity, 'on') else 'grey' }}",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_aux_ecran_bascule"
+                  },
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  }
+                },
+                {
+                  "type": "entities",
+                  "title": "Écran",
+                  "entities": [
+                    {
+                      "entity": "input_number.cyd_aux_veille",
+                      "name": "Veille de l'écran (s)"
                     },
                     {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Status",
-                          "icon": "mdi:information",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux_status"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Device",
-                          "icon": "mdi:chip",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux_device"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Reboot",
-                          "icon": "mdi:restart",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux_reboot"
-                          },
-                          "card_mod": {
-                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
-                          }
-                        }
-                      ]
+                      "entity": "input_select.cyd_aux_serie",
+                      "name": "Série affichée"
                     },
                     {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Ecran Sleep",
-                          "icon": "mdi:monitor-off",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux_ecran_sleep"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Ecran Wake",
-                          "icon": "mdi:monitor",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux_ecran_wake"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "type": "entities",
-                      "entities": [
-                        {
-                          "entity": "input_number.cyd_aux_veille",
-                          "name": "Veille ecran (s)"
-                        },
-                        {
-                          "entity": "input_select.cyd_aux_serie",
-                          "name": "Serie ecran"
-                        },
-                        {
-                          "entity": "input_select.cyd_aux_orientation",
-                          "name": "Orientation ecran"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "markdown",
-                      "content": "{{ states('input_text.cyd_aux_status') }}\n",
-                      "card_mod": {
-                        "style": "ha-markdown {\n  white-space: pre-wrap !important;\n}\n"
-                      }
-                    },
-                    {
-                      "type": "entities",
-                      "entities": [
-                        {
-                          "entity": "input_boolean.cyd_aux_watchdog",
-                          "name": "Etat controleur"
-                        },
-                        {
-                          "entity": "input_text.cyd_aux_alive",
-                          "name": "Dernier signal"
-                        },
-                        {
-                          "entity": "input_number.cyd_aux_watchdog_intervalle",
-                          "name": "Intervalle ALIVE (min)"
-                        },
-                        {
-                          "entity": "input_number.cyd_aux_watchdog_delai",
-                          "name": "Delai alerte (min)"
-                        }
-                      ]
+                      "entity": "input_select.cyd_aux_orientation",
+                      "name": "Orientation"
                     }
                   ]
+                },
+                {
+                  "type": "entities",
+                  "title": "Surveillance",
+                  "entities": [
+                    {
+                      "entity": "input_number.cyd_aux_watchdog_intervalle",
+                      "name": "Intervalle des signaux (min)"
+                    },
+                    {
+                      "entity": "input_number.cyd_aux_watchdog_delai",
+                      "name": "Délai avant alerte (min)"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "**Intervalle des signaux** : le CYD envoie un signal de vie toutes les N minutes (réglage transmis au CYD dès qu'on le change).<br> **Délai avant alerte** : sans signal pendant ce délai, le CYD passe à 🔴 **Déconnecté**. Le régler à 2 ou 3 fois l'intervalle, pour tolérer un signal perdu."
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "État du CYD",
+                  "heading_style": "title",
+                  "icon": "mdi:clipboard-list-outline"
+                },
+                {
+                  "type": "button",
+                  "name": "Demander l'état",
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "icon": "mdi:information",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_aux_status"
+                  },
+                  "card_mod": {
+                    "style": "ha-card { height: 100% !important; }\n"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "{%- set t = state_attr('sensor.cyd_aux_etat', 'texte') -%}\n{%- if not t -%}\nAucun état reçu : appuyer sur **Demander l'état**.\n{%- else -%}\n{%- set ns = namespace(eq=[], ctrl=[], info=[]) -%}\n{%- for l in t.split('\\n') -%}\n  {%- if ' ==> ' in l -%}\n    {%- set p = l.split(' ==> ') -%}\n    {%- set ns.ctrl = ns.ctrl + [[p[0] | trim, p[1] | trim]] -%}\n  {%- elif ' : ' in l -%}\n    {%- set p = l.split(' : ', 1) -%}\n    {%- set k = p[0] | trim -%}\n    {%- set v = p[1] | trim -%}\n    {%- if ' - ' in v and (v.startswith('ACTI') or v.startswith('INACTI')) -%}\n      {%- set q = v.split(' - ', 1) -%}\n      {#- Chaudière et lumière cave : état réel mesuré (433 MHz sans retour, le CYD ne connaît que sa dernière commande) -#}\n      {#- Capteur pas encore remonté : « Inconnu » (jamais la dernière commande du CYD) -#}\n      {%- set mesures = {'Chaudière': {'Allumee': 'ON', 'Eteinte': 'OFF'}.get(states('sensor.coulsdb_del'), 'Inconnu'),\n                         'Lumière cave': {'Jour': 'ON', 'Nuit': 'OFF'}.get(states('sensor.jncave_etat'), 'Inconnu')} -%}\n      {%- set ns.eq = ns.eq + [[k, q[0].startswith('ACTI'), mesures.get(k, q[1] | trim)]] -%}\n    {%- elif k == 'Uptime' -%}\n      {%- set s = v | replace('s', '') | int(0) -%}\n      {%- set ns.info = ns.info + [['En marche depuis', (s // 86400) ~ ' j ' ~ ((s % 86400) // 3600) ~ ' h ' ~ ((s % 3600) // 60) ~ ' min']] -%}\n    {%- elif k != 'IP' -%}\n      {%- set ns.info = ns.info + [[k, v]] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor -%}\nReçu le **{{ as_timestamp(states('sensor.cyd_aux_etat')) | timestamp_custom('%d/%m à %H:%M:%S') }}**\n\n| Équipement | Activé | État |\n|:--|:--:|:--:|\n{% for e in ns.eq -%}\n| {{ e[0] }} | {{ '✅' if e[1] else '⛔' }} | {{ e[2] }} |\n{% endfor %}\n| Information | Valeur |\n|:--|:--|\n{% for i in ns.info -%}\n| {{ i[0] }} | {{ i[1] }} |\n{% endfor -%}\n{%- if ns.ctrl %}\n| Contrôleur / capteur connu | IP |\n|:--|:--|\n{% for c in ns.ctrl -%}\n| {{ c[0] }} | {{ c[1] }} |\n{% endfor -%}\n{%- endif -%}\n{%- endif -%}\n"
                 }
               ]
             }
-          ]
+          ],
+          "cards": []
         },
         {
           "type": "sections",
@@ -733,134 +777,156 @@
               "type": "grid",
               "cards": [
                 {
-                  "type": "vertical-stack",
-                  "cards": [
+                  "type": "heading",
+                  "heading": "CYD Aux 2",
+                  "heading_style": "title",
+                  "icon": "mdi:tablet"
+                },
+                {
+                  "type": "markdown",
+                  "content": "{% set ip = states('input_text.ip_cyd_aux2') %}\n{% if is_state('binary_sensor.cyd_aux2_connexion', 'on') %}🟢 **Connecté**{% else %}🔴 **Déconnecté**{% endif %} · IP **{{ ip }}**<br>\nDernier signal : {{ states('input_text.cyd_aux2_alive') }}\n\n[🌐 Page Web](http://{{ ip }}/) · [📜 Journal](http://{{ ip }}/logs)\n"
+                },
+                {
+                  "type": "button",
+                  "name": "Redémarrer",
+                  "icon": "mdi:restart",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_aux2_reboot",
+                    "confirmation": {
+                      "text": "Redémarrer le CYD Aux 2 ?"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
                     {
-                      "type": "heading",
-                      "heading": "CYD AUX 2 - Configuration",
-                      "heading_style": "title",
-                      "icon": "mdi:tablet"
+                      "condition": "state",
+                      "entity": "binary_sensor.cyd_aux2_redemarrage",
+                      "state_not": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "card_mod": {
+                    "style": "ha-card {\n  height: 100% !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon, ha-state-icon { color: red !important; }\n"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Redémarrage en cours…",
+                  "icon": "mdi:timer-sand",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.cyd_aux2_redemarrage",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "card_mod": {
+                    "style": "ha-card {\n  height: 100% !important;\n  background: rgba(255,140,0,0.2) !important;\n  cursor: default !important;\n}\nha-icon, ha-state-icon { color: orange !important; }\n"
+                  }
+                },
+                {
+                  "type": "custom:mushroom-template-card",
+                  "entity": "binary_sensor.cyd_aux2_ecran",
+                  "primary": "Écran",
+                  "secondary": "{% if is_state(entity, 'on') %}Allumé · toucher pour le mettre en veille {%- elif is_state(entity, 'off') %}En veille · toucher pour le réveiller {%- else %}État inconnu · toucher pour le réveiller{% endif %}",
+                  "icon": "{{ 'mdi:monitor' if is_state(entity, 'on') else 'mdi:monitor-off' }}",
+                  "icon_color": "{{ 'green' if is_state(entity, 'on') else 'grey' }}",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_aux2_ecran_bascule"
+                  },
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  }
+                },
+                {
+                  "type": "entities",
+                  "title": "Écran",
+                  "entities": [
+                    {
+                      "entity": "input_number.cyd_aux2_veille",
+                      "name": "Veille de l'écran (s)"
                     },
                     {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Status",
-                          "icon": "mdi:information",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux2_status"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Device",
-                          "icon": "mdi:chip",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux2_device"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Reboot",
-                          "icon": "mdi:restart",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux2_reboot"
-                          },
-                          "card_mod": {
-                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
-                          }
-                        }
-                      ]
+                      "entity": "input_select.cyd_aux2_serie",
+                      "name": "Série affichée"
                     },
                     {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Ecran Sleep",
-                          "icon": "mdi:monitor-off",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux2_ecran_sleep"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Ecran Wake",
-                          "icon": "mdi:monitor",
-                          "tap_action": {
-                            "action": "call-service",
-                            "service": "script.cyd_aux2_ecran_wake"
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }\n"
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "type": "entities",
-                      "entities": [
-                        {
-                          "entity": "input_number.cyd_aux2_veille",
-                          "name": "Veille ecran (s)"
-                        },
-                        {
-                          "entity": "input_select.cyd_aux2_serie",
-                          "name": "Serie ecran"
-                        },
-                        {
-                          "entity": "input_select.cyd_aux2_orientation",
-                          "name": "Orientation ecran"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "markdown",
-                      "content": "{{ states('input_text.cyd_aux2_status') }}\n",
-                      "card_mod": {
-                        "style": "ha-markdown {\n  white-space: pre-wrap !important;\n}\n"
-                      }
-                    },
-                    {
-                      "type": "entities",
-                      "entities": [
-                        {
-                          "entity": "input_boolean.cyd_aux2_watchdog",
-                          "name": "Etat controleur"
-                        },
-                        {
-                          "entity": "input_text.cyd_aux2_alive",
-                          "name": "Dernier signal"
-                        },
-                        {
-                          "entity": "input_number.cyd_aux2_watchdog_intervalle",
-                          "name": "Intervalle ALIVE (min)"
-                        },
-                        {
-                          "entity": "input_number.cyd_aux2_watchdog_delai",
-                          "name": "Delai alerte (min)"
-                        }
-                      ]
+                      "entity": "input_select.cyd_aux2_orientation",
+                      "name": "Orientation"
                     }
                   ]
+                },
+                {
+                  "type": "entities",
+                  "title": "Surveillance",
+                  "entities": [
+                    {
+                      "entity": "input_number.cyd_aux2_watchdog_intervalle",
+                      "name": "Intervalle des signaux (min)"
+                    },
+                    {
+                      "entity": "input_number.cyd_aux2_watchdog_delai",
+                      "name": "Délai avant alerte (min)"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "**Intervalle des signaux** : le CYD envoie un signal de vie toutes les N minutes (réglage transmis au CYD dès qu'on le change).<br> **Délai avant alerte** : sans signal pendant ce délai, le CYD passe à 🔴 **Déconnecté**. Le régler à 2 ou 3 fois l'intervalle, pour tolérer un signal perdu."
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "État du CYD",
+                  "heading_style": "title",
+                  "icon": "mdi:clipboard-list-outline"
+                },
+                {
+                  "type": "button",
+                  "name": "Demander l'état",
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 1
+                  },
+                  "icon": "mdi:information",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.cyd_aux2_status"
+                  },
+                  "card_mod": {
+                    "style": "ha-card { height: 100% !important; }\n"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "{%- set t = state_attr('sensor.cyd_aux2_etat', 'texte') -%}\n{%- if not t -%}\nAucun état reçu : appuyer sur **Demander l'état**.\n{%- else -%}\n{%- set ns = namespace(eq=[], ctrl=[], info=[]) -%}\n{%- for l in t.split('\\n') -%}\n  {%- if ' ==> ' in l -%}\n    {%- set p = l.split(' ==> ') -%}\n    {%- set ns.ctrl = ns.ctrl + [[p[0] | trim, p[1] | trim]] -%}\n  {%- elif ' : ' in l -%}\n    {%- set p = l.split(' : ', 1) -%}\n    {%- set k = p[0] | trim -%}\n    {%- set v = p[1] | trim -%}\n    {%- if ' - ' in v and (v.startswith('ACTI') or v.startswith('INACTI')) -%}\n      {%- set q = v.split(' - ', 1) -%}\n      {#- Chaudière et lumière cave : état réel mesuré (433 MHz sans retour, le CYD ne connaît que sa dernière commande) -#}\n      {#- Capteur pas encore remonté : « Inconnu » (jamais la dernière commande du CYD) -#}\n      {%- set mesures = {'Chaudière': {'Allumee': 'ON', 'Eteinte': 'OFF'}.get(states('sensor.coulsdb_del'), 'Inconnu'),\n                         'Lumière cave': {'Jour': 'ON', 'Nuit': 'OFF'}.get(states('sensor.jncave_etat'), 'Inconnu')} -%}\n      {%- set ns.eq = ns.eq + [[k, q[0].startswith('ACTI'), mesures.get(k, q[1] | trim)]] -%}\n    {%- elif k == 'Uptime' -%}\n      {%- set s = v | replace('s', '') | int(0) -%}\n      {%- set ns.info = ns.info + [['En marche depuis', (s // 86400) ~ ' j ' ~ ((s % 86400) // 3600) ~ ' h ' ~ ((s % 3600) // 60) ~ ' min']] -%}\n    {%- elif k != 'IP' -%}\n      {%- set ns.info = ns.info + [[k, v]] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor -%}\nReçu le **{{ as_timestamp(states('sensor.cyd_aux2_etat')) | timestamp_custom('%d/%m à %H:%M:%S') }}**\n\n| Équipement | Activé | État |\n|:--|:--:|:--:|\n{% for e in ns.eq -%}\n| {{ e[0] }} | {{ '✅' if e[1] else '⛔' }} | {{ e[2] }} |\n{% endfor %}\n| Information | Valeur |\n|:--|:--|\n{% for i in ns.info -%}\n| {{ i[0] }} | {{ i[1] }} |\n{% endfor -%}\n{%- if ns.ctrl %}\n| Contrôleur / capteur connu | IP |\n|:--|:--|\n{% for c in ns.ctrl -%}\n| {{ c[0] }} | {{ c[1] }} |\n{% endfor -%}\n{%- endif -%}\n{%- endif -%}\n"
                 }
               ]
             }
-          ]
+          ],
+          "cards": []
         },
         {
           "type": "sections",
@@ -983,6 +1049,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(33,150,243,0.15) !important; }"
+                      },
                       "entities": [
                         {
                           "entity": "binary_sensor.thremise_eveille",
@@ -1006,6 +1075,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(33,150,243,0.15) !important; }"
+                      },
                       "title": "Mesures",
                       "entities": [
                         {
@@ -1031,8 +1103,52 @@
                       ]
                     },
                     {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(33,150,243,0.15) !important; }"
+                      },
+                      "title": "Flotteur (réglages reçus ; SET mfv_... par la commande libre)",
+                      "entities": [
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thremise_config",
+                          "attribute": "mfv_rev",
+                          "name": "Réveil par le flotteur (1 oui, 0 non)"
+                        },
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thremise_config",
+                          "attribute": "mfv_revmin",
+                          "name": "Anti-rafale",
+                          "suffix": " s"
+                        },
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thremise_config",
+                          "attribute": "mfv_ack",
+                          "name": "Confirmation par le contrôleur (1 oui, 0 non)"
+                        },
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thremise_config",
+                          "attribute": "mfv_ackn",
+                          "name": "Essais de confirmation"
+                        }
+                      ]
+                    },
+                    {
                       "type": "markdown",
-                      "content": "{% set r = states('sensor.thremise_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thremise_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thremise_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(33,150,243,0.15) !important; }"
+                      },
+                      "content": "Ex. : `SET mfv_revmin 300 mfv_ack 1` (commande libre) — clés : `mfv_rev` 0/1 (réveil par le flotteur),\n`mfv_revmin` (0 à 86400 s), `mfv_ack` 0/1 (confirmation par le contrôleur), `mfv_ackn` (1 à 10 envois)\n"
+                    },
+                    {
+                      "type": "markdown",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(33,150,243,0.15) !important; }"
+                      },
+                      "content": "{% if state_attr('sensor.thremise_config', 'mute') == 1 %}\n🔇 **Mesures muettes** : ThRemise n'émet plus ses mesures (MUTE OFF pour les rétablir).\n\n{% endif %}\n{% set r = states('sensor.thremise_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thremise_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thremise_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
                     },
                     {
                       "type": "horizontal-stack",
@@ -1113,6 +1229,9 @@
                   "cards": [
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(33,150,243,0.15) !important; }"
+                      },
                       "title": "Réglages (envoyés au prochain réveil)",
                       "entities": [
                         {
@@ -1138,6 +1257,10 @@
                         {
                           "entity": "input_number.thremise_wakei",
                           "name": "Éveil maximum"
+                        },
+                        {
+                          "entity": "input_boolean.thremise_mute",
+                          "name": "Mesures muettes"
                         }
                       ]
                     },
@@ -1158,6 +1281,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(33,150,243,0.15) !important; }"
+                      },
                       "title": "Commande libre",
                       "entities": [
                         {
@@ -1216,225 +1342,15 @@
                   "cards": [
                     {
                       "type": "heading",
-                      "heading": "ThNomade · LoRa",
-                      "heading_style": "title",
-                      "icon": "mdi:radio-tower"
-                    },
-                    {
-                      "type": "entities",
-                      "entities": [
-                        {
-                          "entity": "binary_sensor.thnomade_eveille",
-                          "name": "Éveillé"
-                        },
-                        {
-                          "entity": "sensor.thnomade_derniere_trame",
-                          "name": "Dernière trame",
-                          "format": "relative"
-                        },
-                        {
-                          "entity": "sensor.thnomade_commande_en_attente",
-                          "name": "Commande en attente"
-                        },
-                        {
-                          "entity": "sensor.thnomade_config",
-                          "name": "Config reçue",
-                          "format": "relative"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "markdown",
-                      "content": "{% set r = states('sensor.thnomade_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thnomade_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thnomade_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
-                    },
-                    {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Relire",
-                          "icon": "mdi:refresh",
-                          "tap_action": {
-                            "action": "perform-action",
-                            "perform_action": "script.noeud_commande",
-                            "data": {
-                              "capteur": "thnomade",
-                              "commande": "GET"
-                            }
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "État",
-                          "icon": "mdi:information",
-                          "tap_action": {
-                            "action": "perform-action",
-                            "perform_action": "script.noeud_commande",
-                            "data": {
-                              "capteur": "thnomade",
-                              "commande": "STATUS"
-                            }
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Annuler",
-                          "icon": "mdi:cancel",
-                          "tap_action": {
-                            "action": "perform-action",
-                            "perform_action": "script.noeud_commande",
-                            "data": {
-                              "capteur": "thnomade",
-                              "commande": "ANNULER"
-                            }
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Redémarrer",
-                          "icon": "mdi:restart",
-                          "tap_action": {
-                            "action": "perform-action",
-                            "perform_action": "script.noeud_commande",
-                            "data": {
-                              "capteur": "thnomade",
-                              "commande": "REBOOT"
-                            },
-                            "confirmation": {
-                              "text": "Redémarrer ThNomade à son prochain réveil ?"
-                            }
-                          },
-                          "card_mod": {
-                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "vertical-stack",
-                  "cards": [
-                    {
-                      "type": "entities",
-                      "title": "Réglages (envoyés au prochain réveil)",
-                      "entities": [
-                        {
-                          "entity": "input_boolean.thnomade_sleepa",
-                          "name": "Deep sleep actif"
-                        },
-                        {
-                          "entity": "input_number.thnomade_sleepi",
-                          "name": "Intervalle deep sleep"
-                        },
-                        {
-                          "entity": "input_number.thnomade_sleeps",
-                          "name": "Sommeil court (SLEEPS)"
-                        },
-                        {
-                          "entity": "input_number.thnomade_sleepm",
-                          "name": "Sommeil moyen (SLEEPM)"
-                        },
-                        {
-                          "entity": "input_number.thnomade_sleepl",
-                          "name": "Sommeil long (SLEEPL)"
-                        },
-                        {
-                          "entity": "input_number.thnomade_wakei",
-                          "name": "Éveil maximum"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "button",
-                      "name": "Enregistrer",
-                      "icon": "mdi:content-save",
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.noeud_enregistrer",
-                        "data": {
-                          "capteur": "thnomade"
-                        }
-                      },
-                      "card_mod": {
-                        "style": "ha-card {\n  height: 60px !important;\n  {% if states('sensor.thnomade_config') in ['unknown', 'unavailable'] %}\n  opacity: 0.4;\n  pointer-events: none;\n  {% endif %}\n}\n"
-                      }
-                    },
-                    {
-                      "type": "entities",
-                      "title": "Commande libre",
-                      "entities": [
-                        {
-                          "entity": "input_text.thnomade_commande",
-                          "name": "Commande"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "horizontal-stack",
-                      "cards": [
-                        {
-                          "type": "button",
-                          "name": "Envoyer",
-                          "icon": "mdi:send",
-                          "tap_action": {
-                            "action": "perform-action",
-                            "perform_action": "script.noeud_commande_libre",
-                            "data": {
-                              "capteur": "thnomade"
-                            }
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }"
-                          }
-                        },
-                        {
-                          "type": "button",
-                          "name": "Nettoyer retenu",
-                          "icon": "mdi:broom",
-                          "tap_action": {
-                            "action": "perform-action",
-                            "perform_action": "script.noeud_nettoyer_retenu",
-                            "data": {
-                              "capteur": "thnomade"
-                            },
-                            "confirmation": {
-                              "text": "Effacer le message retenu sur home/confthnomade/command ?"
-                            }
-                          },
-                          "card_mod": {
-                            "style": "ha-card { height: 60px !important; }"
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "vertical-stack",
-                  "cards": [
-                    {
-                      "type": "heading",
                       "heading": "ThCave · LoRa",
                       "heading_style": "title",
                       "icon": "mdi:radio-tower"
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(255,152,0,0.15) !important; }"
+                      },
                       "entities": [
                         {
                           "entity": "binary_sensor.thcave_eveille",
@@ -1458,6 +1374,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(255,152,0,0.15) !important; }"
+                      },
                       "title": "Mesures",
                       "entities": [
                         {
@@ -1475,12 +1394,73 @@
                         {
                           "entity": "sensor.batcave_etat",
                           "name": "État batterie"
+                        },
+                        {
+                          "entity": "sensor.jncave_etat",
+                          "name": "Jour / nuit"
+                        },
+                        {
+                          "entity": "sensor.jncave_eclairement",
+                          "name": "Éclairement"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(255,152,0,0.15) !important; }"
+                      },
+                      "title": "Jour / nuit (réglages reçus ; SET jn_... par la commande libre)",
+                      "entities": [
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thcave_config",
+                          "attribute": "jn_sbas",
+                          "name": "Seuil bas jour → nuit",
+                          "suffix": " %"
+                        },
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thcave_config",
+                          "attribute": "jn_shaut",
+                          "name": "Seuil haut nuit → jour",
+                          "suffix": " %"
+                        },
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thcave_config",
+                          "attribute": "jn_ecl",
+                          "name": "Remonter l'éclairement (1 oui, 0 non)"
+                        },
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thcave_config",
+                          "attribute": "jn_inter",
+                          "name": "Intervalle de mesure",
+                          "suffix": " s"
+                        },
+                        {
+                          "type": "attribute",
+                          "entity": "sensor.thcave_config",
+                          "attribute": "jn_force",
+                          "name": "Délai max sans envoi",
+                          "suffix": " s"
                         }
                       ]
                     },
                     {
                       "type": "markdown",
-                      "content": "{% set r = states('sensor.thcave_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thcave_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thcave_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(255,152,0,0.15) !important; }"
+                      },
+                      "content": "Ex. : `SET jn_sbas 15 jn_shaut 25` (commande libre) — clés : `jn_sbas` `jn_shaut` (0 à 100 %, bas < haut),\n`jn_ecl` 0/1, `jn_inter` (1 à 3600 s), `jn_force` (60 à 86400 s)\n"
+                    },
+                    {
+                      "type": "markdown",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(255,152,0,0.15) !important; }"
+                      },
+                      "content": "{% if state_attr('sensor.thcave_config', 'mute') == 1 %}\n🔇 **Mesures muettes** : ThCave n'émet plus ses mesures (MUTE OFF pour les rétablir).\n\n{% endif %}\n{% set r = states('sensor.thcave_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thcave_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thcave_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
                     },
                     {
                       "type": "horizontal-stack",
@@ -1561,6 +1541,9 @@
                   "cards": [
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(255,152,0,0.15) !important; }"
+                      },
                       "title": "Réglages (envoyés au prochain réveil)",
                       "entities": [
                         {
@@ -1586,6 +1569,10 @@
                         {
                           "entity": "input_number.thcave_wakei",
                           "name": "Éveil maximum"
+                        },
+                        {
+                          "entity": "input_boolean.thcave_mute",
+                          "name": "Mesures muettes"
                         }
                       ]
                     },
@@ -1606,6 +1593,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(255,152,0,0.15) !important; }"
+                      },
                       "title": "Commande libre",
                       "entities": [
                         {
@@ -1670,6 +1660,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(156,39,176,0.15) !important; }"
+                      },
                       "entities": [
                         {
                           "entity": "binary_sensor.thchrdc_eveille",
@@ -1693,6 +1686,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(156,39,176,0.15) !important; }"
+                      },
                       "title": "Mesures",
                       "entities": [
                         {
@@ -1715,7 +1711,10 @@
                     },
                     {
                       "type": "markdown",
-                      "content": "{% set ip = states('input_text.ip_thchrdc') %}\n{% if ip not in ['unknown', 'unavailable', ''] %}\n**Page Web** : [{{ ip }}](http://{{ ip }}/)\n\n{% endif %}\n{% set r = states('sensor.thchrdc_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thchrdc_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thchrdc_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(156,39,176,0.15) !important; }"
+                      },
+                      "content": "{% if state_attr('sensor.thchrdc_config', 'mute') == 1 %}\n🔇 **Mesures muettes** : ThChRDC n'émet plus ses mesures (MUTE OFF pour les rétablir).\n\n{% endif %}\n{% set ip = states('input_text.ip_thchrdc') %}\n{% if ip not in ['unknown', 'unavailable', ''] %}\n**Page Web** : [{{ ip }}](http://{{ ip }}/)\n\n{% endif %}\n{% set r = states('sensor.thchrdc_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thchrdc_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thchrdc_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
                     },
                     {
                       "type": "horizontal-stack",
@@ -1796,6 +1795,9 @@
                   "cards": [
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(156,39,176,0.15) !important; }"
+                      },
                       "title": "Réglages (envoyés au prochain réveil)",
                       "entities": [
                         {
@@ -1821,6 +1823,10 @@
                         {
                           "entity": "input_number.thchrdc_wakei",
                           "name": "Éveil maximum"
+                        },
+                        {
+                          "entity": "input_boolean.thchrdc_mute",
+                          "name": "Mesures muettes"
                         }
                       ]
                     },
@@ -1841,6 +1847,9 @@
                     },
                     {
                       "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(156,39,176,0.15) !important; }"
+                      },
                       "title": "Commande libre",
                       "entities": [
                         {
@@ -1895,9 +1904,537 @@
               "type": "grid",
               "cards": [
                 {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "heading": "ThCh1er · Wi-Fi",
+                      "heading_style": "title",
+                      "icon": "mdi:wifi"
+                    },
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(0,150,136,0.15) !important; }"
+                      },
+                      "entities": [
+                        {
+                          "entity": "binary_sensor.thch1er_eveille",
+                          "name": "Éveillé"
+                        },
+                        {
+                          "entity": "sensor.thch1er_derniere_trame",
+                          "name": "Dernière trame",
+                          "format": "relative"
+                        },
+                        {
+                          "entity": "sensor.thch1er_commande_en_attente",
+                          "name": "Commande en attente"
+                        },
+                        {
+                          "entity": "sensor.thch1er_config",
+                          "name": "Config reçue",
+                          "format": "relative"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(0,150,136,0.15) !important; }"
+                      },
+                      "title": "Mesures",
+                      "entities": [
+                        {
+                          "entity": "sensor.thch1er_temperature",
+                          "name": "Température"
+                        },
+                        {
+                          "entity": "sensor.thch1er_humidite",
+                          "name": "Humidité"
+                        },
+                        {
+                          "entity": "sensor.batch1er_tension",
+                          "name": "Batterie"
+                        },
+                        {
+                          "entity": "sensor.batch1er_etat",
+                          "name": "État batterie"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "markdown",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(0,150,136,0.15) !important; }"
+                      },
+                      "content": "{% if state_attr('sensor.thch1er_config', 'mute') == 1 %}\n🔇 **Mesures muettes** : ThCh1er n'émet plus ses mesures (MUTE OFF pour les rétablir).\n\n{% endif %}\n{% set ip = states('input_text.ip_thch1er') %}\n{% if ip not in ['unknown', 'unavailable', ''] %}\n**Page Web** : [{{ ip }}](http://{{ ip }}/)\n\n{% endif %}\n{% set r = states('sensor.thch1er_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thch1er_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thch1er_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Relire",
+                          "icon": "mdi:refresh",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thch1er",
+                              "commande": "GET"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "État",
+                          "icon": "mdi:information",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thch1er",
+                              "commande": "STATUS"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Annuler",
+                          "icon": "mdi:cancel",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thch1er",
+                              "commande": "ANNULER"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Redémarrer",
+                          "icon": "mdi:restart",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thch1er",
+                              "commande": "REBOOT"
+                            },
+                            "confirmation": {
+                              "text": "Redémarrer ThCh1er à son prochain réveil ?"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(0,150,136,0.15) !important; }"
+                      },
+                      "title": "Réglages (envoyés au prochain réveil)",
+                      "entities": [
+                        {
+                          "entity": "input_boolean.thch1er_sleepa",
+                          "name": "Deep sleep actif"
+                        },
+                        {
+                          "entity": "input_number.thch1er_sleepi",
+                          "name": "Intervalle deep sleep"
+                        },
+                        {
+                          "entity": "input_number.thch1er_sleeps",
+                          "name": "Sommeil court (SLEEPS)"
+                        },
+                        {
+                          "entity": "input_number.thch1er_sleepm",
+                          "name": "Sommeil moyen (SLEEPM)"
+                        },
+                        {
+                          "entity": "input_number.thch1er_sleepl",
+                          "name": "Sommeil long (SLEEPL)"
+                        },
+                        {
+                          "entity": "input_number.thch1er_wakei",
+                          "name": "Éveil maximum"
+                        },
+                        {
+                          "entity": "input_boolean.thch1er_mute",
+                          "name": "Mesures muettes"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "button",
+                      "name": "Enregistrer",
+                      "icon": "mdi:content-save",
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.noeud_enregistrer",
+                        "data": {
+                          "capteur": "thch1er"
+                        }
+                      },
+                      "card_mod": {
+                        "style": "ha-card {\n  height: 60px !important;\n  {% if states('sensor.thch1er_config') in ['unknown', 'unavailable'] %}\n  opacity: 0.4;\n  pointer-events: none;\n  {% endif %}\n}\n"
+                      }
+                    },
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(0,150,136,0.15) !important; }"
+                      },
+                      "title": "Commande libre",
+                      "entities": [
+                        {
+                          "entity": "input_text.thch1er_commande",
+                          "name": "Commande"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Envoyer",
+                          "icon": "mdi:send",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande_libre",
+                            "data": {
+                              "capteur": "thch1er"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Nettoyer retenu",
+                          "icon": "mdi:broom",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_nettoyer_retenu",
+                            "data": {
+                              "capteur": "thch1er"
+                            },
+                            "confirmation": {
+                              "text": "Effacer le message retenu sur home/confthch1er/command ?"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "heading",
+                      "heading": "ThSdb · Wi-Fi",
+                      "heading_style": "title",
+                      "icon": "mdi:wifi"
+                    },
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(233,30,99,0.15) !important; }"
+                      },
+                      "entities": [
+                        {
+                          "entity": "binary_sensor.thsdb_eveille",
+                          "name": "Éveillé"
+                        },
+                        {
+                          "entity": "sensor.thsdb_derniere_trame",
+                          "name": "Dernière trame",
+                          "format": "relative"
+                        },
+                        {
+                          "entity": "sensor.thsdb_commande_en_attente",
+                          "name": "Commande en attente"
+                        },
+                        {
+                          "entity": "sensor.thsdb_config",
+                          "name": "Config reçue",
+                          "format": "relative"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(233,30,99,0.15) !important; }"
+                      },
+                      "title": "Mesures",
+                      "entities": [
+                        {
+                          "entity": "sensor.thsdb_temperature",
+                          "name": "Température"
+                        },
+                        {
+                          "entity": "sensor.thsdb_humidite",
+                          "name": "Humidité"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_del",
+                          "name": "Voyant chaudière"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_rouge",
+                          "name": "Rouge"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_vert",
+                          "name": "Vert"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_bleu",
+                          "name": "Bleu"
+                        },
+                        {
+                          "entity": "sensor.coulsdb_intensite",
+                          "name": "Intensité"
+                        },
+                        {
+                          "entity": "sensor.batsdb_tension",
+                          "name": "Batterie"
+                        },
+                        {
+                          "entity": "sensor.batsdb_etat",
+                          "name": "État batterie"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "markdown",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(233,30,99,0.15) !important; }"
+                      },
+                      "content": "{% if state_attr('sensor.thsdb_config', 'mute') == 1 %}\n🔇 **Mesures muettes** : ThSdb n'émet plus ses mesures (MUTE OFF pour les rétablir).\n\n{% endif %}\n{% set ip = states('input_text.ip_thsdb') %}\n{% if ip not in ['unknown', 'unavailable', ''] %}\n**Page Web** : [{{ ip }}](http://{{ ip }}/)\n\n{% endif %}\n{% set r = states('sensor.thsdb_rapport') %}\n{% if r not in ['unknown', 'unavailable'] %}\n**État** (reçu {{ relative_time(as_datetime(state_attr('sensor.thsdb_rapport', 'recu'))) }}) :\n\n{{ r | replace(' | ', '  \\n') }}\n{% else %}\n*Pas encore de réponse au bouton État.*\n{% endif %}\n{% set e = state_attr('sensor.thsdb_config', 'erreur') %}\n{% if e %}\n\n⚠️ **Refusé par le nœud** : {{ e }}\n{% endif %}\n"
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Relire",
+                          "icon": "mdi:refresh",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thsdb",
+                              "commande": "GET"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "État",
+                          "icon": "mdi:information",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thsdb",
+                              "commande": "STATUS"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Annuler",
+                          "icon": "mdi:cancel",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thsdb",
+                              "commande": "ANNULER"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Redémarrer",
+                          "icon": "mdi:restart",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande",
+                            "data": {
+                              "capteur": "thsdb",
+                              "commande": "REBOOT"
+                            },
+                            "confirmation": {
+                              "text": "Redémarrer ThSdb à son prochain réveil ?"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card {\n  height: 60px !important;\n  background: rgba(200,0,0,0.2) !important;\n}\nha-icon { color: red !important; }\n"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(233,30,99,0.15) !important; }"
+                      },
+                      "title": "Réglages (envoyés au prochain réveil)",
+                      "entities": [
+                        {
+                          "entity": "input_boolean.thsdb_sleepa",
+                          "name": "Deep sleep actif"
+                        },
+                        {
+                          "entity": "input_number.thsdb_sleepi",
+                          "name": "Intervalle deep sleep"
+                        },
+                        {
+                          "entity": "input_number.thsdb_sleeps",
+                          "name": "Sommeil court (SLEEPS)"
+                        },
+                        {
+                          "entity": "input_number.thsdb_sleepm",
+                          "name": "Sommeil moyen (SLEEPM)"
+                        },
+                        {
+                          "entity": "input_number.thsdb_sleepl",
+                          "name": "Sommeil long (SLEEPL)"
+                        },
+                        {
+                          "entity": "input_number.thsdb_wakei",
+                          "name": "Éveil maximum"
+                        },
+                        {
+                          "entity": "input_boolean.thsdb_mute",
+                          "name": "Mesures muettes"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "button",
+                      "name": "Enregistrer",
+                      "icon": "mdi:content-save",
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.noeud_enregistrer",
+                        "data": {
+                          "capteur": "thsdb"
+                        }
+                      },
+                      "card_mod": {
+                        "style": "ha-card {\n  height: 60px !important;\n  {% if states('sensor.thsdb_config') in ['unknown', 'unavailable'] %}\n  opacity: 0.4;\n  pointer-events: none;\n  {% endif %}\n}\n"
+                      }
+                    },
+                    {
+                      "type": "entities",
+                      "card_mod": {
+                        "style": "ha-card { background: rgba(233,30,99,0.15) !important; }"
+                      },
+                      "title": "Commande libre",
+                      "entities": [
+                        {
+                          "entity": "input_text.thsdb_commande",
+                          "name": "Commande"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "horizontal-stack",
+                      "cards": [
+                        {
+                          "type": "button",
+                          "name": "Envoyer",
+                          "icon": "mdi:send",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_commande_libre",
+                            "data": {
+                              "capteur": "thsdb"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "name": "Nettoyer retenu",
+                          "icon": "mdi:broom",
+                          "tap_action": {
+                            "action": "perform-action",
+                            "perform_action": "script.noeud_nettoyer_retenu",
+                            "data": {
+                              "capteur": "thsdb"
+                            },
+                            "confirmation": {
+                              "text": "Effacer le message retenu sur home/confthsdb/command ?"
+                            }
+                          },
+                          "card_mod": {
+                            "style": "ha-card { height: 60px !important; }"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
                   "type": "markdown",
                   "title": "Commandes d'un nœud capteur",
-                  "content": "Casse indifférente, durées en secondes. Une commande part au **prochain réveil** du nœud\n(LoRa : file d'attente du relais ; Wi-Fi : message retenu, effacé dès que le nœud l'a reçu) ;\nune seule à la fois : annuler d'abord pour en changer.\n\n| Commande | Effet |\n|---|---|\n| `GET` | Relit la configuration |\n| `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600) |\n| `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |\n| `SLEEP n` | Intervalle = n s, et active le deep sleep |\n| `SLEEPS` / `SLEEPM` / `SLEEPL` | Applique la durée courte / moyenne / longue |\n| `SLEEPS n` (idem M, L) | Règle la durée courte (moyenne, longue) sans l'appliquer |\n| `WDOG ENABLE` / `WDOG DISABLE` / `WDOG s` | Watchdog ALIVE (ignoré en deep sleep) |\n| `STATUS` | Rapport d'état (bouton État) |\n| `REBOOT` | Redémarre le nœud |\n| `ANNULER` | Vide la commande en attente (LoRa : traitée par le relais ; Wi-Fi : efface le message retenu) |\n\n**Nettoyer retenu** : efface le message retenu du topic `home/conf<nœud>/command` (commande restée en\nretenu, ancien testament « offline »…). Sans effet sur la file du relais.\n\nL'automatisation « Cuve - SLEEP et ACK flotteur » n'envoie pas son SLEEP quand une commande attend.\n\nPage du relais (réseau local) : [Capteurs LoRa](http://{{ states('input_text.ip_relaislora') }}/capteurs)\n"
+                  "content": "Casse indifférente, durées en secondes. Une commande part au **prochain réveil** du nœud\n(LoRa : file d'attente du relais ; Wi-Fi : message retenu, effacé dès que le nœud l'a reçu) ;\nune seule à la fois : annuler d'abord pour en changer.\n\n| Commande | Effet |\n|---|---|\n| `GET` | Relit la configuration |\n| `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |\n| `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s), `jn_force` délai max sans envoi (60 à 86400 s) |\n| `SET mfv_revmin 300 mfv_ack 1` | Flotteur (ThRemise, Capteur 3.1) : `mfv_rev` réveil par le flotteur 0/1, `mfv_revmin` anti-rafale (0 à 86400 s), `mfv_ack` confirmation par le contrôleur 0/1, `mfv_ackn` nombre d'envois sans confirmation avant de dormir (1 à 10) |\n| `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |\n| `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |\n| `SLEEP n` | Intervalle = n s, et active le deep sleep |\n| `SLEEPS` / `SLEEPM` / `SLEEPL` | Applique la durée courte / moyenne / longue |\n| `SLEEPS n` (idem M, L) | Règle la durée courte (moyenne, longue) sans l'appliquer |\n| `WDOG ENABLE` / `WDOG DISABLE` / `WDOG s` | Watchdog ALIVE (ignoré en deep sleep) |\n| `STATUS` | Rapport d'état (bouton État) |\n| `REBOOT` | Redémarre le nœud |\n| `ANNULER` | Vide la commande en attente (LoRa : traitée par le relais ; Wi-Fi : efface le message retenu) |\n\n**Après un flash** : cliquer d'abord sur « Relire », pour que HA connaisse la config du nouveau firmware\n(sinon Enregistrer ignore les réglages que l'ancienne config ne contenait pas, comme « Mesures muettes »).\n\n**Nettoyer retenu** : efface le message retenu du topic `home/conf<nœud>/command` (commande restée en\nretenu, ancien testament « offline »…). Sans effet sur la file du relais.\n\nL'automatisation « Cuve - SLEEP et ACK flotteur » n'envoie pas son SLEEP quand une commande attend.\n\nPage du relais (réseau local) : [Capteurs LoRa](http://{{ states('input_text.ip_relaislora') }}/capteurs)\n"
                 }
               ]
             }

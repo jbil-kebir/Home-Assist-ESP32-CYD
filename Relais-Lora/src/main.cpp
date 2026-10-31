@@ -1,4 +1,5 @@
 #include "global.h"
+#include "MyVersion.h"
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -34,7 +35,7 @@ void setup() {
   unsigned long start = millis();
   while(!Serial && millis() - start < 10000); // Attend max 10 secondes
 
-  Serial.printf("\n=== %s %s ===\n", config.nomEquipement.c_str(), VERSION);
+  Serial.printf("\n=== %s %s ===\n", config.nomEquipement.c_str(), versionComplete().c_str());
 
   config.setup("cfg_");
   config.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
@@ -155,6 +156,8 @@ void setup() {
   // IP en dernier : HA la récupère pour ses liens vers la page Web du relais
   signalementMsg += String(mDateTime.getDate()) + " " + String(mDateTime.getTime()) + " " + WiFi.localIP().toString();
   mqtt.publish(config.topic_config_maitre_command.c_str(), signalementMsg.c_str(), false);
+  // Version du firmware (« <nom> VERSION 2.3 31/10/2026 14:05 ») : au démarrage et en réponse à STATUS
+  mqtt.publish(config.topic_config_state.c_str(), (config.nomEquipement + " VERSION " + versionComplete()).c_str(), false);
   #endif
 
   Serial.println("...Pret");  

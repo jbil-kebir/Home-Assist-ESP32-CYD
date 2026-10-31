@@ -1,0 +1,96 @@
+# Vue « Relais LoRa » du tableau Système (https://ha.jbil.org/dashboard-systeme/relais-lora)
+# Généré par genere_noeuds.py (entités : packages/noeuds_capteurs.yaml ; IP : automatisation « Relais LoRa - Recevoir IP »).
+# Installation : tableau Système → ✏️ → « + » (nouvelle vue) → ⋮ → « Modifier en YAML » → remplacer par ce fichier → Enregistrer.
+type: sections
+max_columns: 4
+title: Relais LoRa
+path: relais-lora
+icon: mdi:router-wireless
+show_icon_and_title: true
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Relais LoRa
+        heading_style: title
+        icon: mdi:router-wireless
+      - type: markdown
+        content: |
+          {% set ip = states('input_text.ip_relaislora') %}
+          {% if is_state('binary_sensor.relaislora_connexion', 'on') %}🟢 **Connecté**{% elif is_state('binary_sensor.relaislora_connexion', 'off') %}🔴 **Déconnecté**{% else %}⚪ **Inconnu**{% endif %} · IP **{{ ip }}**<br>
+          Dernier signal : {% if has_value('sensor.relaislora_dernier_signal') %}il y a {{ relative_time(as_datetime(states('sensor.relaislora_dernier_signal'))) }}{% else %}aucun{% endif %}<br>
+          {%- set v = states('sensor.relaislora_version') -%}
+          Firmware : {% if v in ['unknown', 'unavailable'] %}*pas encore reçu*{% else %}**{{ v }}**, compilé le {{ state_attr('sensor.relaislora_version', 'compilation') }}{% endif %}
+
+          [🌐 Page Web](http://{{ ip }}/) · [📡 Capteurs LoRa](http://{{ ip }}/capteurs) · [📜 Journal](http://{{ ip }}/logs)
+      - type: button
+        name: État
+        icon: mdi:information
+        tap_action:
+          action: perform-action
+          perform_action: mqtt.publish
+          data:
+            topic: home/confrelaislora/command
+            payload: STATUS
+        hold_action:
+          action: none
+        grid_options:
+          columns: 6
+          rows: 1
+      - type: button
+        name: Redémarrer
+        icon: mdi:restart
+        tap_action:
+          action: perform-action
+          perform_action: mqtt.publish
+          data:
+            topic: home/confrelaislora/command
+            payload: REBOOT
+          confirmation:
+            text: Redémarrer le relais LoRa ? Les commandes en attente pour les nœuds LoRa seront perdues.
+        hold_action:
+          action: none
+        grid_options:
+          columns: 6
+          rows: 1
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(200,0,0,0.2) !important;
+            }
+            ha-icon, ha-state-icon { color: red !important; }
+  - type: grid
+    cards:
+      - type: heading
+        heading: État (réponse au bouton État)
+        heading_style: title
+        icon: mdi:clipboard-text-outline
+      - type: markdown
+        content: |
+          {%- set t = state_attr('sensor.relaislora_etat', 'texte') -%}
+          {%- if not t -%}
+          *Pas encore de réponse : bouton État.*
+          {%- else -%}
+          {%- set noms = {'thremise': 'ThRemise', 'thnomade': 'ThNomade', 'thcave': 'ThCave'} -%}
+          {%- set lignes = t.split('\n') -%}
+          Reçu il y a {{ relative_time(as_datetime(states('sensor.relaislora_etat'))) }} (horloge du relais : {{ lignes[1] }})
+
+          | | |
+          |:--|:--|
+          {%- for l in lignes[2:] if ' : ' in l and not l.startswith('home/') %}
+          {%- set k = l.split(' : ', 1)[0] | trim %}
+          {%- set v = l.split(' : ', 1)[1] | trim %}
+          {%- if k == 'Uptime' %}{% set n = v | replace('s', '') | int(0) %}{% set v = (n // 86400) ~ ' j ' ~ ((n % 86400) // 3600) ~ ' h ' ~ ((n % 3600) // 60) ~ ' min' %}{% endif %}
+          | {{ k }} | {{ v }} |
+          {%- endfor %}
+
+          **Files d'attente des nœuds LoRa**
+
+          | Nœud | Dernière trame | En attente |
+          |:--|:--|:--|
+          {%- for l in lignes if l.startswith('home/') %}
+          {%- set id = l.split(' : ', 1)[0] | replace('home/conf', '') | replace('/command', '') %}
+          {%- set p = l.split(' : ', 1)[1].split(' — en attente : ') %}
+          | {{ noms.get(id, id) }} | {{ p[0] | replace('dernière trame ', '') }} | {{ p[1] if p | count > 1 else 'aucune' }} |
+          {%- endfor %}
+          {%- endif %}

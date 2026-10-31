@@ -1,3 +1,12 @@
+2.3
+Version du firmware avec la date et l'heure de compilation (« 2.3 31/10/2026 14:05 », MyVersion.cpp, comme Capteur 3.4) :
+    trame « <nom> VERSION 2.3 31/10/2026 14:05 » sur topic_config_state (home/confrelaislora/state)
+    au démarrage et en réponse à STATUS (ligne « Version : » ajoutée aussi dans le STATUS)
+    page Web : titre = nom du relais + ligne de version ; page Journal (/logs) : « Journal <nom> » + version
+    version_build.py (extra_scripts) : MyVersion.cpp recompilé à chaque compilation, date et heure toujours à jour
+Watchdog ALIVE : « <nom> ALIVE <date> <heure> » toutes les 60 s sur topic_config_state (signe de vie pour Home Assistant),
+    actif par défaut ; case et période sur la page Web (NVS wdogA / wdogP), commandes WDOG ENABLE / DISABLE / <s>, ligne dans le STATUS
+
 2.2
 Journal (MyJournal.cpp, identique dans Capteur, Relais-Lora, Home-Assist) : Serial.setTxTimeoutMs(0) sur l'USB natif
     Branché sur un PC dont personne ne lit le port série, chaque écriture attendait son délai d'expiration :

@@ -14,6 +14,7 @@ HA = os.path.dirname(os.path.abspath(__file__))  # dossier HA du projet
 #   seule (modifiables par la commande libre : SET jn_sbas ...)
 # fl (facultatif) = nœud équipé du flotteur avec réveil et confirmation (Capteur 3.1) : attributs mfv_* de sa config,
 #   affichés en lecture seule (modifiables par la commande libre : SET mfv_revmin ...)
+# vue (facultatif, True par défaut) = False : nœud absent de la vue Nœuds capteurs (entités et scripts gardés)
 # sans_retenu (facultatif) = nœud Wi-Fi toujours éveillé qui ne publie pas « online » (pas de DHT20) : commandes non
 #   retenues, sinon un REBOOT dont l'accusé se perd serait rejoué en boucle (commande perdue s'il est hors tension)
 NOEUDS = [
@@ -21,8 +22,10 @@ NOEUDS = [
          mesures=[("sensor.thremise_temperature", "Température"), ("sensor.thremise_humidite", "Humidité"),
                   ("sensor.batremise_tension", "Batterie"), ("sensor.batremise_etat", "État batterie"),
                   ("sensor.flotteur_remise", "Flotteur")]),
-    # ThNomade : pas encore d'entités de mesure dans configuration.yaml
-    dict(id="thnomade", nom="ThNomade", suffixe="Nomade", mode="lora", unites=["Th", "Bat", "Flotteur"], mesures=[]),
+    # ThNomade : pas encore d'entités de mesure dans configuration.yaml ; vue=False : retiré de la vue Nœuds capteurs
+    # dans HA par l'utilisateur (export du 31/10/2026), entités et scripts gardés
+    dict(id="thnomade", nom="ThNomade", suffixe="Nomade", mode="lora", unites=["Th", "Bat", "Flotteur"], mesures=[],
+         vue=False),
     dict(id="thcave", nom="ThCave", suffixe="Cave", mode="lora", unites=["Th", "Bat", "Jn"], jn=True,
          mesures=[("sensor.thcave_temperature", "Température"), ("sensor.thcave_humidite", "Humidité"),
                   ("sensor.batcave_tension", "Batterie"), ("sensor.batcave_etat", "État batterie"),
@@ -76,6 +79,104 @@ def liste_yaml(l):
 
 
 # ============================================================ PAQUET
+# Version du firmware : « <nom> VERSION 3.4 31/10/2026 13:13 [IP] » sur le topic de configuration (Capteur 3.4,
+# Relais-Lora 2.3, Home-Assist 3.5 : voir packages/cyd.yaml). État = numéro de version ; attributs : compilation
+# (date et heure), recu (dernière réception). Gardé au redémarrage de HA (template à déclencheur).
+def capteur_version(nom, i, topic, quand):
+    return f"""  # ---------- {nom} : version du firmware ({quand}) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "{topic}"
+    conditions:
+      - condition: template
+        value_template: "{{{{ ' VERSION ' in trigger.payload }}}}"
+    sensor:
+      - name: "{nom} Version"
+        unique_id: {i}_version
+        icon: mdi:chip
+        state: "{{{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}}}"
+        attributes:
+          compilation: >-
+            {{%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}}
+            {{{{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}}}
+          recu: "{{{{ now().isoformat() }}}}"
+"""
+
+
+# Relais LoRa : signe de vie = « <nom> ALIVE <date> <heure> » toutes les 60 s (watchdog ALIVE, Relais-Lora 2.3) et toute
+# autre trame du relais (sur son topic, annonce DEVICE RELAIS LORA, trames LoRa relayées : elles finissent par « 0.0.0.0 »).
+# Connecté = dernier signal de moins de RELAIS_DELAI_ALERTE_S (3 périodes ALIVE) et pas de testament plus récent
+# (« <nom> - Reconnect le ... », publié par le broker quand la connexion est perdue). Recalculé chaque minute (now()).
+# sensor.relaislora_etat : réponse au STATUS (attribut « texte »).
+RELAIS_DELAI_ALERTE_S = 180
+ENTITES_RELAIS = """  # ---------- Relais LoRa : connexion (dernier signal récent, pas de testament plus récent) ----------
+  - binary_sensor:
+      - name: "RelaisLora Connexion"
+        unique_id: relaislora_connexion
+        device_class: connectivity
+        state: >-
+          {%- if has_value('sensor.relaislora_dernier_signal') -%}
+            {%- set d = as_datetime(states('sensor.relaislora_dernier_signal')) -%}
+            {%- set t = as_datetime(states('sensor.relaislora_testament')) if has_value('sensor.relaislora_testament') else none -%}
+            {{ (now() - d).total_seconds() < """ + str(RELAIS_DELAI_ALERTE_S) + """ and (t is none or t < d) }}
+          {%- else -%}
+            false
+          {%- endif -%}
+
+  # ---------- Relais LoRa : testament (connexion MQTT perdue) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confrelaislora/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' - Reconnect le ' in trigger.payload }}"
+    sensor:
+      - name: "RelaisLora Testament"
+        unique_id: relaislora_testament
+        device_class: timestamp
+        icon: mdi:lan-disconnect
+        state: "{{ now().isoformat() }}"
+
+  # ---------- Relais LoRa : dernier signal (ALIVE, toute autre trame du relais, trame LoRa relayée) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confrelaislora/state"
+      - trigger: mqtt
+        topic: "home/configuration/command"
+        value_template: "{{ 'oui' if value.upper().startswith('DEVICE RELAIS LORA') else 'non' }}"
+        payload: "oui"
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: "{{ 'oui' if value.endswith(' 0.0.0.0') else 'non' }}"
+        payload: "oui"
+    conditions:
+      - condition: template
+        value_template: "{{ ' - Reconnect le ' not in trigger.payload }}"
+    sensor:
+      - name: "RelaisLora Dernier signal"
+        unique_id: relaislora_dernier_signal
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
+  # ---------- Relais LoRa : réponse au STATUS (« === ÉTAT <nom> === », version, IP, uptime, files d'attente) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confrelaislora/state"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload.startswith('=== ') }}"
+    sensor:
+      - name: "RelaisLora État"
+        unique_id: relaislora_etat
+        device_class: timestamp
+        icon: mdi:router-wireless
+        state: "{{ now().isoformat() }}"
+        attributes:
+          texte: "{{ trigger.payload }}"
+"""
+
+
 def paquet():
     o = []
     w = o.append
@@ -94,6 +195,10 @@ def paquet():
 # Entités : sensor.<id>_config (attributs sleepA, sleepI, sleepS, sleepM, sleepL, wakeI, erreur)
 #           sensor.<id>_rapport (réponse STATUS), sensor.<id>_commande_en_attente
 #           sensor.<id>_derniere_trame, binary_sensor.<id>_eveille
+#           sensor.<id>_version (firmware, trame « <nom> VERSION 3.4 31/10/2026 13:13 » : Capteur 3.4),
+#           sensor.relaislora_version (Relais-Lora 2.3), binary_sensor.relaislora_connexion,
+#           sensor.relaislora_dernier_signal, sensor.relaislora_testament, sensor.relaislora_etat (réponse STATUS,
+#           attribut texte) : vue Relais LoRa ; connexion = signal de moins de 3 min (ALIVE toutes les 60 s)
 #           input_boolean.<id>_sleepa, input_number.<id>_sleepi / _sleeps / _sleepm / _sleepl / _wakei
 #           input_text.<id>_commande (commande libre)
 # Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
@@ -179,7 +284,7 @@ template:""")
         attributes:
           recu: "{{{{ now().isoformat() }}}}"
 
-  # ---------- {nom} : activité (éveillé jusqu'à DEEPSLEEP ON ; auto_off si la trame de coucher est perdue) ----------
+  # ---------- {nom} : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
   - trigger:""")
         for topic, nom_trame in trames(n):
             w(f"""      - trigger: mqtt
@@ -195,7 +300,6 @@ template:""")
         state: >-
           {{%- set p = trigger.payload | upper -%}}
           {{{{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}}}
-        auto_off: "00:01:00"
     sensor:
       - name: "{nom} Dernière trame"
         unique_id: {i}_derniere_trame
@@ -203,6 +307,9 @@ template:""")
         icon: mdi:access-point
         state: "{{{{ now().isoformat() }}}}"
 """)
+        w(capteur_version(nom, i, f"home/conf{i}/state", "au démarrage, pas au réveil d'un deep sleep, et après GET"))
+    w(capteur_version("RelaisLora", "relaislora", "home/confrelaislora/state", "au démarrage et après STATUS"))
+    w(ENTITES_RELAIS)
     w("input_boolean:")
     for n in CAPTEURS:
         w(f"""  # ---------- {n['nom']} ----------
@@ -551,6 +658,8 @@ icon: mdi:access-point-network
 show_icon_and_title: true
 sections:""")
     for rang, n in enumerate(CAPTEURS):
+        if not n.get("vue", True):
+            continue
         debut = len(o)
         i, nom, wifi = n["id"], n["nom"], n["mode"] == "wifi"
         icone = "mdi:wifi" if wifi else "mdi:radio-tower"
@@ -574,7 +683,13 @@ sections:""")
                 name: Commande en attente
               - entity: sensor.{i}_config
                 name: Config reçue
-                format: relative""")
+                format: relative
+              - entity: sensor.{i}_version
+                name: Firmware
+              - type: attribute
+                entity: sensor.{i}_version
+                attribute: compilation
+                name: Compilé le""")
         if n["mesures"]:
             w("""          - type: entities
             title: Mesures
@@ -747,6 +862,12 @@ cards:
         format: relative
       - entity: sensor.{i}_commande_en_attente
         name: Commande en attente
+      - entity: sensor.{i}_version
+        name: Firmware
+      - type: attribute
+        entity: sensor.{i}_version
+        attribute: compilation
+        name: Compilé le
   - type: markdown
     content: |
       {{% set ip = states('{n['ip']}') %}}
@@ -900,6 +1021,174 @@ def vue_actionneurs():
     return entete + yaml.dump(vue, Dumper=Dumper, allow_unicode=True, sort_keys=False, width=1000)
 
 
+# ============================================================ VUE SYSTÈME → DIAGNOSTIC
+# Vue complète = celle de l'export .storage/lovelace.dashboard_systeme (à rafraîchir depuis HA avant de régénérer si la
+# vue a été modifiée dans HA) + section « Versions des firmwares » (remplacée si présente), en tête.
+EXPORT_SYSTEME = os.path.join(HA, ".storage", "lovelace.dashboard_systeme")
+VUE_DIAGNOSTIC = "diagnostic"
+TITRE_VERSIONS = "Versions des firmwares"
+# (entité, libellé, famille de firmware) : ⚠️ si la version est plus ancienne que la plus récente de sa famille
+EQUIPEMENTS_VERSION = (
+    [("sensor.cyd_version", "CYD principal", "Home-Assist"),
+     ("sensor.cyd_aux_version", "CYD Aux", "Home-Assist"),
+     ("sensor.cyd_aux2_version", "CYD Aux 2", "Home-Assist"),
+     ("sensor.relaislora_version", "Relais LoRa", "Relais-Lora")]
+    + [(f"sensor.{n['id']}_version", n.get("titre", n["nom"]), "Capteur") for n in NOEUDS if n.get("vue", True)])
+
+
+def carte_versions():
+    lignes = ",\n".join(f"    ('{e}', '{lib}', '{fam}')" for e, lib, fam in EQUIPEMENTS_VERSION)
+    contenu = ("{%- set eq = [\n" + lignes + "\n] -%}\n"
+               "{%- set ns = namespace(max={}) -%}\n"
+               "{%- for e, lib, fam in eq -%}\n"
+               "  {%- set v = states(e) -%}\n"
+               "  {%- if v | regex_match('^[0-9]+(\\.[0-9]+)*$') -%}\n"
+               "    {%- set t = v.split('.') | map('int') | list -%}\n"
+               "    {%- if fam not in ns.max or t > ns.max[fam] -%}{%- set ns.max = dict(ns.max, **{fam: t}) -%}{%- endif -%}\n"
+               "  {%- endif -%}\n"
+               "{%- endfor -%}\n"
+               "| Équipement | Firmware | Version | Compilée le | Reçue |\n"
+               "|:--|:--|:--:|:--:|:--|\n"
+               "{%- for e, lib, fam in eq %}\n"
+               "{%- set v = states(e) %}\n"
+               "{%- set connue = v | regex_match('^[0-9]+(\\.[0-9]+)*$') %}\n"
+               "{%- set r = state_attr(e, 'recu') %}\n"
+               "| {{ lib }} | {{ fam }} | "
+               "{% if not connue %}—{% elif (v.split('.') | map('int') | list) < ns.max[fam] %}⚠️ **{{ v }}**{% else %}{{ v }}{% endif %} | "
+               "{{ state_attr(e, 'compilation') or '—' }} | "
+               "{{ relative_time(as_datetime(r)) if r else 'jamais' }} |\n"
+               "{%- endfor %}\n\n"
+               "⚠️ : plus ancienne que la version la plus récente du même firmware. "
+               "Envoyée au démarrage, et en réponse à GET (nœuds) ou STATUS (CYD, relais).\n")
+    return {"type": "grid", "cards": [
+        {"type": "heading", "heading": TITRE_VERSIONS, "heading_style": "title", "icon": "mdi:chip"},
+        {"type": "markdown", "content": contenu, "grid_options": {"columns": "full"}}]}
+
+
+def vue_diagnostic():
+    import json
+    import yaml
+
+    class Dumper(yaml.SafeDumper):
+        pass
+
+    Dumper.add_representer(str, lambda d, s: d.represent_scalar(
+        "tag:yaml.org,2002:str", s, style="|" if "\n" in s else None))
+    cfg = json.load(open(EXPORT_SYSTEME, encoding="utf-8"))["data"]["config"]
+    vue = next(v for v in cfg["views"] if v.get("path") == VUE_DIAGNOSTIC)
+    vue.pop("cards", None)  # « cards: [] » ajouté par HA dans une vue en sections
+    vue["sections"] = [s for s in vue["sections"]
+                       if not (s.get("cards") and s["cards"][0].get("heading") == TITRE_VERSIONS)]
+    vue["sections"].insert(0, carte_versions())
+    entete = (f"# Vue « {vue.get('title')} » du tableau Système (https://ha.jbil.org/dashboard-systeme/{VUE_DIAGNOSTIC})\n"
+              "# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_systeme + section « Versions des firmwares »\n"
+              "# (sensor.<id>_version : packages/noeuds_capteurs.yaml et packages/cyd.yaml).\n"
+              "# Installation : tableau Système → ✏️ → vue Diagnostic → ⋮ → « Modifier en YAML » → remplacer par ce fichier.\n")
+    return entete + yaml.dump(vue, Dumper=Dumper, allow_unicode=True, sort_keys=False, width=1000)
+
+
+# ============================================================ VUE SYSTÈME → RELAIS LORA
+def vue_relais():
+    noms = ", ".join(f"'{n['id']}': '{n['nom']}'" for n in NOEUDS if n["mode"] == "lora")
+    return """# Vue « Relais LoRa » du tableau Système (https://ha.jbil.org/dashboard-systeme/relais-lora)
+# Généré par genere_noeuds.py (entités : packages/noeuds_capteurs.yaml ; IP : automatisation « Relais LoRa - Recevoir IP »).
+# Installation : tableau Système → ✏️ → « + » (nouvelle vue) → ⋮ → « Modifier en YAML » → remplacer par ce fichier → Enregistrer.
+type: sections
+max_columns: 4
+title: Relais LoRa
+path: relais-lora
+icon: mdi:router-wireless
+show_icon_and_title: true
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Relais LoRa
+        heading_style: title
+        icon: mdi:router-wireless
+      - type: markdown
+        content: |
+          {% set ip = states('input_text.ip_relaislora') %}
+          {% if is_state('binary_sensor.relaislora_connexion', 'on') %}🟢 **Connecté**{% elif is_state('binary_sensor.relaislora_connexion', 'off') %}🔴 **Déconnecté**{% else %}⚪ **Inconnu**{% endif %} · IP **{{ ip }}**<br>
+          Dernier signal : {% if has_value('sensor.relaislora_dernier_signal') %}il y a {{ relative_time(as_datetime(states('sensor.relaislora_dernier_signal'))) }}{% else %}aucun{% endif %}<br>
+          {%- set v = states('sensor.relaislora_version') -%}
+          Firmware : {% if v in ['unknown', 'unavailable'] %}*pas encore reçu*{% else %}**{{ v }}**, compilé le {{ state_attr('sensor.relaislora_version', 'compilation') }}{% endif %}
+
+          [🌐 Page Web](http://{{ ip }}/) · [📡 Capteurs LoRa](http://{{ ip }}/capteurs) · [📜 Journal](http://{{ ip }}/logs)
+      - type: button
+        name: État
+        icon: mdi:information
+        tap_action:
+          action: perform-action
+          perform_action: mqtt.publish
+          data:
+            topic: home/confrelaislora/command
+            payload: STATUS
+        hold_action:
+          action: none
+        grid_options:
+          columns: 6
+          rows: 1
+      - type: button
+        name: Redémarrer
+        icon: mdi:restart
+        tap_action:
+          action: perform-action
+          perform_action: mqtt.publish
+          data:
+            topic: home/confrelaislora/command
+            payload: REBOOT
+          confirmation:
+            text: Redémarrer le relais LoRa ? Les commandes en attente pour les nœuds LoRa seront perdues.
+        hold_action:
+          action: none
+        grid_options:
+          columns: 6
+          rows: 1
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(200,0,0,0.2) !important;
+            }
+            ha-icon, ha-state-icon { color: red !important; }
+  - type: grid
+    cards:
+      - type: heading
+        heading: État (réponse au bouton État)
+        heading_style: title
+        icon: mdi:clipboard-text-outline
+      - type: markdown
+        content: |
+          {%- set t = state_attr('sensor.relaislora_etat', 'texte') -%}
+          {%- if not t -%}
+          *Pas encore de réponse : bouton État.*
+          {%- else -%}
+          {%- set noms = {""" + noms + """} -%}
+          {%- set lignes = t.split('\\n') -%}
+          Reçu il y a {{ relative_time(as_datetime(states('sensor.relaislora_etat'))) }} (horloge du relais : {{ lignes[1] }})
+
+          | | |
+          |:--|:--|
+          {%- for l in lignes[2:] if ' : ' in l and not l.startswith('home/') %}
+          {%- set k = l.split(' : ', 1)[0] | trim %}
+          {%- set v = l.split(' : ', 1)[1] | trim %}
+          {%- if k == 'Uptime' %}{% set n = v | replace('s', '') | int(0) %}{% set v = (n // 86400) ~ ' j ' ~ ((n % 86400) // 3600) ~ ' h ' ~ ((n % 3600) // 60) ~ ' min' %}{% endif %}
+          | {{ k }} | {{ v }} |
+          {%- endfor %}
+
+          **Files d'attente des nœuds LoRa**
+
+          | Nœud | Dernière trame | En attente |
+          |:--|:--|:--|
+          {%- for l in lignes if l.startswith('home/') %}
+          {%- set id = l.split(' : ', 1)[0] | replace('home/conf', '') | replace('/command', '') %}
+          {%- set p = l.split(' : ', 1)[1].split(' — en attente : ') %}
+          | {{ noms.get(id, id) }} | {{ p[0] | replace('dernière trame ', '') }} | {{ p[1] if p | count > 1 else 'aucune' }} |
+          {%- endfor %}
+          {%- endif %}
+"""
+
+
 def ecrit(chemin, texte):
     with open(chemin, "w", encoding="utf-8", newline="\r\n") as f:
         f.write(texte)
@@ -909,3 +1198,5 @@ def ecrit(chemin, texte):
 ecrit(os.path.join(HA, "packages", "noeuds_capteurs.yaml"), paquet())
 ecrit(os.path.join(HA, "vue-noeuds-capteurs.yaml"), vue())
 ecrit(os.path.join(HA, "vue-actionneurs.yaml"), vue_actionneurs())
+ecrit(os.path.join(HA, "vue-diagnostic.yaml"), vue_diagnostic())
+ecrit(os.path.join(HA, "vue-relais-lora.yaml"), vue_relais())

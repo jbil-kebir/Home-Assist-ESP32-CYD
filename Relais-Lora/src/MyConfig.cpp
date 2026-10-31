@@ -1,5 +1,6 @@
 
 #include "MyConfig.h"
+#include "MyVersion.h"
 //#include <ELECHOUSE_CC1101_SRC_DRV.h>
 
 
@@ -16,6 +17,7 @@ void CConfig::setup(const String pref) {
 }  
 
 void CConfig::loop() {
+  loopWatchdog();
   // Deep Sleep pour le moment uniquement si on n'est pas contrôleur principal
   if (mbDeepSleepActive) {
     if (millis() < mulWakeDuration*1000) {
@@ -26,6 +28,19 @@ void CConfig::loop() {
       // Deep Sleep. 
       enterDeepSleep();
   }
+}
+
+// Watchdog ALIVE : « <nom> ALIVE <date> <heure> » toutes les mulWatchdogPeriod secondes (perdu si MQTT est déconnecté :
+// Home Assistant le verra alors comme déconnecté, ce qui est le but)
+void CConfig::loopWatchdog() {
+  if (!mbWatchdogActive || mulWatchdogPeriod == 0 || onMqttPublish == nullptr) return;
+  if (mulDernierAlive != 0 && millis() - mulDernierAlive < mulWatchdogPeriod * 1000UL) return;
+  mulDernierAlive = millis();
+  if (mulDernierAlive == 0) mulDernierAlive = 1;
+  String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
+  String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
+  String s = nomEquipement + " ALIVE " + sDate + " " + sTime;
+  onMqttPublish(topic_config_state.c_str(), s.c_str());
 }
 
 void CConfig::enterDeepSleep() {
@@ -118,9 +133,11 @@ void CConfig::loadFromNVS() {
   mbWakeFromDeepSleep = prefs.getBool((mPrefixNVS+"wkFDS").c_str(), false);
   mulDateMiseEnSommeil = prefs.getLong((mPrefixNVS+"dtSom").c_str(), 0UL);
   mulDateReveil = prefs.getLong((mPrefixNVS+"dtRev").c_str(), 0UL);
+  mbWatchdogActive = prefs.getBool((mPrefixNVS+"wdogA").c_str(), true);
+  mulWatchdogPeriod = prefs.getLong((mPrefixNVS+"wdogP").c_str(), DEFAULT_WATCHDOG_PERIOD_SEC);
 
   prefs.end();
-   
+
 }
 void CConfig::saveToNVS() {
   prefs.begin(nvs_namespace, false);
@@ -138,16 +155,30 @@ void CConfig::saveToNVS() {
   prefs.putBool((mPrefixNVS+"wkFDS").c_str(), mbWakeFromDeepSleep);
   prefs.putLong((mPrefixNVS+"dtSom").c_str(), mulDateMiseEnSommeil);
   prefs.putLong((mPrefixNVS+"dtRev").c_str(), mulDateReveil);
+  prefs.putBool((mPrefixNVS+"wdogA").c_str(), mbWatchdogActive);
+  prefs.putLong((mPrefixNVS+"wdogP").c_str(), mulWatchdogPeriod);
 
   prefs.end();
 }
 
-// Pas de commande de configuration propre au relais pour l'instant : STATUS (avec l'état de la file d'attente
-// des capteurs LoRa) et REBOOT sont traités directement dans CMqtt::callback().
+// Commandes de configuration propres au relais : WDOG ENABLE, WDOG DISABLE, WDOG <s> (période en secondes, active).
+// STATUS (avec l'état de la file d'attente des capteurs LoRa) et REBOOT sont traités directement dans CMqtt::callback().
 void CConfig::handleMqttCommand(const String& payload) {
   String cmd = payload;
   cmd.toUpperCase();
   cmd.trim();
+  if (cmd == "WDOG ENABLE") mbWatchdogActive = true;
+  else if (cmd == "WDOG DISABLE") mbWatchdogActive = false;
+  else if (cmd.startsWith("WDOG ")) {
+    long l = cmd.substring(5).toInt();
+    if (l <= 0) { Serial.println("CConfig::handleMqttCommand() - Commande WDOG mal formée : " + cmd); return; }
+    mulWatchdogPeriod = l;
+    mbWatchdogActive = true;
+  }
+  else return;
+  mulDernierAlive = 0; // ALIVE tout de suite (confirme la commande)
+  saveToNVS();
+  Serial.printf("Watchdog ALIVE : %s, période %u s\n", mbWatchdogActive ? "ACTIF" : "INACTIF", mulWatchdogPeriod);
 }
 
 void CConfig::loadFromWebServer (WebServer& server) {
@@ -160,6 +191,10 @@ void CConfig::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"sleepA").c_str())) mbDeepSleepActive = true; else mbDeepSleepActive = false;
   if (server.hasArg((mPrefixNVS+"sleepI").c_str())) mulSleepDuration = server.arg((mPrefixNVS+"sleepI")).toInt();
   if (server.hasArg((mPrefixNVS+"wakeI").c_str())) mulWakeDuration = server.arg((mPrefixNVS+"wakeI")).toInt();
+  mbWatchdogActive = server.hasArg((mPrefixNVS+"wdogA").c_str());
+  if (server.hasArg((mPrefixNVS+"wdogP").c_str()) && server.arg((mPrefixNVS+"wdogP")).toInt() > 0)
+    mulWatchdogPeriod = server.arg((mPrefixNVS+"wdogP")).toInt();
+  mulDernierAlive = 0;
 
   Serial.printf("CConfig::loadFromWebServer () - Nom equ : %s\n", nomEquipement.c_str());
 }
@@ -175,6 +210,10 @@ String CConfig::getHTML() {
         "<div><label>Intervalle entre Sleep</label><input type=\"text\" name=" + (mPrefixNVS+"wakeI") + " value=\"" + mulWakeDuration + "\"></div>"
       "</div>"
       "<div class=\"row\">"
+        "<div class=\"checkbox-row\"><label>Watchdog ALIVE</label><input type=\"checkbox\" name=" + (mPrefixNVS+"wdogA") + " value=\"1\"" + String(mbWatchdogActive ? " checked" : "") + "></div>"
+        "<div><label>Période Watchdog ALIVE (s)</label><input type=\"text\" name=" + (mPrefixNVS+"wdogP") + " value=\"" + mulWatchdogPeriod + "\"></div>"
+      "</div>"
+      "<div class=\"row\">"
         "<div><label>Préfixe domotique</label><input type=\"text\" name=" + (mPrefixNVS+"dom_pre") + " value=\"" + domotique_prefix + "\"></div>"
         "<div><label>Préfixe Configuration</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_pre") + " value=\"" + mqttConfigSubTopic + "\"></div>"
       "</div>";
@@ -188,11 +227,12 @@ String CConfig::getHTML() {
 
 void CConfig::print() const {
   Serial.println("[LOGICIEL]");
-  Serial.printf("  VERSION      : %s\n", String(VERSION).c_str());
+  Serial.printf("  VERSION      : %s\n", versionComplete().c_str());
   Serial.printf("  Nom équipement         : %s\n", nomEquipement.c_str());
   Serial.printf("  Deep Sleep             : %s\n", mbDeepSleepActive ? "ACTIF" : "INACTIF");
   Serial.printf("  Intervalle Deep Sleep  : %ld min\n", mulSleepDuration);
   Serial.printf("  Intervalle Entre Sleep : %ld min\n", mulWakeDuration);
+  Serial.printf("  Watchdog ALIVE         : %s, période %u s\n", mbWatchdogActive ? "ACTIF" : "INACTIF", mulWatchdogPeriod);
   Serial.printf("  Préfixe domotique      : %s\n", domotique_prefix.c_str());
   Serial.printf("  Préfixe configuration  : %s\n", mqttConfigSubTopic.c_str());
   #ifndef __LOCAL_MODE__

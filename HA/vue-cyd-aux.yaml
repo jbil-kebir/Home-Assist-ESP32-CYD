@@ -1,6 +1,6 @@
 # Vue « CYD Aux » du tableau Système (https://ha.jbil.org/dashboard-systeme/cyd-aux), générée depuis vue-cyd.yaml
 # À coller : Système → ✏️ → vue CYD Aux → ⋮ → « Modifier en YAML » → tout remplacer.
-# Nécessite packages/cyd.yaml (sensor.cyd_aux_etat, binary_sensor.cyd_aux_ecran, binary_sensor.cyd_aux_connexion, binary_sensor.cyd_aux_redemarrage, script.cyd_aux_ecran_bascule) et l'automatisation « CYD AUX - Recevoir Alive » corrigée.
+# Nécessite packages/cyd.yaml (sensor.cyd_aux_etat, sensor.cyd_aux_version, binary_sensor.cyd_aux_ecran, binary_sensor.cyd_aux_connexion, binary_sensor.cyd_aux_redemarrage, script.cyd_aux_ecran_bascule) et l'automatisation « CYD AUX - Recevoir Alive » corrigée.
 type: sections
 max_columns: 4
 title: CYD Aux
@@ -18,7 +18,9 @@ sections:
         content: |
           {% set ip = states('input_text.ip_cyd_aux') %}
           {% if is_state('binary_sensor.cyd_aux_connexion', 'on') %}🟢 **Connecté**{% else %}🔴 **Déconnecté**{% endif %} · IP **{{ ip }}**<br>
-          Dernier signal : {{ states('input_text.cyd_aux_alive') }}
+          Dernier signal : {{ states('input_text.cyd_aux_alive') }}<br>
+          {%- set v = states('sensor.cyd_aux_version') -%}
+          Firmware : {% if v in ['unknown', 'unavailable'] %}*pas encore reçu*{% else %}**{{ v }}**, compilé le {{ state_attr('sensor.cyd_aux_version', 'compilation') }}{% endif %}
 
           [🌐 Page Web](http://{{ ip }}/) · [📜 Journal](http://{{ ip }}/logs)
       # Redémarrer : deux boutons, un seul visible selon binary_sensor.cyd_aux_redemarrage

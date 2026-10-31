@@ -13,6 +13,7 @@
 #        === Contrôleurs et capteurs connus ===
 #        CYD Aux ==> 192.168.1.95
 #      Mise en forme (tableaux) : vue CYD du tableau Système.
+#  - sensor.cyd_version : version du firmware (« 3.5 », attribut compilation « 31/10/2026 13:48 »), Home-Assist 3.5.
 # ============================================================
 
 template:
@@ -45,6 +46,26 @@ template:
         unique_id: cyd_ecran
         icon: mdi:monitor
         state: "{{ trigger.payload == 'ECRAN ALLUME' }}"
+
+  # ---------- Version du firmware du CYD principal (Home-Assist 3.5) ----------
+  # Trame « <nom> VERSION 3.5 31/10/2026 13:48 » au démarrage et après STATUS.
+  # État = numéro de version ; attributs : compilation (date et heure), recu (dernière réception).
+  - trigger:
+      - trigger: mqtt
+        topic: home/configuration/state
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "CYD Version"
+        unique_id: cyd_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- Connexion du CYD principal ----------
   # Connecté si le dernier ALIVEWDOG (input_text.cyd_alive, mis à jour par « CYD - Recevoir Alive »)
@@ -116,6 +137,26 @@ template:
         icon: mdi:monitor
         state: "{{ trigger.payload == 'ECRAN ALLUME' }}"
 
+  # ---------- Version du firmware du CYD Aux (Home-Assist 3.5) ----------
+  # Trame « <nom> VERSION 3.5 31/10/2026 13:48 » au démarrage et après STATUS.
+  # État = numéro de version ; attributs : compilation (date et heure), recu (dernière réception).
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux/state
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "CYD Aux Version"
+        unique_id: cyd_aux_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
+
   # ---------- Connexion du CYD Aux ----------
   # Connecté si le dernier ALIVEWDOG (input_text.cyd_aux_alive, mis à jour par « CYD AUX - Recevoir Alive »)
   # date de moins que le délai d'alerte. Recalculé chaque minute (now()). Remplace input_boolean.cyd_aux_watchdog
@@ -185,6 +226,26 @@ template:
         unique_id: cyd_aux2_ecran
         icon: mdi:monitor
         state: "{{ trigger.payload == 'ECRAN ALLUME' }}"
+
+  # ---------- Version du firmware du CYD Aux2 (Home-Assist 3.5) ----------
+  # Trame « <nom> VERSION 3.5 31/10/2026 13:48 » au démarrage et après STATUS.
+  # État = numéro de version ; attributs : compilation (date et heure), recu (dernière réception).
+  - trigger:
+      - trigger: mqtt
+        topic: home/configaux2/state
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "CYD Aux2 Version"
+        unique_id: cyd_aux2_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
 
   # ---------- Connexion du CYD Aux2 ----------
   # Connecté si le dernier ALIVEWDOG (input_text.cyd_aux2_alive, mis à jour par « CYD AUX2 - Recevoir Alive »)

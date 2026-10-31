@@ -56,7 +56,17 @@ public:
   unsigned long mulDateMiseEnSommeil=0L; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
   unsigned long mulDateReveil=0L; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
   unsigned long mulNbSecondesDeSommeil=0L; // Différence entre les deux précédents = durée du dernier sommeil
-  
+
+  // === WATCHDOG ALIVE ===
+  // « <nom> ALIVE <date> <heure> » publié toutes les mulWatchdogPeriod secondes sur topic_config_state : signe de vie
+  // pour Home Assistant (relais vu déconnecté après 3 périodes sans signal). Réglable sur la page Web ;
+  // commandes (topic de configuration) : WDOG ENABLE, WDOG DISABLE, WDOG <s> (fixe la période et active)
+  const unsigned int DEFAULT_WATCHDOG_PERIOD_SEC = 60;
+  bool mbWatchdogActive = true;
+  unsigned int mulWatchdogPeriod = DEFAULT_WATCHDOG_PERIOD_SEC; // en secondes
+  unsigned long mulDernierAlive = 0; // millis() du dernier ALIVE (0 : à envoyer tout de suite)
+  void loopWatchdog();
+
   // MQTT callback pour le deep-sleep
   std::function<int(const char*, const char*)> onMqttPublish;    
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish) {onMqttPublish = cbMqttPublish;}; // Pour publication MQTT

@@ -6,6 +6,7 @@
 #include "FileCommandes.h"
 #include "MyWifi.h"
 #include "MyMqtt.h"
+#include "MyVersion.h"
 
 void CMqtt::setup(const String pref) {
   mPrefixNVS = pref;
@@ -113,13 +114,18 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     if (message == "STATUS") {
       String statusMsg = "=== ÉTAT "+ String(mConfig.nomEquipement) +" ===\n";
       statusMsg += String(mConfig.mDateTime->getDate()) + " " + String(mConfig.mDateTime->getTime()) + "\n";
+      statusMsg += "Version : " + versionComplete() + "\n";
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
+      statusMsg += "Watchdog : " + String(mConfig.mbWatchdogActive ? "ACTIF " : "INACTIF ") + String(mConfig.mulWatchdogPeriod) + " s\n";
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
       if (mConfig.mFileCommandes != nullptr) statusMsg += "\n" + mConfig.mFileCommandes->getEtat();
 
       client.publish(mConfig.topic_config_state.c_str(), statusMsg.c_str(), false);
       Serial.println("STATUS publié sur " + mConfig.topic_config_state);
       Serial.println(statusMsg); Serial.flush();
+      // Version du firmware, trame à part (lue par HA : sensor.relaislora_version)
+      String sVersion = mConfig.nomEquipement + " VERSION " + versionComplete();
+      client.publish(mConfig.topic_config_state.c_str(), sVersion.c_str(), false);
     }
     else if (message == "REBOOT") {
       ESP.restart();

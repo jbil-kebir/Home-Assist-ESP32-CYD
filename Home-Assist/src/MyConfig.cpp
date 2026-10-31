@@ -1,6 +1,7 @@
 
 #include "MyConfig.h"
 #include "ParsedMqttMessage.h"
+#include "MyVersion.h"
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 #include <WiFi.h> // Notre IP (CYD auxiliaires)
 
@@ -328,7 +329,7 @@ String CConfig::getHTML() {
 
 void CConfig::print() const {
   DBG(DBG_CONFIG, "[LOGICIEL]\n");
-  DBG(DBG_CONFIG, "  VERSION      : %s\n", String(VERSION).c_str());
+  DBG(DBG_CONFIG, "  VERSION      : %s\n", versionComplete().c_str());
   DBG(DBG_CONFIG, "  Nom équipement            : %s\n", nomEquipement.c_str());
   DBG(DBG_CONFIG, "  Deep Sleep                : %s\n", mbDeepSleepActive ? "ACTIF" : "INACTIF");
   DBG(DBG_CONFIG, "  Intervalle Deep Sleep     : %ld min\n", mulSleepDuration);

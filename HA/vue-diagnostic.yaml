@@ -1,0 +1,117 @@
+# Vue « Diagnostic » du tableau Système (https://ha.jbil.org/dashboard-systeme/diagnostic)
+# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_systeme + section « Versions des firmwares »
+# (sensor.<id>_version : packages/noeuds_capteurs.yaml et packages/cyd.yaml).
+# Installation : tableau Système → ✏️ → vue Diagnostic → ⋮ → « Modifier en YAML » → remplacer par ce fichier.
+type: sections
+max_columns: 4
+title: Diagnostic
+path: diagnostic
+icon: mdi:heart-pulse
+show_icon_and_title: true
+sections:
+- type: grid
+  cards:
+  - type: heading
+    heading: Versions des firmwares
+    heading_style: title
+    icon: mdi:chip
+  - type: markdown
+    content: |
+      {%- set eq = [
+          ('sensor.cyd_version', 'CYD principal', 'Home-Assist'),
+          ('sensor.cyd_aux_version', 'CYD Aux', 'Home-Assist'),
+          ('sensor.cyd_aux2_version', 'CYD Aux 2', 'Home-Assist'),
+          ('sensor.relaislora_version', 'Relais LoRa', 'Relais-Lora'),
+          ('sensor.thremise_version', 'ThRemise', 'Capteur'),
+          ('sensor.thcave_version', 'ThCave', 'Capteur'),
+          ('sensor.thchrdc_version', 'ThChRDC', 'Capteur'),
+          ('sensor.thch1er_version', 'ThCh1er', 'Capteur'),
+          ('sensor.thsdb_version', 'ThSdb', 'Capteur'),
+          ('sensor.noeud_version', 'Nœud chauffage SdB', 'Capteur')
+      ] -%}
+      {%- set ns = namespace(max={}) -%}
+      {%- for e, lib, fam in eq -%}
+        {%- set v = states(e) -%}
+        {%- if v | regex_match('^[0-9]+(\.[0-9]+)*$') -%}
+          {%- set t = v.split('.') | map('int') | list -%}
+          {%- if fam not in ns.max or t > ns.max[fam] -%}{%- set ns.max = dict(ns.max, **{fam: t}) -%}{%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      | Équipement | Firmware | Version | Compilée le | Reçue |
+      |:--|:--|:--:|:--:|:--|
+      {%- for e, lib, fam in eq %}
+      {%- set v = states(e) %}
+      {%- set connue = v | regex_match('^[0-9]+(\.[0-9]+)*$') %}
+      {%- set r = state_attr(e, 'recu') %}
+      | {{ lib }} | {{ fam }} | {% if not connue %}—{% elif (v.split('.') | map('int') | list) < ns.max[fam] %}⚠️ **{{ v }}**{% else %}{{ v }}{% endif %} | {{ state_attr(e, 'compilation') or '—' }} | {{ relative_time(as_datetime(r)) if r else 'jamais' }} |
+      {%- endfor %}
+
+      ⚠️ : plus ancienne que la version la plus récente du même firmware. Envoyée au démarrage, et en réponse à GET (nœuds) ou STATUS (CYD, relais).
+    grid_options:
+      columns: full
+- type: grid
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: heading
+      heading: OTBR / Thread
+      heading_style: title
+      icon: mdi:stethoscope
+    - type: entities
+      entities:
+      - entity: sensor.eve_poele_puissance
+        name: Eve Poêle - Puissance
+        secondary_info: last-updated
+      - entity: sensor.eve_itinerante_puissance
+        name: Eve Itinérante - Puissance
+        secondary_info: last-updated
+      - entity: sensor.eve_nas_puissance
+        name: Eve NAS - Puissance
+        secondary_info: last-updated
+    - type: entity
+      entity: update.openthread_border_router_mise_a_jour
+      name: OTBR - Version
+    - type: button
+      name: Redemarrer OTBR
+      icon: mdi:restart
+      tap_action:
+        action: call-service
+        service: hassio.addon_restart
+        data:
+          addon: core_openthread_border_router
+      card_mod:
+        style: |
+          ha-card {
+            height: 60px !important;
+            background: rgba(255,165,0,0.2) !important;
+          }
+          ha-icon {
+            color: orange !important;
+          }
+  - type: vertical-stack
+    cards:
+    - type: heading
+      heading: Linky
+      heading_style: title
+      icon: mdi:stethoscope
+    - type: entities
+      entities:
+      - entity: sensor.linky_index_base
+        name: Index base
+        secondary_info: last-updated
+      - entity: sensor.linky_puissance_apparente
+        name: Puissance apparente
+        secondary_info: last-updated
+- type: grid
+  cards:
+  - type: heading
+    heading: Journal CYD
+    heading_style: title
+    icon: mdi:text-box-outline
+  - type: logbook
+    entities:
+    - sensor.cyd_log
+    hours_to_show: 24
+    grid_options:
+      columns: full
+      rows: 8

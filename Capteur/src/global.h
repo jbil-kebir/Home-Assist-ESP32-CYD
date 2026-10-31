@@ -43,15 +43,15 @@
 
 //#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
-//#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
+#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
 //#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
-#define _LORA_P2P_MODE_ // Envoi par LORA
+//#define _LORA_P2P_MODE_ // Envoi par LORA
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
 #define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
-#define FLOTTEUR_VERTICAL // ThRemise seulement (ThCave / ThNomade : pas de flotteur)
+//#define FLOTTEUR_VERTICAL // ThRemise seulement (ThCave / ThNomade : pas de flotteur)
 //#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C — ThSdb (capteur chaudière) seulement
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF) — ThSdb (capteur chaudière) seulement
 #define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
@@ -85,7 +85,7 @@
 #if defined(__ESP32_C3__)
   #define IS_ESP32_C3       1
   #define IS_ESP32_S3       0
-  // BOARD_XIAO_C3 (env xiao_esp32c3 de platformio.ini) : carte « Capteur C3 Xiao » (pcb/Capteur C3 Xiao/).
+  // BOARD_XIAO_C3 (profils xiao_c3 et xiao_c3_debug de platformio.ini) : carte « Capteur C3 Xiao » (pcb/Capteur C3 Xiao/).
   // Sinon : ESP32-C3 Super Mini.
   #if defined(BOARD_XIAO_C3)
   #define BOARD_NAME        "XIAO ESP32-C3"
@@ -367,6 +367,10 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "3.3"
+#define VERSION "3.4"
+
+// Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
+// prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)
+#define LOOP_WDT_TIMEOUT_S 30
 
 #endif // __GLOBAL_H__

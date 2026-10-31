@@ -180,6 +180,7 @@ public:
   int  setParam(const String& cle, const String& valeur);  // Paramètre modifiable à distance (SET) ou par la page Web
   String getParams() const;                                // « cle:valeur ... » de tous les paramètres modifiables
   void envoieConfig(const String& sErreurs = "");          // Réponse aux commandes GET / SET (MQTT et LoRa)
+  void envoieVersion();                                     // « <nom> VERSION 3.4 31/10/2026 14:05 » (démarrage et GET)
   void setSleepIntervalle(unsigned long st);
   void setWakeIntervalle(unsigned long st);
   void setDeepSleep(bool active);

@@ -53,8 +53,8 @@ Pourquoi ce brochage (différent de la carte S3, où le flotteur est sur D0 et l
 
 `D:\Developpement\Pilotage_Maison\Capteur`, configuration dans `src/global.h` :
 
-- env PlatformIO **`xiao_esp32c3`** (`board = seeed_xiao_esp32c3`, `-D BOARD_XIAO_C3`), commenté dans `platformio.ini` :
-  le décommenter (et commenter les autres envs) pour compiler cette carte ;
+- profils PlatformIO **`xiao_c3`** (production) et **`xiao_c3_debug`** (`board = seeed_xiao_esp32c3`, `-D BOARD_XIAO_C3`) :
+  les choisir dans la barre d'état de VS Code pour compiler cette carte ;
 - `global.h`, branche C3 : bloc **`BOARD_XIAO_C3`** avec le brochage ci-dessus ; il refuse à la compilation (`#error`)
   les fonctions absentes de cette carte (CC1101, DS18B20) et les combinaisons qui se marchent dessus (micro + flotteur,
   micro + I2C, IR + LED) ; sans `BOARD_XIAO_C3`, la branche C3 reste celle de la Super Mini ;

@@ -10,6 +10,7 @@
 #include "MyEcran.h"
 #include "MyMqtt.h"
 #include "ParsedMqttMessage.h"
+#include "MyVersion.h"
 
 void CMqtt::setup(const String pref) {
   mPrefixNVS = pref;
@@ -343,6 +344,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       #ifdef __CYD__
       statusMsg += "Veille écran  : " + String(mEcran.sleep_timeout > 0 ? String(mEcran.sleep_timeout) + "s" : "Désactivée") + "\n";
       #endif
+      statusMsg += "Version : " + versionComplete() + "\n";
       statusMsg += "IP     : " + WiFi.localIP().toString() + "\n";
       statusMsg += "Uptime : " + String(millis() / 1000) + "s";
 
@@ -361,6 +363,8 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       DBGLN(DBG_MQTT, "STATUS publié sur " + mConfig.topic_config_state + " :");
       DBGLN(DBG_MQTT, statusMsg);
       DBG(DBG_MQTT, "Taille : %d\n", statusMsg.length());
+      // Version du firmware, trame à part (lue par HA : sensor.cyd_version)
+      publish(mConfig.topic_config_state.c_str(), (mConfig.nomEquipement + " VERSION " + versionComplete()).c_str(), false);
 
     }
     else if (message.startsWith("VEILLE ")) {

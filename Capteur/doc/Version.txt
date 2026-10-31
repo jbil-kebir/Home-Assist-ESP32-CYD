@@ -1,3 +1,13 @@
+3.4
+Version du firmware avec la date et l'heure de compilation (« 3.4 31/10/2026 14:05 », MyVersion.cpp) :
+    trame « <nom> VERSION 3.4 31/10/2026 14:05 » sur topic_config_state (home/conf<id>/state), MQTT et LoRa,
+    au démarrage (mise sous tension, reset, téléversement ; pas au réveil d'un deep sleep) et en réponse à GET
+    affichée en haut de la page Web, de la page Journal (/logs, titre « Journal <nom> ») et sur le port série
+    version_build.py (extra_scripts) : MyVersion.cpp recompilé à chaque compilation, date et heure toujours à jour
+Chien de garde de loop() (esp_task_wdt, LOOP_WDT_TIMEOUT_S = 30 s) : redémarrage si la boucle se fige
+    (ThChRDC figé le 31/10/2026 : ni mesures ni page Web jusqu'au reset) ; REVEIL suivant : « Cause reset : TASK_WDT »
+platformio.ini : 4 profils xiao_c3, xiao_c3_debug, xiao_s3, xiao_s3_debug (choisis dans VS Code) ; seul global.h reste à modifier
+
 3.3
 Capteur RGB (ThSdb) : la DEL qui recopie l'état ON/OFF tient compte du réglage « DEL OFF (0 ou 1) » (rgboff)
     (le niveau calculé n'était pas utilisé : une DEL câblée vers le +3,3 V aurait fonctionné à l'envers)

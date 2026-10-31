@@ -1,4 +1,5 @@
-# Tableau « Accueil » COMPLET (6 vues) — export .storage du 30/10/2026 + carte « Lumière cave » dans la vue Accueil.
+# Tableau « Accueil » COMPLET (6 vues) — export .storage du 30/10/2026 + carte « Lumière cave » dans la vue Accueil
+# + 31/10/2026 : section Alertes réordonnée et pastilles éveillé / endormi des nœuds (voir vue-accueil.yaml).
 # À coller : ✏️ → ⋮ (en haut à droite) → « Éditeur de configuration brute » → TOUT remplacer → Enregistrer.
 views:
   - type: sections
@@ -64,28 +65,6 @@ views:
             icon: mdi:alert-outline
             heading_style: title
             heading: Alertes
-          - type: horizontal-stack
-            cards:
-              - type: markdown
-                content: |
-                  {% if states('sensor.newnas_sante') == 'ok' %} 🟢 **NewNas : Santé OK** {% else %} 🔴 **NewNas : Problème détecté !** {% endif %}
-                card_mod:
-                  style: |
-                    ha-markdown {
-                      text-align: center;
-                      padding: 8px;
-                      color: {{ 'green' if states('sensor.newnas_sante') == 'ok' else 'red' }} !important;
-                    }  
-              - type: markdown
-                content: |
-                  {% if states('sensor.bignas_sante') == 'ok' %} 🟢 **BigNas : Santé OK** {% else %} 🔴 **BigNas : Problème détecté !** {% endif %}
-                card_mod:
-                  style: |
-                    ha-markdown {
-                      text-align: center;
-                      padding: 8px;
-                      color: {{ 'green' if states('sensor.bignas_sante') == 'ok' else 'red' }} !important;
-                    }  
           - type: vertical-stack
             cards:
               - type: horizontal-stack
@@ -130,6 +109,96 @@ views:
                         .shape {
                           background: none !important;
                         }
+          - type: horizontal-stack
+            cards:
+              - type: markdown
+                content: |
+                  {% if states('sensor.newnas_sante') == 'ok' %} 🟢 **NewNas : Santé OK** {% else %} 🔴 **NewNas : Problème détecté !** {% endif %}
+                card_mod:
+                  style: |
+                    ha-markdown {
+                      text-align: center;
+                      padding: 8px;
+                      color: {{ 'green' if states('sensor.newnas_sante') == 'ok' else 'red' }} !important;
+                    }  
+              - type: markdown
+                content: |
+                  {% if states('sensor.bignas_sante') == 'ok' %} 🟢 **BigNas : Santé OK** {% else %} 🔴 **BigNas : Problème détecté !** {% endif %}
+                card_mod:
+                  style: |
+                    ha-markdown {
+                      text-align: center;
+                      padding: 8px;
+                      color: {{ 'green' if states('sensor.bignas_sante') == 'ok' else 'red' }} !important;
+                    }  
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                entity: binary_sensor.thremise_eveille
+                content: ThRemise
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-systeme/noeuds-capteurs
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-background: {{ 'green' if is_state('binary_sensor.thremise_eveille', 'on') else ('red' if is_state('binary_sensor.thremise_eveille', 'off') else 'dimgrey') }};
+                      --primary-text-color: white;
+                      font-weight: bold;
+                    }
+              - type: template
+                entity: binary_sensor.thcave_eveille
+                content: ThCave
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-systeme/noeuds-capteurs
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-background: {{ 'green' if is_state('binary_sensor.thcave_eveille', 'on') else ('red' if is_state('binary_sensor.thcave_eveille', 'off') else 'dimgrey') }};
+                      --primary-text-color: white;
+                      font-weight: bold;
+                    }
+              - type: template
+                entity: binary_sensor.thchrdc_eveille
+                content: ThChRDC
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-systeme/noeuds-capteurs
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-background: {{ 'green' if is_state('binary_sensor.thchrdc_eveille', 'on') else ('red' if is_state('binary_sensor.thchrdc_eveille', 'off') else 'dimgrey') }};
+                      --primary-text-color: white;
+                      font-weight: bold;
+                    }
+              - type: template
+                entity: binary_sensor.thch1er_eveille
+                content: ThCh1er
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-systeme/noeuds-capteurs
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-background: {{ 'green' if is_state('binary_sensor.thch1er_eveille', 'on') else ('red' if is_state('binary_sensor.thch1er_eveille', 'off') else 'dimgrey') }};
+                      --primary-text-color: white;
+                      font-weight: bold;
+                    }
+              - type: template
+                entity: binary_sensor.thsdb_eveille
+                content: ThSdb
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-systeme/noeuds-capteurs
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-background: {{ 'green' if is_state('binary_sensor.thsdb_eveille', 'on') else ('red' if is_state('binary_sensor.thsdb_eveille', 'off') else 'dimgrey') }};
+                      --primary-text-color: white;
+                      font-weight: bold;
+                    }
   - type: sections
     max_columns: 4
     title: Actionneurs

@@ -81,7 +81,7 @@
 
 
 // Version du logiciel
-#define VERSION "2.2"
+#define VERSION "2.3"
 
 
 #endif // __GLOBAL_H__

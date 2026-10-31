@@ -1,4 +1,5 @@
 #include "global.h"
+#include "MyVersion.h"
 #include <Arduino.h>
 #include <vector>
 
@@ -201,7 +202,7 @@ void setup() {
   Serial.begin(115200);
   unsigned long start = millis();
   while(!Serial && millis() - start < 3000); // Attend max 3 secondes
-  Serial.printf("\n=== %s %s ===\n", NOM_EQUIPEMENT, VERSION);
+  Serial.printf("\n=== %s %s ===\n", NOM_EQUIPEMENT, versionComplete().c_str());
 
   mvsControleurs.clear();
   mvsEsclaves.clear();
@@ -354,6 +355,8 @@ void setup() {
   mqtt.publish(config.topic_config_maitre_command.c_str(), signalementMsg.c_str(), false);
   #endif
   ecran.remonteStatusParMqtt();
+  // Version du firmware (« <nom> VERSION 3.5 31/10/2026 14:05 ») : au démarrage et en réponse à STATUS
+  mqtt.publish(config.topic_config_state.c_str(), (config.nomEquipement + " VERSION " + versionComplete()).c_str(), false);
   ecran.updateStatus("...Pret");
   //ecran.allumerEcran();
 }

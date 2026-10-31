@@ -4,6 +4,7 @@
 #include "MyConfig.h"
 #include "MyMqtt.h"
 #include "MyWebServer.h"
+#include "MyVersion.h"
 #include "FileCommandes.h"
 
 
@@ -14,7 +15,7 @@ void MyWebServer::handleRoot() {
     "<head>"
       "<meta charset=\"UTF-8\">"
       "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-      "<title>Relais Lora</title>"
+      "<title>" + config.nomEquipement + "</title>"
       "<style>"
         "body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f0f0f0; }"
         "h1 { text-align: center; color: #333; }"
@@ -42,7 +43,10 @@ void MyWebServer::handleRoot() {
         ".timing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin: 15px 0; }"
       "</style>"
     "</head>"
-    "<body>";
+    "<body>"
+      "<h1>" + config.nomEquipement + "</h1>"
+      "<p style=\"text-align:center; color:#666; margin-top:-10px;\">Version " + String(VERSION) +
+        " — compilée le " + versionDateCompilation().substring(0, 10) + " à " + versionDateCompilation().substring(11) + "</p>";
   /*html +=  "<div class=\"control\">"
         "<form action=\"/chauffage_sb_on\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-cyan\">SB ON</button></form>"
         "<form action=\"/chauffage_sb_off\" method=\"POST\" style=\"display:inline;\"><button type=\"submit\" class=\"btn btn-red\">SB OFF</button></form>"
@@ -231,7 +235,7 @@ void MyWebServer::handleLogs() {
     "<!DOCTYPE html><html lang=\"fr\"><head>"
     "<meta charset=\"UTF-8\">"
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-    "<title>Journal</title>"
+    "<title>Journal %NOM%</title>"
     "<style>"
     "body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:20px;background:#f0f0f0;}"
     "h1{text-align:center;color:#333;}"
@@ -246,7 +250,8 @@ void MyWebServer::handleLogs() {
     ".dbg{background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px 12px;font-size:14px;}"
     ".dbg label{font-size:14px;}"
     "</style></head><body>"
-    "<h1>Journal</h1>"
+    "<h1>Journal %NOM%</h1>"
+    "<p style=\"text-align:center;color:#666;margin-top:-10px;\">Version %VERSION%</p>"
     "<div class=\"controls\">"
     "<a href=\"/\" class=\"btn btn-gray\">Retour</a>"
     "<button type=\"button\" id=\"pause\" class=\"btn btn-gray\">Pause</button>"
@@ -292,6 +297,9 @@ void MyWebServer::handleLogs() {
     "refresh();setInterval(refresh,3000);"
     "</script></body></html>"
   );
+  // Nom de l'équipement et version : plusieurs journaux ouverts côte à côte restent identifiables
+  html.replace("%NOM%", config.nomEquipement);
+  html.replace("%VERSION%", String(VERSION) + " — compilée le " + versionDateCompilation().substring(0, 10) + " à " + versionDateCompilation().substring(11));
   server.send(200, "text/html", html);
 }
 

@@ -1,8 +1,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <esp_task_wdt.h> // Chien de garde de loop()
 #include "global.h"
 #include "MyConfig.h"
+#include "MyVersion.h"
 #ifdef _WIFI_MODE_
 #include "MyWifi.h"
 #include "Diagnostic.h" // gDiag sert aussi au Wi-Fi, même sans MQTT (__DESACTIVE_ENVOI_MQTT__)
@@ -149,7 +151,7 @@ void setup() {
   unsigned long start = millis();
   while(!Serial && millis() - start < 5000); // Attend max 5 secondes (USB CDC : re-énumération après reboot)
 
-  Serial.println("\n\n=== Démarrage de " + String(config.nomEquipement) + " (version " + String(VERSION) + ") ===");
+  Serial.println("\n\n=== Démarrage de " + String(config.nomEquipement) + " (version " + versionComplete() + ") ===");
 
   randomSeed(esp_random());  // Initialisation aléatoire (esp_random = RNG matériel)
   printBoardInfo();  // affiche "Carte détectée : ESP32-C3 Super Mini" ou S3
@@ -290,7 +292,7 @@ void setup() {
   config.setMqttPowerDownCallback([]() { mqtt.powerDown(); }); // Déconnexion propre avant deep sleep
   #endif
   #endif
-  Serial.printf("\n=== %s %s ===\n",config.nomEquipement.c_str(), VERSION);
+  Serial.printf("\n=== %s %s ===\n",config.nomEquipement.c_str(), versionComplete().c_str());
 
   //================================================== DS18B20 ==================================================
   #ifdef CAPTEUR_DS18B20
@@ -552,7 +554,10 @@ void setup() {
   mActionneurIR.demandeEtat(1);
   #endif
 
-
+  // Chien de garde de loop() : redémarrage si un tour de boucle dure plus de LOOP_WDT_TIMEOUT_S secondes
+  // (nœud figé le 31/10/2026 : ni mesures ni page Web). La trame REVEIL suivante porte « Cause reset : TASK_WDT ».
+  esp_task_wdt_init(LOOP_WDT_TIMEOUT_S, true);
+  esp_task_wdt_add(NULL);
 }
 
 
@@ -561,6 +566,8 @@ void setup() {
 //      LOOP
 //-------------------------------------------------------------------------------------------
 void loop() {
+  esp_task_wdt_reset(); // Chien de garde de loop() (voir fin de setup())
+
   // Test de la commande du MosFet - DEBUT
   /*unsigned long temps = 10000UL;
   pinMode(CC1101_POWER_GPIO, OUTPUT);
