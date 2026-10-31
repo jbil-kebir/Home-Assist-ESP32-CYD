@@ -52,7 +52,7 @@ void setup_ds18b20() {
   config.mRemoteThMain = &mRemoteThMain;
   config.mRemoteBatMain = &mRemoteBatMain;
   mRemoteThMain.begin("th_");
-  mRemoteBatMain.begin("bat1er_");
+  mRemoteBatMain.begin("batmn_"); // Préfixe propre (partageait bat1er_ avec BatCh1er)
   // Affichage écran
   mRemoteThMain.setDisplayCallback([](const String& exp, float temp) {
       ecran.updateRemoteDevice_DS18B20(exp, temp);

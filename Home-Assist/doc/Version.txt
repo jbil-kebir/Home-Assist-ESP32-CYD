@@ -21,6 +21,25 @@ NVS : page /nvs (occupation, clés par espace de noms, valeurs, mots de passe ma
 Nœuds capteurs : bandeau derrière le nom selon l'état instantané : vert éveillé (toute trame du nœud), rouge
     endormi (« <nom> DEEPSLEEP ON »), gris inconnu (rien depuis le démarrage) ; ThCh1er, ThSdb, ThRemise, ThCave,
     ThChRDC, ThNomade (CRemoteThermo / CRemoteDHT20::miEveil, CZoneMesureDouble::drawMesure1)
+CYD auxiliaires : mRemoteBatMain (batterie de ThCYD) a son propre préfixe NVS batmn_ (partageait bat1er_ avec
+    BatCh1er) et n'est plus enregistré par « Enregistrer » (rien ne le modifie)
+Batteries (CRemoteBatterieAA::loadFromNVS) : clé absente en NVS -> nom du constructeur et sujet bat/, au lieu des
+    valeurs par défaut d'un thermomètre (« Thermomètre », thermometre/) ; begin() n'écrase plus le nom du constructeur
+Chaudière (principal) : au démarrage, rejoue la dernière COMMANDE (nouvelle clé NVS chaud_cmd, écrite par toute
+    demande d'envoi ON/OFF : bouton, page Web, MQTT) et non plus boiler_state, que la mesure de la DEL (brûleur) modifie.
+    Une mesure ne peut plus devenir une commande. chaud_cmd absente (1er démarrage) : aucune trame envoyée
+Chaudière : l'état réel (setEtatReelOnOff) n'est plus réappliqué à chaque redessin de l'écran, seulement à la
+    réception d'une trame Del/DelR (callback CoulSdb, main_ThSdb.cpp). Corrige le ONR puis OFFR parasite (et l'inverse)
+    juste après une commande, et la réécriture de boiler_state avec l'ancienne mesure. Valeur > 1 (couleur 433) ignorée
+Chaudière : délai de grâce de 15 s après une commande (DELAI_GRACE_COMMANDE_MS) : une mesure de la DEL qui
+    contredit la commande est ignorée (le brûleur met quelques secondes à suivre ; ON puis Del 0 donnait OFFR)
+Chaudière : les keep-alive envoient la trame de MAINTIEN (pulseBufferACK_ON / ACK_OFF) et non plus la commande
+    (pulseBufferON / OFF) : le brûleur s'arrêtait au bout de 1 à 9 min. Relevé du thermostat AD200 au récepteur
+    rtl_433 (31/10/2026) : commande, puis maintien à +6,5 / +14,5 / +55,5 / +85,5 s puis toutes les 625,5 s (ON et OFF).
+    Valeurs par défaut des tables keep-alive ON et OFF : 7, 15, 56, 86, 626 s (si les clés NVS sont absentes)
+Chaudière : l'émission utilise la fréquence de la page Web (chaud_freq, 3 décimales) au lieu de FREQUENCE (global.h).
+    Défaut 434,092 MHz : le CC1101 du principal émet ~107 kHz sous la consigne (433,931 réels pour 434,038), l'AD200
+    émet sur 433,985 MHz (mesures rtl_433). Hors 433-435 MHz : valeur par défaut
 
 3.3
 Contrôleur principal (__LOCAL_MODE__) : confirme chaque trame d'un flotteur (« <nom> OnOff ... ») en publiant « <nom> ACK »

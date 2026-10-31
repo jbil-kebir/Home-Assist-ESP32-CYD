@@ -16,6 +16,20 @@ class CRadioTX;
 class CChaudiere : public CRadioTX, public CEquipementBase {
 private:
   CEcran *mEcran=nullptr;
+  // Dernière COMMANDE ON/OFF (clé NVS chaud_cmd), rejouée au démarrage. Jamais modifiée par la mesure
+  // de la DEL (boiler_state / etat), pour qu'une mesure ne devienne jamais une commande.
+  bool mbCommandeConnue = false; // chaud_cmd existe en NVS
+  bool mbDerniereCommande = false;
+  void saveCommande(bool state);
+  // Délai de grâce : le brûleur met quelques secondes à suivre la commande. Pendant ce délai, une mesure
+  // de la DEL qui contredit la dernière commande est ignorée (sinon ONR puis OFFR, et inversement)
+  static const unsigned long DELAI_GRACE_COMMANDE_MS = 15000UL;
+  unsigned long mulDateDerniereCommande = 0; // 0 : aucune commande depuis le démarrage
+  // Fréquence de réglage du CC1101 pour la chaudière (clé NVS chaud_freq, page Web). Le CC1101 du principal émet
+  // ~107 kHz sous la consigne : 434,092 donne 433,985 MHz réels, la fréquence de l'AD200 (mesures rtl_433 du 31/10/2026)
+  const float FREQ_CHAUDIERE_DEFAUT = 434.092f;
+  const float FREQ_CHAUDIERE_MIN = 433.0f; // Hors plage : FREQ_CHAUDIERE_DEFAUT
+  const float FREQ_CHAUDIERE_MAX = 435.0f;
   bool mbForcerDisable = false; // Permet de forcer la désactivation de l'équipement même s'il est actif (ex: pour forcer l'arrêt de la chaudière même si elle est active) Vient du MQTT avec la commande OFF_FORCE
 
 public:
@@ -39,19 +53,22 @@ public:
 
 
   // Timings par défaut (10 cases, les dernières à 0)
-  const uint32_t default_on_keepalive[MAX_KEEPALIVE] = {7, 14, 56, 85, 626, 0, 0, 0, 0, 0};
-  const uint32_t default_off_keepalive[MAX_KEEPALIVE] = {30, 64, 77, 626, 0, 0, 0, 0, 0, 0};
+  // Rythme du thermostat AD200 relevé au récepteur radio (rtl_433, 31/10/2026), identique pour ON et OFF :
+  // trames de maintien à +6,5 s, +14,5 s, +55,5 s, +85,5 s puis toutes les 625,5 s (la dernière valeur est répétée)
+  const uint32_t default_on_keepalive[MAX_KEEPALIVE] = {7, 15, 56, 86, 626, 0, 0, 0, 0, 0};
+  const uint32_t default_off_keepalive[MAX_KEEPALIVE] = {7, 15, 56, 86, 626, 0, 0, 0, 0, 0};
+  const uint8_t default_keepalive_count = 5;
   const char* default_topic_prefix = "chaudiere/";
 
   String nomBoutonON = "CHAUD. ON";
   String nomBoutonOFF = "CHAUD. OFF";
 
-  float frequency = 434.038;
+  float frequency = 434.092; // Voir FREQ_CHAUDIERE_DEFAUT
   bool enableKeepAlive = true;
-  uint32_t onKeepalive[MAX_KEEPALIVE] = {7, 14, 56, 85, 626, 0, 0, 0, 0, 0};
-  uint32_t offKeepalive[MAX_KEEPALIVE] = {30, 64, 77, 626, 0, 0, 0, 0, 0, 0};
+  uint32_t onKeepalive[MAX_KEEPALIVE] = {7, 15, 56, 86, 626, 0, 0, 0, 0, 0};
+  uint32_t offKeepalive[MAX_KEEPALIVE] = {7, 15, 56, 86, 626, 0, 0, 0, 0, 0};
   uint8_t on_keepalive_count = 5;
-  uint8_t off_keepalive_count = 4;
+  uint8_t off_keepalive_count = 5;
   //bool etat = false;
   String etatStr = "OFF";
 

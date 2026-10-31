@@ -555,7 +555,7 @@ bool CDetecteurRGB_TCS34725::read() {
   // On allume ou éteint la del 
   #ifdef LED_CAPTEUR_RGB
   unsigned char delStatus = mbNewEtatOnOff ? !mucLedRGBIsOFF : mucLedRGBIsOFF;
-  digitalWrite(mucLedCapteurRGBPin, mbNewEtatOnOff);
+  digitalWrite(mucLedCapteurRGBPin, delStatus); // Tient compte du câblage (mucLedRGBIsOFF : niveau qui éteint la DEL)
   #endif
   
   Serial.printf("bool CDetecteurRGB_TCS34725::read() - R:0x%x=%d G:0x%x=%d B:0x%x=%d C:0x%x=%d → Lux ≈ 0x%x=%d\n", r, r, g, g, b, b, c, c, lux, lux);

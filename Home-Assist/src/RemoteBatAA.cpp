@@ -2,8 +2,7 @@
 #include "ParsedMqttMessage.h"
 
 int CRemoteBatterieAA::begin(const String pref) {
-  nomEquipement = "Equipement";
-  mqttSubTopic = "bat";
+  // nomEquipement garde le nom donné au constructeur : il sert de valeur par défaut dans loadFromNVS()
   mPrefixNVS = pref;
   // On charge les infos de config depuis le NVS
   loadFromNVS();
@@ -51,13 +50,21 @@ void CRemoteBatterieAA::printTension() const {
 }
 
 void CRemoteBatterieAA::loadFromNVS() {
-  prefs.begin(nvs_namespace, true);
+  String nomParDefaut = nomEquipement; // Nom donné au constructeur (BatMain, BatCh1er…)
+  // La classe de base en premier : ses valeurs par défaut sont celles d'un thermomètre
+  // ("Thermomètre", "thermometre/"), on les remplace ensuite par celles d'une batterie
+  // quand la clé n'existe pas en NVS
+  CEquipementBase::loadFromNVS();
 
+  prefs.begin(nvs_namespace, true);
+  nomEquipement = prefs.getString((mPrefixNVS+"nom").c_str(), nomParDefaut);
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), "bat/");
   mulWatchdogIntervalle = prefs.getLong((mPrefixNVS+"wdog").c_str(), mulWatchdogDefaultIntervalle);
   prefs.end();
-  CEquipementBase::loadFromNVS();
-   
+
+  // Topics recalculés avec le bon mqttSubTopic
+  mqttSubTopicCommand = domotique_prefix + mqttSubTopic + "command";
+  mqttSubTopicState   = domotique_prefix + mqttSubTopic + "state";
 }
 void CRemoteBatterieAA::saveToNVS() {
   prefs.begin(nvs_namespace, false);

@@ -17,7 +17,7 @@
 
   }
 
-  void CRadioTX::transmitPulses(const uint16_t* pulses, int nbPulses, const char* action) {
+  void CRadioTX::transmitPulses(const uint16_t* pulses, int nbPulses, const char* action, float freqMHz) {
     #ifdef DISABLE_EFFECTEUR_CHAUDIERE
     DBG(DBG_ACTIONNEURS, "void CRadioTX::transmitPulses() - Effecteur désactivé.\n");
     return;
@@ -25,7 +25,7 @@
     DBG(DBG_ACTIONNEURS, "\n=== EMISSION %s : %d pulses ===\n", action, nbPulses);
     digitalWrite(LED_RED, LED_ON);
 
-    ELECHOUSE_cc1101.setMHZ(FREQUENCE);
+    ELECHOUSE_cc1101.setMHZ(freqMHz > 0 ? freqMHz : FREQUENCE);
 
     ELECHOUSE_cc1101.SetTx();
     delay(20);

@@ -271,7 +271,7 @@ void MyWebServer::handleSave() {
   config.mRemoteLumiereCave->saveToNVS();
   config.mRemoteChauffage->saveToNVS();
   config.mRemoteThMain->saveToNVS();
-  config.mRemoteBatMain->saveToNVS();
+  //config.mRemoteBatMain->saveToNVS(); // Rien ne le modifie (pas dans la page Web) : valeurs par défaut, aucune entrée NVS
 
   #endif // __LOCAL_MODE__  config.chaudiere->saveToNVS();
   // === SAUVEGARDE DES APPAREILS REMOTE ===

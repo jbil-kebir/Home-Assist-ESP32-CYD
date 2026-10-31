@@ -128,8 +128,8 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
 
   // Timings par défaut (10 cases, les dernières à 0)
   #ifdef __LOCAL_MODE__
-  const uint32_t default_on_keepalive[MAX_KEEPALIVE] = {7, 14, 56, 85, 626, 0, 0, 0, 0, 0};
-  const uint32_t default_off_keepalive[MAX_KEEPALIVE] = {30, 64, 77, 626, 0, 0, 0, 0, 0, 0};
+  const uint32_t default_on_keepalive[MAX_KEEPALIVE] = {7, 15, 56, 86, 626, 0, 0, 0, 0, 0}; // Rythme AD200 (voir MyChaudiere.h)
+  const uint32_t default_off_keepalive[MAX_KEEPALIVE] = {7, 15, 56, 86, 626, 0, 0, 0, 0, 0};
   #endif
 
   String mqttConfigSubTopic; // configuration/ ou configaux/ ...

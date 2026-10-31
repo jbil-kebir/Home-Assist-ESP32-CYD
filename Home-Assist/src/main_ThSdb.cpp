@@ -44,6 +44,17 @@ void setup_ThSdb() {
   });
   // Couleur Salle de bain - affichage couleur
   mRemoteCoulSdb.setDisplayCallbackCouleur([](const String& exp, unsigned long coul) {
+      // Nouvelle mesure de la DEL de la chaudière (trame Del / DelR) : état réel de la chaudière.
+      // Fait ici et non dans updateRemoteDevice_ThSdbDel(), appelée aussi à chaque redessin de l'écran :
+      // elle y réappliquait l'ancienne mesure juste après une commande (ONR puis OFFR parasite).
+      // coul > 1 : couleur RGB (ancienne réception 433 MHz), pas un état ON/OFF : ignorée.
+      if (coul <= 1) {
+        #ifdef __LOCAL_MODE__
+        config.chaudiere->setEtatReelOnOff(coul == 1);
+        #else
+        config.mRemoteChaudiere->setEtatReelOnOff(coul == 1);
+        #endif
+      }
       ecran.updateRemoteDevice_ThSdbDel(exp, coul);
   });
   // Couleur Salle de bain - affichage luminosité

@@ -367,6 +367,6 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "3.2"
+#define VERSION "3.3"
 
 #endif // __GLOBAL_H__

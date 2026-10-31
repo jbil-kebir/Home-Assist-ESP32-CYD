@@ -1,3 +1,7 @@
+3.3
+Capteur RGB (ThSdb) : la DEL qui recopie l'état ON/OFF tient compte du réglage « DEL OFF (0 ou 1) » (rgboff)
+    (le niveau calculé n'était pas utilisé : une DEL câblée vers le +3,3 V aurait fonctionné à l'envers)
+
 3.2
 Journal (MyJournal.cpp, identique dans Capteur, Relais-Lora, Home-Assist) : Serial.setTxTimeoutMs(0) sur l'USB natif
     Branché sur un PC dont personne ne lit le port série, chaque écriture attendait son délai d'expiration :

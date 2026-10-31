@@ -658,12 +658,8 @@ void CEcran::updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float va
 // Couleur
 void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, int val) {
   //Serial.printf("void CEcran::updateRemoteDevice_ThSdbDel() - nom = %s, val = 0x%lx\n", nom.c_str(), val);
-  #ifdef __LOCAL_MODE__
-  mConfig.chaudiere->setEtatReelOnOff(val);
-  #else
-  mConfig.mRemoteChaudiere->setEtatReelOnOff(val);
-  #endif
-  //updateAllStates();
+  // Affichage seulement : l'état réel de la chaudière (setEtatReelOnOff) est mis à jour à la réception
+  // d'une nouvelle mesure, dans le callback de CoulSdb (main_ThSdb.cpp), pas à chaque redessin
   // Série 2 : pas de place (ThCh1er, ThRemise et ThCave en zones doubles)
   if (mucSerieAffichageEnCours > 4 || mucSerieAffichageEnCours == 2) return;
   if (mucSerieAffichageEnCours == 4) {

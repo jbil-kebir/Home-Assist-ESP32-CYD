@@ -69,11 +69,12 @@ void CChaudiere::setup_envoi_trames() {
     mbKeepAliveActive = false;  // Ce paramètre sera ajusté après envoi de la première trame ON ou OFF
     mbTrameCommandeEnvoyee = false;
 
-    // On regarde l'état de la chaudière dans la config
-    // car s'il y a eu un redémarrage inoppiné de notre
-    // microcontrolleur, il faudra repartir du dernier
-    // état
-    if (etat) { // ON
+    // S'il y a eu un redémarrage inopiné de notre microcontrôleur, on rejoue la dernière
+    // COMMANDE (chaud_cmd), et non etat : etat suit la mesure de la DEL (setEtatReelOnOff)
+    if (!mbCommandeConnue) { // Aucune commande mémorisée (1er démarrage) : on n'envoie rien
+      DBG(DBG_CHAUDIERE, "Aucune commande chaudiere memorisee (chaud_cmd) : rien n'est envoye\n");
+    }
+    else if (mbDerniereCommande) { // ON
       mbEnvoyerTramesON = true; // On demande l'envoi d'une trame ON
       mbEnvoyerTramesOFF = false;
       mbTrameCommandeEnvoyee = false; // La trame de commande n'a pas encore été envoyée
@@ -136,7 +137,7 @@ void CChaudiere::loop_envoi_trames() {
           DBG(DBG_CHAUDIERE, "Demande ON deja envoye - Keep alive actif\n");
           String s = "Keep-Alive ON " + String(onKeepalive[muiKeepAliveIndexEnCours]) + "s";
           DBG(DBG_CHAUDIERE, "..Envoi ON Keep-Alive : %d - %s\n", muiKeepAliveIndexEnCours, s.c_str());
-          envoiCommande(pulseBufferON, TAILLE_BUFFER_ACK_ON, s.c_str());
+          envoiCommande(pulseBufferACK_ON, TAILLE_BUFFER_ACK_ON, s.c_str()); // Trame de MAINTIEN, pas la commande (relevé AD200)
           muiKeepAliveIndexEnCours++;
           if (muiKeepAliveIndexEnCours + 1 >= on_keepalive_count) { // Si le dernier Keppe alive du tableau a été envoyé, on le renvoit
             muiKeepAliveIndexEnCours = on_keepalive_count - 1;  // Répète le dernier (626s)
@@ -153,7 +154,7 @@ void CChaudiere::loop_envoi_trames() {
           DBG(DBG_CHAUDIERE, "Demande OFF deja envoye - Keep alive actif : %d\n", offKeepalive[muiKeepAliveIndexEnCours]);
           String s = "Keep-Alive OFF " + String(offKeepalive[muiKeepAliveIndexEnCours]) + "s";
           DBG(DBG_CHAUDIERE, "..Envoi OFF Keep-Alive : %d - %s\n", muiKeepAliveIndexEnCours, s.c_str());
-          envoiCommande(pulseBufferOFF, TAILLE_BUFFER_ACK_OFF, s.c_str());
+          envoiCommande(pulseBufferACK_OFF, TAILLE_BUFFER_ACK_OFF, s.c_str()); // Trame de MAINTIEN, pas la commande (relevé AD200)
           muiKeepAliveIndexEnCours++;
           if (muiKeepAliveIndexEnCours + 1 >= off_keepalive_count) { // Si le dernier Keep alive du tableau a été envoyé, on le renvoit
             muiKeepAliveIndexEnCours = off_keepalive_count - 1;  // Répète le dernier (626s)
@@ -229,6 +230,7 @@ int CChaudiere::envoiTrameOFF() {
 }
 
 bool CChaudiere::bSetEnvoyerTramesON(bool b) {
+    if (b) saveCommande(true); // Toute demande d'envoi est une commande
     bool bLastVal = mbEnvoyerTramesON;
     mbEnvoyerTramesON = b;
     mbTrameCommandeEnvoyee = false;
@@ -237,6 +239,7 @@ bool CChaudiere::bSetEnvoyerTramesON(bool b) {
     return bLastVal;
 }
 bool CChaudiere::bSetEnvoyerTramesOFF(bool b) {
+    if (b) saveCommande(false); // Toute demande d'envoi est une commande
     bool bLastVal = mbEnvoyerTramesOFF;
     mbEnvoyerTramesOFF = b;
     mbTrameCommandeEnvoyee = false;
@@ -308,7 +311,9 @@ int CChaudiere::eteindre() {
 }
 void CChaudiere::envoiCommande(const uint16_t* pulses, int nbPulses, const char* action) {
   if (mEcran != nullptr) mEcran->updateStatus(String("Emission ") + action + "...");
-  transmitPulses(pulses, nbPulses, action);
+  // Fréquence de la page Web (chaud_freq), avec garde-fou contre une valeur aberrante
+  float freq = (frequency >= FREQ_CHAUDIERE_MIN && frequency <= FREQ_CHAUDIERE_MAX) ? frequency : FREQ_CHAUDIERE_DEFAUT;
+  transmitPulses(pulses, nbPulses, action, freq);
   if (mEcran != nullptr) mEcran->updateStatus(String("Emission ") + action + " terminee");
 }
 
@@ -327,7 +332,7 @@ void CChaudiere::loadFromNVS() {
   nomEquipement = prefs.getString("chaud_nom", "XXX");
   nomBoutonON = prefs.getString("chaud_nameBtnON", "Ch. ON");
   nomBoutonOFF = prefs.getString("chaud_nameBtnOF", "Ch. OFF");
-  frequency = prefs.getFloat("chaud_freq", 433.92);
+  frequency = prefs.getFloat("chaud_freq", FREQ_CHAUDIERE_DEFAUT);
   active = prefs.getBool("chaud_active", false);
 
   mqttSubTopic = prefs.getString("topic_prefix", default_topic_prefix);
@@ -341,23 +346,27 @@ void CChaudiere::loadFromNVS() {
   etat = prefs.getBool("boiler_state", default_boiler_state);
   etatStr = etat ? "ON" : "OFF";
 
+  // Dernière commande (rejouée au démarrage)
+  mbCommandeConnue = prefs.isKey("chaud_cmd");
+  mbDerniereCommande = prefs.getBool("chaud_cmd", false);
+
   // Flag keep-alive
   enableKeepAlive = prefs.getBool("en_keep_alive", default_enable_keep_alive);
 
   // Chargement des compteurs
-  on_keepalive_count = prefs.getUChar("on_keep_count", 5);
-  off_keepalive_count = prefs.getUChar("off_keep_count", 4);
+  on_keepalive_count = prefs.getUChar("on_keep_count", default_keepalive_count);
+  off_keepalive_count = prefs.getUChar("off_keep_count", default_keepalive_count);
 
   // On charge seulement les cases existantes
   for (uint8_t i = 0; i < on_keepalive_count && i < MAX_KEEPALIVE; i++) {
     String key = "on_keep_" + String(i);
-    onKeepalive[i] = prefs.getULong(key.c_str(), 0);  // 0 si clé absente
+    onKeepalive[i] = prefs.getULong(key.c_str(), default_on_keepalive[i]);  // Rythme AD200 si clé absente
   }
   // Les cases restantes restent à 0 (pas besoin de les toucher)
 
   for (uint8_t i = 0; i < off_keepalive_count && i < MAX_KEEPALIVE; i++) {
     String key = "off_keep_" + String(i);
-    offKeepalive[i] = prefs.getULong(key.c_str(), 0);
+    offKeepalive[i] = prefs.getULong(key.c_str(), default_off_keepalive[i]);
   }
 
   prefs.end();
@@ -469,6 +478,18 @@ void CChaudiere::saveState(bool state) {
 
   prefs.end();
 }
+// Mémorise la dernière commande ON/OFF (bouton, page Web, MQTT), pour la rejouer au démarrage
+void CChaudiere::saveCommande(bool state) {
+  mulDateDerniereCommande = millis(); // Début du délai de grâce (voir setEtatReelOnOff())
+  if (mulDateDerniereCommande == 0) mulDateDerniereCommande = 1; // 0 est réservé à « aucune commande »
+  if (mbCommandeConnue && mbDerniereCommande == state) return;
+  prefs.begin(nvs_namespace, false);
+  prefs.putBool("chaud_cmd", state);
+  prefs.end();
+  mbDerniereCommande = state;
+  mbCommandeConnue = true;
+}
+
 void CChaudiere::setActive(bool state) {
   if (active == state) return;
 
@@ -501,6 +522,13 @@ void CChaudiere::setEtatReelOnOff(bool state) {
   // On prévient les appareils distants
   //Serial.printf("void CChaudiere::setEtatReelOnOff() - state=%d - etat=%d\n", state, etat);
   if (etat == state) return;
+  // Délai de grâce après une commande : la mesure peut précéder le démarrage (ou l'arrêt) du brûleur
+  if (mulDateDerniereCommande != 0 && state != mbDerniereCommande &&
+      millis() - mulDateDerniereCommande < DELAI_GRACE_COMMANDE_MS) {
+    DBG(DBG_CHAUDIERE, "CChaudiere::setEtatReelOnOff() - mesure %d ignoree (commande %d il y a %lu ms)\n",
+        state, mbDerniereCommande, millis() - mulDateDerniereCommande);
+    return;
+  }
   String sEnvoi = state ? "ONR" : "OFFR";
   if (onMqttPublish != nullptr)
     onMqttPublish(this->mqttSubTopicCommand.c_str(), sEnvoi.c_str());
@@ -696,7 +724,7 @@ String CChaudiere::getHTML() {
         "<div><label>Nom bouton ON</label><input type=\"text\" name=\"chaud_nameBtnON\" value=\"" + nomBoutonON + "\"></div>"
         "<div><label>Nom bouton OFF</label><input type=\"text\" name=\"chaud_nameBtnOF\" value=\"" + nomBoutonOFF + "\"></div>"
       "</div>"
-      "<label>Fréquence (MHz)</label><input type=\"number\" step=\"0.01\" name=\"chaud_freq\" value=\"" + String(frequency, 2) + "\">"
+      "<label>Fréquence de réglage du CC1101 (MHz)</label><input type=\"number\" step=\"any\" name=\"chaud_freq\" value=\"" + String(frequency, 3) + "\">"
 
       // === KEEP-ALIVE ===
       "<h2>Keep-Alive Chaudière</h2>"
