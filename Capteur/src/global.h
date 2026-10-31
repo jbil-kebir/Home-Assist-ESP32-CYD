@@ -49,14 +49,15 @@
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
 //----------------------------------------------------------------------------
-#define CAPTEUR_DHT20 // Fonctionne en I2C
+//#define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
 //#define FLOTTEUR_VERTICAL // ThRemise seulement (ThCave / ThNomade : pas de flotteur)
 //#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C — ThSdb (capteur chaudière) seulement
 //#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF) — ThSdb (capteur chaudière) seulement
-#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
+//#define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 //#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
 //#define CAPTEUR_JOUR_NUIT // Détecteur jour/nuit : photorésistance + 10 kΩ, mesure JOUR_NUIT_PIN, alimentation JOUR_NUIT_ALIM_PIN (voir MyJourNuit.h)
+#define CAPTEUR_PRESENCE_RESEAU // Présence sur le réseau électrique : nœud derrière une prise RF (PrGuirlande...), trame PRESENT, répond à PING (voir MyPresenceReseauElectrique.h)
 
 //----------------------------------------------------------------------------
 // Décommenter en fonction des actionneurs installés
@@ -367,7 +368,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "3.4"
+#define VERSION "3.5"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

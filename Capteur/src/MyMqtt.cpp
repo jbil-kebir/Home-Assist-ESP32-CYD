@@ -17,6 +17,9 @@ void CMqtt::setup(const String pref) {
 void CMqtt::begin() {
   client.setServer(mqtt_server.c_str(), mqtt_port);
   client.setSocketTimeout(MQTT_SOCKET_TIMEOUT_S); // 15 s par défaut : un CONNACK perdu bloquait tout l'éveil
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  client.setKeepAlive(MQTT_KEEPALIVE_PRESENCE_S); // Extinction de l'appareil connue ~3 à 8 s après la coupure
+  #endif
   client.setCallback([this](char* t, byte* p, unsigned int l) { this->callback(t, p, l); });
 
   reconnect();
@@ -49,6 +52,12 @@ void CMqtt::reconnect() {
   mulDerniereTentative = millis();
   if (!client.connected()) {
     String clientId = "Thermometre_" + String(random(0xffff), HEX);
+    #ifdef CAPTEUR_PRESENCE_RESEAU
+    // Identifiant fixe : à la reconnexion, le broker remplace l'ancienne session et publie son éventuel testament
+    // AVANT la nouvelle annonce PRESENT ; avec un identifiant aléatoire, le testament de l'ancienne session pouvait
+    // arriver après (jusqu'à 1,5 x keepalive) et faire croire le nœud absent alors qu'il venait de redémarrer.
+    if (mConfig.nomEquipement.length() > 0) clientId = "Presence_" + mConfig.nomEquipement;
+    #endif
     //Serial.print("Connexion MQTT Id : " + clientId + " - User : " + mqtt_user + " - Passwd : " + mqtt_password + " ...");
     String sPayload = mConfig.nomEquipement + String(" ") + String("offline");
     gDiag.uiEssaisMqtt++;

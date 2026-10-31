@@ -423,6 +423,10 @@ void loop() {
   #ifdef __LOCAL_MODE__
   int retRCS = mGeneralRCSwitch.loop(); // On écoute sur la fréquence RCSwitch
   chaudiere.loop();
+  // Appareils 433 MHz : vérification par leur nœud de présence (PrGuirlande...), sans effet si aucun n'est associé
+  config.projecteur->loop();
+  config.guirlande->loop();
+  config.lumiereCave->loop();
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   #endif
 

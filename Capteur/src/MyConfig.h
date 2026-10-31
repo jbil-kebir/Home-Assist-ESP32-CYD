@@ -29,6 +29,9 @@
 #ifdef CAPTEUR_MICRO_MAX4466
 #include "MyMax4466.h"
 #endif
+#ifdef CAPTEUR_PRESENCE_RESEAU
+#include "MyPresenceReseauElectrique.h"
+#endif
 #ifdef ACTIONNEUR_IR
 #include "MyActionneurIR.h"
 #endif
@@ -74,6 +77,9 @@ public:
   #endif
   #ifdef CAPTEUR_MICRO_MAX4466
   CMax4466 *mMicro=nullptr;
+  #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  CPresenceReseauElectrique *mPresence=nullptr;
   #endif
   #ifdef ACTIONNEUR_IR
   CActionneurIR *mActionneurIR=nullptr;

@@ -1,3 +1,22 @@
+3.6
+Testament du nœud de présence (« <nom> offline », ~3 à 8 s après la coupure, Capteur 3.5 keepalive 5 s) : extinction conclue
+    aussitôt, aussi pendant la vérification d'une commande OFF (plus d'attente des PING) ; ignoré seulement pendant un
+    allumage et en deep sleep ; règle « testament ignoré si signal < 30 s » supprimée (débranché juste après son démarrage,
+    le nœud restait « allumé » 21 min ; le nœud a désormais un identifiant MQTT fixe)
+Nœud de présence sur le réseau électrique (CRemotePresenceReseauElectrique, RemotePresenceReseauElectrique.h/.cpp),
+    membre mPresence de chaque appareil 433 MHz du principal (CRCDevice : projecteur, guirlande, lumière cave) :
+    nœud Capteur (CPresenceReseauElectrique, ex. PrGuirlande) branché derrière la prise RF : présent = appareil allumé
+    page Web, section de l'appareil : nom du nœud (vide = fonctionnement historique), délai avant la 1re question (8 s),
+    attente de la réponse (5 s), PING avant « éteint » (3), essais avant l'alerte (3), période ALIVE du nœud (600 s) ;
+    NVS <préfixe>p... (ex. guir_pnoeud) écrites seulement si un nœud est associé
+    commande (bouton, ON / OFF MQTT) = état voulu : code (qui bascule) envoyé seulement si l'état mesuré diffère, puis
+    vérification (PING sur home/conf<nœud>/command, réponse PRESENT) et renvoi jusqu'à N essais ; échec : barre d'état
+    + « <nom> ECHEC ON|OFF <essais> » sur le topic d'état de l'appareil (home/guirlande/state)
+    état affiché et ONR / OFFR = état mesuré (aussi hors commande : PRESENT, ALIVE, testament, silence > 2 ALIVE)
+    nœud en deep sleep (DEEPSLEEP ON, CONFIG sleepA:1) : « non vérifié » (fonctionnement historique),
+    trames « <nom> NONVERIFIE / VERIFIE » sur le topic d'état de l'appareil
+    au démarrage du CYD : état réel demandé au nœud (PING, sans renvoi du code)
+
 3.5
 Version du firmware avec la date et l'heure de compilation (« 3.5 31/10/2026 14:05 », MyVersion.cpp, comme Capteur 3.4) :
     trame « <nom> VERSION 3.5 31/10/2026 14:05 » sur topic_config_state (home/configuration/state, home/configaux/state…)

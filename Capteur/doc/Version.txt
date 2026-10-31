@@ -1,3 +1,16 @@
+3.5
+Présence sur le réseau électrique (CPresenceReseauElectrique, MyPresenceReseauElectrique.h/.cpp, #define CAPTEUR_PRESENCE_RESEAU) :
+    nœud alimenté par la prise RF 433 MHz d'un appareil (PrGuirlande...) : alimenté = appareil allumé
+    trame « <nom> PRESENT <date> <heure> » sur topic_config_state (home/conf<nom>/state), MQTT et LoRa, jamais muette :
+    à chaque démarrage (retentée toutes les 2 s tant qu'elle n'est pas publiée) et en réponse à PING (topic de configuration)
+    page Web : nom, actif, état de l'annonce, nombre de PRESENT ; NVS pr_nom, pr_active (actif d'emblée sur une puce configurée)
+    signe de vie : watchdog ALIVE (à régler à 600 s), ALIVE publié sur le topic de configuration du nœud
+    deep sleep possible : l'annonce PRESENT compte comme mesure remontée
+    DEEPSLEEP ON publié aussi sur ce topic (le CYD principal passe l'appareil en « non vérifié »)
+    MQTT (MyMqtt.cpp, #ifdef CAPTEUR_PRESENCE_RESEAU) : keepalive 5 s (MQTT_KEEPALIVE_PRESENCE_S, testament publié par le
+    broker ~3 à 8 s après la coupure au lieu de ~22 s) et identifiant fixe « Presence_<nom> » (le testament d'une ancienne
+    session arrive avant la nouvelle annonce PRESENT)
+
 3.4
 Version du firmware avec la date et l'heure de compilation (« 3.4 31/10/2026 14:05 », MyVersion.cpp) :
     trame « <nom> VERSION 3.4 31/10/2026 14:05 » sur topic_config_state (home/conf<id>/state), MQTT et LoRa,

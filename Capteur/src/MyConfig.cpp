@@ -165,6 +165,10 @@ if (mBatterieAA != nullptr)
 if (mJourNuit != nullptr)
   mJourNuit->domotique_prefix = domotique_prefix;
 #endif
+#ifdef CAPTEUR_PRESENCE_RESEAU
+if (mPresence != nullptr)
+  mPresence->mqttSubTopicState = topic_config_state; // PRESENT sur le topic de configuration du nœud
+#endif
 
  Serial.printf("CConfig::setup() - Deep sleep : %d - Durée avant : %ld\n", mbDeepSleepActive, mulWakeDuration); Serial.flush();
  Serial.printf("CConfig::setup() - Puce %s - Topic de configuration : %s\n",
@@ -368,6 +372,26 @@ void CConfig::enterDeepSleep() {
   if (onMqttPublish != nullptr && mFlotteurVertical != nullptr)
     int ret = onMqttPublish(mFlotteurVertical->mqttSubTopicState.c_str(), sMqttMsg.c_str());
   #endif
+  #endif
+
+  // Présence sur le réseau électrique : DEEPSLEEP ON aussi sur le topic des trames PRESENT, pour que le CYD principal
+  // passe l'appareil en « non vérifié » (le silence du nœud endormi n'est pas une extinction)
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (mPresence != nullptr && mPresence->active) {
+    #ifdef _WIFI_MODE_
+    if (onMqttPublish != nullptr) onMqttPublish(mPresence->mqttSubTopicState.c_str(), sMqttMsg.c_str());
+    #endif
+    #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+    if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized()) {
+      mLoraRxTx->sendPacket((mPresence->mqttSubTopicState + " " + sMqttMsg).c_str());
+      unsigned long ulDebutAttente = millis();
+      while (mLoraRxTx->emissionEnCours() && millis() - ulDebutAttente < 2000) {
+        mLoraRxTx->loop();
+        delay(5);
+      }
+    }
+    #endif
+  }
   #endif
 
   #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
@@ -867,6 +891,12 @@ int CConfig::handleMqttCommand(const String& payload) {
     envoieConfig(sErreurs);
     if (sErreurs.length() > 0) ret = -2;
   }
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  else if (cmd == "PING") {
+    // Présence sur le réseau électrique : réponse « <nom> PRESENT ... » (CPresenceReseauElectrique)
+    if (mPresence != nullptr) mPresence->handleMqttCommand(cmd);
+  }
+  #endif
   else {
     Serial.println("CConfig::handleMqttCommand - Commande inconnue : " + cmd); Serial.flush();
     ret = -1; // Commande inconnue
@@ -1099,6 +1129,10 @@ bool CConfig::loopWatchdog() {
   if (mMicro != nullptr && mMicro->active)
     if (verifieWatchdog(mMicro->nomEquipement, mMicro->mqttSubTopicState)) return true;
   #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (mPresence != nullptr && mPresence->active)
+    if (verifieWatchdog(mPresence->nomEquipement, mPresence->mqttSubTopicState)) return true;
+  #endif
 
   return false;
 }
@@ -1126,6 +1160,9 @@ void CConfig::relanceMesuresNonRemontees() {
   #ifdef CAPTEUR_JOUR_NUIT
   if (mJourNuit != nullptr && mJourNuit->active && !mJourNuit->mbMesureRemontee) mJourNuit->readAndPublish(true);
   #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (mPresence != nullptr && mPresence->active && !mPresence->mbMesureRemontee) mPresence->publiePresent();
+  #endif
 }
 
 bool CConfig::mesuresToutesRemontees() const {
@@ -1146,6 +1183,9 @@ bool CConfig::mesuresToutesRemontees() const {
   #endif
   #ifdef CAPTEUR_JOUR_NUIT
   if (mJourNuit != nullptr && mJourNuit->active && !mJourNuit->mbMesureRemontee) return false;
+  #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (mPresence != nullptr && mPresence->active && !mPresence->mbMesureRemontee) return false;
   #endif
 
   return true;

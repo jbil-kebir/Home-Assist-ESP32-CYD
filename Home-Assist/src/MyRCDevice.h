@@ -7,6 +7,7 @@
 #include <Preferences.h>
 #include "MyRCSwitch.h"
 #include "EquipementBase.h"
+#include "RemotePresenceReseauElectrique.h"
 
 class CEcran;  // Forward declaration
 
@@ -20,6 +21,7 @@ protected:
   String msNomDefaut = "";       // vide : celui de CEquipementBase::loadFromNVS()
   String msLibelleDefaut = "Projecteur";
   String msSubTopicDefaut = "";  // vide : celui de CEquipementBase::loadFromNVS()
+  void branchePresence();        // Callbacks de mPresence vers l'appareil (setup())
 
 public:
   CRCDevice() = default;
@@ -36,6 +38,10 @@ public:
 
   // Publication MQTT
   std::function<int(const char*, const char*)> onMqttPublish; 
+
+  // Nœud de présence sur le réseau électrique (PrGuirlande...) : état réel de l'appareil, renvoi du code jusqu'à
+  // ce que l'état voulu soit atteint. Sans nœud associé (nom vide sur la page Web) : fonctionnement historique.
+  CRemotePresenceReseauElectrique mPresence;
 
   //bool etat = false;
   String etatStr = "OFF";
@@ -56,6 +62,7 @@ public:
   void print() const;
   String getHTML();
   virtual int envoiOnOff();
+  int commande(bool voulu);       // État voulu (ON / OFF) : code envoyé seulement si l'état mesuré diffère
   int activeEquipement();
 };
 

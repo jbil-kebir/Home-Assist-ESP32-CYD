@@ -44,6 +44,9 @@
 #ifdef CAPTEUR_MICRO_MAX4466
 #include "MyMax4466.h"
 #endif
+#ifdef CAPTEUR_PRESENCE_RESEAU
+#include "MyPresenceReseauElectrique.h"
+#endif
 #include "MyDateTime.h"
 
 
@@ -82,6 +85,9 @@ CBatterieAA mBatterie(BATTERIE_PIN, mDateTime);
 #endif
 #ifdef CAPTEUR_JOUR_NUIT
 CJourNuit mJourNuit(JOUR_NUIT_PIN, JOUR_NUIT_ALIM_PIN, mDateTime);
+#endif
+#ifdef CAPTEUR_PRESENCE_RESEAU
+CPresenceReseauElectrique mPresence(mDateTime);
 #endif
 #ifdef FLOTTEUR_VERTICAL
 CTor mFlotteurVertical(mDateTime);  
@@ -357,6 +363,26 @@ void setup() {
   });
   #endif
   #endif // CAPTEUR_JOUR_NUIT
+  //================================================== Présence sur le réseau électrique ==========================
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  Serial.println("Initialisation présence réseau électrique...");
+  mPresence.setup("pr_");
+  config.mPresence = &mPresence;
+  // PRESENT n'est pas une mesure : publié même en mode muet (MUTE), comme ALIVE
+  #ifdef _WIFI_MODE_
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  mPresence.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
+      return mqtt.publish(topic, payload);
+  });
+  #endif
+  #endif
+  #ifdef _LORA_P2P_MODE_
+  config.mLoraRxTx = &mLoraRxTx;
+  mPresence.setLoraP2PPublishCallback([](const char* payload) -> int {
+      return mLoraRxTx.sendPacket(payload);
+  });
+  #endif
+  #endif // CAPTEUR_PRESENCE_RESEAU
   //================================================== DHT20 ==================================================
   #ifdef CAPTEUR_DHT20
   Serial.println("Initialisation DHT20...");
@@ -746,6 +772,14 @@ void loop() {
   #endif // CAPTEUR_JOUR_NUIT
 
   //------------------------------------------------------------------------------------
+  // Présence sur le réseau électrique : annonce de démarrage (retentée tant qu'elle n'est pas publiée)
+  //------------------------------------------------------------------------------------
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (mPresence.loop() == 1)
+    Serial.println("[Main] " + mPresence.nomEquipement + " - " + sDate + " - " + sHeure + " - PRESENT publié (démarrage)");
+  #endif // CAPTEUR_PRESENCE_RESEAU
+
+  //------------------------------------------------------------------------------------
   // DHT20
   //------------------------------------------------------------------------------------
   #ifdef CAPTEUR_DHT20
@@ -918,6 +952,11 @@ void print() {
   #ifdef CAPTEUR_JOUR_NUIT
   Serial.println("[Jour / nuit]");
   mJourNuit.print();
+  #endif
+
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  Serial.println("[Présence réseau électrique]");
+  mPresence.print();
   #endif
 
   Serial.println("============================================\n");

@@ -773,6 +773,129 @@ template:
             {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
           recu: "{{ now().isoformat() }}"
 
+  # ---------- PrGuirlande : commande en attente = message retenu sur le topic command ----------
+  # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confprguirlande/command"
+    sensor:
+      - name: "PrGuirlande Commande en attente"
+        unique_id: prguirlande_commande_attente
+        icon: mdi:timer-sand
+        state: >-
+          {%- set p = trigger.payload | trim -%}
+          {{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}
+
+  # ---------- PrGuirlande : réponse CONFIG (« PrGuirlande CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confprguirlande/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIG"
+    sensor:
+      - name: "PrGuirlande Config"
+        unique_id: prguirlande_config
+        device_class: timestamp
+        icon: mdi:cog
+        state: "{{ now().isoformat() }}"
+        attributes:
+          sleepA: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepS: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepM: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          sleepL: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          wakeI: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          mute: >-
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
+            {{ m[0] | int if m else none }}
+          erreur: >-
+            {%- set p = trigger.payload.split(' ERREUR ') -%}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+
+  # ---------- PrGuirlande : réponse STATUS ----------
+  # Wi-Fi et LoRa : une ligne « PrGuirlande ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
+  # Ancien firmware Wi-Fi (avant Capteur 2.1) : plusieurs lignes « === ÉTAT PrGuirlande === » (remises sur une ligne, séparées par « | »)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confprguirlande/state"
+        value_template: >-
+          {{ 'ETAT' if (value.split(' ') + [''])[1] | upper in ['ETAT', 'ÉTAT'] else '' }}
+        payload: "ETAT"
+    sensor:
+      - name: "PrGuirlande Rapport"
+        unique_id: prguirlande_rapport
+        icon: mdi:information-outline
+        state: >-
+          {%- set p = trigger.payload -%}
+          {%- if p.startswith('===') -%}
+            {%- set s = p.split('\n')[1:] | map('trim') | reject('eq', '') | join(' | ') -%}
+          {%- else -%}
+            {%- set s = p.split(' ', 2)[2] -%}
+          {%- endif -%}
+          {{ (s | regex_replace(' {2,}', ' ') | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', ''))[:255] }}
+        attributes:
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- PrGuirlande : activité (éveillé jusqu'à DEEPSLEEP ON, sans délai : même règle que les CYD) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confprguirlande/state"
+    binary_sensor:
+      - name: "PrGuirlande Éveillé"
+        unique_id: prguirlande_eveille
+        icon: mdi:sleep-off
+        state: >-
+          {%- set p = trigger.payload | upper -%}
+          {{ 'DEEPSLEEP ON' not in p and not p.endswith(' OFFLINE') }}
+    sensor:
+      - name: "PrGuirlande Dernière trame"
+        unique_id: prguirlande_derniere_trame
+        device_class: timestamp
+        icon: mdi:access-point
+        state: "{{ now().isoformat() }}"
+
+  # ---------- PrGuirlande : version du firmware (au démarrage, pas au réveil d'un deep sleep, et après GET) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confprguirlande/state"
+    conditions:
+      - condition: template
+        value_template: "{{ ' VERSION ' in trigger.payload }}"
+    sensor:
+      - name: "PrGuirlande Version"
+        unique_id: prguirlande_version
+        icon: mdi:chip
+        state: "{{ trigger.payload.split(' VERSION ')[1].split(' ')[0] }}"
+        attributes:
+          compilation: >-
+            {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
+            {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
+          recu: "{{ now().isoformat() }}"
+
+  # ---------- PrGuirlande : IP (dernier mot de ses trames sur son topic de configuration) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confprguirlande/state"
+    sensor:
+      - name: "PrGuirlande IP"
+        unique_id: prguirlande_ip
+        icon: mdi:ip-network
+        state: >-
+          {%- set ip = trigger.payload.split(' ')[-1] -%}
+          {{ ip if ip is match('^\d{1,3}(\.\d{1,3}){3}$') else this.state }}
+
   # ---------- Noeud : commande en attente = message retenu sur le topic command ----------
   # Vide, ou ancien testament retenu « <nom> offline » (ancien firmware) : « aucune »
   - trigger:
@@ -906,6 +1029,34 @@ template:
             {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
           recu: "{{ now().isoformat() }}"
 
+  # ---------- Guirlande : vérification par le nœud de présence (échec, non vérifié) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/guirlande/state"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload.split(' ')[1:2] == ['ECHEC'] }}"
+    sensor:
+      - name: "Guirlande Échec"
+        unique_id: guirlande_echec
+        icon: mdi:alert
+        state: >-
+          {%- set m = trigger.payload.split(' ') -%}
+          {{ m[2] ~ ' non atteint après ' ~ m[3] ~ ' essais' if m | count > 3 else trigger.payload }}
+        attributes:
+          recu: "{{ now().isoformat() }}"
+  - trigger:
+      - trigger: mqtt
+        topic: "home/guirlande/state"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload.split(' ')[1:2] in [['NONVERIFIE'], ['VERIFIE']] }}"
+    binary_sensor:
+      - name: "Guirlande Non vérifiée"
+        unique_id: guirlande_non_verifiee
+        icon: mdi:help-circle
+        state: "{{ trigger.payload.split(' ')[1] == 'NONVERIFIE' }}"
+
   # ---------- Relais LoRa : connexion (dernier signal récent, pas de testament plus récent) ----------
   - binary_sensor:
       - name: "RelaisLora Connexion"
@@ -1019,6 +1170,14 @@ input_boolean:
     icon: mdi:sleep
   thsdb_mute:
     name: "ThSdb Mesures muettes"
+    icon: mdi:volume-off
+
+  # ---------- PrGuirlande ----------
+  prguirlande_sleepa:
+    name: "PrGuirlande Deep sleep actif"
+    icon: mdi:sleep
+  prguirlande_mute:
+    name: "PrGuirlande Mesures muettes"
     icon: mdi:volume-off
 
 input_number:
@@ -1274,6 +1433,48 @@ input_number:
     unit_of_measurement: "s"
     icon: mdi:timer-sand
 
+  # ---------- PrGuirlande (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
+  prguirlande_sleepi:
+    name: "PrGuirlande Intervalle deep sleep"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  prguirlande_sleeps:
+    name: "PrGuirlande Sommeil court (SLEEPS)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  prguirlande_sleepm:
+    name: "PrGuirlande Sommeil moyen (SLEEPM)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  prguirlande_sleepl:
+    name: "PrGuirlande Sommeil long (SLEEPL)"
+    min: 1
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-outline
+  prguirlande_wakei:
+    name: "PrGuirlande Éveil maximum"
+    min: 1
+    max: 3600
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-sand
+
 input_text:
   # ---------- ThRemise ----------
   thremise_commande:
@@ -1308,6 +1509,12 @@ input_text:
   # ---------- ThSdb ----------
   thsdb_commande:
     name: "ThSdb Commande libre"
+    max: 100
+    icon: mdi:console
+
+  # ---------- PrGuirlande ----------
+  prguirlande_commande:
+    name: "PrGuirlande Commande libre"
     max: 100
     icon: mdi:console
 
@@ -1351,7 +1558,7 @@ script:
           lora: "['thremise', 'thnomade', 'thcave']"
           wifi: "{{ capteur not in lora }}"
           # Nœuds Wi-Fi toujours éveillés sans « online » : commande non retenue (même liste que dans genere_noeuds.py)
-          sans_retenu: "['noeud']"
+          sans_retenu: "['prguirlande', 'noeud']"
           retenu: "{{ wifi and capteur not in sans_retenu }}"
           cmd: "{{ commande | trim }}"
           attente: "{{ states('sensor.' ~ capteur ~ '_commande_en_attente') }}"
@@ -1517,6 +1724,7 @@ automation:
           - sensor.thchrdc_config
           - sensor.thch1er_config
           - sensor.thsdb_config
+          - sensor.prguirlande_config
     actions:
       - variables:
           capteur: "{{ trigger.entity_id.split('.')[1] | replace('_config', '') }}"
@@ -1550,6 +1758,32 @@ automation:
                     value: "{{ state_attr(trigger.entity_id, repeat.item) }}"
 
   # ------------------------------------------------------------
+  # Appareils RF vérifiés par un nœud de présence : notification quand le CYD principal signale un échec
+  # (« <nom> ECHEC ON|OFF <essais> » sur home/<appareil>/state, Home-Assist 3.6)
+  # ------------------------------------------------------------
+  - id: appareils_rf_echec_commande
+    alias: Appareils RF - Échec de commande (nœud de présence)
+    description: Le CYD principal n'a pas atteint l'état voulu après N envois du code (Home-Assist 3.6)
+    mode: queued
+    triggers:
+      - trigger: mqtt
+        topic: "home/+/state"
+        value_template: "{{ 'oui' if value.split(' ')[1:2] == ['ECHEC'] else 'non' }}"
+        payload: "oui"
+    actions:
+      - variables:
+          m: "{{ trigger.payload.split(' ') }}"
+          message: >-
+            {{ m[0] }} : commande {{ m[2] if m | count > 2 else '?' }} non réalisée après
+            {{ m[3] if m | count > 3 else '?' }} essais ({{ now().strftime('%d/%m/%Y %H:%M') }}).
+            Vérifier la prise RF et le nœud de présence.
+      - action: persistent_notification.create
+        data:
+          title: "{{ m[0] }} : échec de commande"
+          message: "{{ message }}"
+          notification_id: "echec_{{ m[0] | lower }}"
+
+  # ------------------------------------------------------------
   # Nœuds Wi-Fi : efface la commande retenue dès que le nœud l'a reçue, c.-à-d. à son accusé
   # (« <nom> COMMANDE reçue ... ») ou à sa connexion (« <nom> online le ... », publié APRÈS ses abonnements :
   # la commande retenue lui est déjà remise). Évite qu'elle soit rejouée à chaque réveil (REBOOT en boucle).
@@ -1567,7 +1801,7 @@ automation:
         payload: "oui"
     variables:
       # Nœuds Wi-Fi : même liste que dans genere_noeuds.py
-      wifi: "['thchrdc', 'thch1er', 'thsdb', 'noeud']"
+      wifi: "['thchrdc', 'thch1er', 'thsdb', 'prguirlande', 'noeud']"
       capteur: "{{ (trigger.payload.split(' ') + [''])[0] | lower }}"
     conditions:
       - condition: template

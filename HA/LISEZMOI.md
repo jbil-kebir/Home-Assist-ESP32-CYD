@@ -74,6 +74,8 @@ Effet : attributs `mfv_rev`, `mfv_revmin`, `mfv_ack`, `mfv_ackn` de `sensor.<id>
 la carte « Flotteur » du nœud, modifiables par la commande libre (`SET mfv_revmin 300 mfv_ack 1` …). Seul ThRemise l'a.
 La confirmation (« FlotteurRemise ACK ») est envoyée par le contrôleur principal (Home-Assist 3.3), plus par HA.
 
+**Nœud de présence sur le réseau électrique** (Capteur 3.5, `CPresenceReseauElectrique`, ex. `PrGuirlande`) : C3 derrière la prise RF d'un appareil du CYD principal (alimenté = appareil allumé). Dans `NOEUDS` : `unites=[]`, `ip_auto=True` (génère `sensor.<id>_ip` d'après ses trames), `sans_retenu=True`. Le CYD principal (Home-Assist 3.6) vérifie chaque commande et publie sur `home/<appareil>/state` : `<nom> ECHEC ON|OFF <essais>` → `sensor.<appareil>_echec` et notification persistante (automatisation « Appareils RF - Échec de commande ») ; `<nom> NONVERIFIE|VERIFIE` → `binary_sensor.<appareil>_non_verifiee`. Appareils concernés : liste `APPAREILS_VERIFIES` du générateur.
+
 **Actionneur** (`type="actionneur"`, ex. nœud chauffage SdB) : pas de réglages de sommeil, hors de la vue « Nœuds
 capteurs » ; sa carte est insérée dans `vue-actionneurs.yaml` (vue Actionneurs du tableau Accueil, reprise de
 `.storage/lovelace.dashboard_accueil` : réexporter ce fichier avant de régénérer si la vue a été modifiée dans HA),

@@ -12,6 +12,16 @@
 #include "ParsedMqttMessage.h"
 #include "MyVersion.h"
 
+#ifdef __LOCAL_MODE__
+// Appareil 433 MHz du principal dont le nœud de présence (PrGuirlande...) publie sur ce topic (nullptr : aucun)
+static CRCDevice* appareilDuNoeudDePresence(CConfig& cfg, const String& topic) {
+  CRCDevice* appareils[] = {cfg.projecteur, cfg.guirlande, cfg.lumiereCave};
+  for (CRCDevice* a : appareils)
+    if (a != nullptr && a->mPresence.estConfiguree() && topic == a->mPresence.mqttSubTopicState) return a;
+  return nullptr;
+}
+#endif
+
 void CMqtt::setup(const String pref) {
   mPrefixNVS = pref;
   loadFromNVS();
@@ -67,6 +77,16 @@ client.publish("home/chaudiere/status",  "", true);*/
 
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.chauffageSb->mqttSubTopicCommand);
       client.subscribe(mConfig.chauffageSb->mqttSubTopicCommand.c_str());
+
+      // Nœuds de présence sur le réseau électrique associés aux appareils 433 MHz (PRESENT, ALIVE, testament...)
+      {
+        CRCDevice* appareils[] = {mConfig.projecteur, mConfig.guirlande, mConfig.lumiereCave};
+        for (CRCDevice* a : appareils)
+          if (a != nullptr && a->mPresence.estConfiguree()) {
+            DBGLN(DBG_MQTT, "Abonnement à " + a->mPresence.mqttSubTopicState);
+            client.subscribe(a->mPresence.mqttSubTopicState.c_str());
+          }
+      }
 
       // Publication des états retained
       //client.publish(mConfig.chaudiere->mqttSubTopicStatus.c_str(), "online", false);
@@ -200,6 +220,10 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     //Serial.println("CMqtt::callback() - Chauffage - Topic : " + topicStr + " - Msg : " + message);
 
     mConfig.chauffageSb->handleMqttCommand(messageOrg);
+  }
+  else if (CRCDevice* a = appareilDuNoeudDePresence(mConfig, topicStr)) {
+    // Nœud de présence (PrGuirlande...) : état réel de l'appareil 433 MHz
+    a->mPresence.handleMqttState(messageOrg);
   }
 
   #else // Mettre ici les tests pour équipements remote

@@ -10,6 +10,7 @@ HA = os.path.dirname(os.path.abspath(__file__))  # dossier HA du projet
 # trames (facultatif) = [(topic, NOM)] explicites, à la place de unites (nœud qui ne suit pas la règle du suffixe)
 # mesures = (entité, nom affiché) du bloc Mesures (entités existantes de configuration.yaml ou des paquets)
 # ip (facultatif) = entité qui contient l'IP du nœud Wi-Fi (lien vers sa page Web)
+# ip_auto (facultatif) = génère sensor.<id>_ip (dernier mot des trames de home/conf<id>/state) : ip="sensor.<id>_ip"
 # jn (facultatif) = nœud équipé du détecteur jour / nuit (CJourNuit) : attributs jn_* de sa config, affichés en lecture
 #   seule (modifiables par la commande libre : SET jn_sbas ...)
 # fl (facultatif) = nœud équipé du flotteur avec réveil et confirmation (Capteur 3.1) : attributs mfv_* de sa config,
@@ -43,6 +44,15 @@ NOEUDS = [
                   ("sensor.coulsdb_vert", "Vert"), ("sensor.coulsdb_bleu", "Bleu"),
                   ("sensor.coulsdb_intensite", "Intensité"),
                   ("sensor.batsdb_tension", "Batterie"), ("sensor.batsdb_etat", "État batterie")]),
+    # Présence sur le réseau électrique (Capteur 3.5, CPresenceReseauElectrique) : C3 derrière la prise RF de la
+    # guirlande, alimenté = guirlande allumée ; trames PRESENT / ALIVE / VERSION sur home/confprguirlande/state (pas de
+    # capteur unitaire, pas de « online ») ; le CYD principal en déduit l'état réel (Home-Assist 3.6). Hors tension quand
+    # la guirlande est éteinte : commandes non retenues (comme le nœud chauffage).
+    dict(id="prguirlande", nom="PrGuirlande", suffixe="Guirlande", mode="wifi", unites=[], ip="sensor.prguirlande_ip",
+         ip_auto=True, sans_retenu=True,
+         mesures=[("switch.guirlande", "Guirlande (état mesuré)"),
+                  ("binary_sensor.guirlande_non_verifiee", "Non vérifiée (nœud en deep sleep)"),
+                  ("sensor.guirlande_echec", "Dernier échec de commande")]),
     # Chauffage SdB : ACTIONNEUR, pas un capteur (C3 alimenté par le relais 433 MHz quand le chauffage marche ; envoie l'IR
     # au démarrage et sur ordre Wi-Fi, micro pour ses besoins locaux) : hors règle du suffixe (nœud « Noeud », trames
     # « NoeudChauffageSb » sur home/noeud/state). Pas de réglages de sommeil ; carte à part pour la vue Accueil → Actionneurs
@@ -177,6 +187,44 @@ ENTITES_RELAIS = """  # ---------- Relais LoRa : connexion (dernier signal réce
 """
 
 
+# Appareils 433 MHz du CYD principal vérifiés par un nœud de présence (Home-Assist 3.6) : (id HA, nom de l'appareil
+# dans les trames du CYD, sous-topic). Le CYD publie sur home/<sous-topic>/state :
+#   « <nom> ECHEC ON|OFF <essais> » (état voulu non atteint après N envois du code) ;
+#   « <nom> NONVERIFIE » / « <nom> VERIFIE » (nœud en deep sleep : état non vérifié / de nouveau vérifié).
+APPAREILS_VERIFIES = [("guirlande", "Guirlande", "guirlande")]
+
+
+def entites_appareil_verifie(i, nom, sous_topic):
+    return f"""  # ---------- {nom} : vérification par le nœud de présence (échec, non vérifié) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/{sous_topic}/state"
+    conditions:
+      - condition: template
+        value_template: "{{{{ trigger.payload.split(' ')[1:2] == ['ECHEC'] }}}}"
+    sensor:
+      - name: "{nom} Échec"
+        unique_id: {i}_echec
+        icon: mdi:alert
+        state: >-
+          {{%- set m = trigger.payload.split(' ') -%}}
+          {{{{ m[2] ~ ' non atteint après ' ~ m[3] ~ ' essais' if m | count > 3 else trigger.payload }}}}
+        attributes:
+          recu: "{{{{ now().isoformat() }}}}"
+  - trigger:
+      - trigger: mqtt
+        topic: "home/{sous_topic}/state"
+    conditions:
+      - condition: template
+        value_template: "{{{{ trigger.payload.split(' ')[1:2] in [['NONVERIFIE'], ['VERIFIE']] }}}}"
+    binary_sensor:
+      - name: "{nom} Non vérifiée"
+        unique_id: {i}_non_verifiee
+        icon: mdi:help-circle
+        state: "{{{{ trigger.payload.split(' ')[1] == 'NONVERIFIE' }}}}"
+"""
+
+
 def paquet():
     o = []
     w = o.append
@@ -308,7 +356,22 @@ template:""")
         state: "{{{{ now().isoformat() }}}}"
 """)
         w(capteur_version(nom, i, f"home/conf{i}/state", "au démarrage, pas au réveil d'un deep sleep, et après GET"))
+        if n.get("ip_auto"):
+            w(f"""  # ---------- {nom} : IP (dernier mot de ses trames sur son topic de configuration) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/conf{i}/state"
+    sensor:
+      - name: "{nom} IP"
+        unique_id: {i}_ip
+        icon: mdi:ip-network
+        state: >-
+          {{%- set ip = trigger.payload.split(' ')[-1] -%}}
+          {{{{ ip if ip is match('^\\d{{1,3}}(\\.\\d{{1,3}}){{3}}$') else this.state }}}}
+""")
     w(capteur_version("RelaisLora", "relaislora", "home/confrelaislora/state", "au démarrage et après STATUS"))
+    for a in APPAREILS_VERIFIES:
+        w(entites_appareil_verifie(*a))
     w(ENTITES_RELAIS)
     w("input_boolean:")
     for n in CAPTEURS:
@@ -568,6 +631,32 @@ automation:
                     entity_id: "input_number.{{{{ capteur }}}}_{{{{ repeat.item | lower }}}}"
                   data:
                     value: "{{{{ state_attr(trigger.entity_id, repeat.item) }}}}"
+
+  # ------------------------------------------------------------
+  # Appareils RF vérifiés par un nœud de présence : notification quand le CYD principal signale un échec
+  # (« <nom> ECHEC ON|OFF <essais> » sur home/<appareil>/state, Home-Assist 3.6)
+  # ------------------------------------------------------------
+  - id: appareils_rf_echec_commande
+    alias: Appareils RF - Échec de commande (nœud de présence)
+    description: Le CYD principal n'a pas atteint l'état voulu après N envois du code (Home-Assist 3.6)
+    mode: queued
+    triggers:
+      - trigger: mqtt
+        topic: "home/+/state"
+        value_template: "{{{{ 'oui' if value.split(' ')[1:2] == ['ECHEC'] else 'non' }}}}"
+        payload: "oui"
+    actions:
+      - variables:
+          m: "{{{{ trigger.payload.split(' ') }}}}"
+          message: >-
+            {{{{ m[0] }}}} : commande {{{{ m[2] if m | count > 2 else '?' }}}} non réalisée après
+            {{{{ m[3] if m | count > 3 else '?' }}}} essais ({{{{ now().strftime('%d/%m/%Y %H:%M') }}}}).
+            Vérifier la prise RF et le nœud de présence.
+      - action: persistent_notification.create
+        data:
+          title: "{{{{ m[0] }}}} : échec de commande"
+          message: "{{{{ message }}}}"
+          notification_id: "echec_{{{{ m[0] | lower }}}}"
 
   # ------------------------------------------------------------
   # Nœuds Wi-Fi : efface la commande retenue dès que le nœud l'a reçue, c.-à-d. à son accusé

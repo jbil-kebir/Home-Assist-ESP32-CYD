@@ -1038,6 +1038,196 @@ sections:
                 card_mod:
                   style: "ha-card { height: 60px !important; }"
 
+  # ======================= PrGuirlande (Wi-Fi) =======================
+  - type: grid
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: heading
+            heading: PrGuirlande · Wi-Fi
+            heading_style: title
+            icon: mdi:wifi
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
+            entities:
+              - entity: binary_sensor.prguirlande_eveille
+                name: Éveillé
+              - entity: sensor.prguirlande_derniere_trame
+                name: Dernière trame
+                format: relative
+              - entity: sensor.prguirlande_commande_en_attente
+                name: Commande en attente
+              - entity: sensor.prguirlande_config
+                name: Config reçue
+                format: relative
+              - entity: sensor.prguirlande_version
+                name: Firmware
+              - type: attribute
+                entity: sensor.prguirlande_version
+                attribute: compilation
+                name: Compilé le
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
+            title: Mesures
+            entities:
+              - entity: switch.guirlande
+                name: Guirlande (état mesuré)
+              - entity: binary_sensor.guirlande_non_verifiee
+                name: Non vérifiée (nœud en deep sleep)
+              - entity: sensor.guirlande_echec
+                name: Dernier échec de commande
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
+            content: |
+              {% if state_attr('sensor.prguirlande_config', 'mute') == 1 %}
+              🔇 **Mesures muettes** : PrGuirlande n'émet plus ses mesures (MUTE OFF pour les rétablir).
+
+              {% endif %}
+              {% set ip = states('sensor.prguirlande_ip') %}
+              {% if ip not in ['unknown', 'unavailable', ''] %}
+              **Page Web** : [{{ ip }}](http://{{ ip }}/)
+
+              {% endif %}
+              {% set r = states('sensor.prguirlande_rapport') %}
+              {% if r not in ['unknown', 'unavailable'] %}
+              **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.prguirlande_rapport', 'recu'))) }}) :
+
+              {{ r | replace(' | ', '  \n') }}
+              {% else %}
+              *Pas encore de réponse au bouton État.*
+              {% endif %}
+              {% set e = state_attr('sensor.prguirlande_config', 'erreur') %}
+              {% if e %}
+
+              ⚠️ **Refusé par le nœud** : {{ e }}
+              {% endif %}
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Relire
+                icon: mdi:refresh
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: prguirlande
+                    commande: GET
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: État
+                icon: mdi:information
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: prguirlande
+                    commande: STATUS
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Annuler
+                icon: mdi:cancel
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: prguirlande
+                    commande: ANNULER
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Redémarrer
+                icon: mdi:restart
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: prguirlande
+                    commande: REBOOT
+                  confirmation:
+                    text: Redémarrer PrGuirlande à son prochain réveil ?
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 60px !important;
+                      background: rgba(200,0,0,0.2) !important;
+                    }
+                    ha-icon { color: red !important; }
+      - type: vertical-stack
+        cards:
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
+            title: Réglages (envoyés au prochain réveil)
+            entities:
+              - entity: input_boolean.prguirlande_sleepa
+                name: Deep sleep actif
+              - entity: input_number.prguirlande_sleepi
+                name: Intervalle deep sleep
+              - entity: input_number.prguirlande_sleeps
+                name: Sommeil court (SLEEPS)
+              - entity: input_number.prguirlande_sleepm
+                name: Sommeil moyen (SLEEPM)
+              - entity: input_number.prguirlande_sleepl
+                name: Sommeil long (SLEEPL)
+              - entity: input_number.prguirlande_wakei
+                name: Éveil maximum
+              - entity: input_boolean.prguirlande_mute
+                name: Mesures muettes
+          - type: button
+            name: Enregistrer
+            icon: mdi:content-save
+            tap_action:
+              action: perform-action
+              perform_action: script.noeud_enregistrer
+              data:
+                capteur: prguirlande
+            # Grisé et non cliquable tant qu'aucune config n'a été reçue du nœud (le script refuse aussi)
+            card_mod:
+              style: |
+                ha-card {
+                  height: 60px !important;
+                  {% if states('sensor.prguirlande_config') in ['unknown', 'unavailable'] %}
+                  opacity: 0.4;
+                  pointer-events: none;
+                  {% endif %}
+                }
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
+            title: Commande libre
+            entities:
+              - entity: input_text.prguirlande_commande
+                name: Commande
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Envoyer
+                icon: mdi:send
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande_libre
+                  data:
+                    capteur: prguirlande
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Nettoyer retenu
+                icon: mdi:broom
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_nettoyer_retenu
+                  data:
+                    capteur: prguirlande
+                  confirmation:
+                    text: Effacer le message retenu sur home/confprguirlande/command ?
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+
   # ======================= Aide =======================
   - type: grid
     cards:

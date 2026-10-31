@@ -9,10 +9,47 @@ void CRCDevice::setup(const String pref) {
   mPrefixNVS = pref;
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+  // Nœud de présence : clés NVS <préfixe>p... (ex. guir_pnoeud)
+  mPresence.setup(pref + "p");
+  branchePresence();
 }
 
 void CRCDevice::loop() {
-    
+  mPresence.loop();
+}
+
+// Réactions de l'appareil aux conclusions du nœud de présence (messages de la barre d'état : courts, sans accents)
+void CRCDevice::branchePresence() {
+  mPresence.setMqttPublishCallback(onMqttPublish);
+  mPresence.onEtatChange = [this](int etatMesure) {
+    bool bAllume = (etatMesure == PRESENCE_PRESENT);
+    DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + nomEquipement + (bAllume ? " allume (mesure)" : " eteint (mesure)"));
+    if (bAllume == etat) return;
+    saveState(bAllume);
+    if (onMqttPublish != nullptr) onMqttPublish(mqttSubTopicCommand.c_str(), etat ? "ONR" : "OFFR");
+    if (mEcran != nullptr) mEcran->updateAllStates();
+  };
+  mPresence.onRenvoi = [this](int essai, int nbEssais) {
+    toggleDevice();
+    String s = buttonName + " : renvoi " + String(essai) + "/" + String(nbEssais);
+    DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + s);
+    if (mEcran != nullptr) mEcran->updateStatus(s);
+  };
+  mPresence.onEchec = [this](int voulu, int essais) {
+    String sVoulu = (voulu == PRESENCE_PRESENT) ? "ON" : "OFF";
+    String s = buttonName + " : ECHEC " + sVoulu + " (" + String(essais) + " essais)";
+    DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + s);
+    if (mEcran != nullptr) mEcran->updateStatus(s, false, true);
+    // Alerte pour Home Assistant : « <nom> ECHEC ON|OFF <essais> » sur le topic d'état de l'appareil
+    if (onMqttPublish != nullptr)
+      onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + " ECHEC " + sVoulu + " " + String(essais)).c_str());
+  };
+  mPresence.onNonVerifieChange = [this](bool nonVerifie) {
+    String s = buttonName + (nonVerifie ? " : etat non verifie" : " : etat verifie");
+    if (mEcran != nullptr) mEcran->updateStatus(s);
+    if (onMqttPublish != nullptr)
+      onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + (nonVerifie ? " NONVERIFIE" : " VERIFIE")).c_str());
+  };
 }
 
 int CRCDevice::activeEquipement() {
@@ -75,6 +112,7 @@ void CRCDevice::saveToNVS() {
   prefs.end();
 
   CEquipementBase::saveToNVS();
+  mPresence.saveToNVS();
 }
 
 void CRCDevice::print() const {
@@ -91,6 +129,7 @@ void CRCDevice::print() const {
   DBG(DBG_ACTIONNEURS, "     MQTTSubTopic   : %s\n", mqttSubTopic.c_str());
   DBG(DBG_ACTIONNEURS, "     MQTTCmd        : %s\n", mqttSubTopicCommand.c_str());
   DBG(DBG_ACTIONNEURS, "     MQTTState      : %s\n", mqttSubTopicState.c_str());
+  mPresence.print();
 }
 
 void CRCDevice::saveState(bool state) {
@@ -111,32 +150,65 @@ void CRCDevice::saveState(bool state) {
 // -1 : Equipement inactif
 //----------------------------------------------------------------------------------
 int CRCDevice::envoiOnOff() {
+  return commande(!etat);
+}
+
+//----------------------------------------------------------------------------------
+// CRCDevice::commande()
+//
+// État voulu (bouton de l'écran : inverse de l'état affiché ; MQTT : ON / OFF).
+// Sans nœud de présence, ou nœud en deep sleep (non vérifié) : fonctionnement historique, le code bascule
+// et l'état affiché suit la commande.
+// Avec nœud de présence : le code (qui bascule) n'est envoyé que si l'état mesuré diffère de l'état voulu ;
+// le nœud vérifie ensuite (CRemotePresenceReseauElectrique) et l'état affiché suit la mesure.
+// Retour :
+// 0 : RAS
+// -1 : Equipement inactif
+// -2 : Vérification en cours, commande ignorée
+//----------------------------------------------------------------------------------
+int CRCDevice::commande(bool voulu) {
   int ret = 0;
-  if (active) {
-    toggleDevice();
-    etat = !etat;
-    saveState(etat);
-    ret =0;
-  }
-  else {
+  if (!active) {
     String s = "L'equipement " + nomEquipement + " n'est pas actif";
-    if (mEcran != nullptr)
-      mEcran->updateStatus(s);
+    if (mEcran != nullptr) mEcran->updateStatus(s);
     DBGLN(DBG_ACTIONNEURS, s);
     return -1;
   }
-  if (mEcran != nullptr)
-    mEcran->updateAllStates();
-
-  if (onMqttPublish != nullptr)
-    ret = onMqttPublish(mqttSubTopicCommand.c_str(), etat ? "ONR" : "OFFR"); // Mise à jour de l'IHM des CYD auxiliaires
-
+  if (!mPresence.estConfiguree() || mPresence.estNonVerifie()) {
+    toggleDevice();
+    etat = !etat;
+    saveState(etat);
+    if (mEcran != nullptr) mEcran->updateAllStates();
+    if (onMqttPublish != nullptr)
+      ret = onMqttPublish(mqttSubTopicCommand.c_str(), etat ? "ONR" : "OFFR"); // Mise à jour de l'IHM des CYD auxiliaires
+    return ret;
+  }
+  if (mPresence.verificationEnCours()) {
+    String s = buttonName + " : verification en cours";
+    if (mEcran != nullptr) mEcran->updateStatus(s);
+    DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + s + ", commande ignoree");
+    return -2;
+  }
+  int iMesure = mPresence.getEtat();
+  if (iMesure != PRESENCE_INCONNUE && (iMesure == PRESENCE_PRESENT) == voulu) {
+    // Déjà dans l'état voulu : surtout ne pas renvoyer le code (il basculerait l'appareil)
+    String s = buttonName + (voulu ? " : deja allume" : " : deja eteint");
+    if (mEcran != nullptr) mEcran->updateStatus(s);
+    DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + s);
+    if (onMqttPublish != nullptr) ret = onMqttPublish(mqttSubTopicCommand.c_str(), etat ? "ONR" : "OFFR");
+    return ret;
+  }
+  toggleDevice();
+  mPresence.demandeEtat(voulu ? PRESENCE_PRESENT : PRESENCE_ABSENT);
+  String s = buttonName + (voulu ? " : ON envoye, verification" : " : OFF envoye, verification");
+  if (mEcran != nullptr) mEcran->updateStatus(s);
+  DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + s);
   return ret;
-
 }
  
 void CRCDevice::setMqttPublishCallback(std::function<int(const char*, const char*)> cb) {
         onMqttPublish = cb;
+        mPresence.setMqttPublishCallback(cb);
     }
 
 void CRCDevice::handleMqttCommand(const String& payload) {
@@ -147,19 +219,8 @@ void CRCDevice::handleMqttCommand(const String& payload) {
   //Serial.println("CRCDevice::handleMqttCommand() - Bouton Chauffage - Cmd : " + cmd);
 
   if (cmd == "ON" || cmd == "OFF") {
-    if (this->active) {
-      this->toggleDevice();
-      this->etat = !this->etat;
-      DBG(DBG_ACTIONNEURS, "CRCDevice::handleMqttCommand() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
-      onMqttPublish(this->mqttSubTopicCommand.c_str(), this->etat ? "ONR" : "OFFR");
-      this->saveState(this->etat);
-      if (mEcran != nullptr) mEcran->updateAllStates();
-    }
-    else {
-      String s = "L'equipement " + String(this->nomEquipement) + " n'est pas actif";
-      if (mEcran != nullptr) mEcran->updateStatus(s);
-      DBGLN(DBG_ACTIONNEURS, s);
-    }
+    // Sans nœud de présence, ON comme OFF basculent l'appareil (fonctionnement historique, voir commande())
+    commande(cmd == "ON");
  }
  else if (cmd == "ENABLE") {
     setActive(true);
@@ -201,6 +262,7 @@ void CRCDevice::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"freq").c_str())) frequency = server.arg((mPrefixNVS+"freq").c_str()).toFloat();
 
   CEquipementBase::loadFromWebServer (server);
+  mPresence.loadFromWebServer(server);
 
 }
 
@@ -221,8 +283,9 @@ String CRCDevice::getHTML() {
             "<div><label>Largeur impulsion (µs)</label><input type=\"number\" name=" + (mPrefixNVS+"pulse").c_str() + " value=\"" + String(pulseLength) + "\"></div>"
             "<div><label>Répétitions</label><input type=\"number\" name=" + (mPrefixNVS+"repeat").c_str() + " value=\"" + String(repeat) + "\"></div>"
           "</div>"
-          "<label>Fréquence (MHz)</label><input type=\"number\" step=\"0.01\" name=" + (mPrefixNVS+"freq").c_str() + " value=\"" + String(frequency, 3) + "\">"
-        "</div>";
+          "<label>Fréquence (MHz)</label><input type=\"number\" step=\"0.01\" name=" + (mPrefixNVS+"freq").c_str() + " value=\"" + String(frequency, 3) + "\">";
+  html += mPresence.getHTML();
+  html += "</div>";
 
   return html;
 }

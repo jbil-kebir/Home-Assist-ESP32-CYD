@@ -103,6 +103,9 @@ void MyWebServer::handleRoot() {
   #ifdef CAPTEUR_JOUR_NUIT
   if (config.mJourNuit != nullptr) html += config.mJourNuit->getHTML();
   #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (config.mPresence != nullptr) html += config.mPresence->getHTML();
+  #endif
 
   html +=  "</div>";
 
@@ -156,6 +159,9 @@ void MyWebServer::handleSave() {
   #ifdef CAPTEUR_JOUR_NUIT
   if (config.mJourNuit != nullptr) config.mJourNuit->loadFromWebServer(server);
   #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (config.mPresence != nullptr) config.mPresence->loadFromWebServer(server);
+  #endif
 
   // === SAUVEGARDE DES PARAMETRES GENERAUX ===
   config.saveToNVS();
@@ -192,6 +198,9 @@ void MyWebServer::handleSave() {
   #endif
   #ifdef CAPTEUR_JOUR_NUIT
   if (config.mJourNuit != nullptr) config.mJourNuit->saveToNVS();
+  #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (config.mPresence != nullptr) config.mPresence->saveToNVS();
   #endif
 
   // Page de confirmation

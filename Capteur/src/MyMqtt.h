@@ -15,6 +15,9 @@ class CConfig;
 #define MQTT_SOCKET_TIMEOUT_S 3             // Attente maximale d'une réponse du broker (CONNACK...)
 #define MQTT_ECHO_TIMEOUT_MS 1500UL         // powerDown() : attente maximale de l'écho
 #define MQTT_FERMETURE_TIMEOUT_MS 500UL     // powerDown() : attente maximale de la fermeture par le broker
+// Nœud de présence (CAPTEUR_PRESENCE_RESEAU) : keepalive court, le broker publie le testament ~1,5 x keepalive
+// après la coupure du secteur (15 s par défaut dans PubSubClient : testament ~22 s après la coupure)
+#define MQTT_KEEPALIVE_PRESENCE_S 5
 
 class CMqtt {
 private:

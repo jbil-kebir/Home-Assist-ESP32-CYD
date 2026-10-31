@@ -27,6 +27,7 @@ sections:
           ('sensor.thchrdc_version', 'ThChRDC', 'Capteur'),
           ('sensor.thch1er_version', 'ThCh1er', 'Capteur'),
           ('sensor.thsdb_version', 'ThSdb', 'Capteur'),
+          ('sensor.prguirlande_version', 'PrGuirlande', 'Capteur'),
           ('sensor.noeud_version', 'Nœud chauffage SdB', 'Capteur')
       ] -%}
       {%- set ns = namespace(max={}) -%}
