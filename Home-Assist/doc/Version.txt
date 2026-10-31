@@ -1,4 +1,6 @@
 3.6
+Case « Vérification active » (page Web, section de l'appareil, NVS <préfixe>pactif, vraie par défaut) : décochée, le nom du
+    nœud et les réglages sont gardés mais l'appareil fonctionne sans vérification (ni PING, ni abonnement, ni sablier)
 « <nom> VERIFICATION EN_COURS » (après l'envoi du code) puis « <nom> VERIFICATION FIN » (réussite, échec ou abandon en
     deep sleep) sur le topic d'état de l'appareil (home/guirlande/state) : HA remplace le bouton par un sablier entre les deux
 Testament du nœud de présence (« <nom> offline », ~3 à 8 s après la coupure, Capteur 3.5 keepalive 5 s) : extinction conclue

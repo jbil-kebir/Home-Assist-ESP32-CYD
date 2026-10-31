@@ -45,6 +45,7 @@ private:
   int miNbQuestions = 0;
   int miEssai = 0;
   bool mbVerifInitialeFaite = false;
+  bool mbVerifActive = true;           // Case « Vérification active » : décochée, nom et réglages gardés mais inutilisés
 
   void calculeTopics();
   void signalRecu();
@@ -82,7 +83,7 @@ public:
   int setup(const String pref);
   void loop();
   void handleMqttState(const String& payload);
-  bool estConfiguree() const { return active; }   // Nœud associé (nom non vide)
+  bool estConfiguree() const { return active; }   // Nœud associé (nom non vide) ET vérification active
   bool estNonVerifie() const { return mbNonVerifie; }
   bool verificationEnCours() const { return mPhase != PHASE_REPOS; }
   int getEtat() const { return miEtat; }

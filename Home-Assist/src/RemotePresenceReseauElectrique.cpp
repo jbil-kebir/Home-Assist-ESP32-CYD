@@ -9,10 +9,11 @@ int CRemotePresenceReseauElectrique::setup(const String pref) {
   return 0;
 }
 
-// Nœud associé = nom non vide ; topics de configuration du nœud : home/conf<nom en minuscules>/command|state
+// Vérification utilisée = nom non vide ET case « Vérification active » cochée (sinon fonctionnement historique de
+// l'appareil, nom et réglages gardés) ; topics de configuration du nœud : home/conf<nom en minuscules>/command|state
 void CRemotePresenceReseauElectrique::calculeTopics() {
   nomEquipement.trim();
-  active = nomEquipement.length() > 0;
+  active = nomEquipement.length() > 0 && mbVerifActive;
   String s = nomEquipement;
   s.toLowerCase();
   domotique_prefix = default_domotique_topic_prefix;
@@ -175,6 +176,7 @@ void CRemotePresenceReseauElectrique::handleMqttState(const String& payload) {
 void CRemotePresenceReseauElectrique::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
   nomEquipement = prefs.getString((mPrefixNVS+"noeud").c_str(), "");
+  mbVerifActive = prefs.getBool((mPrefixNVS+"actif").c_str(), true);
   mulDelaiS = prefs.getULong((mPrefixNVS+"delai").c_str(), PRESENCE_DELAI_DEFAUT_S);
   mulAttenteS = prefs.getULong((mPrefixNVS+"attente").c_str(), PRESENCE_ATTENTE_DEFAUT_S);
   miNbPing = prefs.getInt((mPrefixNVS+"nbping").c_str(), PRESENCE_NB_PING_DEFAUT);
@@ -184,7 +186,7 @@ void CRemotePresenceReseauElectrique::loadFromNVS() {
 }
 
 void CRemotePresenceReseauElectrique::saveToNVS() {
-  const char* cles[] = {"noeud", "delai", "attente", "nbping", "nbess", "alive"};
+  const char* cles[] = {"noeud", "actif", "delai", "attente", "nbping", "nbess", "alive"};
   prefs.begin(nvs_namespace, false);
   if (nomEquipement.length() == 0) {
     for (const char* c : cles)
@@ -192,6 +194,7 @@ void CRemotePresenceReseauElectrique::saveToNVS() {
   }
   else {
     prefs.putString((mPrefixNVS+"noeud").c_str(), nomEquipement);
+    prefs.putBool((mPrefixNVS+"actif").c_str(), mbVerifActive);
     prefs.putULong((mPrefixNVS+"delai").c_str(), mulDelaiS);
     prefs.putULong((mPrefixNVS+"attente").c_str(), mulAttenteS);
     prefs.putInt((mPrefixNVS+"nbping").c_str(), miNbPing);
@@ -203,6 +206,7 @@ void CRemotePresenceReseauElectrique::saveToNVS() {
 
 void CRemotePresenceReseauElectrique::loadFromWebServer(WebServer& server) {
   if (server.hasArg((mPrefixNVS+"noeud").c_str())) nomEquipement = server.arg((mPrefixNVS+"noeud").c_str());
+  mbVerifActive = server.hasArg((mPrefixNVS+"actif").c_str()); // Case à cocher : absente du formulaire si décochée
   if (server.hasArg((mPrefixNVS+"delai").c_str()) && server.arg((mPrefixNVS+"delai")).toInt() > 0)
     mulDelaiS = server.arg((mPrefixNVS+"delai")).toInt();
   if (server.hasArg((mPrefixNVS+"attente").c_str()) && server.arg((mPrefixNVS+"attente")).toInt() > 0)
@@ -217,6 +221,8 @@ void CRemotePresenceReseauElectrique::loadFromWebServer(WebServer& server) {
 }
 
 String CRemotePresenceReseauElectrique::getHTML() {
+  nomEquipement.trim();
+  bool bNom = nomEquipement.length() > 0;
   String sEtat = (miEtat == PRESENCE_PRESENT) ? "allumé" : (miEtat == PRESENCE_ABSENT) ? "éteint" : "inconnu";
   if (mbNonVerifie) sEtat += " (non vérifié : nœud en deep sleep)";
   if (mPhase != PHASE_REPOS) sEtat += " (vérification en cours)";
@@ -224,8 +230,9 @@ String CRemotePresenceReseauElectrique::getHTML() {
       "<h3>Vérification par nœud de présence</h3>"
       "<div class=\"row\">"
         "<div><label>Nœud de présence (vide = pas de vérification)</label><input type=\"text\" name=" + (mPrefixNVS+"noeud") + " value=\"" + nomEquipement + "\" placeholder=\"PrGuirlande\"></div>"
-        "<div><label>État mesuré</label><input type=\"text\" value=\"" + (active ? sEtat : String("—")) + "\" disabled></div>"
+        "<div><label>État mesuré</label><input type=\"text\" value=\"" + (active ? sEtat : String(bNom ? "— (vérification désactivée)" : "—")) + "\" disabled></div>"
       "</div>"
+      "<div class=\"checkbox-row\"><label>Vérification active (décochée : nom et réglages gardés, fonctionnement sans vérification)</label><input type=\"checkbox\" name=" + (mPrefixNVS+"actif") + " value=\"1\"" + String(mbVerifActive ? " checked" : "") + "></div>"
       "<div class=\"row\">"
         "<div><label>Délai avant la 1re question (s)</label><input type=\"number\" name=" + (mPrefixNVS+"delai") + " value=\"" + String(mulDelaiS) + "\"></div>"
         "<div><label>Attente de la réponse (s)</label><input type=\"number\" name=" + (mPrefixNVS+"attente") + " value=\"" + String(mulAttenteS) + "\"></div>"
@@ -242,7 +249,8 @@ String CRemotePresenceReseauElectrique::getHTML() {
 }
 
 void CRemotePresenceReseauElectrique::print() const {
-  DBG(DBG_ACTIONNEURS, "     Nœud de présence   : %s\n", active ? nomEquipement.c_str() : "(aucun)");
+  DBG(DBG_ACTIONNEURS, "     Nœud de présence   : %s%s\n", nomEquipement.length() > 0 ? nomEquipement.c_str() : "(aucun)",
+      (nomEquipement.length() > 0 && !mbVerifActive) ? " (vérification désactivée)" : "");
   if (!active) return;
   DBG(DBG_ACTIONNEURS, "     État mesuré        : %d%s\n", miEtat, mbNonVerifie ? " (non vérifié)" : "");
   DBG(DBG_ACTIONNEURS, "     Délai / attente    : %lu s / %lu s\n", mulDelaiS, mulAttenteS);
