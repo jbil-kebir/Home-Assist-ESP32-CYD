@@ -91,14 +91,24 @@ void CRemotePresenceReseauElectrique::conclut(int etat) {
   mPhase = PHASE_REPOS;
   DBGLN(DBG_ACTIONNEURS, "CRemotePresenceReseauElectrique - " + nomEquipement + (etat == PRESENCE_PRESENT ? " présent" : " absent"));
   changeEtat(etat);
-  if (miEtatVoulu == PRESENCE_VERIF_SANS_COMMANDE || etat == miEtatVoulu) return;
+  if (miEtatVoulu == PRESENCE_VERIF_SANS_COMMANDE) return;
+  if (etat == miEtatVoulu) { finCommande(); return; }
   if (miEssai < miNbEssais) {
     // Le code bascule : on ne le renvoie qu'une fois l'écart avec l'état voulu établi
     miEssai++;
     if (onRenvoi != nullptr) onRenvoi(miEssai, miNbEssais);
     debutePhase(PHASE_ATTENTE);
   }
-  else if (onEchec != nullptr) onEchec(miEtatVoulu, miEssai);
+  else {
+    if (onEchec != nullptr) onEchec(miEtatVoulu, miEssai);
+    finCommande();
+  }
+}
+
+// Fin de la vérification d'une commande (pas d'une vérification seule) : HA déverrouille le bouton de l'appareil
+void CRemotePresenceReseauElectrique::finCommande() {
+  miEtatVoulu = PRESENCE_VERIF_SANS_COMMANDE;
+  if (onFinCommande != nullptr) onFinCommande();
 }
 
 void CRemotePresenceReseauElectrique::changeEtat(int etat) {
@@ -110,7 +120,10 @@ void CRemotePresenceReseauElectrique::changeEtat(int etat) {
 void CRemotePresenceReseauElectrique::changeNonVerifie(bool nonVerifie) {
   if (nonVerifie == mbNonVerifie) return;
   mbNonVerifie = nonVerifie;
-  if (nonVerifie) mPhase = PHASE_REPOS; // Plus de conclusion par le silence : vérification abandonnée
+  if (nonVerifie && mPhase != PHASE_REPOS) {
+    mPhase = PHASE_REPOS; // Plus de conclusion par le silence : vérification abandonnée
+    if (miEtatVoulu != PRESENCE_VERIF_SANS_COMMANDE) finCommande();
+  }
   DBGLN(DBG_ACTIONNEURS, "CRemotePresenceReseauElectrique - " + nomEquipement + (nonVerifie ? " : non vérifié (deep sleep)" : " : vérifié"));
   if (onNonVerifieChange != nullptr) onNonVerifieChange(nonVerifie);
 }

@@ -44,6 +44,12 @@ void CRCDevice::branchePresence() {
     if (onMqttPublish != nullptr)
       onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + " ECHEC " + sVoulu + " " + String(essais)).c_str());
   };
+  // Début (CRCDevice::commande) et fin de la vérification d'une commande : « <nom> VERIFICATION EN_COURS|FIN » sur le
+  // topic d'état de l'appareil ; HA remplace le bouton par un sablier entre les deux
+  mPresence.onFinCommande = [this]() {
+    if (onMqttPublish != nullptr)
+      onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + " VERIFICATION FIN").c_str());
+  };
   mPresence.onNonVerifieChange = [this](bool nonVerifie) {
     String s = buttonName + (nonVerifie ? " : etat non verifie" : " : etat verifie");
     if (mEcran != nullptr) mEcran->updateStatus(s);
@@ -200,6 +206,8 @@ int CRCDevice::commande(bool voulu) {
   }
   toggleDevice();
   mPresence.demandeEtat(voulu ? PRESENCE_PRESENT : PRESENCE_ABSENT);
+  if (onMqttPublish != nullptr)
+    onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + " VERIFICATION EN_COURS").c_str());
   String s = buttonName + (voulu ? " : ON envoye, verification" : " : OFF envoye, verification");
   if (mEcran != nullptr) mEcran->updateStatus(s);
   DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + s);

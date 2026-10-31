@@ -53,6 +53,7 @@ private:
   void debutePhase(EPhase phase);
   void pose();                         // PING au nœud
   void conclut(int etat);
+  void finCommande();
 
 public:
   CRemotePresenceReseauElectrique() { nomEquipement = ""; active = false; }
@@ -70,6 +71,7 @@ public:
   std::function<void(int, int)> onRenvoi = nullptr;         // Renvoyer le code (essai, nb d'essais)
   std::function<void(int, int)> onEchec = nullptr;          // État voulu non atteint après N essais (voulu, essais)
   std::function<void(bool)> onNonVerifieChange = nullptr;   // Entrée / sortie du mode non vérifié
+  std::function<void()> onFinCommande = nullptr;            // Fin de la vérification d'une commande (réussite, échec, abandon)
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cb) { onMqttPublish = cb; }
 
   void loadFromNVS();

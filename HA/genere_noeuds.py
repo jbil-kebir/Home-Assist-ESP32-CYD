@@ -222,7 +222,65 @@ def entites_appareil_verifie(i, nom, sous_topic):
         unique_id: {i}_non_verifiee
         icon: mdi:help-circle
         state: "{{{{ trigger.payload.split(' ')[1] == 'NONVERIFIE' }}}}"
+  # « <nom> VERIFICATION EN_COURS|FIN » (Home-Assist 3.6) : bouton de la vue Actionneurs remplacé par un sablier ;
+  # retombe seul au bout de 2 min si la fin se perd (CYD redémarré...)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/{sous_topic}/state"
+    conditions:
+      - condition: template
+        value_template: "{{{{ trigger.payload.split(' ')[1:2] == ['VERIFICATION'] }}}}"
+    binary_sensor:
+      - name: "{nom} Vérification en cours"
+        unique_id: {i}_verification_en_cours
+        icon: mdi:timer-sand
+        auto_off: 120
+        state: "{{{{ trigger.payload.split(' ')[2:3] == ['EN_COURS'] }}}}"
 """
+
+
+def sablier_appareils_verifies(cartes):
+    """Vue Actionneurs : bouton (custom:button-card sur switch.<app>) d'un appareil vérifié remplacé par deux cartes
+    conditionnelles : le bouton hors vérification, un sablier inactif pendant (binary_sensor.<app>_verification_en_cours).
+    Idempotent : une paire déjà présente (vue réexportée après installation) est d'abord ramenée au bouton seul."""
+    for i, _nom, _st in APPAREILS_VERIFIES:
+        capteur = f"binary_sensor.{i}_verification_en_cours"
+
+        def condition_sur(c):
+            return c.get("type") == "conditional" and any(k.get("entity") == capteur for k in c.get("conditions", []))
+
+        def traite(liste):
+            k = 0
+            while k < len(liste):
+                c = liste[k]
+                if isinstance(c, dict) and condition_sur(c):
+                    if any(cd.get("state_not") == "on" for cd in c["conditions"]):
+                        liste[k] = c["card"]          # bouton d'origine
+                    else:
+                        del liste[k]                  # ancien sablier
+                        continue
+                    c = liste[k]
+                if isinstance(c, dict) and c.get("type") == "custom:button-card" and c.get("entity") == f"switch.{i}":
+                    sablier = {
+                        "type": "custom:button-card", "entity": capteur, "name": c.get("name", _nom),
+                        "icon": "mdi:timer-sand", "spin": True, "show_state": False,
+                        "tap_action": {"action": "none"}, "hold_action": {"action": "none"},
+                        "double_tap_action": {"action": "none"},
+                        "styles": {"card": [{"height": "60px"}, {"background": "rgba(255,152,0,0.25)"}],
+                                   "icon": [{"color": "orange"}]},
+                    }
+                    liste[k:k + 1] = [
+                        {"type": "conditional", "conditions": [{"condition": "state", "entity": capteur, "state_not": "on"}], "card": c},
+                        {"type": "conditional", "conditions": [{"condition": "state", "entity": capteur, "state": "on"}], "card": sablier},
+                    ]
+                    k += 2
+                    continue
+                if isinstance(c, dict):
+                    for cle in ("cards",):
+                        if isinstance(c.get(cle), list):
+                            traite(c[cle])
+                k += 1
+        traite(cartes)
 
 
 def paquet():
@@ -1104,6 +1162,7 @@ def vue_actionneurs():
     cartes[:] = [c for c in cartes if c.get("entity") != JOUR_NUIT_CAVE_ENTITE]
     i = next(i for i, c in enumerate(cartes) if LUMIERE_CAVE_ENTITE in json.dumps(c))
     cartes.insert(i, yaml.safe_load(CARTE_JOUR_NUIT_CAVE))
+    sablier_appareils_verifies(cartes)
     entete = (f"# Vue « {vue.get('title')} » du tableau Accueil (https://ha.jbil.org/dashboard-accueil/{VUE_ACTIONNEURS})\n"
               "# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_accueil + carte(s) des actionneurs.\n"
               "# Installation : tableau Accueil → ✏️ → vue Actionneurs → ⋮ → « Modifier en YAML » → remplacer par ce fichier.\n")

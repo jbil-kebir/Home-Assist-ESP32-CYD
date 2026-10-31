@@ -1056,6 +1056,20 @@ template:
         unique_id: guirlande_non_verifiee
         icon: mdi:help-circle
         state: "{{ trigger.payload.split(' ')[1] == 'NONVERIFIE' }}"
+  # « <nom> VERIFICATION EN_COURS|FIN » (Home-Assist 3.6) : bouton de la vue Actionneurs remplacé par un sablier ;
+  # retombe seul au bout de 2 min si la fin se perd (CYD redémarré...)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/guirlande/state"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload.split(' ')[1:2] == ['VERIFICATION'] }}"
+    binary_sensor:
+      - name: "Guirlande Vérification en cours"
+        unique_id: guirlande_verification_en_cours
+        icon: mdi:timer-sand
+        auto_off: 120
+        state: "{{ trigger.payload.split(' ')[2:3] == ['EN_COURS'] }}"
 
   # ---------- Relais LoRa : connexion (dernier signal récent, pas de testament plus récent) ----------
   - binary_sensor:

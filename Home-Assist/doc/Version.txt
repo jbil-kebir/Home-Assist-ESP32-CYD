@@ -1,4 +1,6 @@
 3.6
+« <nom> VERIFICATION EN_COURS » (après l'envoi du code) puis « <nom> VERIFICATION FIN » (réussite, échec ou abandon en
+    deep sleep) sur le topic d'état de l'appareil (home/guirlande/state) : HA remplace le bouton par un sablier entre les deux
 Testament du nœud de présence (« <nom> offline », ~3 à 8 s après la coupure, Capteur 3.5 keepalive 5 s) : extinction conclue
     aussitôt, aussi pendant la vérification d'une commande OFF (plus d'attente des PING) ; ignoré seulement pendant un
     allumage et en deep sleep ; règle « testament ignoré si signal < 30 s » supprimée (débranché juste après son démarrage,
