@@ -170,8 +170,9 @@ Fiches EasyEDA réutilisables : XIAO ESP32-S3 + Wio-SX1262 (carte Capteur S3), 1
    broche, prise USB-C 6,5 mm) — `U:\Info-Developpement\Composants\Cartes\ESP32 DevKit (WROOM)\Mesures.md`.
 2. ~~Brochage du CC1101~~ : confirmé (photos du vendeur) ; position du connecteur mesurée
    (`U:\Info-Developpement\Composants\RF\CC1101 (E07-M1101D)\Mesures.md`).
-3. ~~Cotes du MP1584EN~~ : d'après le modèle GrabCAD (8 trous, 2 par borne ; vue de dessus IN à droite, OUT à gauche,
-   + en haut) — **à vérifier sur le module reçu** (`U:\Info-Developpement\Composants\Alimentation\MP1584EN\Mesures.md`).
+3. ~~Cotes du MP1584EN~~ : mesurées sur le module reçu le 2026-11-01 (22 × 16,5 mm, 8 trous, 2 par borne, rangées à 19,5 mm,
+   trous à 14 et 8,8 mm ; vue de dessus IN à droite, OUT à gauche, + en haut, comme l'empreinte) ; empreinte et pistes de A1
+   corrigées, DRC 0 (`U:\Info-Developpement\Composants\Alimentation\MP1584EN\Mesures.md`).
 4. ~~Polarité du bloc 12 V~~ : centre +.
 5. **Forme de la carte et du boîtier** (décidé le 2026-10-23) : boîtier posé sur une étagère.
    - **Avant** : interrupteur et LED (fils ; J4 au bord avant de la carte, J2 à l'arrière, voir § 3.1).
@@ -219,7 +220,7 @@ avant droit et arrière droit, et **bord gauche** à 47 mm de l'avant (le coin a
 | A4 CC1101 | arrière gauche ; le corps du module (15 × 28 mm, contour en sérigraphie) au ras du bord arrière, la prise SMA traverse la paroi |
 | A1 MP1584EN | arrière, entrée IN à droite, près de J2 |
 | J1 jack | bord arrière, ouverture vers l'arrière (vérifié en 3D) |
-| J2 interrupteur | arrière droite, entre le XIAO et le MP1584EN |
+| J2 interrupteur | arrière droite, entre le XIAO et le MP1584EN ; **entrée des fils vers l'arrière** (tourné de 180° le 2026-11-01 : tournée vers le XIAO, la fiche n'avait que 0,5 mm pour être saisie) |
 | J3 DHT20, J4 LED | bord avant |
 
 Modèles 3D : XIAO « XIAO-ESP32S3 v3 », DevKit « comm-th_esp32-devkitc-32ue » (système, agrandi à 55 × 28 mm),
@@ -241,6 +242,9 @@ Routage automatique (Copilot) puis plans de masse recréés à la main, face par
 Un seul via de signal (CC_CSN). Le DevKit occupe toute la largeur et ses broches (pas de 2,54 mm) ne laissent pas
 passer de piste entre elles : rien ne doit traverser sa bande. D'où deux choix faits au routage : **J2 à l'arrière**
 (12 V et 12V_SW restent côté alimentation) et **CSN sur GPIO 21** (rangée arrière, côté CC1101) au lieu de GPIO 27.
+
+**Reprise du 2026-11-01** : empreinte de A1 aux cotes du MP1584EN reçu (pistes 12V_SW et +5V de A1 reprises, un via GND
+supprimé) ; J2 tourné de 180° (pistes 12V / 12V_SW refaites, un via GND déplacé). DRC 0, zones recoulées, 3D vérifiée.
 
 ### 7.3 Sérigraphie
 

@@ -8,7 +8,7 @@ ce qui est hors carte.
 
 | Repère | Composant | Référence | Qté |
 |---|---|---|---|
-| A1 | Module abaisseur MP1584EN 3 A (22 × 17 mm), réglé à 5,0 V | – | 1 |
+| A1 | Module abaisseur MP1584EN 3 A (22 × 16,5 mm), réglé à 5,0 V | – | 1 |
 | A2 | ESP32-WROOM-32 DevKit 38 broches, USB-C (rangées à 25,4 mm) | – | 1 |
 | A3 | Seeed XIAO ESP32-S3 + Wio-SX1262 (kit LoRa), antenne Wi-Fi U.FL | – | 1 |
 | A4 | Module CC1101 433 MHz EBYTE E07-M1101D + antenne SMA | – | 1 |
