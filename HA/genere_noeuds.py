@@ -1136,9 +1136,9 @@ styles:
 
 
 # Bloc Chaudière en tête de la vue Actionneurs : titre « Chaudière », carte ThSdb (capteur de la DEL : éveillé / endormi,
-# réveil ou endormissement estimé, boutons Réveiller / Endormir — packages/thsdb_sommeil.yaml), boutons de la chaudière
+# réveil ou endormissement estimé, boutons Réveiller / Endormir, délai — packages/thsdb_sommeil.yaml), boutons de la chaudière
 # (cadenas + marche / arrêt, tirés de la 1re pile de l'export), puis titre « Autres actionneurs ».
-# La carte ThSdb est reprise de vue-chaudiere.yaml (source unique), sans la ligne du délai (réglé dans la vue Chaudière).
+# La carte ThSdb est reprise telle quelle de vue-chaudiere.yaml (source unique), ligne du délai comprise.
 VUE_CHAUDIERE = os.path.join(HA, "vue-chaudiere.yaml")
 THSDB_EVEILLE = "binary_sensor.thsdb_eveille"
 TITRE_CHAUDIERE = {"type": "heading", "heading": "Chaudière", "heading_style": "title", "icon": "mdi:fire"}
@@ -1165,11 +1165,11 @@ def bloc_chaudiere(cartes):
     pile = cartes[0]["cards"]
     k = next(k for k, c in enumerate(pile) if '"switch.chaudiere"' in json.dumps(c))
     boutons = pile.pop(k)
-    # Carte ThSdb de la vue Chaudière, sans la carte entities du délai
+    # Carte ThSdb de la vue Chaudière (état, boutons Réveiller / Endormir, délai), suivie des boutons de la chaudière
     vue = yaml.safe_load(open(VUE_CHAUDIERE, encoding="utf-8"))
     thsdb = next(c for c in json_cartes(vue) if c.get("type") == "vertical-stack" and c.get("cards")
                  and c["cards"][0].get("entity") == THSDB_EVEILLE)
-    thsdb = {"type": "vertical-stack", "cards": [c for c in thsdb["cards"] if c.get("type") != "entities"] + [boutons]}
+    thsdb = {"type": "vertical-stack", "cards": thsdb["cards"] + [boutons]}
     cartes[:0] = [dict(TITRE_CHAUDIERE), thsdb, dict(TITRE_AUTRES)]
 
 

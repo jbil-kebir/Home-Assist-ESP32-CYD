@@ -87,6 +87,10 @@ sections:
             commande: SET sleepA:1
         card_mod:
           style: 'ha-card { height: 60px !important; }'
+    - type: entities
+      entities:
+      - entity: input_number.thsdb_delai_sommeil
+        name: Délai avant endormissement
     - type: horizontal-stack
       cards:
       - type: vertical-stack
