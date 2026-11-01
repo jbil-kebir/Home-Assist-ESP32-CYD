@@ -1135,6 +1135,49 @@ styles:
 """
 
 
+# Bloc Chaudière en tête de la vue Actionneurs : titre « Chaudière », carte ThSdb (capteur de la DEL : éveillé / endormi,
+# réveil ou endormissement estimé, boutons Réveiller / Endormir — packages/thsdb_sommeil.yaml), boutons de la chaudière
+# (cadenas + marche / arrêt, tirés de la 1re pile de l'export), puis titre « Autres actionneurs ».
+# La carte ThSdb est reprise de vue-chaudiere.yaml (source unique), sans la ligne du délai (réglé dans la vue Chaudière).
+VUE_CHAUDIERE = os.path.join(HA, "vue-chaudiere.yaml")
+THSDB_EVEILLE = "binary_sensor.thsdb_eveille"
+TITRE_CHAUDIERE = {"type": "heading", "heading": "Chaudière", "heading_style": "title", "icon": "mdi:fire"}
+TITRE_AUTRES = {"type": "heading", "heading": "Autres actionneurs", "heading_style": "title", "icon": "mdi:toggle-switch"}
+
+
+def defait_bloc_chaudiere(cartes):
+    """Vue réexportée après installation : retire les titres et la pile Chaudière, et remet les boutons de la chaudière
+    en tête de la 1re pile (état de l'export d'origine). À appeler AVANT toute insertion par position."""
+    titres = (TITRE_CHAUDIERE["heading"], TITRE_AUTRES["heading"])
+    pile_chaudiere = next((c for c in cartes if c.get("type") == "vertical-stack" and c.get("cards")
+                           and c["cards"][0].get("entity") == THSDB_EVEILLE), None)
+    cartes[:] = [c for c in cartes if c is not pile_chaudiere
+                 and not (c.get("type") == "heading" and c.get("heading") in titres)]
+    if pile_chaudiere is not None:
+        cartes[0]["cards"].insert(0, pile_chaudiere["cards"][-1])
+
+
+def bloc_chaudiere(cartes):
+    """Ajoute le bloc Chaudière en tête (après defait_bloc_chaudiere : l'export est ramené à son état d'origine)."""
+    import json
+    import yaml
+    # Boutons de la chaudière : la carte de la 1re pile qui pilote switch.chaudiere
+    pile = cartes[0]["cards"]
+    k = next(k for k, c in enumerate(pile) if '"switch.chaudiere"' in json.dumps(c))
+    boutons = pile.pop(k)
+    # Carte ThSdb de la vue Chaudière, sans la carte entities du délai
+    vue = yaml.safe_load(open(VUE_CHAUDIERE, encoding="utf-8"))
+    thsdb = next(c for c in json_cartes(vue) if c.get("type") == "vertical-stack" and c.get("cards")
+                 and c["cards"][0].get("entity") == THSDB_EVEILLE)
+    thsdb = {"type": "vertical-stack", "cards": [c for c in thsdb["cards"] if c.get("type") != "entities"] + [boutons]}
+    cartes[:0] = [dict(TITRE_CHAUDIERE), thsdb, dict(TITRE_AUTRES)]
+
+
+def json_cartes(vue):
+    """Toutes les cartes de 1er niveau des sections d'une vue."""
+    return [c for s in vue.get("sections", []) for c in s.get("cards", [])]
+
+
 def vue_actionneurs():
     import json
     import yaml
@@ -1148,6 +1191,7 @@ def vue_actionneurs():
     cfg = json.load(open(EXPORT_ACCUEIL, encoding="utf-8"))["data"]["config"]
     vue = next(v for v in cfg["views"] if v.get("path") == VUE_ACTIONNEURS)
     cartes = vue["sections"][0]["cards"]
+    defait_bloc_chaudiere(cartes)
     for n in ACTIONNEURS:
         carte = yaml.safe_load(carte_actionneur(n))
         titre = carte["cards"][0]["title"]
@@ -1163,6 +1207,7 @@ def vue_actionneurs():
     i = next(i for i, c in enumerate(cartes) if LUMIERE_CAVE_ENTITE in json.dumps(c))
     cartes.insert(i, yaml.safe_load(CARTE_JOUR_NUIT_CAVE))
     sablier_appareils_verifies(cartes)
+    bloc_chaudiere(cartes)
     entete = (f"# Vue « {vue.get('title')} » du tableau Accueil (https://ha.jbil.org/dashboard-accueil/{VUE_ACTIONNEURS})\n"
               "# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_accueil + carte(s) des actionneurs.\n"
               "# Installation : tableau Accueil → ✏️ → vue Actionneurs → ⋮ → « Modifier en YAML » → remplacer par ce fichier.\n")

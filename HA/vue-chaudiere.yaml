@@ -1,0 +1,159 @@
+# Vue « Chaudière » du tableau Accueil (à coller dans l'éditeur YAML de la vue) — extraite de tableau-accueil-complet.yaml
+type: sections
+max_columns: 4
+title: Chaudière
+path: chaudiere
+icon: mdi:radiator
+sections:
+  - type: grid
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: vertical-stack
+                cards:
+                  - type: custom:mushroom-entity-card
+                    entity: sensor.coulsdb_del
+                    name: Chaudiere
+                    icon: mdi:fire
+                    card_mod:
+                      style: |
+                        ha-state-icon {
+                          color: {{ 'green' if states('sensor.coulsdb_del') == 'Allumee' else 'red' }} !important;
+                        }
+                        .shape {
+                          background: none !important;
+                        }
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:button-card
+                        entity: switch.chaudiere_enable
+                        name: ""
+                        show_name: false
+                        tap_action:
+                          action: toggle
+                        icon: |
+                          [[[return states['switch.chaudiere_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+                        styles:
+                          card:
+                            - height: 60px
+                            - background: |
+                                [[[return states['switch.chaudiere_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+                          icon:
+                            - color: |
+                                [[[return states['switch.chaudiere_enable'].state === 'on' ? 'green' : 'red']]]
+                      - type: custom:button-card
+                        entity: switch.chaudiere
+                        name: ""
+                        show_name: false
+                        tap_action:
+                          action: toggle
+                        icon: mdi:power
+                        styles:
+                          card:
+                            - height: 60px
+                            - background: |
+                                [[[return states['sensor.coulsdb_del'].state === 'Allumee' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+                          icon:
+                            - color: |
+                                [[[return states['sensor.coulsdb_del'].state === 'Allumee' ? 'green' : 'red']]]
+      # ThSdb (capteur de la DEL) : réveil / endormissement (packages/thsdb_sommeil.yaml)
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thsdb_eveille
+            primary: ThSdb (voyant chaudière)
+            secondary: |-
+              {%- set e = states('binary_sensor.thsdb_eveille') -%}
+              {%- set a = states('sensor.thsdb_commande_en_attente') -%}
+              {%- set r = states('sensor.thsdb_prochain_reveil') -%}
+              {%- if e == 'on' -%}Éveillé
+              {#- Endormissement automatique (packages/thsdb_sommeil.yaml) : mêmes conditions que l'automatisation -#}
+              {%- if state_attr('sensor.thsdb_config', 'sleepA') == 0 -%}
+              {%- if is_state('sensor.coulsdb_del', 'Allumee') %} · reste éveillé (chaudière allumée)
+              {%- elif not is_state('sensor.coulsdb_del', 'Eteinte') %} · reste éveillé (voyant chaudière inconnu)
+              {%- elif not is_state('climate.chaudiere_rdc', 'off') %} · reste éveillé (thermostat en chauffage)
+              {%- else -%}
+              {%- set d = (states('input_number.thsdb_delai_sommeil') | float(30)) * 60 -%}
+              {%- set c = states('sensor.thsdb_config') -%}
+              {%- set ts = [as_timestamp(states.sensor.coulsdb_del.last_changed), as_timestamp(states.climate.chaudiere_rdc.last_changed)]
+                   + ([as_timestamp(c)] if c not in ['unknown', 'unavailable', ''] else []) -%}
+              {%- set fin = (ts | max) + d -%}
+              {%- set s = fin - as_timestamp(now()) -%}
+              {%- if s > 0 %} · s'endort vers {{ fin | timestamp_custom('%H:%M') }} (dans {{ (s / 60) | round(0, 'ceil') | int }} min)
+              {%- else %} · endormissement imminent
+              {%- endif -%}
+              {%- endif -%}
+              {%- endif -%}
+              {%- elif e == 'off' -%}Endormi
+              {%- if r not in ['unknown', 'unavailable', ''] -%}
+              {%- set t = as_datetime(r) -%}
+              {%- set s = (t - now()).total_seconds() -%}
+              {%- if s > 0 %} · réveil vers {{ as_local(t).strftime('%H:%M') }} (dans {{ (s / 60) | round(0, 'ceil') | int }} min)
+              {%- elif s > -60 %} · réveil imminent
+              {%- else %} · réveil attendu depuis {{ (-s / 60) | int }} min
+              {%- endif -%}
+              {%- endif -%}
+              {%- else -%}Inconnu
+              {%- endif -%}
+              {%- if a not in ['aucune', 'unknown', 'unavailable', ''] %} · en attente : {{ a }}{% endif %}
+            icon: "{{ 'mdi:sleep-off' if is_state('binary_sensor.thsdb_eveille', 'on') else 'mdi:sleep' }}"
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-state-icon {
+                  color: {{ 'green' if is_state('binary_sensor.thsdb_eveille', 'on') else ('red' if is_state('binary_sensor.thsdb_eveille', 'off') else 'grey') }} !important;
+                }
+                .shape {
+                  background: none !important;
+                }
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Réveiller ThSdb
+                icon: mdi:sleep-off
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thsdb
+                    commande: "SET sleepA:0"
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Endormir ThSdb
+                icon: mdi:sleep
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: thsdb
+                    commande: "SET sleepA:1"
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+          - type: entities
+            entities:
+              - entity: input_number.thsdb_delai_sommeil
+                name: Délai avant endormissement
+      - type: thermostat
+        entity: climate.chaudiere_rdc
+      - type: entities
+        title: Programme chaudière RDC
+        entities:
+          - entity: switch.schedule_5cf4ab
+            name: Programme chaudière
+          - type: attribute
+            entity: switch.schedule_5cf4ab
+            attribute: next_trigger
+            name: "  ↳ Prochain déclenchement"
+            format: datetime
+      - type: custom:scheduler-card
+        title: Programmation chaudière RDC
+        include:
+          - climate.chaudiere_rdc
+        time_step: 15
+        show_header_toggle: false
+show_icon_and_title: true
+cards: []

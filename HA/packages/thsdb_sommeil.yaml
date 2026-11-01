@@ -1,0 +1,82 @@
+# ============================================================
+# Package : Sommeil de ThSdb (capteur de la DEL de la chaudière)
+#  - Boutons « Réveiller ThSdb » / « Endormir ThSdb » : vue Chaudière du tableau Accueil
+#    (script.noeud_commande : SET sleepA:0 / SET sleepA:1, commande retenue lue au prochain réveil du nœud)
+#  - Endormissement automatique : SET sleepA:1 quand, depuis au moins le délai réglé,
+#      * la DEL de la chaudière est éteinte (sensor.coulsdb_del = Eteinte),
+#      * le thermostat « Chaudière RDC » est à l'arrêt (climate.chaudiere_rdc = off),
+#      * ThSdb n'a pas répondu CONFIG (réveil demandé, GET...) : évite de le rendormir juste après « Réveiller »,
+#    seulement si ThSdb a le deep sleep inactif (sleepA = 0) et qu'aucune commande n'attend déjà.
+#  - Délai : input_number.thsdb_delai_sommeil (minutes, 30 par défaut)
+#  - sensor.thsdb_prochain_reveil : réveil estimé (trame DEEPSLEEP ON + durée annoncée), affiché sur la carte ThSdb
+# ============================================================
+
+input_number:
+  thsdb_delai_sommeil:
+    name: "ThSdb Délai avant endormissement"
+    icon: mdi:timer-sand
+    min: 5
+    max: 240
+    step: 5
+    unit_of_measurement: min
+    mode: box
+
+template:
+  # ---------- Prochain réveil estimé : heure de la trame DEEPSLEEP ON + durée annoncée ----------
+  # Trame : « ThSdb DEEPSLEEP ON 01/11/2026 10:32:05 600 Durée éveil : 2441 ms » (durée = 6e mot, en s)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/thermometre/state"
+        value_template: >-
+          {%- set m = value.split(' ') -%}
+          {{ 'ok' if m | length > 5 and m[0] | upper == 'THSDB' and m[1] | upper == 'DEEPSLEEP' and m[2] | upper == 'ON' else '' }}
+        payload: "ok"
+    sensor:
+      - name: "ThSdb Prochain réveil"
+        unique_id: thsdb_prochain_reveil
+        device_class: timestamp
+        icon: mdi:alarm
+        state: >-
+          {%- set d = trigger.payload.split(' ')[5] | int(0) -%}
+          {{ (now() + timedelta(seconds=d)).isoformat() if d > 0 else none }}
+
+automation:
+  - id: thsdb_endormissement_automatique
+    alias: ThSdb - Endormissement automatique (chaudière et thermostat à l'arrêt)
+    description: >-
+      Remet ThSdb en deep sleep quand la chaudière est éteinte et le thermostat à l'arrêt depuis le délai réglé.
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+    variables:
+      # Délai en secondes (30 min si le réglage est illisible)
+      delai: "{{ (states('input_number.thsdb_delai_sommeil') | float(30)) * 60 }}"
+    conditions:
+      # Deep sleep inactif sur ThSdb (dernière réponse CONFIG connue)
+      - condition: template
+        value_template: "{{ state_attr('sensor.thsdb_config', 'sleepA') == 0 }}"
+      # Pas de commande déjà en attente (script.noeud_commande la refuserait avec une notification à chaque minute)
+      - condition: template
+        value_template: "{{ states('sensor.thsdb_commande_en_attente') in ['aucune', 'unknown', 'unavailable', ''] }}"
+      # DEL de la chaudière éteinte depuis le délai
+      - condition: template
+        value_template: >-
+          {{ is_state('sensor.coulsdb_del', 'Eteinte')
+             and (now() - states.sensor.coulsdb_del.last_changed).total_seconds() >= delai }}
+      # Thermostat à l'arrêt depuis le délai
+      - condition: template
+        value_template: >-
+          {{ is_state('climate.chaudiere_rdc', 'off')
+             and (now() - states.climate.chaudiere_rdc.last_changed).total_seconds() >= delai }}
+      # Dernière réponse CONFIG (réveil demandé...) plus ancienne que le délai
+      - condition: template
+        value_template: >-
+          {%- set s = states('sensor.thsdb_config') -%}
+          {%- set t = as_datetime(s) if s not in ['unknown', 'unavailable', ''] else none -%}
+          {{ t is none or (now() - t).total_seconds() >= delai }}
+    actions:
+      - action: script.noeud_commande
+        data:
+          capteur: thsdb
+          commande: "SET sleepA:1"

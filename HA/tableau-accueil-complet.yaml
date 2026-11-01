@@ -207,8 +207,84 @@ views:
     sections:
       - type: grid
         cards:
+          - type: heading
+            heading: Chaudière
+            heading_style: title
+            icon: mdi:fire
           - type: vertical-stack
             cards:
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.thsdb_eveille
+                primary: ThSdb (voyant chaudière)
+                secondary: |-
+                  {%- set e = states('binary_sensor.thsdb_eveille') -%}
+                  {%- set a = states('sensor.thsdb_commande_en_attente') -%}
+                  {%- set r = states('sensor.thsdb_prochain_reveil') -%}
+                  {%- if e == 'on' -%}Éveillé
+                  {#- Endormissement automatique (packages/thsdb_sommeil.yaml) : mêmes conditions que l'automatisation -#}
+                  {%- if state_attr('sensor.thsdb_config', 'sleepA') == 0 -%}
+                  {%- if is_state('sensor.coulsdb_del', 'Allumee') %} · reste éveillé (chaudière allumée)
+                  {%- elif not is_state('sensor.coulsdb_del', 'Eteinte') %} · reste éveillé (voyant chaudière inconnu)
+                  {%- elif not is_state('climate.chaudiere_rdc', 'off') %} · reste éveillé (thermostat en chauffage)
+                  {%- else -%}
+                  {%- set d = (states('input_number.thsdb_delai_sommeil') | float(30)) * 60 -%}
+                  {%- set c = states('sensor.thsdb_config') -%}
+                  {%- set ts = [as_timestamp(states.sensor.coulsdb_del.last_changed), as_timestamp(states.climate.chaudiere_rdc.last_changed)]
+                       + ([as_timestamp(c)] if c not in ['unknown', 'unavailable', ''] else []) -%}
+                  {%- set fin = (ts | max) + d -%}
+                  {%- set s = fin - as_timestamp(now()) -%}
+                  {%- if s > 0 %} · s'endort vers {{ fin | timestamp_custom('%H:%M') }} (dans {{ (s / 60) | round(0, 'ceil') | int }} min)
+                  {%- else %} · endormissement imminent
+                  {%- endif -%}
+                  {%- endif -%}
+                  {%- endif -%}
+                  {%- elif e == 'off' -%}Endormi
+                  {%- if r not in ['unknown', 'unavailable', ''] -%}
+                  {%- set t = as_datetime(r) -%}
+                  {%- set s = (t - now()).total_seconds() -%}
+                  {%- if s > 0 %} · réveil vers {{ as_local(t).strftime('%H:%M') }} (dans {{ (s / 60) | round(0, 'ceil') | int }} min)
+                  {%- elif s > -60 %} · réveil imminent
+                  {%- else %} · réveil attendu depuis {{ (-s / 60) | int }} min
+                  {%- endif -%}
+                  {%- endif -%}
+                  {%- else -%}Inconnu
+                  {%- endif -%}
+                  {%- if a not in ['aucune', 'unknown', 'unavailable', ''] %} · en attente : {{ a }}{% endif %}
+                icon: '{{ ''mdi:sleep-off'' if is_state(''binary_sensor.thsdb_eveille'', ''on'') else ''mdi:sleep'' }}'
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-state-icon {
+                      color: {{ 'green' if is_state('binary_sensor.thsdb_eveille', 'on') else ('red' if is_state('binary_sensor.thsdb_eveille', 'off') else 'grey') }} !important;
+                    }
+                    .shape {
+                      background: none !important;
+                    }
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Réveiller ThSdb
+                    icon: mdi:sleep-off
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.noeud_commande
+                      data:
+                        capteur: thsdb
+                        commande: SET sleepA:0
+                    card_mod:
+                      style: 'ha-card { height: 60px !important; }'
+                  - type: button
+                    name: Endormir ThSdb
+                    icon: mdi:sleep
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.noeud_commande
+                      data:
+                        capteur: thsdb
+                        commande: SET sleepA:1
+                    card_mod:
+                      style: 'ha-card { height: 60px !important; }'
               - type: horizontal-stack
                 cards:
                   - type: vertical-stack
@@ -229,7 +305,7 @@ views:
                         cards:
                           - type: custom:button-card
                             entity: switch.chaudiere_enable
-                            name: ""
+                            name: ''
                             show_name: false
                             tap_action:
                               action: toggle
@@ -245,7 +321,7 @@ views:
                                     [[[return states['switch.chaudiere_enable'].state === 'on' ? 'green' : 'red']]]
                           - type: custom:button-card
                             entity: switch.chaudiere
-                            name: ""
+                            name: ''
                             show_name: false
                             tap_action:
                               action: toggle
@@ -258,11 +334,17 @@ views:
                               icon:
                                 - color: |
                                     [[[return states['sensor.coulsdb_del'].state === 'Allumee' ? 'green' : 'red']]]
+          - type: heading
+            heading: Autres actionneurs
+            heading_style: title
+            icon: mdi:toggle-switch
+          - type: vertical-stack
+            cards:
               - type: horizontal-stack
                 cards:
                   - type: custom:button-card
                     entity: switch.projecteur_enable
-                    name: ""
+                    name: ''
                     show_name: false
                     tap_action:
                       action: toggle
@@ -291,23 +373,53 @@ views:
                       icon:
                         - color: |
                             [[[return states['switch.projecteur'].state === 'on' ? 'green' : 'red']]]
-                  - type: custom:button-card
-                    entity: switch.guirlande
-                    name: Guirlande
-                    tap_action:
-                      action: toggle
-                    icon: mdi:string-lights
-                    styles:
-                      card:
-                        - height: 60px
-                        - background: |
-                            [[[return states['switch.guirlande'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
-                      icon:
-                        - color: |
-                            [[[return states['switch.guirlande'].state === 'on' ? 'green' : 'red']]]
+                  - type: conditional
+                    conditions:
+                      - condition: state
+                        entity: binary_sensor.guirlande_verification_en_cours
+                        state_not: 'on'
+                    card:
+                      type: custom:button-card
+                      entity: switch.guirlande
+                      name: Guirlande
+                      tap_action:
+                        action: toggle
+                      icon: mdi:string-lights
+                      styles:
+                        card:
+                          - height: 60px
+                          - background: |
+                              [[[return states['switch.guirlande'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+                        icon:
+                          - color: |
+                              [[[return states['switch.guirlande'].state === 'on' ? 'green' : 'red']]]
+                  - type: conditional
+                    conditions:
+                      - condition: state
+                        entity: binary_sensor.guirlande_verification_en_cours
+                        state: 'on'
+                    card:
+                      type: custom:button-card
+                      entity: binary_sensor.guirlande_verification_en_cours
+                      name: Guirlande
+                      icon: mdi:timer-sand
+                      spin: true
+                      show_state: false
+                      tap_action:
+                        action: none
+                      hold_action:
+                        action: none
+                      double_tap_action:
+                        action: none
+                      styles:
+                        card:
+                          - height: 60px
+                          - background: rgba(255,152,0,0.25)
+                        icon:
+                          - color: orange
                   - type: custom:button-card
                     entity: switch.guirlande_enable
-                    name: ""
+                    name: ''
                     show_name: false
                     tap_action:
                       action: toggle
@@ -353,18 +465,12 @@ views:
                   label:
                     - font-size: 15px
                     - font-weight: 600
-                    - color: |
-                        [[[
-                          if (!entity) return 'grey';
-                          if (entity.state === 'on') return 'green';
-                          if (entity.state === 'off') return 'red';
-                          return 'grey';
-                        ]]]                
+                    - color: "[[[\n  if (!entity) return 'grey';\n  if (entity.state === 'on') return 'green';\n  if (entity.state === 'off') return 'red';\n  return 'grey';\n]]]                \n"
               - type: horizontal-stack
                 cards:
                   - type: custom:button-card
                     entity: switch.chauffage_enable
-                    name: ""
+                    name: ''
                     show_name: false
                     tap_action:
                       action: toggle
@@ -395,7 +501,7 @@ views:
                             [[[return states['switch.chauffage'].state === 'on' ? 'green' : 'red']]]
                   - type: custom:button-card
                     entity: switch.chauffage_enable
-                    name: ""
+                    name: ''
                     show_name: false
                     tap_action:
                       action: toggle
@@ -421,6 +527,12 @@ views:
                     format: relative
                   - entity: sensor.noeud_commande_en_attente
                     name: Commande en attente
+                  - entity: sensor.noeud_version
+                    name: Firmware
+                  - type: attribute
+                    entity: sensor.noeud_version
+                    attribute: compilation
+                    name: Compilé le
               - type: markdown
                 content: |
                   {% set ip = states('sensor.c3_chauffage_sdb_ip') %}
@@ -448,7 +560,7 @@ views:
                         capteur: noeud
                         commande: STATUS
                     card_mod:
-                      style: "ha-card { height: 60px !important; }"
+                      style: 'ha-card { height: 60px !important; }'
                   - type: button
                     name: Annuler
                     icon: mdi:cancel
@@ -459,7 +571,7 @@ views:
                         capteur: noeud
                         commande: ANNULER
                     card_mod:
-                      style: "ha-card { height: 60px !important; }"
+                      style: 'ha-card { height: 60px !important; }'
                   - type: button
                     name: Redémarrer
                     icon: mdi:restart
@@ -493,7 +605,7 @@ views:
                       data:
                         capteur: noeud
                     card_mod:
-                      style: "ha-card { height: 60px !important; }"
+                      style: 'ha-card { height: 60px !important; }'
                   - type: button
                     name: Nettoyer retenu
                     icon: mdi:broom
@@ -505,7 +617,7 @@ views:
                       confirmation:
                         text: Effacer le message retenu sur home/confnoeud/command ?
                     card_mod:
-                      style: "ha-card { height: 60px !important; }"
+                      style: 'ha-card { height: 60px !important; }'
           - type: entities
             title: Programmes chauffage SDB
             show_header_toggle: true
@@ -515,35 +627,35 @@ views:
               - type: attribute
                 entity: switch.schedule_lundi_q1
                 attribute: next_trigger
-                name: "  ↳ Prochain déclenchement"
+                name: '  ↳ Prochain déclenchement'
                 format: datetime
               - entity: switch.schedule_mardi_mercredi_q1
                 name: Mardi Mercredi Q1
               - type: attribute
                 entity: switch.schedule_mardi_mercredi_q1
                 attribute: next_trigger
-                name: "  ↳ Prochain déclenchement"
+                name: '  ↳ Prochain déclenchement'
                 format: datetime
               - entity: switch.schedule_mardi_mercredi_q2
                 name: Mardi Mercredi Q2
               - type: attribute
                 entity: switch.schedule_mardi_mercredi_q2
                 attribute: next_trigger
-                name: "  ↳ Prochain déclenchement"
+                name: '  ↳ Prochain déclenchement'
                 format: datetime
               - entity: switch.schedule_jeudi
                 name: Jeudi
               - type: attribute
                 entity: switch.schedule_jeudi
                 attribute: next_trigger
-                name: "  ↳ Prochain déclenchement"
+                name: '  ↳ Prochain déclenchement'
                 format: datetime
               - entity: switch.schedule_vendredi_q2
                 name: Vendredi Q2
               - type: attribute
                 entity: switch.schedule_vendredi_q2
                 attribute: next_trigger
-                name: "  ↳ Prochain déclenchement"
+                name: '  ↳ Prochain déclenchement'
                 format: datetime
           - type: custom:scheduler-card
             title: Programmation chauffage SDB
@@ -591,7 +703,7 @@ views:
             cards:
               - type: custom:button-card
                 entity: switch.lumiere_cave_enable
-                name: ""
+                name: ''
                 show_name: false
                 tap_action:
                   action: toggle
@@ -681,6 +793,85 @@ views:
                               icon:
                                 - color: |
                                     [[[return states['sensor.coulsdb_del'].state === 'Allumee' ? 'green' : 'red']]]
+          # ThSdb (capteur de la DEL) : réveil / endormissement (packages/thsdb_sommeil.yaml)
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.thsdb_eveille
+                primary: ThSdb (voyant chaudière)
+                secondary: |-
+                  {%- set e = states('binary_sensor.thsdb_eveille') -%}
+                  {%- set a = states('sensor.thsdb_commande_en_attente') -%}
+                  {%- set r = states('sensor.thsdb_prochain_reveil') -%}
+                  {%- if e == 'on' -%}Éveillé
+                  {#- Endormissement automatique (packages/thsdb_sommeil.yaml) : mêmes conditions que l'automatisation -#}
+                  {%- if state_attr('sensor.thsdb_config', 'sleepA') == 0 -%}
+                  {%- if is_state('sensor.coulsdb_del', 'Allumee') %} · reste éveillé (chaudière allumée)
+                  {%- elif not is_state('sensor.coulsdb_del', 'Eteinte') %} · reste éveillé (voyant chaudière inconnu)
+                  {%- elif not is_state('climate.chaudiere_rdc', 'off') %} · reste éveillé (thermostat en chauffage)
+                  {%- else -%}
+                  {%- set d = (states('input_number.thsdb_delai_sommeil') | float(30)) * 60 -%}
+                  {%- set c = states('sensor.thsdb_config') -%}
+                  {%- set ts = [as_timestamp(states.sensor.coulsdb_del.last_changed), as_timestamp(states.climate.chaudiere_rdc.last_changed)]
+                       + ([as_timestamp(c)] if c not in ['unknown', 'unavailable', ''] else []) -%}
+                  {%- set fin = (ts | max) + d -%}
+                  {%- set s = fin - as_timestamp(now()) -%}
+                  {%- if s > 0 %} · s'endort vers {{ fin | timestamp_custom('%H:%M') }} (dans {{ (s / 60) | round(0, 'ceil') | int }} min)
+                  {%- else %} · endormissement imminent
+                  {%- endif -%}
+                  {%- endif -%}
+                  {%- endif -%}
+                  {%- elif e == 'off' -%}Endormi
+                  {%- if r not in ['unknown', 'unavailable', ''] -%}
+                  {%- set t = as_datetime(r) -%}
+                  {%- set s = (t - now()).total_seconds() -%}
+                  {%- if s > 0 %} · réveil vers {{ as_local(t).strftime('%H:%M') }} (dans {{ (s / 60) | round(0, 'ceil') | int }} min)
+                  {%- elif s > -60 %} · réveil imminent
+                  {%- else %} · réveil attendu depuis {{ (-s / 60) | int }} min
+                  {%- endif -%}
+                  {%- endif -%}
+                  {%- else -%}Inconnu
+                  {%- endif -%}
+                  {%- if a not in ['aucune', 'unknown', 'unavailable', ''] %} · en attente : {{ a }}{% endif %}
+                icon: "{{ 'mdi:sleep-off' if is_state('binary_sensor.thsdb_eveille', 'on') else 'mdi:sleep' }}"
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-state-icon {
+                      color: {{ 'green' if is_state('binary_sensor.thsdb_eveille', 'on') else ('red' if is_state('binary_sensor.thsdb_eveille', 'off') else 'grey') }} !important;
+                    }
+                    .shape {
+                      background: none !important;
+                    }
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Réveiller ThSdb
+                    icon: mdi:sleep-off
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.noeud_commande
+                      data:
+                        capteur: thsdb
+                        commande: "SET sleepA:0"
+                    card_mod:
+                      style: "ha-card { height: 60px !important; }"
+                  - type: button
+                    name: Endormir ThSdb
+                    icon: mdi:sleep
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.noeud_commande
+                      data:
+                        capteur: thsdb
+                        commande: "SET sleepA:1"
+                    card_mod:
+                      style: "ha-card { height: 60px !important; }"
+              - type: entities
+                entities:
+                  - entity: input_number.thsdb_delai_sommeil
+                    name: Délai avant endormissement
           - type: thermostat
             entity: climate.chaudiere_rdc
           - type: entities
