@@ -2,6 +2,8 @@
 # + carte « Lumière cave » (état mesuré par ThCave : sensor.jncave_etat Jour = Allumée, Nuit = Éteinte) à côté de Chaudière et Cuve.
 # 31/10/2026 : section Alertes = Chaudière / Cuve / Lumière cave, puis NewNas / BigNas, puis pastilles éveillé / endormi
 # des 5 nœuds capteurs (binary_sensor.<id>_eveille : vert = éveillé, rouge = endormi, gris = inconnu ; clic → Nœuds capteurs).
+# 09/11/2026 : + pastille NoeudChauffageSdb après ThSdb : couleur = présence du C3 (binary_sensor.c3_chauffage_sdb, ALIVE) vert / rouge / gris,
+# texte = état du chauffage confirmé par le CYD (switch.chauffage : Marche / Arrêt / ?) ; clic → vue Actionneurs.
 # À coller : ✏️ → vue Accueil → ⋮ → « Modifier en YAML » → tout remplacer.
 type: sections
 max_columns: 4
@@ -137,6 +139,8 @@ sections:
         chips:
           - type: template
             entity: binary_sensor.thremise_eveille
+            icon: mdi:circle-medium
+            icon_color: "{{ 'green' if is_state('binary_sensor.thremise_eveille', 'on') else ('red' if is_state('binary_sensor.thremise_eveille', 'off') else 'grey') }}"
             content: ThRemise
             tap_action:
               action: navigate
@@ -144,12 +148,13 @@ sections:
             card_mod:
               style: |
                 ha-card {
-                  --chip-background: {{ 'green' if is_state('binary_sensor.thremise_eveille', 'on') else ('red' if is_state('binary_sensor.thremise_eveille', 'off') else 'dimgrey') }};
-                  --primary-text-color: white;
-                  font-weight: bold;
+                  --chip-background: {{ 'rgba(76,175,80,0.2)' if is_state('binary_sensor.thremise_eveille', 'on') else ('rgba(229,115,115,0.2)' if is_state('binary_sensor.thremise_eveille', 'off') else 'rgba(158,158,158,0.2)') }};
+                  --primary-text-color: {{ '#4caf50' if is_state('binary_sensor.thremise_eveille', 'on') else ('#e57373' if is_state('binary_sensor.thremise_eveille', 'off') else '#9e9e9e') }};
                 }
           - type: template
             entity: binary_sensor.thcave_eveille
+            icon: mdi:circle-medium
+            icon_color: "{{ 'green' if is_state('binary_sensor.thcave_eveille', 'on') else ('red' if is_state('binary_sensor.thcave_eveille', 'off') else 'grey') }}"
             content: ThCave
             tap_action:
               action: navigate
@@ -157,12 +162,13 @@ sections:
             card_mod:
               style: |
                 ha-card {
-                  --chip-background: {{ 'green' if is_state('binary_sensor.thcave_eveille', 'on') else ('red' if is_state('binary_sensor.thcave_eveille', 'off') else 'dimgrey') }};
-                  --primary-text-color: white;
-                  font-weight: bold;
+                  --chip-background: {{ 'rgba(76,175,80,0.2)' if is_state('binary_sensor.thcave_eveille', 'on') else ('rgba(229,115,115,0.2)' if is_state('binary_sensor.thcave_eveille', 'off') else 'rgba(158,158,158,0.2)') }};
+                  --primary-text-color: {{ '#4caf50' if is_state('binary_sensor.thcave_eveille', 'on') else ('#e57373' if is_state('binary_sensor.thcave_eveille', 'off') else '#9e9e9e') }};
                 }
           - type: template
             entity: binary_sensor.thchrdc_eveille
+            icon: mdi:circle-medium
+            icon_color: "{{ 'green' if is_state('binary_sensor.thchrdc_eveille', 'on') else ('red' if is_state('binary_sensor.thchrdc_eveille', 'off') else 'grey') }}"
             content: ThChRDC
             tap_action:
               action: navigate
@@ -170,12 +176,13 @@ sections:
             card_mod:
               style: |
                 ha-card {
-                  --chip-background: {{ 'green' if is_state('binary_sensor.thchrdc_eveille', 'on') else ('red' if is_state('binary_sensor.thchrdc_eveille', 'off') else 'dimgrey') }};
-                  --primary-text-color: white;
-                  font-weight: bold;
+                  --chip-background: {{ 'rgba(76,175,80,0.2)' if is_state('binary_sensor.thchrdc_eveille', 'on') else ('rgba(229,115,115,0.2)' if is_state('binary_sensor.thchrdc_eveille', 'off') else 'rgba(158,158,158,0.2)') }};
+                  --primary-text-color: {{ '#4caf50' if is_state('binary_sensor.thchrdc_eveille', 'on') else ('#e57373' if is_state('binary_sensor.thchrdc_eveille', 'off') else '#9e9e9e') }};
                 }
           - type: template
             entity: binary_sensor.thch1er_eveille
+            icon: mdi:circle-medium
+            icon_color: "{{ 'green' if is_state('binary_sensor.thch1er_eveille', 'on') else ('red' if is_state('binary_sensor.thch1er_eveille', 'off') else 'grey') }}"
             content: ThCh1er
             tap_action:
               action: navigate
@@ -183,12 +190,13 @@ sections:
             card_mod:
               style: |
                 ha-card {
-                  --chip-background: {{ 'green' if is_state('binary_sensor.thch1er_eveille', 'on') else ('red' if is_state('binary_sensor.thch1er_eveille', 'off') else 'dimgrey') }};
-                  --primary-text-color: white;
-                  font-weight: bold;
+                  --chip-background: {{ 'rgba(76,175,80,0.2)' if is_state('binary_sensor.thch1er_eveille', 'on') else ('rgba(229,115,115,0.2)' if is_state('binary_sensor.thch1er_eveille', 'off') else 'rgba(158,158,158,0.2)') }};
+                  --primary-text-color: {{ '#4caf50' if is_state('binary_sensor.thch1er_eveille', 'on') else ('#e57373' if is_state('binary_sensor.thch1er_eveille', 'off') else '#9e9e9e') }};
                 }
           - type: template
             entity: binary_sensor.thsdb_eveille
+            icon: mdi:circle-medium
+            icon_color: "{{ 'green' if is_state('binary_sensor.thsdb_eveille', 'on') else ('red' if is_state('binary_sensor.thsdb_eveille', 'off') else 'grey') }}"
             content: ThSdb
             tap_action:
               action: navigate
@@ -196,7 +204,20 @@ sections:
             card_mod:
               style: |
                 ha-card {
-                  --chip-background: {{ 'green' if is_state('binary_sensor.thsdb_eveille', 'on') else ('red' if is_state('binary_sensor.thsdb_eveille', 'off') else 'dimgrey') }};
-                  --primary-text-color: white;
-                  font-weight: bold;
+                  --chip-background: {{ 'rgba(76,175,80,0.2)' if is_state('binary_sensor.thsdb_eveille', 'on') else ('rgba(229,115,115,0.2)' if is_state('binary_sensor.thsdb_eveille', 'off') else 'rgba(158,158,158,0.2)') }};
+                  --primary-text-color: {{ '#4caf50' if is_state('binary_sensor.thsdb_eveille', 'on') else ('#e57373' if is_state('binary_sensor.thsdb_eveille', 'off') else '#9e9e9e') }};
+                }
+          - type: template
+            entity: binary_sensor.c3_chauffage_sdb
+            icon: mdi:radiator
+            icon_color: "{{ 'green' if is_state('binary_sensor.c3_chauffage_sdb', 'on') else ('red' if is_state('binary_sensor.c3_chauffage_sdb', 'off') else 'grey') }}"
+            content: "NoeudChauffageSdb · {{ 'Marche' if is_state('switch.chauffage', 'on') else ('Arrêt' if is_state('switch.chauffage', 'off') else '?') }}"
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-accueil/lumieres
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-background: {{ 'rgba(76,175,80,0.2)' if is_state('binary_sensor.c3_chauffage_sdb', 'on') else ('rgba(229,115,115,0.2)' if is_state('binary_sensor.c3_chauffage_sdb', 'off') else 'rgba(158,158,158,0.2)') }};
+                  --primary-text-color: {{ '#4caf50' if is_state('binary_sensor.c3_chauffage_sdb', 'on') else ('#e57373' if is_state('binary_sensor.c3_chauffage_sdb', 'off') else '#9e9e9e') }};
                 }

@@ -7,6 +7,7 @@
 #      * le thermostat « Chaudière RDC » est à l'arrêt (climate.chaudiere_rdc = off),
 #      * ThSdb n'a pas répondu CONFIG (réveil demandé, GET...) : évite de le rendormir juste après « Réveiller »,
 #    seulement si ThSdb a le deep sleep inactif (sleepA = 0) et qu'aucune commande n'attend déjà.
+#  - Réveil automatique : SET sleepA:0 à chaque demande d'allumage de la chaudière (ON, ON_FORCE, ONR)
 #  - Délai : input_number.thsdb_delai_sommeil (minutes, 30 par défaut)
 #  - sensor.thsdb_prochain_reveil : réveil estimé (trame DEEPSLEEP ON + durée annoncée), affiché sur la carte ThSdb
 # ============================================================
@@ -41,6 +42,82 @@ template:
           {{ (now() + timedelta(seconds=d)).isoformat() if d > 0 else none }}
 
 automation:
+  # ---------- Réveil automatique de ThSdb à chaque demande d'allumage de la chaudière ----------
+  # Demandes vues sur home/chaudiere/command : ON (bouton HA), ON_FORCE (thermostat, programmation, automatisations)
+  # et ONR (confirmation du CYD, donc aussi un allumage fait sur l'écran du CYD).
+  # L'allumage n'attend pas le réveil (ThSdb lira « SET sleepA:0 » à la fin de son sommeil en cours).
+  #  - « Réveiller » déjà en attente                     -> rien
+  #  - « Endormir » en attente (SET sleepA:1)            -> annulée, puis « Réveiller » si le deep sleep est actif
+  #  - autre commande en attente et ThSdb endormi        -> rien envoyé, notification
+  #  - ThSdb en deep sleep (sleepA = 1), rien en attente -> « Réveiller »
+  #  - ThSdb éveillé (sleepA = 0), rien en attente       -> rien
+  - id: thsdb_reveil_allumage_chaudiere
+    alias: ThSdb - Réveil à l'allumage de la chaudière
+    description: >-
+      Demande le réveil de ThSdb (SET sleepA:0) quand l'allumage de la chaudière est demandé (ON, ON_FORCE ou ONR).
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: mqtt
+        topic: "home/chaudiere/command"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.payload | trim | upper in ['ON', 'ON_FORCE', 'ONR'] }}"
+    variables:
+      attente: "{{ states('sensor.thsdb_commande_en_attente') | trim }}"
+      rien_en_attente: "{{ attente in ['aucune', 'unknown', 'unavailable', ''] }}"
+      reveil_en_attente: "{{ attente is match('(?i)^SET\\s+sleepA:0$') }}"
+      endormir_en_attente: "{{ attente is match('(?i)^SET\\s+sleepA:1$') }}"
+    actions:
+      - choose:
+          # « Réveiller » déjà en attente : rien à faire
+          - conditions:
+              - condition: template
+                value_template: "{{ reveil_en_attente }}"
+            sequence:
+              - stop: "Réveil déjà demandé"
+          # « Endormir » en attente : l'annuler, puis réveiller si le deep sleep est actif
+          - conditions:
+              - condition: template
+                value_template: "{{ endormir_en_attente }}"
+            sequence:
+              - action: script.noeud_commande
+                data:
+                  capteur: thsdb
+                  commande: ANNULER
+              # Attendre que l'effacement du message retenu soit vu par HA (sinon noeud_commande refuserait)
+              - wait_template: "{{ states('sensor.thsdb_commande_en_attente') in ['aucune', 'unknown', 'unavailable', ''] }}"
+                timeout: "00:00:15"
+                continue_on_timeout: false
+              - if:
+                  - condition: template
+                    value_template: "{{ state_attr('sensor.thsdb_config', 'sleepA') == 1 }}"
+                then:
+                  - action: script.noeud_commande
+                    data:
+                      capteur: thsdb
+                      commande: "SET sleepA:0"
+          # Autre commande en attente et ThSdb endormi : ne rien écraser, prévenir
+          - conditions:
+              - condition: template
+                value_template: "{{ not rien_en_attente and state_attr('sensor.thsdb_config', 'sleepA') == 1 }}"
+            sequence:
+              - action: persistent_notification.create
+                data:
+                  title: "ThSdb non réveillé"
+                  message: >-
+                    Allumage de la chaudière demandé, mais la commande « {{ attente }} » attend déjà ThSdb :
+                    réveil non demandé. Utilisez le bouton « Réveiller ThSdb » une fois cette commande lue (ou annulée).
+          # Deep sleep actif, rien en attente : réveiller
+          - conditions:
+              - condition: template
+                value_template: "{{ rien_en_attente and state_attr('sensor.thsdb_config', 'sleepA') == 1 }}"
+            sequence:
+              - action: script.noeud_commande
+                data:
+                  capteur: thsdb
+                  commande: "SET sleepA:0"
+
   - id: thsdb_endormissement_automatique
     alias: ThSdb - Endormissement automatique (chaudière et thermostat à l'arrêt)
     description: >-
