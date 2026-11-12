@@ -148,6 +148,8 @@ public:
   void updatePastilleChauffageSb();
   // Jour / nuit de la cave sur le bouton Cave (série 4) : couleur de la pastille (voir CMyBouton::mfCouleurPastille)
   void setCouleurPastilleLumiereCave(std::function<int()> f) { mBtnLumiereCave.mfCouleurPastille = f; }
+  // Même mesure pour la couleur du bouton Cave : jour = vert, nuit = rouge, inconnu = gris clair (voir CMyBouton::mfEtatMesure)
+  void setEtatMesureLumiereCave(std::function<int()> f) { mBtnLumiereCave.mfEtatMesure = f; }
   void updatePastilleLumiereCave();
   void updateSleepTimeout(int32_t st);
   //String setLastStatusMessage(String& s);

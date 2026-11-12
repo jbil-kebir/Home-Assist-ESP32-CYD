@@ -81,6 +81,13 @@ void setup_ThCave() {
       int etat = mRemoteJnCave.getLastEtat();
       return (etat == 1) ? TFT_YELLOW : (etat == 0) ? TFT_NAVY : TFT_LIGHTGREY;
   });
+  // Couleur du bouton Cave d'après la même mesure (la prise 433 MHz n'a pas de retour : l'état mémorisé n'est que la
+  // dernière commande) : pastille jour <=> bouton vert, pastille nuit <=> bouton rouge, pastille grise <=> bouton gris
+  ecran.setEtatMesureLumiereCave([]() -> int {
+      if (mRemoteJnCave.loop() == -10) return -1;
+      int etat = mRemoteJnCave.getLastEtat();
+      return (etat == 1 || etat == 0) ? etat : -1;
+  });
 
   mRemoteThCave.setonEquipementCallback([](const String& nom, const String& ip) -> int {
       return ajouterControleur(nom, ip, mRemoteThCave.getWatchdogIntervalle()); // Retiré de la série 5 au-delà de son watchdog

@@ -1054,10 +1054,10 @@ cards:
 # vue a été modifiée dans HA) + la carte de chaque actionneur, placée juste après la pile des boutons (remplacée si présente).
 EXPORT_ACCUEIL = os.path.join(HA, ".storage", "lovelace.dashboard_accueil")
 VUE_ACTIONNEURS = "lumieres"
-# Bouton de la lumière de la cave (switch.lumiere_cave / switch.lumiere_cave_enable de configuration.yaml),
-# même présentation que le projecteur : cadenas (ENABLE / DISABLE) + bouton (ON / OFF)
+# Modèle d'un appareil 433 MHz du CYD (écrit pour la lumière de la cave : switch.lumiere_cave / switch.lumiere_cave_enable
+# de configuration.yaml), même présentation que le projecteur : cadenas (ENABLE / DISABLE) + bouton (ON / OFF)
 LUMIERE_CAVE_ENTITE = "switch.lumiere_cave"
-CARTE_LUMIERE_CAVE = """
+CARTE_APPAREIL_433 = """
 type: horizontal-stack
 cards:
   - type: custom:button-card
@@ -1093,10 +1093,20 @@ cards:
             [[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]
 """
 # Bouton du chauffage de la chambre du rez-de-chaussée (switch.chauffage_rdc / switch.chauffage_rdc_enable de
-# configuration.yaml), copie de la lumière cave : cadenas (ENABLE / DISABLE) + bouton (ON / OFF)
+# configuration.yaml) : le modèle, couleur du bouton = état de l'interrupteur (dernière commande)
 CHAUFFAGE_RDC_ENTITE = "switch.chauffage_rdc"
-CARTE_CHAUFFAGE_RDC = CARTE_LUMIERE_CAVE.replace("switch.lumiere_cave", CHAUFFAGE_RDC_ENTITE) \
+CARTE_CHAUFFAGE_RDC = CARTE_APPAREIL_433.replace("switch.lumiere_cave", CHAUFFAGE_RDC_ENTITE) \
     .replace("name: Lumière cave", "name: Chauffage RdC").replace("icon: mdi:lightbulb", "icon: mdi:radiator")
+# Lumière de la cave : la prise n'a pas de retour (switch.lumiere_cave = dernière commande, peut être fausse) ; couleur
+# du bouton = état MESURÉ par ThCave (sensor.jncave_etat), comme sa pastille sur le CYD : Jour = vert, Nuit = rouge,
+# sinon gris. Le cadenas et l'action (bascule de switch.lumiere_cave) sont inchangés.
+_JN = "(states['sensor.jncave_etat'] ? states['sensor.jncave_etat'].state : '')"
+CARTE_LUMIERE_CAVE = CARTE_APPAREIL_433 \
+    .replace("[[[return states['switch.lumiere_cave'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]",
+             "[[[const e = " + _JN + "; return e === 'Jour' ? 'rgba(0,200,0,0.2)' : e === 'Nuit' ? 'rgba(200,0,0,0.2)' : 'rgba(128,128,128,0.2)']]]") \
+    .replace("[[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]",
+             "[[[const e = " + _JN + "; return e === 'Jour' ? 'green' : e === 'Nuit' ? 'red' : 'grey']]]")
+assert CARTE_LUMIERE_CAVE.count("sensor.jncave_etat") == 4 and "states['switch.lumiere_cave'].state" not in CARTE_LUMIERE_CAVE
 # Indicateur jour / nuit de la cave (sensor.jncave_etat / sensor.jncave_eclairement de configuration.yaml), juste
 # au-dessus du bouton de la lumière cave : même présentation que l'indicateur « C3 » au-dessus du chauffage SdB
 JOUR_NUIT_CAVE_ENTITE = "sensor.jncave_etat"
@@ -1204,9 +1214,13 @@ def vue_actionneurs():
         cartes[:] = [c for c in cartes if not (c.get("type") == "vertical-stack" and c.get("cards")
                                               and titre in (c["cards"][0].get("title"), c["cards"][0].get("heading")))]
         cartes.insert(1, carte)
-    # Lumière cave (prise 433 MHz du CYD) : cadenas + bouton comme le projecteur, tout en bas (peu utilisée)
-    if not any(LUMIERE_CAVE_ENTITE in json.dumps(c) for c in cartes):
+    # Lumière cave (prise 433 MHz du CYD) : cadenas + bouton comme le projecteur, tout en bas (peu utilisée) ;
+    # remplacée si présente (couleur d'après la mesure jour / nuit), ajoutée sinon
+    i = next((i for i, c in enumerate(cartes) if LUMIERE_CAVE_ENTITE in json.dumps(c)), None)
+    if i is None:
         cartes.append(yaml.safe_load(CARTE_LUMIERE_CAVE))
+    else:
+        cartes[i] = yaml.safe_load(CARTE_LUMIERE_CAVE)
     # Jour / nuit de la cave : juste au-dessus de la lumière cave (remplacé si présent)
     cartes[:] = [c for c in cartes if c.get("entity") != JOUR_NUIT_CAVE_ENTITE]
     i = next(i for i, c in enumerate(cartes) if LUMIERE_CAVE_ENTITE in json.dumps(c))

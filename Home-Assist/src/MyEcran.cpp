@@ -280,10 +280,10 @@ void CEcran::updatePastilleChauffageSb() {
   if (mucSerieAffichageEnCours < 3)
     mBtnChauffageON.drawPastille();
 }
-// Pastille jour / nuit de la cave sur le bouton Cave (série 4 seulement)
+// Jour / nuit de la cave : bouton Cave entier redessiné (sa couleur ET sa pastille suivent la mesure), série 4 seulement
 void CEcran::updatePastilleLumiereCave() {
   if (mBtnLumiereCave.estVisibleEnSerie(mucSerieAffichageEnCours))
-    mBtnLumiereCave.drawPastille();
+    mBtnLumiereCave.draw();
 }
 
 

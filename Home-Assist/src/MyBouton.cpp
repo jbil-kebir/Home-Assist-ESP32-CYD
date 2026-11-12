@@ -38,6 +38,10 @@ void CMyBouton::draw() {
 
     setActif(mDevice->active);
     setOnOff(mDevice->etat);
+    if (mfEtatMesure && mbActif) {
+        int etatMesure = mfEtatMesure();
+        muiColor = (etatMesure == 1) ? COULEUR_BTN_ON : (etatMesure == 0) ? COULEUR_BTN_OFF : TFT_LIGHTGREY;
+    }
 
     mTft.fillRoundRect(muiPosX, muiPosY, muiWidth, muiHight, 8, muiColor);
     mTft.drawRoundRect(muiPosX, muiPosY, muiWidth, muiHight, 8, TFT_WHITE);

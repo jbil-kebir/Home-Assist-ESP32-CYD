@@ -1,5 +1,5 @@
 # Tableau « Accueil » COMPLET (6 vues) : export .storage/lovelace.dashboard_accueil du 12/11/2026
-# + vue Actionneurs de vue-actionneurs.yaml (carte Chauffage RdC).
+# + vue Actionneurs de vue-actionneurs.yaml (carte Chauffage RdC, couleur de Lumière cave selon sensor.jncave_etat).
 # Installation : tableau Accueil → ✏️ → ⋮ → « Éditeur de configuration brute » → tout remplacer par ce fichier.
 views:
 - type: sections
@@ -775,10 +775,10 @@ views:
           card:
           - height: 60px
           - background: |
-              [[[return states['switch.lumiere_cave'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+              [[[const e = (states['sensor.jncave_etat'] ? states['sensor.jncave_etat'].state : ''); return e === 'Jour' ? 'rgba(0,200,0,0.2)' : e === 'Nuit' ? 'rgba(200,0,0,0.2)' : 'rgba(128,128,128,0.2)']]]
           icon:
           - color: |
-              [[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]
+              [[[const e = (states['sensor.jncave_etat'] ? states['sensor.jncave_etat'].state : ''); return e === 'Jour' ? 'green' : e === 'Nuit' ? 'red' : 'grey']]]
   show_icon_and_title: true
   cards: []
 - type: sections

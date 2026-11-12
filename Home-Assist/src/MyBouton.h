@@ -38,6 +38,10 @@ class CMyBouton : public CMyBoutonBase {
         // Variante : couleur TFT de la pastille fournie directement (prioritaire sur mfEtatPastille), -1 : pas de pastille
         std::function<int()> mfCouleurPastille = nullptr;
         void drawPastille();
+        // Couleur du bouton d'après un état MESURÉ au lieu de la dernière commande (appareil sans retour, ex. lumière
+        // cave mesurée par JnCave) : 1 : vert (ON), 0 : rouge (OFF), -1 : gris clair (inconnu). Bouton désactivé
+        // (cadenas) : gris foncé, comme les autres. Non définie : couleur selon mDevice->etat.
+        std::function<int()> mfEtatMesure = nullptr;
 
         void draw();
         void draw(unsigned int color);
