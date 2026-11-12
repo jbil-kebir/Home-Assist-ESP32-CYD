@@ -59,7 +59,8 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   // === APPAREILS 433 MHz ===
   CRCDevice *projecteur=nullptr;
   CRCDevice  *guirlande=nullptr;
-  CRCDevice  *lumiereCave=nullptr; // Bouton « Cave » de l'écran + Home Assistant (main_lumierecave.cpp)
+  CRCDevice  *lumiereCave=nullptr; // Bouton « Cave » de l'écran (série 4) + Home Assistant (main_lumierecave.cpp)
+  CRCDevice  *chauffageRdc=nullptr; // Bouton « Ch.RdC » de l'écran + Home Assistant (main_chauffagerdc.cpp)
 //  CRCDevice  *chauffageSb=nullptr;
   CNoeudChauffageIRSound  *chauffageSb=nullptr;
 
@@ -75,6 +76,7 @@ std::vector<CIPModule> *mvsEsclaves=nullptr; // Liste des modules capteurs et ef
   CRemoteRCDevice *mRemoteProjecteur=nullptr;
   CRemoteRCDevice *mRemoteGuirlande=nullptr;
   CRemoteRCDevice *mRemoteLumiereCave=nullptr; // Bouton « Cave » d'un CYD auxiliaire (main_lumierecave.cpp)
+  CRemoteRCDevice *mRemoteChauffageRdc=nullptr; // Bouton « Ch.RdC » d'un CYD auxiliaire (main_chauffagerdc.cpp)
   CRemoteNoeudChauffageIRSound *mRemoteChauffage=nullptr;
 //  CRemoteRCDevice *mRemoteChauffage=nullptr;
   CRemoteThermo *mRemoteThMain=nullptr;

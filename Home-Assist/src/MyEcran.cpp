@@ -13,6 +13,7 @@
     mBtnGuirlande(cfg, tft, touch, BOUTON_G_X, BOUTON_G_Y, BOUTON_G_W, BOUTON_G_H, TFT_DARKGREY, BOUTON_G_N),
     mBtnChauffageON(cfg, tft, touch, BOUTON_SB_ON_X, BOUTON_SB_ON_Y, BOUTON_SB_ON_W, BOUTON_SB_ON_H, TFT_DARKGREY, BOUTON_SB_ON_N),
     mBtnLumiereCave(cfg, tft, touch, BOUTON_LC_X, BOUTON_LC_Y, BOUTON_LC_W, BOUTON_LC_H, TFT_DARKGREY, BOUTON_LC_N),
+    mBtnChauffageRdc(cfg, tft, touch, BOUTON_CR_X, BOUTON_CR_Y, BOUTON_CR_W, BOUTON_CR_H, TFT_DARKGREY, BOUTON_CR_N),
     mBtnChaudiereON(cfg, tft, touch, BOUTON_ON_X, BOUTON_ON_Y, BOUTON_ON_W, BOUTON_ON_H, TFT_DARKGREY, BOUTON_ON_N),
     mBtnChaudiereOFF(cfg, tft, touch, BOUTON_OFF_X, BOUTON_OFF_Y, BOUTON_OFF_W, BOUTON_OFF_H, TFT_DARKGREY, BOUTON_OFF_N),
 
@@ -20,6 +21,7 @@
     mBtnGuirlandeActif(cfg, tft, touch, BOUTON_GA_X, BOUTON_GA_Y, BOUTON_GA_W, BOUTON_GA_H, TFT_GREENYELLOW, BOUTON_GA_N),
     mBtnChauffageONActif(cfg, tft, touch, BOUTON_SBA_ON_X, BOUTON_SBA_ON_Y, BOUTON_SBA_ON_W, BOUTON_SBA_ON_H, TFT_GREENYELLOW, BOUTON_SBA_ON_N),
     mBtnLumiereCaveActif(cfg, tft, touch, BOUTON_LCA_X, BOUTON_LCA_Y, BOUTON_LCA_W, BOUTON_LCA_H, TFT_GREENYELLOW, BOUTON_LCA_N),
+    mBtnChauffageRdcActif(cfg, tft, touch, BOUTON_CRA_X, BOUTON_CRA_Y, BOUTON_CRA_W, BOUTON_CRA_H, TFT_GREENYELLOW, BOUTON_CRA_N),
     mBtnChaudiereONActif(cfg, tft, touch, BOUTON_ONA_X, BOUTON_ONA_Y, BOUTON_ONA_W, BOUTON_ONA_H, TFT_GREENYELLOW, BOUTON_ONA_N),
     mBtnChaudiereOFFActif(cfg, tft, touch, BOUTON_OFFA_X, BOUTON_OFFA_Y, BOUTON_OFFA_W, BOUTON_OFFA_H, TFT_GREENYELLOW, BOUTON_OFFA_N),
       
@@ -62,6 +64,7 @@
     mBtnGuirlande.mDevice = mConfig.guirlande;
     mBtnChauffageON.mDevice = mConfig.chauffageSb;
     mBtnLumiereCave.mDevice = mConfig.lumiereCave;
+    mBtnChauffageRdc.mDevice = mConfig.chauffageRdc;
     mBtnChaudiereON.mDevice = mConfig.chaudiere;
     mBtnChaudiereOFF.mDevice = mConfig.chaudiere;
 
@@ -69,12 +72,14 @@
     mBtnGuirlandeActif.mDevice = mConfig.guirlande;
     mBtnChauffageONActif.mDevice = mConfig.chauffageSb;
     mBtnLumiereCaveActif.mDevice = mConfig.lumiereCave;
+    mBtnChauffageRdcActif.mDevice = mConfig.chauffageRdc;
     mBtnChaudiereONActif.mDevice = mConfig.chaudiere;
     mBtnChaudiereOFFActif.mDevice = mConfig.chaudiere;
     #else
     mBtnProjecteur.mDevice = mConfig.mRemoteProjecteur;
     mBtnGuirlande.mDevice = mConfig.mRemoteGuirlande;
     mBtnLumiereCave.mDevice = mConfig.mRemoteLumiereCave;
+    mBtnChauffageRdc.mDevice = mConfig.mRemoteChauffageRdc;
     mBtnChauffageON.mDevice = mConfig.mRemoteChauffage;
     mBtnChaudiereON.mDevice = mConfig.mRemoteChaudiere;
     mBtnChaudiereOFF.mDevice = mConfig.mRemoteChaudiere;
@@ -82,6 +87,7 @@
     mBtnProjecteurActif.mDevice = mConfig.mRemoteProjecteur;
     mBtnGuirlandeActif.mDevice = mConfig.mRemoteGuirlande;
     mBtnLumiereCaveActif.mDevice = mConfig.mRemoteLumiereCave;
+    mBtnChauffageRdcActif.mDevice = mConfig.mRemoteChauffageRdc;
     mBtnChauffageONActif.mDevice = mConfig.mRemoteChauffage;
     mBtnChaudiereONActif.mDevice = mConfig.mRemoteChaudiere;
     mBtnChaudiereOFFActif.mDevice = mConfig.mRemoteChaudiere;
@@ -96,11 +102,19 @@
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChauffageON; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnLumiereCaveActif; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnLumiereCave; i++;
+    mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChauffageRdcActif; i++;
+    mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChauffageRdc; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChaudiereONActif; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChaudiereON; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChaudiereOFFActif; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnChaudiereOFF; i++;
     mListBoutonsPtr[i] = (CMyBoutonBase*)&mBtnSeries; i++;
+
+    // Séries où chaque bouton est dessiné (et donc sensible au toucher, voir getPressedButton())
+    for (int b = 0; b < _TOTAL_BTN_; b++) mListBoutonsPtr[b]->setSeriesVisibles(SERIES_BOUTONS_PRINCIPAUX);
+    mBtnLumiereCaveActif.setSeriesVisibles(SERIES_BOUTON_LUMIERE_CAVE);
+    mBtnLumiereCave.setSeriesVisibles(SERIES_BOUTON_LUMIERE_CAVE);
+    mBtnSeries.setSeriesVisibles(SERIES_TOUTES);
 
     // Charge les paramètres liés à l'écran
     //loadFromNVS ();
@@ -236,6 +250,18 @@ void CEcran::activeLumiereCave(bool activ/*=true*/, bool bDrawInterface/*=true*/
   drawMainInterface();
   drawStatus("Lumiere cave activee", false);
 }
+void CEcran::desactiveChauffageRdc(bool bDrawInterface/*=true*/) {
+  drawMainInterface();
+  drawStatus("Chauffage RdC desactive", false);
+}
+void CEcran::activeChauffageRdc(bool activ/*=true*/, bool bDrawInterface/*=true*/) {
+  if (!activ) {
+    desactiveChauffageRdc (bDrawInterface);
+    return;
+  }
+  drawMainInterface();
+  drawStatus("Chauffage RdC active", false);
+}
 void CEcran::desactiveChauffageSb(bool bDrawInterface/*=true*/) {
   drawMainInterface();
   drawStatus("Chauffage desactive", false);
@@ -254,9 +280,9 @@ void CEcran::updatePastilleChauffageSb() {
   if (mucSerieAffichageEnCours < 3)
     mBtnChauffageON.drawPastille();
 }
-// Pastille jour / nuit de la cave sur le bouton Cave (séries 1 et 2 seulement)
+// Pastille jour / nuit de la cave sur le bouton Cave (série 4 seulement)
 void CEcran::updatePastilleLumiereCave() {
-  if (mucSerieAffichageEnCours < 3)
+  if (mBtnLumiereCave.estVisibleEnSerie(mucSerieAffichageEnCours))
     mBtnLumiereCave.drawPastille();
 }
 
@@ -304,6 +330,7 @@ int CEcran::getPressedButton() {
   for (int i = BTN_PROJECTEUR_ACTIVE; i < _TOTAL_BTN_; i++) {
     CMyBoutonBase *btnPtr = mListBoutonsPtr[i];
     if (btnPtr == nullptr) continue;
+    if (!btnPtr->estVisibleEnSerie(mucSerieAffichageEnCours)) continue; // Bouton non dessiné dans cette série
     if (btnPtr->isPressed()) return i;
   } 
   return -1;
@@ -430,8 +457,8 @@ void CEcran::drawMainInterface() {
 
     mBtnChauffageONActif.draw();
     mBtnChauffageON.draw();
-    mBtnLumiereCaveActif.draw();
-    mBtnLumiereCave.draw();
+    mBtnChauffageRdcActif.draw();
+    mBtnChauffageRdc.draw();
 
     mBtnChaudiereONActif.draw();
     mBtnChaudiereON.draw();
@@ -462,6 +489,9 @@ void CEcran::drawMainInterface() {
   else if (mucSerieAffichageEnCours == 4) {
     tft.drawRect(STATUS_EXT_X, STATUS_EXT_Y, STATUS_EXT_W, STATUS_EXT_H, STATUS_EXT_C);
     updateSerie4();
+    // Lumière de la cave, rarement utilisée : rangée sous les zones de la série 4
+    mBtnLumiereCaveActif.draw();
+    mBtnLumiereCave.draw();
   }
   else if (mucSerieAffichageEnCours == 5) {
     updateControleursEtEsclaves();

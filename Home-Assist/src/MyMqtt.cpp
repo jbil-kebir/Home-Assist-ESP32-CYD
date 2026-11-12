@@ -15,7 +15,7 @@
 #ifdef __LOCAL_MODE__
 // Appareil 433 MHz du principal dont le nœud de présence (PrGuirlande...) publie sur ce topic (nullptr : aucun)
 static CRCDevice* appareilDuNoeudDePresence(CConfig& cfg, const String& topic) {
-  CRCDevice* appareils[] = {cfg.projecteur, cfg.guirlande, cfg.lumiereCave};
+  CRCDevice* appareils[] = {cfg.projecteur, cfg.guirlande, cfg.lumiereCave, cfg.chauffageRdc};
   for (CRCDevice* a : appareils)
     if (a != nullptr && a->mPresence.estConfiguree() && topic == a->mPresence.mqttSubTopicState) return a;
   return nullptr;
@@ -75,12 +75,15 @@ client.publish("home/chaudiere/status",  "", true);*/
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.lumiereCave->mqttSubTopicCommand);
       client.subscribe(mConfig.lumiereCave->mqttSubTopicCommand.c_str());
 
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.chauffageRdc->mqttSubTopicCommand);
+      client.subscribe(mConfig.chauffageRdc->mqttSubTopicCommand.c_str());
+
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.chauffageSb->mqttSubTopicCommand);
       client.subscribe(mConfig.chauffageSb->mqttSubTopicCommand.c_str());
 
       // Nœuds de présence sur le réseau électrique associés aux appareils 433 MHz (PRESENT, ALIVE, testament...)
       {
-        CRCDevice* appareils[] = {mConfig.projecteur, mConfig.guirlande, mConfig.lumiereCave};
+        CRCDevice* appareils[] = {mConfig.projecteur, mConfig.guirlande, mConfig.lumiereCave, mConfig.chauffageRdc};
         for (CRCDevice* a : appareils)
           if (a != nullptr && a->mPresence.estConfiguree()) {
             DBGLN(DBG_MQTT, "Abonnement à " + a->mPresence.mqttSubTopicState);
@@ -100,6 +103,8 @@ client.publish("home/chaudiere/status",  "", true);*/
       client.subscribe(mConfig.mRemoteGuirlande->mqttSubTopicCommand.c_str());
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteLumiereCave->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteLumiereCave->mqttSubTopicCommand.c_str());
+      DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteChauffageRdc->mqttSubTopicCommand);
+      client.subscribe(mConfig.mRemoteChauffageRdc->mqttSubTopicCommand.c_str());
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteChauffage->mqttSubTopicCommand);
       client.subscribe(mConfig.mRemoteChauffage->mqttSubTopicCommand.c_str());
       #endif
@@ -216,6 +221,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == mConfig.lumiereCave->mqttSubTopicCommand) {
     mConfig.lumiereCave->handleMqttCommand(messageOrg);
   }
+  else if (topicStr == mConfig.chauffageRdc->mqttSubTopicCommand) {
+    mConfig.chauffageRdc->handleMqttCommand(messageOrg);
+  }
   else if (topicStr == mConfig.chauffageSb->mqttSubTopicCommand) {
     //Serial.println("CMqtt::callback() - Chauffage - Topic : " + topicStr + " - Msg : " + message);
 
@@ -238,6 +246,9 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   }
   else if (topicStr == mConfig.mRemoteLumiereCave->mqttSubTopicCommand) {
     mConfig.mRemoteLumiereCave->handleMqttCommand(messageOrg);
+  }
+  else if (topicStr == mConfig.mRemoteChauffageRdc->mqttSubTopicCommand) {
+    mConfig.mRemoteChauffageRdc->handleMqttCommand(messageOrg);
   }
   else if (topicStr == mConfig.mRemoteChauffage->mqttSubTopicCommand) {
     mConfig.mRemoteChauffage->handleMqttCommand(messageOrg);
@@ -355,6 +366,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       statusMsg += "Projecteur    : " + String(mConfig.projecteur->active ? "ACTIF" : "INACTIF") + " - " + mConfig.projecteur->etatStr + "\n";
       statusMsg += "Guirlande     : " + String(mConfig.guirlande->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.guirlande->etatStr + "\n";
       statusMsg += "Lumière cave  : " + String(mConfig.lumiereCave->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.lumiereCave->etatStr + "\n";
+      statusMsg += "Chauffage RdC : " + String(mConfig.chauffageRdc->active ? "ACTIF" : "INACTIF") + " - " + mConfig.chauffageRdc->etatStr + "\n";
       statusMsg += "Salle de bain : " + String(mConfig.chauffageSb->active ? "ACTIF" : "INACTIF") + " - " + mConfig.chauffageSb->etatStr + "\n";
       #else // Chaudière, thermomètre principal et équipements 433 MHz
       statusMsg += "Chaudière     : " + String(mConfig.mRemoteChaudiere->active ? "ACTIVE" : "INACTIVE") + " - "  + mConfig.mRemoteChaudiere->etatStr + "\n";
@@ -362,6 +374,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       statusMsg += "Projecteur    : " + String(mConfig.mRemoteProjecteur->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteProjecteur->etatStr + "\n";
       statusMsg += "Guirlande     : " + String(mConfig.mRemoteGuirlande->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.mRemoteGuirlande->etatStr + "\n";
       statusMsg += "Lumière cave  : " + String(mConfig.mRemoteLumiereCave->active ? "ACTIVE" : "INACTIVE") + " - " + mConfig.mRemoteLumiereCave->etatStr + "\n";
+      statusMsg += "Chauffage RdC : " + String(mConfig.mRemoteChauffageRdc->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteChauffageRdc->etatStr + "\n";
       statusMsg += "Salle de bain : " + String(mConfig.mRemoteChauffage->active ? "ACTIF" : "INACTIF") + " - " + mConfig.mRemoteChauffage->etatStr + "\n";
       #endif
       String statusMsgBis = "=== ÉTAT Home Assisstant "+ String(mConfig.nomEquipement) +" (Suite) ===\n";
@@ -432,6 +445,7 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.projecteur->remonteStatusParMqtt();
       mConfig.guirlande->remonteStatusParMqtt();
       mConfig.lumiereCave->remonteStatusParMqtt();
+      mConfig.chauffageRdc->remonteStatusParMqtt();
       mConfig.chauffageSb->remonteStatusParMqtt();
 
       #ifdef __LOCAL_DS18B20__

@@ -24,7 +24,7 @@ Dernier export : 27/10/2026.
 | `tableau-accueil-complet.yaml` | Tableau Accueil **entier** (6 vues, même contenu que `vue-accueil.yaml` pour la vue Accueil), pour l'**éditeur de configuration brute** (qui remplace tout le tableau) |
 | `vue-chaudiere.yaml` | Vue « Chaudière » du tableau Accueil (extraite de `tableau-accueil-complet.yaml`) : + carte ThSdb (éveillé / endormi, réveil estimé « réveil vers … » / endormissement estimé « s'endort vers … » ou raison de rester éveillé, commande en attente, boutons Réveiller / Endormir ThSdb, délai avant endormissement) entre la chaudière et le thermostat, à coller dans l'interface |
 | `vue-accueil.yaml` | Vue « Accueil » du tableau Accueil (export `.storage` du 30/10/2026 + carte « Lumière cave » : état MESURÉ par ThCave, sensor.jncave_etat Jour = Allumée / Nuit = Éteinte, à côté de Chaudière et Cuve ; section Alertes : Chaudière / Cuve / Lumière cave, NewNas / BigNas, puis pastilles éveillé / endormi des 5 nœuds capteurs (ThNomade exclu) — vert / rouge / gris, même règle que les CYD — et pastille NoeudChauffageSdb : couleur = présence du C3 (ALIVE), texte = chauffage SdB Marche / Arrêt / ?), à coller dans l'interface |
-| `vue-actionneurs.yaml` | Vue « Actionneurs » du tableau Accueil (export `.storage` + carte du nœud chauffage SdB + en tête un bloc **Chaudière** : titre, carte ThSdb reprise de `vue-chaudiere.yaml` (délai compris), boutons de la chaudière, puis titre « Autres actionneurs »), à coller dans l'interface — **générée** |
+| `vue-actionneurs.yaml` | Vue « Actionneurs » du tableau Accueil (export `.storage` + carte du nœud chauffage SdB + en tête un bloc **Chaudière** : titre, carte ThSdb reprise de `vue-chaudiere.yaml` (délai compris), boutons de la chaudière, puis titre « Autres actionneurs » ; en bas : Chauffage RdC (cadenas + bouton), puis jour / nuit de la cave et Lumière cave), à coller dans l'interface — **générée** |
 | `genere_noeuds.py` | Générateur de `noeuds_capteurs.yaml`, `vue-noeuds-capteurs.yaml`, `vue-actionneurs.yaml`, `vue-diagnostic.yaml` et `vue-relais-lora.yaml` à partir de la liste des nœuds (pas un fichier de HA) |
 | `.storage/lovelace_dashboards` | Liste des tableaux de bord |
 | `.storage/lovelace.dashboard_systeme` | Tableau « Système » (vues NAS, Diagnostic, CYD, Paramétrage) |
@@ -63,6 +63,8 @@ lancer `python -I HA/genere_noeuds.py`, puis réinstaller les deux fichiers (ét
 aussi figurer dans `FILE_CMD_CAPTEURS` (Relais-Lora/src/global.h).
 Le générateur a besoin de **PyYAML** (pour `vue-actionneurs.yaml`) : `py -m pip install pyyaml` une fois ; sinon il
 s'arrête après avoir écrit les deux premiers fichiers (`ModuleNotFoundError: No module named 'yaml'`).
+Sans PyYAML (pip bloqué par l'erreur de certificat SSL), le Python de PlatformIO l'a déjà :
+`C:\Users\Al\.platformio\penv\Scripts\python.exe HA/genere_noeuds.py`.
 
 **Détecteur jour / nuit** (classe `CJourNuit` du Capteur, trames `Jn<Suffixe> Jour …` et `Jn<Suffixe> Eclairement …`) :
 dans `NOEUDS`, ajouter `jn=True`, l'unité `"Jn"` et les deux mesures `sensor.jn<suffixe>_etat` / `sensor.jn<suffixe>_eclairement`

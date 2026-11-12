@@ -1092,6 +1092,11 @@ cards:
         - color: |
             [[[return states['switch.lumiere_cave'].state === 'on' ? 'green' : 'red']]]
 """
+# Bouton du chauffage de la chambre du rez-de-chaussée (switch.chauffage_rdc / switch.chauffage_rdc_enable de
+# configuration.yaml), copie de la lumière cave : cadenas (ENABLE / DISABLE) + bouton (ON / OFF)
+CHAUFFAGE_RDC_ENTITE = "switch.chauffage_rdc"
+CARTE_CHAUFFAGE_RDC = CARTE_LUMIERE_CAVE.replace("switch.lumiere_cave", CHAUFFAGE_RDC_ENTITE) \
+    .replace("name: Lumière cave", "name: Chauffage RdC").replace("icon: mdi:lightbulb", "icon: mdi:radiator")
 # Indicateur jour / nuit de la cave (sensor.jncave_etat / sensor.jncave_eclairement de configuration.yaml), juste
 # au-dessus du bouton de la lumière cave : même présentation que l'indicateur « C3 » au-dessus du chauffage SdB
 JOUR_NUIT_CAVE_ENTITE = "sensor.jncave_etat"
@@ -1206,6 +1211,9 @@ def vue_actionneurs():
     cartes[:] = [c for c in cartes if c.get("entity") != JOUR_NUIT_CAVE_ENTITE]
     i = next(i for i, c in enumerate(cartes) if LUMIERE_CAVE_ENTITE in json.dumps(c))
     cartes.insert(i, yaml.safe_load(CARTE_JOUR_NUIT_CAVE))
+    # Chauffage RdC (prise 433 MHz du CYD) : juste au-dessus du bloc de la cave (jour / nuit + lumière), ajouté s'il manque
+    if not any(CHAUFFAGE_RDC_ENTITE in json.dumps(c) for c in cartes):
+        cartes.insert(i, yaml.safe_load(CARTE_CHAUFFAGE_RDC))
     sablier_appareils_verifies(cartes)
     bloc_chaudiere(cartes)
     entete = (f"# Vue « {vue.get('title')} » du tableau Accueil (https://ha.jbil.org/dashboard-accueil/{VUE_ACTIONNEURS})\n"

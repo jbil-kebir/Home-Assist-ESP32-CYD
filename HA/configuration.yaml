@@ -114,6 +114,28 @@ mqtt:
       state_off: "DISABLER"
       icon: mdi:lightbulb
 
+    # Chauffage de la chambre du rez-de-chaussée : prise 433 MHz (code 5B0E64, protocole 1, 306 µs) émise par le CYD
+    # principal (main_chauffagerdc.cpp)
+    - name: "Chauffage RdC"
+      unique_id: mqtt_chauffage_rdc
+      command_topic: "home/chauffagerdc/command"
+      state_topic: "home/chauffagerdc/command"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_on: "ONR"
+      state_off: "OFFR"
+      icon: mdi:radiator
+
+    - name: "Chauffage RdC Enable"
+      unique_id: mqtt_chauffage_rdc_enable
+      command_topic: "home/chauffagerdc/command"
+      state_topic: "home/chauffagerdc/command"
+      payload_on: "ENABLE"
+      payload_off: "DISABLE"
+      state_on: "ENABLER"
+      state_off: "DISABLER"
+      icon: mdi:radiator
+
     - name: "Chauffage Enable"
       unique_id: mqtt_chauffage_enable
       command_topic: "home/chauffage/command"
@@ -756,7 +778,7 @@ climate:
   - platform: generic_thermostat
     name: Chaudière RDC
     heater: switch.chaudiere_programmation
-    target_sensor: sensor.thchrdc_temperature
+    target_sensor: sensor.thch1er_temperature
     min_temp: 15
     max_temp: 25
     cold_tolerance: 0.5

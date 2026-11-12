@@ -33,6 +33,8 @@ enum {
   BTN_CHAUFFAGE_ON,
   BTN_LUMIERE_CAVE_ACTIVE,
   BTN_LUMIERE_CAVE_TOGGLE,
+  BTN_CHAUFFAGE_RDC_ACTIVE,
+  BTN_CHAUFFAGE_RDC_TOGGLE,
   BTN_CHAUDIERE_ON_ACTIVE,
   BTN_CHAUDIERE_ON,
   BTN_CHAUDIERE_OFF_ACTIVE,
@@ -50,14 +52,16 @@ private:
   CMyBouton   mBtnProjecteur,
               mBtnGuirlande,
               mBtnChauffageON,
-              mBtnLumiereCave,
+              mBtnLumiereCave,   // Série 4
+              mBtnChauffageRdc,
               mBtnChaudiereON,
               mBtnChaudiereOFF;
 
   CMyBoutonActif  mBtnProjecteurActif,
                   mBtnGuirlandeActif,
                   mBtnChauffageONActif,
-                  mBtnLumiereCaveActif,
+                  mBtnLumiereCaveActif,   // Série 4
+                  mBtnChauffageRdcActif,
                   mBtnChaudiereONActif,
                   mBtnChaudiereOFFActif;
 
@@ -136,11 +140,13 @@ public:
   void activeGuirlande(bool activ=true, bool bDrawInterface=true);
   void desactiveLumiereCave(bool bDrawInterface=true);
   void activeLumiereCave(bool activ=true, bool bDrawInterface=true);
+  void desactiveChauffageRdc(bool bDrawInterface=true);
+  void activeChauffageRdc(bool activ=true, bool bDrawInterface=true);
   void desactiveChauffageSb(bool bDrawInterface=true);
   void activeChauffageSb(bool activ=true, bool bDrawInterface=true);
   void setEtatPastilleChauffageSb(std::function<int()> f) { mBtnChauffageON.mfEtatPastille = f; } // Présence du C3
   void updatePastilleChauffageSb();
-  // Jour / nuit de la cave sur le bouton Cave : couleur de la pastille (voir CMyBouton::mfCouleurPastille)
+  // Jour / nuit de la cave sur le bouton Cave (série 4) : couleur de la pastille (voir CMyBouton::mfCouleurPastille)
   void setCouleurPastilleLumiereCave(std::function<int()> f) { mBtnLumiereCave.mfCouleurPastille = f; }
   void updatePastilleLumiereCave();
   void updateSleepTimeout(int32_t st);

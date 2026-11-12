@@ -284,20 +284,40 @@
 #define BOUTON_SB_ON_C  TFT_RED
 #define BOUTON_SB_ON_N  "SB" // Marche/arrêt du chauffage SdB (bascule)
 
-// Lumière de la cave (ancien emplacement « SB OFF », à droite du bouton SB) : marche/arrêt (bascule)
-#define BOUTON_LC_X (BOUTON_SB_ON_X + DEUXIEME_LIGNE_DE_BOUTONS_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
-#define BOUTON_LC_Y DEUXIEME_LIGNE_DE_BOUTONS_Y
-#define BOUTON_LC_W DEUXIEME_LIGNE_DE_BOUTONS_W
-#define BOUTON_LC_H DEUXIEME_LIGNE_DE_BOUTONS_H
-#define BOUTON_LC_C TFT_RED
-#define BOUTON_LC_N "Cave"
-// Bouton d'activation / désactivation de la lumière de la cave (à sa droite)
-#define BOUTON_LCA_X   (BOUTON_LC_X + DEUXIEME_LIGNE_DE_BOUTONS_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
-#define BOUTON_LCA_Y   DEUXIEME_LIGNE_DE_BOUTONS_Y
+// Chauffage de la chambre du rez-de-chaussée (à droite du bouton SB, ancien emplacement de « Cave ») : marche/arrêt (bascule)
+#define BOUTON_CR_X (BOUTON_SB_ON_X + DEUXIEME_LIGNE_DE_BOUTONS_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_CR_Y DEUXIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_CR_W DEUXIEME_LIGNE_DE_BOUTONS_W
+#define BOUTON_CR_H DEUXIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_CR_C TFT_RED
+#define BOUTON_CR_N "Ch.RdC"
+// Bouton d'activation / désactivation du chauffage RdC (à sa droite)
+#define BOUTON_CRA_X   (BOUTON_CR_X + DEUXIEME_LIGNE_DE_BOUTONS_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_CRA_Y   DEUXIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_CRA_W   DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W
+#define BOUTON_CRA_H   DEUXIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_CRA_C   TFT_GREENYELLOW
+#define BOUTON_CRA_N   ""
+
+// Lumière de la cave : SÉRIE 4 seulement, à la hauteur de la 3e ligne de boutons (bande libre entre les zones de la
+// série 4, qui s'arrêtent à SERIE4_ROW3_Y + SERIE4_ROW_H, et la zone de status). Cadenas à gauche, bouton à sa droite.
+#define BOUTON_LCA_X   TROISIEME_LIGNE_DE_BOUTONS_X
+#define BOUTON_LCA_Y   TROISIEME_LIGNE_DE_BOUTONS_Y
 #define BOUTON_LCA_W   DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W
 #define BOUTON_LCA_H   DEUXIEME_LIGNE_DE_BOUTONS_H
 #define BOUTON_LCA_C   TFT_GREENYELLOW
 #define BOUTON_LCA_N   ""
+#define BOUTON_LC_X (BOUTON_LCA_X + DEUXIEME_LIGNE_DE_BOUTONS_ACTIVATION_W + DEUXIEME_LIGNE_DE_BOUTONS_ESPACE_ENTRE)
+#define BOUTON_LC_Y TROISIEME_LIGNE_DE_BOUTONS_Y
+#define BOUTON_LC_W DEUXIEME_LIGNE_DE_BOUTONS_W
+#define BOUTON_LC_H DEUXIEME_LIGNE_DE_BOUTONS_H
+#define BOUTON_LC_C TFT_RED
+#define BOUTON_LC_N "Cave"
+
+// Séries d'affichage où un bouton est dessiné ET sensible au toucher (bit n = série n, voir CMyBoutonBase)
+#define SERIES_BOUTONS_PRINCIPAUX  ((1 << 1) | (1 << 2))  // Projecteur, Guirlande, SB, Ch.RdC, chaudière
+#define SERIES_BOUTON_LUMIERE_CAVE (1 << 4)
+#define SERIES_TOUTES              0xFF                   // Bouton des séries
 
 // Bouton série d'affichages
 #define BOUTON_SERIE_X   (BOUTON_G_X + PREMIERE_LIGNE_DE_BOUTONS_W + PREMIERE_LIGNE_DE_BOUTONS_ESPACE_ENTRE)

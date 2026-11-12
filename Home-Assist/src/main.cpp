@@ -55,6 +55,7 @@ extern CChaudiere chaudiere;
 extern CRCDevice projecteur;
 extern CRCDevice guirlande;
 extern CRCDevice lumiereCave;
+extern CRCDevice chauffageRdc;
 extern CNoeudChauffageIRSound  chauffageSb;
 #else // Chaudière, thermomètre principal et équipements 433 MHz distants
 extern CRemoteChaudiere mRemoteChaudiere;
@@ -63,6 +64,7 @@ extern CRemoteBatterieAA mRemoteBatMain;
 extern CRemoteRCDevice mRemoteProjecteur;
 extern CRemoteRCDevice mRemoteGuirlande;
 extern CRemoteRCDevice mRemoteLumiereCave;
+extern CRemoteRCDevice mRemoteChauffageRdc;
 extern CRemoteNoeudChauffageIRSound mRemoteChauffage;
 #endif // __LOCAL_MODE__
 
@@ -172,6 +174,7 @@ extern void setup_ds18b20();
 extern void setup_projecteur();
 extern void setup_guirlande();
 extern void setup_lumiereCave();
+extern void setup_chauffageRdc();
 extern void setup_chauffageSb();
 
 extern void setup_ThCave();
@@ -215,7 +218,8 @@ void setup() {
   setup_ds18b20();
   setup_projecteur();
   setup_guirlande();
-  setup_lumiereCave(); // Sans effet hors __LOCAL_MODE__
+  setup_lumiereCave();
+  setup_chauffageRdc();
   setup_chauffageSb();
   
   #ifdef __LOCAL_MODE__
@@ -346,6 +350,7 @@ void setup() {
   config.projecteur->remonteStatusParMqtt();
   config.guirlande->remonteStatusParMqtt();
   config.lumiereCave->remonteStatusParMqtt();
+  config.chauffageRdc->remonteStatusParMqtt();
   config.chauffageSb->remonteStatusParMqtt();
   #else
   // Si on n'est pas en __LOCAL_MODE__, on signale que nous venons 
@@ -427,6 +432,7 @@ void loop() {
   config.projecteur->loop();
   config.guirlande->loop();
   config.lumiereCave->loop();
+  config.chauffageRdc->loop();
   #else // Chaudière, thermomètre principal et équipements 433 MHz
   #endif
 
@@ -478,6 +484,19 @@ void loop() {
       mRemoteLumiereCave.activeEquipement();
       #ifdef __CYD__
       ecran.activeLumiereCave(mRemoteLumiereCave.active);
+      #endif
+      #endif // __LOCAL_MODE__
+    }
+    else if (btnNum == BTN_CHAUFFAGE_RDC_ACTIVE) { // Bouton Activation chauffage RdC appuyé
+      #ifdef __LOCAL_MODE__
+      chauffageRdc.activeEquipement();
+      #ifdef __CYD__
+      ecran.activeChauffageRdc(chauffageRdc.active);
+      #endif
+      #else // Equipement distant
+      mRemoteChauffageRdc.activeEquipement();
+      #ifdef __CYD__
+      ecran.activeChauffageRdc(mRemoteChauffageRdc.active);
       #endif
       #endif // __LOCAL_MODE__
     }
@@ -543,6 +562,13 @@ void loop() {
       int ret = lumiereCave.envoiOnOff();
       #else // Equipement distant
       mRemoteLumiereCave.envoiOnOff();
+      #endif
+    }
+    else if (btnNum == BTN_CHAUFFAGE_RDC_TOGGLE) { // Bouton Ch.RdC appuyé
+      #ifdef __LOCAL_MODE__
+      int ret = chauffageRdc.envoiOnOff();
+      #else // Equipement distant
+      mRemoteChauffageRdc.envoiOnOff();
       #endif
     }
     else if (btnNum == BTN_CHAUFFAGE_ON) { // Bouton SB appuyé : marche ou arrêt selon l'état
@@ -618,6 +644,9 @@ void print() {
   DBG(DBG_CONFIG, "   Appareil 2 bis (lumière cave)\n");
   lumiereCave.print();
 
+  DBG(DBG_CONFIG, "   Appareil 2 ter (chauffage RdC)\n");
+  chauffageRdc.print();
+
   DBG(DBG_CONFIG, "   Appareil 3\n");
   chauffageSb.print();
 
@@ -641,6 +670,9 @@ void print() {
 
   DBG(DBG_CONFIG, "   Appareil 2 bis (lumière cave)\n");
   mRemoteLumiereCave.print();
+
+  DBG(DBG_CONFIG, "   Appareil 2 ter (chauffage RdC)\n");
+  mRemoteChauffageRdc.print();
 
   DBG(DBG_CONFIG, "   Appareil 3\n");
   mRemoteChauffage.print();

@@ -469,6 +469,39 @@ sections:
     - switch.chauffage_sdb_programme
     time_step: 15
     show_header_toggle: false
+  - type: horizontal-stack
+    cards:
+    - type: custom:button-card
+      entity: switch.chauffage_rdc_enable
+      name: ''
+      show_name: false
+      tap_action:
+        action: toggle
+      icon: |
+        [[[return states['switch.chauffage_rdc_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+      styles:
+        card:
+        - height: 60px
+        - width: 60px
+        - background: |
+            [[[return states['switch.chauffage_rdc_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+        icon:
+        - color: |
+            [[[return states['switch.chauffage_rdc_enable'].state === 'on' ? 'green' : 'red']]]
+    - type: custom:button-card
+      entity: switch.chauffage_rdc
+      name: Chauffage RdC
+      tap_action:
+        action: toggle
+      icon: mdi:radiator
+      styles:
+        card:
+        - height: 60px
+        - background: |
+            [[[return states['switch.chauffage_rdc'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+        icon:
+        - color: |
+            [[[return states['switch.chauffage_rdc'].state === 'on' ? 'green' : 'red']]]
   - type: custom:button-card
     entity: sensor.jncave_etat
     show_icon: false

@@ -116,6 +116,7 @@ void MyWebServer::handleRoot() {
   html += config.projecteur->getHTML();
   html += config.guirlande->getHTML();
   html += config.lumiereCave->getHTML();
+  html += config.chauffageRdc->getHTML();
   html += config.chauffageSb->getHTML();
 
   #ifdef __LOCAL_DS18B20__
@@ -129,6 +130,7 @@ void MyWebServer::handleRoot() {
   html += config.mRemoteProjecteur->getHTML();
   html += config.mRemoteGuirlande->getHTML();
   html += config.mRemoteLumiereCave->getHTML();
+  html += config.mRemoteChauffageRdc->getHTML();
   html += config.mRemoteChauffage->getHTML();
   html += config.mRemoteThMain->getHTML();
   //html += config.mRemoteBatMain->getHTML();
@@ -195,6 +197,7 @@ void MyWebServer::handleSave() {
   config.projecteur->loadFromWebServer(server);
   config.guirlande->loadFromWebServer(server);
   config.lumiereCave->loadFromWebServer(server);
+  config.chauffageRdc->loadFromWebServer(server);
   config.chauffageSb->loadFromWebServer(server);
   #ifdef __LOCAL_DS18B20__
   config.ds18b20->loadFromWebServer(server);
@@ -206,6 +209,7 @@ void MyWebServer::handleSave() {
   config.mRemoteProjecteur->loadFromWebServer(server);
   config.mRemoteGuirlande->loadFromWebServer(server);
   config.mRemoteLumiereCave->loadFromWebServer(server);
+  config.mRemoteChauffageRdc->loadFromWebServer(server);
   config.mRemoteChauffage->loadFromWebServer(server);
   config.mRemoteThMain->loadFromWebServer(server);
   //config.mRemoteBatMain->loadFromWebServer(server);
@@ -260,6 +264,7 @@ void MyWebServer::handleSave() {
   config.projecteur->saveToNVS();
   config.guirlande->saveToNVS();
   config.lumiereCave->saveToNVS();
+  config.chauffageRdc->saveToNVS();
   config.chauffageSb->saveToNVS();
   #ifdef __LOCAL_DS18B20__
   // === SAUVEGARDE DU THERMOMETRE LOCAL ===
@@ -273,6 +278,7 @@ void MyWebServer::handleSave() {
   config.mRemoteProjecteur->saveToNVS();
   config.mRemoteGuirlande->saveToNVS();
   config.mRemoteLumiereCave->saveToNVS();
+  config.mRemoteChauffageRdc->saveToNVS();
   config.mRemoteChauffage->saveToNVS();
   config.mRemoteThMain->saveToNVS();
   //config.mRemoteBatMain->saveToNVS(); // Rien ne le modifie (pas dans la page Web) : valeurs par défaut, aucune entrée NVS

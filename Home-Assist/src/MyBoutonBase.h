@@ -27,6 +27,11 @@ class CMyBoutonBase {
         CEquipementBase *mDevice=nullptr;
         bool mbCondamne = false; // Emplacement réservé : grisé, sans libellé, insensible au toucher
         void setCondamne(bool condamne) { mbCondamne = condamne; }
+        // Séries d'affichage où le bouton est dessiné : hors de ces séries, il ne réagit pas au toucher
+        // (sinon un bouton caché se déclenche sous ce qui est affiché à sa place). Bit n = série n.
+        unsigned char mucSeriesVisibles = SERIES_TOUTES;
+        void setSeriesVisibles(unsigned char masque) { mucSeriesVisibles = masque; }
+        bool estVisibleEnSerie(unsigned char serie) const { return serie < 8 && (mucSeriesVisibles & (1 << serie)); }
         void drawCondamne();
         bool isPressed();
         void waitRelease();
