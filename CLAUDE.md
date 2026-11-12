@@ -13,6 +13,7 @@ Le dépôt git de référence est sur le NAS :
 
 Correspondance des dossiers D: → NAS : `Capteur`, `CydMonitor`, `Home-Assist`, `Relais-Lora`, `Linky`, `Doc`, `Firmwares`, `images`, `HA` (même nom) ; `Home-Assist-App 1.2` → `Home-Assist-App`.
 Ne pas copier : `secret.h` (identifiants Wi-Fi / MQTT réels, exclu par `.gitignore` ; seul `secret.exemple.h` est commité), `Archives`, `Analyse`, `Programmes unitaires`, les `.zip`, les raccourcis `.lnk`, les sauvegardes datées.
+Seule exception dans `Programmes unitaires` (demande du 12/11/2026) : le sniffer `RCSwitch RX-TX/RCS-CYD-22-27`, commité au même chemin, sans `.pio`, `.vscode` ni, dans `lib/SmartRC-CC1101-Driver-Lib`, `.git`, `examples` et `img`.
 
 `HA` = copie de la configuration Home Assistant (`/config`), voir `HA/LISEZMOI.md`. Dépôt public : jamais `secrets.yaml`, et de `.storage` seulement les fichiers `lovelace*` ; vérifier qu'aucun mot de passe ou jeton n'est en clair avant de commiter.
 
