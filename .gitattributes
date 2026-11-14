@@ -1,0 +1,11 @@
+# Fichiers binaires : jamais de conversion de fins de ligne (autocrlf) ni de diff texte
+*.pdf    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.webp   binary
+*.ico    binary
+*.zip    binary
+*.epro2  binary
+*.docx   binary
+*.xlsx   binary
