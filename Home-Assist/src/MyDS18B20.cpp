@@ -13,12 +13,12 @@ int MyDS18B20::begin(const String pref) {
   // On charge les infos de config depuis le NVS
   loadFromNVS();
   sensors.begin();
-  DBG(DBG_CAPTEURS, "DS18B20 trouvé : ");
   uint8_t nbDevices = sensors.getDeviceCount();
   if (nbDevices == 0) {
+    DBG(DBG_CAPTEURS, "Aucun DS18B20 sur le GPIO %d !\n", mucPin);
     return -1;
-  } 
-  DBG(DBG_CAPTEURS, "\n");
+  }
+  DBG(DBG_CAPTEURS, "DS18B20 trouvé(s) : %d\n", nbDevices);
   // Premier relevé
   if (readTemperature()) {
     printTemperature();

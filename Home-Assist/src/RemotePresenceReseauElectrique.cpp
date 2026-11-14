@@ -175,7 +175,8 @@ void CRemotePresenceReseauElectrique::handleMqttState(const String& payload) {
 // Clés écrites seulement si un nœud est associé (NVS du CYD principal presque pleine le 30/10/2026)
 void CRemotePresenceReseauElectrique::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
-  nomEquipement = prefs.getString((mPrefixNVS+"noeud").c_str(), "");
+  // isKey() d'abord : getString() sur une clé absente affiche une erreur NOT_FOUND au démarrage
+  nomEquipement = prefs.isKey((mPrefixNVS+"noeud").c_str()) ? prefs.getString((mPrefixNVS+"noeud").c_str(), "") : "";
   mbVerifActive = prefs.getBool((mPrefixNVS+"actif").c_str(), true);
   mulDelaiS = prefs.getULong((mPrefixNVS+"delai").c_str(), PRESENCE_DELAI_DEFAUT_S);
   mulAttenteS = prefs.getULong((mPrefixNVS+"attente").c_str(), PRESENCE_ATTENTE_DEFAUT_S);

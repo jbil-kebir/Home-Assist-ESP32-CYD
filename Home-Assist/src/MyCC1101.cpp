@@ -5,6 +5,18 @@
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 #include "MyCC1101.h"
 
+//----------------------------------------------------------------------------
+// Message au démarrage, à la 1re émission 433 MHz (sans conséquence) :
+//   [E][esp32-hal-cpu.c:110] addApbChangeCallback(): duplicate func=... arg=0x3ffbdd94
+// Le CYD n'a que deux bus SPI utilisables : tactile sur HSPI (touchSPI), écran sur VSPI
+// (objet SPIClass(VSPI) propre à TFT_eSPI) et CC1101 sur VSPI lui aussi (objet global SPI,
+// autres broches). La bibliothèque CC1101 fait SPI.begin()/SPI.end() à chaque accès registre :
+// le premier begin alors que l'écran a déjà ouvert VSPI enregistre une 2e fois le rappel de
+// changement de fréquence APB du bus -> « duplicate ». Une seule fois par démarrage (SPI.end()
+// le retire), et ce rappel ne sert que si la fréquence CPU change (veille légère), ce que le
+// firmware ne fait pas. Le supprimer demanderait de réorganiser les bus : laissé tel quel (14/11/2026).
+//----------------------------------------------------------------------------
+
   void CCC1101::setup() {
 
     ELECHOUSE_cc1101.setSpiPin(CC1101_SCK, CC1101_MISO, CC1101_MOSI, CC1101_CS);
