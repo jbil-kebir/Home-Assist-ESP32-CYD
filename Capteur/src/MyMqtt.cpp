@@ -61,9 +61,13 @@ void CMqtt::reconnect() {
     //Serial.print("Connexion MQTT Id : " + clientId + " - User : " + mqtt_user + " - Passwd : " + mqtt_password + " ...");
     String sPayload = mConfig.nomEquipement + String(" ") + String("offline");
     gDiag.uiEssaisMqtt++;
-    // Testament (LWT) sur le topic state, non retained : sur le topic command il écrasait les commandes retained
-    if (client.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_password.c_str(),
-                        mConfig.topic_config_state.c_str(), 0, false, sPayload.c_str())) {
+    // Testament (LWT) sur le topic state, non retained : sur le topic command il écrasait les commandes retained.
+    // Puce non configurée : pas de testament (elle ne publie que son annonce NONCONFIGURE, voir publish()).
+    bool bConnecte = mConfig.mbConfiguree
+        ? client.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_password.c_str(),
+                         mConfig.topic_config_state.c_str(), 0, false, sPayload.c_str())
+        : client.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_password.c_str());
+    if (bConnecte) {
       Serial.println("connecté");
       if (gDiag.ulMqtt == 0) gDiag.ulMqtt = millis();
 
@@ -111,13 +115,13 @@ void CMqtt::reconnect() {
       String sDate = (mConfig.mDateTime != nullptr) ? mConfig.mDateTime->getDate() : "DATE";
       String sTime = (mConfig.mDateTime != nullptr) ? mConfig.mDateTime->getTime() : "TIME";
       sPayload = mConfig.nomEquipement + String(" ") + String("online") + " le " + sDate + " à " + sTime + String(" ") + WiFi.localIP().toString();
-      // Publication des états retained
+      // Publication des états retained (pas sur une puce non configurée : annonce NONCONFIGURE seulement)
       #ifdef CAPTEUR_DS18B20
-      if (mConfig.ds18b20 != nullptr)
+      if (mConfig.ds18b20 != nullptr && mConfig.mbConfiguree)
         client.publish(mConfig.ds18b20->mqttSubTopicState.c_str(), sPayload.c_str(), false);
       #endif
       #ifdef CAPTEUR_DHT20
-      if (mConfig.dht20 != nullptr)
+      if (mConfig.dht20 != nullptr && mConfig.mbConfiguree)
         client.publish(mConfig.dht20->mqttSubTopicState.c_str(), sPayload.c_str(), false);
       #endif
       //publishState(currentState);
@@ -168,6 +172,14 @@ void CMqtt::reconnect() {
 int CMqtt::publish(const char* topic, const char* payload, bool retained) {
   int ret = 0;
   if (!active) return -1;
+  // Puce non configurée : elle ne publie RIEN d'autre que son annonce « NONCONFIGURE … » (CConfig::annonceNonConfiguree).
+  // Sans configuration, elle utiliserait les topics et le nom par défaut (« Thermomètre », home/configuration/state…),
+  // ceux du CYD principal : ses trames (VERSION, mesures…) y seraient prises pour celles d'un autre appareil.
+  // Renvoie 0 (comme publié) pour que l'appelant ne réessaie pas en boucle.
+  if (!mConfig.mbConfiguree && strncmp(payload, "NONCONFIGURE", 12) != 0) {
+    Serial.printf("[MQTT] Puce non configurée : publication bloquée sur %s : %s\n", topic, payload);
+    return 0;
+  }
   String s = String(payload) + String(" ") + WiFi.localIP().toString();
   if (client.connected()) {
     if (client.publish(topic, s.c_str(), retained)) {
@@ -225,6 +237,19 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
 
   // Commandes de configuration
   if (String(topic) == mConfig.topic_config_command) {
+    // Annonce « NONCONFIGURE <modèle>-<fin MAC> … » d'une puce neuve (CConfig::annonceNonConfiguree) : publiée sur ce
+    // même topic, la puce la reçoit elle-même (et celles d'une autre puce neuve). Ce n'est pas une commande : ni
+    // traitement, ni accusé « COMMANDE reçue » (message parasite).
+    if (message.startsWith("NONCONFIGURE")) {
+      Serial.println("[MQTT] Annonce NONCONFIGURE reçue sur le topic de commande : ignorée");
+      return;
+    }
+    // Puce non configurée : elle se configure par sa page Web ; commandes MQTT ignorées, sans accusé ni réponse
+    // (elle ne publie que son annonce NONCONFIGURE).
+    if (!mConfig.mbConfiguree) {
+      Serial.println("[MQTT] Puce non configurée : commande ignorée : " + message);
+      return;
+    }
     Serial.println("Commande configuration reçue : " + message);
     mConfig.handleMqttCommand(messageOrg);
     // Accusé de réception (diagnostic des commandes retained reçues au réveil)

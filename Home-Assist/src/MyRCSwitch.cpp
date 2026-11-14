@@ -74,7 +74,11 @@ int CMyRCSwitch::toggleDevice() {
     return ret;
     #endif
 
-  mySwitch.disableReceive(); 
+  // Coupe la réception sur GDO0 pendant l'émission. Pas mySwitch.disableReceive() : cette instance (une par appareil
+  // 433 MHz) n'a pas forcément activé la réception (seule l'instance générale du main l'a fait au démarrage) ; elle
+  // détachait alors l'interruption -1 (erreurs « gpio ... GPIO number error ») et laissait l'ISR de réception active.
+  // Le enableReceive() de fin de fonction rétablit la réception.
+  detachInterrupt(CC1101_GDO0);
   ELECHOUSE_cc1101.setMHZ(frequency);
   ELECHOUSE_cc1101.setModulation(2);
   ELECHOUSE_cc1101.setDeviation(0);

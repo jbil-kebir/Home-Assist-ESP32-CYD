@@ -3,6 +3,12 @@
 Version du 2026-10-24. **État : premier tracé, d'après la carte routée (`../../pcb/Capteur chaudiere Sdb/CapteurChaudiereSdb.md`
 § 7) ; pas encore imprimé.**
 
+> **2026-11-14 — XIAO ESP32-C3 à la place du XIAO S3 + Wio** (même carte) : il n'y a plus de module LoRa ni d'antenne
+> LoRa ; seule l'antenne Wi-Fi du XIAO C3 reste, contre la paroi haute. Le boîtier, tracé pour le XIAO S3 + Wio, convient
+> tel quel (le XIAO C3 seul est moins haut ; la prise USB-C est à la même hauteur) ; l'appui de l'antenne LoRa (paroi
+> droite) ne sert plus, on peut le laisser. Le XIAO S3 + Wio de secours y rentre toujours. `boitier_chaudiere.scad` n'a
+> pas été modifié.
+
 Source OpenSCAD commentée : `boitier_chaudiere.scad` (réglages dans Fenêtre > Customizer). Pièces à imprimer :
 `chaudiere_boite.stl` et `chaudiere_couvercle.stl` (PETG opaque). Aperçus : `apercu_eclate.png`, `apercu_coupe.png`,
 `apercu_dessus.png`, `apercu_dessous.png`.
@@ -17,7 +23,7 @@ Source OpenSCAD commentée : `boitier_chaudiere.scad` (réglages dans Fenêtre >
 | DHT20 | **dehors, sur le couvercle**, côté droit près de J1, vis M3 + écrou ; capteur vers le haut, broches vers le bas ; trou du câble rebouché |
 | Prise USB-C | à gauche, fente |
 | LED bleue D1 | trou dans la paroi gauche, pattes pliées à 90° |
-| Antennes souples | Wi-Fi 40 × 20 contre la paroi haute ; LoRa 40 × 10 contre la paroi droite, non collée |
+| Antennes souples | Wi-Fi 40 × 20 contre la paroi haute ; LoRa 40 × 10 contre la paroi droite, non collée (**LoRa inutile depuis le passage au XIAO C3, 2026-11-14**) |
 | Couvercle | vissé (4 vis M3) |
 | Matière | PETG opaque, parois de 2 mm |
 
@@ -64,7 +70,8 @@ intérieur.
 - Bord de la carte à 1 mm de la paroi gauche, 10 mm de la paroi droite (fiche J1), 4 mm de la paroi basse et 10 mm de
   la paroi haute (fiche J2).
 - XIAO + Wio empilés sur barrettes femelles : dessus du Wio **estimé à 25 mm** au-dessus de la carte (Z ≈ 30,6), soit
-  2,4 mm sous le couvercle.
+  2,4 mm sous le couvercle. Avec le XIAO C3 (en service depuis le 2026-11-14), il n'y a pas de Wio : bien plus de place
+  sous le couvercle.
 
 ### 3.2 Prise USB-C (paroi gauche)
 
@@ -97,7 +104,7 @@ intérieur.
 - **Wi-Fi** (40 × 20) contre la paroi haute, de X = 1 à 41 mm, bord bas sur un appui de 1 mm à Z = 12 (au-dessus de la
   fiche J2).
 - **LoRa** (40 × 10) contre la paroi droite, de Y = 7 à 47 mm, bord bas sur un appui de 1 mm à Z = 20 (au-dessus de la
-  fiche J1), non collée.
+  fiche J1), non collée. **Inutile avec le XIAO C3** (pas de module LoRa) : l'appui reste, sans antenne.
 
 ### 3.6 Couvercle (vers la pièce)
 
@@ -127,7 +134,8 @@ intérieur.
    (2 vis M2 × 8).
 4. Visser la carte sur les plots (4 vis M3 × 6), brancher J2.
 5. Plier les pattes de D1 et passer la LED dans son trou (goutte de colle).
-6. Coller l'antenne Wi-Fi contre la paroi haute, poser l'antenne LoRa contre la paroi droite ; brancher leurs câbles.
+6. Coller l'antenne Wi-Fi contre la paroi haute et brancher son câble (avec le XIAO S3 + Wio de secours seulement :
+   poser aussi l'antenne LoRa contre la paroi droite).
 7. Visser le boîtier sur le coffrage (4 vis à bois Ø 4, avec des cales d'environ 4 mm sous les oreilles, à ajuster),
    TCS34725 face au voyant.
 8. Couvercle : visser le DHT20 (vis M3 + écrou), passer son câble par le trou, brancher J1, reboucher le trou.
@@ -135,6 +143,6 @@ intérieur.
 
 ## 5. À vérifier avant impression
 
-- Hauteur réelle de la prise USB-C du XIAO avec le Wio (16,5 mm au-dessus de la carte prévus) et du dessus du Wio
-  (25 mm prévus ; le couvercle est 27,4 mm au-dessus de la carte).
+- Hauteur réelle de la prise USB-C du XIAO (16,5 mm au-dessus de la carte prévus ; même hauteur avec le XIAO C3) et,
+  pour le XIAO S3 de secours seulement, du dessus du Wio (25 mm prévus ; le couvercle est 27,4 mm au-dessus de la carte).
 - Fiche du câble USB-C utilisé (fente 13 × 8).

@@ -1,8 +1,14 @@
 # Capteur chaudière Sdb — Circuit imprimé
 
-Version du 2026-10-19 (carte V 1.0 dessinée).
+Version du 2026-10-19 (carte V 1.0 dessinée) ; mise à jour du 2026-11-14 : **le nœud ThSdb tourne désormais sur un
+XIAO ESP32-C3** (Wi-Fi seul, sans module LoRa), sur la **même carte, sans aucune modification** (même empreinte
+« XIAO 14P THT »). Le XIAO ESP32-S3 + Wio-SX1262 reste utilisable sur la même carte et est gardé en secours.
 **État : schéma, placement, routage, gouttes et sérigraphie FAITS dans EasyEDA Pro ; contrôle des règles (DRC) = 0 erreur ;
 schéma et PCB identiques. Prêt pour la commande** (détail au § 7).
+
+> **Pourquoi le C3** (2026-11-13) : le RSSI Wi-Fi de ThSdb est bon (moyenne ≈ −66 à −68 dBm, minimum −76 dBm sur une
+> nuit) ; le LoRa n'était pas utilisé. Le schéma et le PCB EasyEDA gardent la fiche « XIAO ESP32-S3 + Wio-SX1262 (THT) »
+> et la sérigraphie « XIAO ESP32-S3 + Wio » : seule la puce change, pas la carte.
 
 Méthode et règles : celles de NoeudChauffageSdb (`pcb/NoeudChauffageSdb/NoeudChauffageSdb.md`) et des notices de
 `D:\Developpement\EasyEda\Notices` (modèle de règles PCB, routage, bibliothèque personnelle).
@@ -12,40 +18,42 @@ Méthode et règles : celles de NoeudChauffageSdb (`pcb/NoeudChauffageSdb/NoeudC
 - Mesure la **température et l'humidité** de la salle de bain (DHT20).
 - Surveille le **voyant de la chaudière** (TCS34725 collé contre le voyant) pour savoir si elle est allumée ou éteinte ;
   une LED bleue sur la carte recopie cet état.
-- Remontée par **Wi-Fi / MQTT** ; le module LoRa Wio-SX1262 est monté mais inutilisé pour le moment (`_LORA_P2P_MODE_`
-  désactivé).
+- Remontée par **Wi-Fi / MQTT** (le XIAO C3 n'a pas de LoRa ; avec le XIAO S3 de secours, le Wio-SX1262 resterait
+  inutilisé, `_LORA_P2P_MODE_` désactivé).
 - Alimentation par la **prise USB-C du XIAO** (bloc USB 5 V).
 
-Code : `D:\Developpement\Pilotage_Maison\Capteur`, env PlatformIO `esp32s3` ; seule la configuration active de
-`src/global.h` compte ici : `CAPTEUR_DHT20` + `CAPTEUR_RGB_TCS34725` + `LED_CAPTEUR_RGB`, `_WIFI_MODE_`.
-Le nom NVS par défaut (`ThCh1er`) est remplacé par la configuration Web.
+Code : `D:\Developpement\Pilotage_Maison\Capteur`, profil PlatformIO **`xiao_c3`** (`BOARD_XIAO_C3`) ; profil ThSdb de
+`src/global.h` : `CAPTEUR_DHT20` + `CAPTEUR_RGB_TCS34725` + `LED_CAPTEUR_RGB`, `_WIFI_MODE_` (`CAPTEUR_BATTERIE` reste
+activé dans le profil, mais D2 n'est pas câblée sur cette carte : valeur sans objet). Avec le XIAO S3 de secours :
+profil `xiao_s3`, mêmes capteurs. Le nom (`ThSdb`) et les réglages viennent de la configuration Web (NVS).
 
-| Fonction | GPIO | Patte XIAO | Constante (`global.h`) | Remarque |
-|---|---|---|---|---|
-| I2C SDA | 5 | D4 | `DEFAULT_SDA_PIN` | bus partagé DHT20 + TCS34725 |
-| I2C SCL | 6 | D5 | `DEFAULT_SCL_PIN` | idem |
-| LED bleue (état chaudière) | 44 | D7 (RX) | `LED_CAPTEUR_RGB_PIN` | allumée à l'état haut (« DEL OFF » = 0 par défaut) |
-| Interruption TCS34725 | 43 | D6 (TX) | `CAPTEUR_RGB_TCS34725_INTERRUPT` | facultative : **non câblée** (sortie série, messages au démarrage) |
-| SPI du Wio-SX1262 | 7, 8, 9 | D8, D9, D10 | `LORA_SCK/MISO/MOSI_PIN` | occupées par le module LoRa : **laissées libres** sur la carte |
-| DIO1, RESET, BUSY, CS du LoRa | 38 à 42 | connecteur du dessous du XIAO | `LORA_*_PIN` | ne passent pas par la carte |
+| Fonction | Patte XIAO | GPIO XIAO **C3** (en service) | GPIO XIAO S3 (secours) | Constante (`global.h`) | Remarque |
+|---|---|---|---|---|---|
+| I2C SDA | D4 | **6** | 5 | `DEFAULT_SDA_PIN` | bus partagé DHT20 + TCS34725 |
+| I2C SCL | D5 | **7** | 6 | `DEFAULT_SCL_PIN` | idem |
+| LED bleue (état chaudière) | D7 (RX) | **20** | 44 | `LED_CAPTEUR_RGB_PIN` | allumée à l'état haut (« DEL OFF » = 0 par défaut) |
+| Interruption TCS34725 | D6 (TX) | **21** | 43 | `CAPTEUR_RGB_TCS34725_INTERRUPT` | facultative : **non câblée** (sortie série, messages au démarrage) |
+| — | D8, D9, D10 | 8, 9, 10 | 7, 8, 9 (SPI du Wio) | — | **laissées libres** sur la carte (sur le C3, GPIO8 et GPIO9 sont des broches de démarrage) |
 
-Les broches I2C et la broche de la LED sont modifiables par la page Web (NVS) ; les valeurs ci-dessus sont celles par défaut.
+Les broches I2C et la broche de la LED sont modifiables par la page Web (NVS). **Au passage d'un XIAO à l'autre**, effacer
+la puce (« Erase Flash ») ou corriger les broches sur la page Web : sinon les valeurs enregistrées pour l'autre XIAO
+restent utilisées.
 
 Schéma de principe (vue de dessus du XIAO, USB-C en haut) :
 
 ```
                           USB-C (alimentation 5 V)
                        +-----------[====]-----------+
-                       |    XIAO ESP32-S3 (A1)       |
+                       |    XIAO ESP32-C3 (A1)       |
                  n.c. -| D0                      5V |- n.c.
                  n.c. -| D1                     GND |------------------+---- GND
                  n.c. -| D2                     3V3 |----------+       |
-                 n.c. -| D3                     D10 |- n.c.    |       |   (D8, D9, D10 :
-      SDA  +-----------| D4 (GPIO5)              D9 |- n.c.    |       |    SPI du Wio-SX1262)
-      SCL  | +---------| D5 (GPIO6)              D8 |- n.c.    |       |
-           | |   n.c. -| D6 (GPIO43, INT)  D7 (GPIO44) |---+   |       |
+                 n.c. -| D3                     D10 |- n.c.    |       |
+      SDA  +-----------| D4 (GPIO6)              D9 |- n.c.    |       |
+      SCL  | +---------| D5 (GPIO7)              D8 |- n.c.    |       |
+           | |   n.c. -| D6 (GPIO21, INT)  D7 (GPIO20) |---+   |       |
            | |         +-----------------------------+   |   |       |
-           | |          (Wio-SX1262 empilé au-dessus)     |   |       |
+           | |  (XIAO S3 de secours : GPIO 5, 6, 43, 44)  |   |       |
            | |                                            |   |       |
            | |   LED bleue :  D7 ---[R1 100 Ω]---|>|D1--- GND |       |
            | |                                            |   |       |
@@ -74,12 +82,12 @@ Schéma de principe (vue de dessus du XIAO, USB-C en haut) :
 
 | Sujet | Décision |
 |---|---|
-| Carte | XIAO ESP32-S3 surmonté du Wio-SX1262 (kit Seeed), sur barrettes femelles |
+| Carte | **XIAO ESP32-C3** sur barrettes femelles (depuis le 2026-11-14) ; à l'origine XIAO ESP32-S3 surmonté du Wio-SX1262 (kit Seeed), même empreinte, gardé en secours |
 | Alimentation | prise USB-C du XIAO ; les modules prennent le 3,3 V du XIAO ; pas de régulateur ni de bornier sur la carte |
 | DHT20 | module 4 broches (SDA, SCL, −, +), **sur fil de 10 cm**, fixé sur la paroi du boîtier (à l'air de la pièce) |
 | TCS34725 | module type Adafruit 7 broches, **sur fil de 20 cm max.**, collé contre le voyant de la chaudière ; **alimenté par VIN** (régulateur et adaptateur de niveau I2C du module, comme le préconise Adafruit ; la broche 3V3 du module est une sortie, non câblée) ; **LED blanche éteinte** (broche LED reliée à GND sur la carte) |
 | LED témoin | bleue 5 mm, au bord droit, **pattes pliées à 90°** pour pointer dans un trou de la paroi côté USB-C |
-| Antennes | 2 antennes souples (Wi-Fi sur le XIAO, LoRa sur le Wio), dans le boîtier ou sorties |
+| Antennes | **une seule** : l'antenne Wi-Fi souple du XIAO C3 (U.FL), collée sur une paroi intérieure, loin du plan de masse (l'antenne LoRa ne sert plus ; elle ne servirait qu'avec le XIAO S3 + Wio de secours) |
 | Boîtier | impression 3D, **fermé** (carte dans la salle de bain) |
 | Composants | tout en traversant ; prises JST-XH |
 
@@ -87,8 +95,8 @@ Schéma de principe (vue de dessus du XIAO, USB-C en haut) :
 
 | Élément | Courant |
 |---|---|
-| XIAO ESP32-S3 avec Wi-Fi | ≈ 100 mA en moyenne, pointes ≈ 350–500 mA (sous 5 V USB) |
-| Wio-SX1262 | quelques µA en veille (LoRa inutilisé) ; jusqu'à ≈ 120 mA en émission si LoRa est activé un jour |
+| XIAO ESP32-C3 avec Wi-Fi (19,5 dBm) | ≈ 80–100 mA en moyenne éveillé, pointes ≈ 350 mA (sous 5 V USB) ; quelques dizaines de µA en deep sleep hors chauffe |
+| (secours) XIAO ESP32-S3 + Wio-SX1262 | ≈ 100 mA, pointes ≈ 350–500 mA ; Wio : quelques µA en veille (LoRa inutilisé) |
 | DHT20 + TCS34725 (LED éteinte) | ≈ 1 mA sur le 3,3 V |
 | LED bleue | ≈ 3 mA |
 
@@ -100,7 +108,7 @@ Un bloc USB 5 V de 1 A suffit largement. Le 3,3 V des modules (quelques mA) est 
 
 | Repère | Composant | Pièce | Pattes → réseau |
 |---|---|---|---|
-| A1 | XIAO ESP32-S3 + Wio-SX1262 | fiche perso « XIAO ESP32-S3 + Wio-SX1262 (THT) » (même empreinte que le XIAO C3) | 3V3 → `3V3` ; GND → `GND` ; D4 → `SDA` ; D5 → `SCL` ; D7 → `LED_CHAUD` ; 5V, D0–D3, D6, D8–D10 non connectées |
+| A1 | XIAO ESP32-S3 + Wio-SX1262 au schéma ; **XIAO ESP32-C3 monté** depuis le 2026-11-14 | fiche perso « XIAO ESP32-S3 + Wio-SX1262 (THT) » (même empreinte que le XIAO C3 : la fiche n'a pas été changée) | 3V3 → `3V3` ; GND → `GND` ; D4 → `SDA` ; D5 → `SCL` ; D7 → `LED_CHAUD` ; 5V, D0–D3, D6, D8–D10 non connectées |
 | C1 | céramique 100 nF | C320C104K5R5TA | `3V3` → `GND` |
 | C2 | électrolytique 10 µF 16 V | UVR1C100MDD (fiche perso « Condensateur électrolytique D5 pas 2,0 (THT) ») | + → `3V3` ; − → `GND` |
 | R1 | 100 Ω | PCF14JT100R (fiche perso « Résistance 1/4 W (THT) ») | `LED_CHAUD` → `LED_CHAUD_R` |
@@ -129,13 +137,15 @@ et INT du TCS34725 ne sont pas câblées.
 ## 6. Boîtier et mécanique
 
 - **Impression 3D**, fermé : la carte est dans la salle de bain (humidité, vapeur).
-- **Hauteur** : XIAO + Wio = 18 mm broches comprises ; sur barrettes femelles (≈ 8,5 mm), le haut du Wio arrive vers
-  20–22 mm au-dessus de la carte → **hauteur intérieure ≥ 25 mm**.
+- **Hauteur** : dimensionnée pour le XIAO S3 + Wio (18 mm broches comprises ; sur barrettes femelles ≈ 8,5 mm, le haut
+  du Wio arrive vers 20–22 mm au-dessus de la carte → **hauteur intérieure ≥ 25 mm**). Le XIAO C3 seul est plus bas : le
+  boîtier convient tel quel, et le XIAO S3 de secours y rentre toujours.
 - **USB-C** du XIAO au bord de la carte, en face d'une ouverture de la paroi.
 - **DHT20** fixé à l'extérieur de la paroi par son trou (vis M3), fil de 10 cm passant par un trou rebouché.
 - **TCS34725** : câble de 20 cm par un passe-fil ; le module se colle contre le voyant (adhésif double face, cache opaque
   conseillé pour éviter la lumière ambiante).
-- **Antennes** : collées sur les parois intérieures, loin du plan de masse et l'une de l'autre (ou sorties).
+- **Antenne** : celle du XIAO C3 (Wi-Fi), collée sur une paroi intérieure, loin du plan de masse (avec le XIAO S3 de
+  secours : 2 antennes, Wi-Fi et LoRa, loin l'une de l'autre).
 - **LED bleue** : pattes pliées à 90°, elle pointe dans un **trou de la paroi côté USB-C** (bord droit de la carte).
 - **Carte** : 46 × 41 mm, 4 trous M3 à 3,5 mm des coins (§ 7.2) ; l'USB-C, J1 et J2 sont sur **trois côtés différents**
   (droit, gauche, bas).

@@ -50,12 +50,14 @@ template:
   # ---------- Version du firmware du CYD principal (Home-Assist 3.5) ----------
   # Trame « <nom> VERSION 3.5 31/10/2026 13:48 » au démarrage et après STATUS.
   # État = numéro de version ; attributs : compilation (date et heure), recu (dernière réception).
+  # Seulement la trame du CYD principal (« CYD HA VERSION … », même nom que l'automatisation « CYD - Recevoir Alive ») :
+  # une puce Capteur non configurée publiait sa propre VERSION sur ce topic (« Thermomètre VERSION … », 2026-11-14).
   - trigger:
       - trigger: mqtt
         topic: home/configuration/state
     conditions:
       - condition: template
-        value_template: "{{ ' VERSION ' in trigger.payload }}"
+        value_template: "{{ trigger.payload.startswith('CYD HA VERSION ') }}"
     sensor:
       - name: "CYD Version"
         unique_id: cyd_version

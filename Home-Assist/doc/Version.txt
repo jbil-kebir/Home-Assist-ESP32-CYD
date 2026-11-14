@@ -1,3 +1,9 @@
+3.7
+Émission 433 MHz (CMyRCSwitch::toggleDevice : projecteur, guirlande, lumière cave, chauffage RdC, relais du chauffage
+    SdB ; pas la chaudière, émise à part) : detachInterrupt(CC1101_GDO0) au lieu de mySwitch.disableReceive() ; l'instance RCSwitch de
+    l'appareil n'avait pas activé la réception : erreurs « gpio_isr_handler_remove / gpio_wakeup_disable /
+    gpio_set_intr_type : GPIO number error » à chaque envoi, et ISR de réception laissée active pendant l'émission
+
 3.6
 Case « Vérification active » (page Web, section de l'appareil, NVS <préfixe>pactif, vraie par défaut) : décochée, le nom du
     nœud et les réglages sont gardés mais l'appareil fonctionne sans vérification (ni PING, ni abonnement, ni sablier)

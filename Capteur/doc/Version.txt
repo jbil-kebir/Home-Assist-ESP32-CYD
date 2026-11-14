@@ -1,3 +1,21 @@
+3.7
+Annonce « NONCONFIGURE <modèle>-<fin MAC> … » d'une puce neuve : publiée sur le topic de commande de configuration,
+    auquel la puce est abonnée ; elle la recevait elle-même (et celles d'une autre puce neuve) et y répondait par
+    l'accusé « COMMANDE reçue » : désormais ignorée à la réception (CMqtt::callback), ni traitement ni accusé
+Puce non configurée : elle ne publie RIEN d'autre que son annonce NONCONFIGURE (avant : trames VERSION, mesures,
+    « online » et testament « offline » sous le nom par défaut « Thermomètre », sur les topics par défaut, dont
+    home/configuration/state, celui du CYD principal : HA prenait sa VERSION pour celle du CYD) :
+    CMqtt::publish bloque tout sauf « NONCONFIGURE … » (renvoie 0, trace série) ; connexion au broker sans testament ;
+    pas de « online » ; commandes MQTT ignorées sans accusé ni réponse (configuration par la page Web)
+
+3.6
+IP fixe apprise de la box : case « IP fixe » cochée et adresse vide -> connexion en DHCP puis enregistrement en NVS
+    de l'IP, de la passerelle, du masque et du DNS reçus (clé <préfixe>ipap) ; garde-fou : échec MQTT avec une IP
+    apprise -> reconnexion en DHCP une fois par réveil ; une adresse saisie à la main n'est jamais modifiée ;
+    page Web : « (apprise de la box) »
+Broker MQTT par défaut d'une puce neuve pris dans secret.h (FORCE_MQTT_*, comme le Wi-Fi) : la puce joint le broker
+    et s'annonce (NONCONFIGURE) sans FORCE_CONNEXION_WIFI
+
 3.5
 Présence sur le réseau électrique (CPresenceReseauElectrique, MyPresenceReseauElectrique.h/.cpp, #define CAPTEUR_PRESENCE_RESEAU) :
     nœud alimenté par la prise RF 433 MHz d'un appareil (PrGuirlande...) : alimenté = appareil allumé
