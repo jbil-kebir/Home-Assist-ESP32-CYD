@@ -10,6 +10,7 @@
 #  - Réveil automatique : SET sleepA:0 à chaque demande d'allumage de la chaudière (ON, ON_FORCE, ONR)
 #  - Délai : input_number.thsdb_delai_sommeil (minutes, 30 par défaut)
 #  - sensor.thsdb_prochain_reveil : réveil estimé (trame DEEPSLEEP ON + durée annoncée), affiché sur la carte ThSdb
+#  - sensor.thsdb_rssi : niveau de réception Wi-Fi (trames REVEIL et ALIVE), pour juger du passage en C3 sans LoRa
 # ============================================================
 
 input_number:
@@ -40,6 +41,33 @@ template:
         state: >-
           {%- set d = trigger.payload.split(' ')[5] | int(0) -%}
           {{ (now() + timedelta(seconds=d)).isoformat() if d > 0 else none }}
+
+  # ---------- Niveau de réception Wi-Fi de ThSdb (dBm) ----------
+  # But : juger si un C3 en Wi-Fi seul suffit à cet emplacement (sans module LoRa).
+  # Repère : > -67 dBm très bon, -67 à -75 correct, -75 à -80 limite, < -80 pertes probables.
+  # Trames lues (home/thermometre/state, home/batt/state), des trois équipements du nœud (ThSdb, CoulSdb, BatSdb) :
+  #   « ThSdb REVEIL DEEPSLEEP <date> <heure> 600 Cause réveil : … RSSI : -67 dBm Préc : … » (à chaque réveil)
+  #   « CoulSdb ALIVE <date> <heure> RSSI -67 »                                         (si le watchdog ALIVE est actif)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/+/state"
+        value_template: >-
+          {%- set m = value.split(' ') -%}
+          {{ 'ok' if m | length > 1 and m[0] | upper in ['THSDB', 'COULSDB', 'BATSDB'] and 'RSSI' in m else '' }}
+        payload: "ok"
+    sensor:
+      - name: "ThSdb RSSI"
+        unique_id: thsdb_rssi
+        device_class: signal_strength
+        unit_of_measurement: "dBm"
+        state_class: measurement
+        icon: mdi:wifi
+        state: >-
+          {%- set m = trigger.payload.split(' ') | reject('equalto', '') | list -%}
+          {%- set i = m.index('RSSI') + 1 -%}
+          {%- if i < m | length and m[i] == ':' -%}{%- set i = i + 1 -%}{%- endif -%}
+          {%- set v = m[i] | int(0) if i < m | length else 0 -%}
+          {{ v if v < 0 else (this.state if this.state | is_number else none) }}
 
 automation:
   # ---------- Réveil automatique de ThSdb à chaque demande d'allumage de la chaudière ----------

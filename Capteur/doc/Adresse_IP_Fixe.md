@@ -1,6 +1,7 @@
 # Adresse IP fixe et canal mémorisé (connexion Wi-Fi rapide)
 
-Capteurs Wi-Fi sur piles (XIAO ESP32-C3, ESP32-S3) — octobre 2026.
+Capteurs Wi-Fi sur piles (XIAO ESP32-C3, ESP32-S3) — octobre 2026, mis à jour le 13 novembre 2026
+(Capteur 3.6 : adresse apprise de la box et garde-fou).
 
 ## 1. But
 
@@ -29,7 +30,7 @@ Les deux options suppriment ces étapes. Elles sont **indépendantes** : on peut
 
 | Option | Ce qu'elle supprime | Où l'information est gardée |
 |---|---|---|
-| **IP fixe** | La demande d'adresse (DHCP) | Mémoire permanente (NVS), réglée sur la page Web |
+| **IP fixe** | La demande d'adresse (DHCP) | Mémoire permanente (NVS), apprise de la box ou saisie sur la page Web |
 | **Mémoriser le canal** | La recherche de la box sur tous les canaux | Mémoire RTC (conservée pendant le deep sleep) |
 
 ### 2.1 IP fixe
@@ -40,6 +41,28 @@ la passerelle (la box), le masque du réseau et le serveur DNS.
 **Précaution** : la box ne doit pas pouvoir donner cette adresse à un autre appareil, sinon deux appareils
 auraient la même adresse et aucun des deux ne fonctionnerait correctement. On **réserve donc l'adresse dans
 la box** (voir § 3).
+
+**Adresse apprise de la box (Capteur 3.6).** Il n'est pas nécessaire de saisir l'adresse : c'est la box qui
+l'attribue, le capteur la retient.
+
+- Si **IP fixe** est cochée et que le champ **Adresse IP** est **vide** (ou invalide), le capteur se connecte
+  en DHCP comme d'habitude, puis **enregistre en NVS** l'adresse, la passerelle, le masque et le DNS reçus de
+  la box. Dès le réveil suivant, il se connecte en IP fixe avec ces valeurs.
+- La NVS n'est réécrite que si l'adresse a changé.
+- La page Web l'indique : « Adresse IP (apprise de la box) », ou « (vide : apprise de la box au prochain
+  démarrage) » tant qu'elle n'a pas encore été apprise.
+- Une adresse **saisie à la main** (modifiée sur la page Web) reste prioritaire : le capteur ne la modifie
+  jamais. Pour revenir à l'apprentissage automatique, **vider le champ** et enregistrer.
+
+**Garde-fou.** Avec une IP fixe, la connexion à la box réussit même si l'adresse ne convient plus (la box ne
+la vérifie pas) : le capteur ne passe donc pas au réseau Wi-Fi suivant. Le problème n'apparaît qu'au moment de
+joindre le serveur MQTT. D'où le garde-fou, **pour une adresse apprise seulement** :
+
+- si la connexion MQTT échoue, le capteur se reconnecte aussitôt en **DHCP**, réapprend l'adresse (NVS
+  réécrite seulement si elle a changé) et retente le MQTT ;
+- une **seule fois par réveil** : pas de boucle ;
+- si c'est le serveur MQTT qui est en panne (serveur externe, coupure Internet), chaque réveil fait cette
+  reconnexion inutile (1 à 3 s de plus), sans écriture NVS ; tout redevient normal quand le serveur revient.
 
 ### 2.2 Mémoriser le canal
 
@@ -67,7 +90,11 @@ cette borne, sans rien chercher.
 
 Les intitulés peuvent varier légèrement selon la version de Freebox OS.
 
-Réglages réseau de la Freebox Pop, à reporter sur la page Web du capteur :
+La réservation garantit que la box redonne toujours la même adresse au capteur : c'est elle que le capteur
+apprend (§ 2.1).
+
+Réglages réseau de la Freebox Pop (appris automatiquement avec l'adresse ; à reporter sur la page Web
+seulement en cas de saisie à la main) :
 
 | Champ | Valeur |
 |---|---|
@@ -84,7 +111,8 @@ inaccessible. Il faut d'abord le **garder éveillé**.
    **retained** (le capteur le reçoit à son prochain réveil). Pour ThChRDC : `home/confthchrdc/command`.
 2. Ouvrir la page Web du capteur : **http://192.168.1.128** (adresse du capteur).
 3. Dans le cadre **Wifi** du réseau utilisé :
-   - cocher **IP fixe** et remplir **Adresse IP**, **Passerelle**, **Masque** et **DNS** (§ 3) ;
+   - cocher **IP fixe** et laisser **Adresse IP** vide : le capteur l'apprendra de la box au prochain
+     démarrage (§ 2.1). Ne la remplir, avec Passerelle, Masque et DNS (§ 3), que pour imposer une adresse ;
    - cocher **Mémoriser le canal**.
 4. **Enregistrer**. Le capteur redémarre avec les nouveaux réglages.
 5. **Réactiver le deep sleep** : publier `SLEEP ENABLE` sur le même topic (en retained, pour remplacer
@@ -96,13 +124,15 @@ Champs ajoutés au cadre Wifi :
 |---|---|---|
 | IP fixe | Active l'adresse fixe (sinon DHCP) | Décoché |
 | Mémoriser le canal | Active la connexion sur le canal mémorisé | Décoché |
-| Adresse IP | Adresse du capteur, réservée dans la box | Vide (l'adresse actuelle est affichée en grisé) |
-| Passerelle | Adresse de la box | 192.168.1.254 |
-| Masque | Masque du réseau | 255.255.255.0 |
-| DNS | Serveur de noms (si vide ou invalide : la passerelle) | 192.168.1.254 |
+| Adresse IP | Adresse du capteur, réservée dans la box ; vide : apprise de la box | Vide (l'adresse actuelle est affichée en grisé) |
+| Passerelle | Adresse de la box (apprise avec l'adresse) | 192.168.1.254 |
+| Masque | Masque du réseau (appris avec l'adresse) | 255.255.255.0 |
+| DNS | Serveur de noms (si vide ou invalide : la passerelle ; appris avec l'adresse) | 192.168.1.254 |
 
-**Sécurité** : si l'adresse IP, la passerelle ou le masque sont mal écrits, le capteur l'indique dans le
-journal (« IP fixe invalide : DHCP ») et revient au DHCP. Il reste donc joignable.
+**Sécurité** : si l'adresse IP, la passerelle ou le masque sont vides ou mal écrits, le capteur l'indique
+dans le journal (« IP fixe absente ou invalide : DHCP, l'adresse reçue sera apprise »), se connecte en DHCP
+et apprend l'adresse reçue. Il reste donc joignable. Attention : une adresse mal écrite sera **remplacée** par
+celle de la box.
 
 Pour revenir au fonctionnement d'origine : décocher les deux cases et enregistrer.
 
@@ -125,11 +155,20 @@ Préc : WiFi 6500 (canal mémorisé : échec) NTP 6500 ...
 
 La ligne « Durée éveil » du message `DEEPSLEEP ON` donne la durée totale de l'éveil.
 
+Messages du journal (page Web, bouton **Journal**) liés à l'adresse apprise :
+
+- « IP fixe apprise : 192.168.1.128 (passerelle …, masque …, DNS …) » : adresse enregistrée (premier
+  démarrage, ou changement d'adresse) ;
+- « MQTT injoignable avec l'IP apprise … : reconnexion en DHCP » : le garde-fou s'est déclenché ;
+- « Reconnexion DHCP : échec » : la reconnexion de secours n'a pas abouti (box injoignable).
+
 ## 6. Dépannage
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
-| Le capteur ne publie plus rien | Adresse IP déjà utilisée, ou mauvaise passerelle | Vérifier la réservation dans la box (§ 3) et la passerelle |
+| Le capteur ne publie plus rien (adresse saisie à la main) | Adresse IP déjà utilisée, ou mauvaise passerelle | Vérifier la réservation dans la box (§ 3) et la passerelle, ou vider le champ Adresse IP pour la faire apprendre |
+| Éveils plus longs, « reconnexion en DHCP » à chaque cycle | Serveur MQTT injoignable (garde-fou) | Vérifier le serveur MQTT et la connexion Internet |
+| L'adresse apprise n'est pas celle attendue | Pas de réservation dans la box | Réserver l'adresse (§ 3), puis vider le champ Adresse IP pour la réapprendre |
 | « canal mémorisé : échec » à chaque cycle | La box change de canal, ou le capteur capte plusieurs bornes | Fixer le canal dans la box, ou décocher Mémoriser le canal |
 | Plus de résolution des noms (serveur NTP) | DNS incorrect | Mettre l'adresse de la box dans DNS |
 | Page Web injoignable | Le capteur dort | `SLEEP DISABLE` en retained (§ 4) |
@@ -139,5 +178,6 @@ La ligne « Durée éveil » du message `DEEPSLEEP ON` donne la durée totale de
 | Fichier | Contenu |
 |---|---|
 | `src/MyWifi.h` | Champs IP fixe et canal mémorisé, délais `WIFI_TIMEOUT_MS` (15 s) et `WIFI_TIMEOUT_RAPIDE_MS` (3 s) |
-| `src/MyWifi.cpp` | Connexion (`begin()`), mémoire RTC du canal, page Web, enregistrement NVS |
+| `src/MyWifi.cpp` | Connexion (`begin()`), mémoire RTC du canal, page Web, enregistrement NVS, adresse apprise (`apprendIp()`, clé NVS `<préfixe>ipap`) et garde-fou (`repliDhcp()`) |
+| `src/MyMqtt.cpp` | Appel du garde-fou (`repliDhcp()`) sur échec de connexion au serveur MQTT |
 | `src/Diagnostic.h/.cpp` | Mention « canal mémorisé » dans le diagnostic du message REVEIL |

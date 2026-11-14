@@ -46,10 +46,12 @@ public:
     return currentState;
   }
 
-  const char* default_mqtt_server = "1.1.1.1";
-  const uint16_t default_mqtt_port = 1883;
-  const char* default_mqtt_user = "xxxxxxx";
-  const char* default_mqtt_password = "xxxxxxxxxxxx";
+  // Broker d'une puce neuve (NVS vide) : identifiants de secret.h, hors Git, comme le Wi-Fi (voir MyWifi.h).
+  // Sans eux, une puce neuve ne joignait jamais le broker et son annonce NONCONFIGURE ne partait pas.
+  const char* default_mqtt_server = FORCE_MQTT_SERVER;
+  const uint16_t default_mqtt_port = FORCE_MQTT_PORT;
+  const char* default_mqtt_user = FORCE_MQTT_USER;
+  const char* default_mqtt_password = FORCE_MQTT_PWD;
   const char* default_topic_prefix = "ad200/";
 
   String nomEquipement = "Mqtt";

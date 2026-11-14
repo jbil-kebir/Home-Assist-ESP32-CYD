@@ -40,7 +40,10 @@ public:
 
   // Connexion rapide (réveil de deep sleep) : voir doc/Adresse_IP_Fixe.docx
   // IP fixe : pas de DHCP. L'adresse doit être réservée dans la box (bail statique) pour l'adresse MAC du capteur.
+  // Adresse vide ou invalide : connexion en DHCP puis l'adresse reçue (IP, passerelle, masque, DNS) est apprise
+  // et enregistrée en NVS (mbIpApprise). Une adresse saisie sur la page Web n'est jamais modifiée par le capteur.
   bool mbIpFixe = false;
+  bool mbIpApprise = false;
   String msIp = "";
   String msPasserelle = "192.168.1.254"; // Freebox
   String msMasque = "255.255.255.0";
@@ -56,8 +59,14 @@ public:
   String getHTML(int i);  
   void loadFromWebServer(WebServer& server);  
   void print() const;
+  // Échec MQTT avec une IP apprise : reconnexion en DHCP (une fois par réveil), adresse réapprise si elle a changé.
+  // Retour : true si la reconnexion a été faite et a réussi (le MQTT peut être retenté aussitôt).
+  bool repliDhcp();
 
 private:
+  bool mbRepliDhcpFait = false;
+  bool ipFixeValide() const;
+  void apprendIp();
   void configureIp();
   bool attendConnexion(unsigned long ulTimeoutMs);
 };

@@ -127,6 +127,10 @@ void CMqtt::reconnect() {
       Serial.print("échec, rc=");
       Serial.println(client.state());
       gDiag.iDernierRc = client.state();
+      #ifdef _WIFI_MODE_
+      // Garde-fou de l'IP fixe apprise (voir CWifi::repliDhcp) : une seule fois par réveil, donc pas de boucle
+      if (mConfig.mWifi != nullptr && mConfig.mWifi->repliDhcp()) reconnect();
+      #endif
     }
   }
 }

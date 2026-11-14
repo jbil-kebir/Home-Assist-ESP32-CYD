@@ -37,6 +37,7 @@ void CFileCommandes::memorise(const String& topicConfig, const String& commande)
   mEntrees[i].commande = commande;
   mEntrees[i].nbEnvois = 0;
   mEntrees[i].bEnvoiArme = false;
+  mEntrees[i].bEnvoyeCeReveil = false; // Nouvelle commande : envoyable dès la prochaine fin de rafale, même pendant ce réveil
   Serial.printf("[File] %s : commande mise en attente <%s>\n", topicConfig.c_str(), commande.c_str());
   publieAttente(i);
 }
@@ -72,6 +73,7 @@ void CFileCommandes::noteTrame(const String& topic, const String& nomEquipement,
   bool bNouveauReveil = !e.bDejaVu || (ulMaintenant - e.ulDerniereTrame >= FILE_CMD_NOUVEAU_REVEIL_MS);
   e.ulDerniereTrame = ulMaintenant;
   e.bDejaVu = true;
+  if (bNouveauReveil) e.bEnvoyeCeReveil = false;
   if (e.nomCapteur.length() == 0) e.nomCapteur = nomEquipement;
   String sIP = payload.substring(payload.lastIndexOf(' ') + 1);
   IPAddress ipAddr;
@@ -122,8 +124,11 @@ void CFileCommandes::noteTrame(const String& topic, const String& nomEquipement,
     return;
   }
 
-  // La trame DEEPSLEEP ON est la dernière avant le sommeil : trop tard pour envoyer
-  e.bEnvoiArme = (sPayload.indexOf("DEEPSLEEP ON") < 0);
+  // La trame DEEPSLEEP ON est la dernière avant le sommeil : trop tard pour envoyer.
+  // Une seule tentative par réveil : après l'envoi, le capteur répond (CONFIG, accusé, puis DEEPSLEEP ON s'il se
+  // rendort) ; réarmer sur sa réponse faisait réémettre le relais au bout de FILE_CMD_SILENCE_MS, par-dessus la
+  // trame suivante (radio semi-duplex) : accusé et DEEPSLEEP ON perdus (constaté le 14/11/2026 avec SET sleepA:1).
+  e.bEnvoiArme = !e.bEnvoyeCeReveil && (sPayload.indexOf("DEEPSLEEP ON") < 0);
 }
 
 // Envoi de la commande en attente quand le capteur se tait depuis FILE_CMD_SILENCE_MS (fin de sa rafale de mesures)
@@ -135,6 +140,7 @@ void CFileCommandes::loop() {
     if (!e.bEnvoiArme || e.commande.length() == 0) continue;
     if (millis() - e.ulDerniereTrame < FILE_CMD_SILENCE_MS) continue;
     e.bEnvoiArme = false;
+    e.bEnvoyeCeReveil = true;
     e.nbEnvois++;
     Serial.printf("[File] %s : envoi %d/%d de <%s>\n", mCapteurs[i].topicConfig, e.nbEnvois, FILE_CMD_MAX_ENVOIS, e.commande.c_str());
     if (onLoraPublish) onLoraPublish(mCapteurs[i].topicConfig, e.commande.c_str());

@@ -25,6 +25,8 @@ private:
     unsigned long ulDerniereTrame = 0;  // millis() de la dernière trame reçue du capteur
     bool bDejaVu = false;               // Au moins une trame reçue depuis le démarrage
     bool bEnvoiArme = false;            // Trame reçue : envoyer après FILE_CMD_SILENCE_MS de silence
+    bool bEnvoyeCeReveil = false;       // Commande déjà envoyée pendant ce réveil : pas de renvoi avant le suivant
+                                        // (sinon le relais émettait par-dessus l'accusé et le DEEPSLEEP ON du capteur)
     int nbEnvois = 0;                   // Envois faits pour la commande en attente
     String nomCapteur;                  // Nom annoncé dans la réponse CONFIG (ex : ThRemise)
     String ip;                          // IP en fin de la dernière trame ("" en LoRa seul : 0.0.0.0)

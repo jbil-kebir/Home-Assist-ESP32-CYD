@@ -43,16 +43,59 @@ static uint32_t hashSsid(const String& s) {
   return h;
 }
 
-// IP fixe : appelée avant WiFi.begin(). Adresse invalide → DHCP.
+bool CWifi::ipFixeValide() const {
+  IPAddress ip, passerelle, masque;
+  return ip.fromString(msIp) && passerelle.fromString(msPasserelle) && masque.fromString(msMasque);
+}
+
+// IP fixe : appelée avant WiFi.begin(). Adresse invalide → DHCP (l'adresse reçue sera apprise, voir apprendIp).
 void CWifi::configureIp() {
   if (!mbIpFixe) return;
   IPAddress ip, passerelle, masque, dns;
-  if (!ip.fromString(msIp) || !passerelle.fromString(msPasserelle) || !masque.fromString(msMasque)) {
-    Serial.println("IP fixe invalide : DHCP");
+  if (!ipFixeValide()) {
+    Serial.println("IP fixe absente ou invalide : DHCP, l'adresse reçue sera apprise");
     return;
   }
+  ip.fromString(msIp); passerelle.fromString(msPasserelle); masque.fromString(msMasque);
   if (!dns.fromString(msDns)) dns = passerelle;
   WiFi.config(ip, passerelle, masque, dns);
+}
+
+// Retient l'adresse obtenue en DHCP (IP, passerelle, masque, DNS). Écriture NVS seulement si elle a changé.
+void CWifi::apprendIp() {
+  String sIp = WiFi.localIP().toString(), sGw = WiFi.gatewayIP().toString();
+  String sMasque = WiFi.subnetMask().toString(), sDns = WiFi.dnsIP().toString();
+  if (WiFi.localIP() == IPAddress((uint32_t)0)) return; // Pas d'adresse : rien à apprendre
+  bool bChange = !mbIpApprise || sIp != msIp || sGw != msPasserelle || sMasque != msMasque || sDns != msDns;
+  msIp = sIp; msPasserelle = sGw; msMasque = sMasque; msDns = sDns;
+  mbIpApprise = true;
+  if (!bChange) return;
+  prefs.begin(nvs_namespace, false);
+  prefs.putString((mPrefixNVS+"ip").c_str(), msIp);
+  prefs.putString((mPrefixNVS+"gw").c_str(), msPasserelle);
+  prefs.putString((mPrefixNVS+"mask").c_str(), msMasque);
+  prefs.putString((mPrefixNVS+"dns").c_str(), msDns);
+  prefs.putBool((mPrefixNVS+"ipap").c_str(), true);
+  prefs.end();
+  Serial.printf("IP fixe apprise : %s (passerelle %s, masque %s, DNS %s)\n",
+                msIp.c_str(), msPasserelle.c_str(), msMasque.c_str(), msDns.c_str()); Serial.flush();
+}
+
+// Garde-fou de l'IP apprise : appelé sur échec de connexion MQTT. Une IP saisie à la main n'est jamais touchée.
+bool CWifi::repliDhcp() {
+  if (!mbIpFixe || !mbIpApprise || mbRepliDhcpFait) return false;
+  mbRepliDhcpFait = true;
+  Serial.printf("MQTT injoignable avec l'IP apprise %s : reconnexion en DHCP\n", msIp.c_str()); Serial.flush();
+  WiFi.disconnect();
+  WiFi.config(IPAddress((uint32_t)0), IPAddress((uint32_t)0), IPAddress((uint32_t)0)); // Retour au DHCP
+  WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+  WiFi.setTxPower((wifi_power_t)mcTxPower);
+  if (!attendConnexion(WIFI_TIMEOUT_MS)) {
+    Serial.println("Reconnexion DHCP : échec"); Serial.flush();
+    return false;
+  }
+  apprendIp(); // Réécrit la NVS seulement si la box a donné une autre adresse
+  return true;
 }
 
 bool CWifi::attendConnexion(unsigned long ulTimeoutMs) {
@@ -85,6 +128,7 @@ void CWifi::begin() {
   }
   attendConnexion(WIFI_TIMEOUT_MS);
   if (WiFi.status() == WL_CONNECTED) {
+    if (mbIpFixe && !ipFixeValide()) apprendIp(); // Connecté en DHCP faute d'adresse : on retient celle de la box
     if (mbMemoCanal) {
       gWifiMemo.iCanal = WiFi.channel();
       memcpy(gWifiMemo.bssid, WiFi.BSSID(), sizeof(gWifiMemo.bssid));
@@ -111,6 +155,7 @@ void CWifi::loadFromNVS() {
   mcTxPower = prefs.getChar((mPrefixNVS + "txpw").c_str(), default_tx_power);
   if (!puissanceValide(mcTxPower)) mcTxPower = default_tx_power;
   mbIpFixe = prefs.getBool((mPrefixNVS + "ipfx").c_str(), false);
+  mbIpApprise = prefs.getBool((mPrefixNVS + "ipap").c_str(), false);
   msIp = prefs.getString((mPrefixNVS + "ip").c_str(), msIp);
   msPasserelle = prefs.getString((mPrefixNVS + "gw").c_str(), msPasserelle);
   msMasque = prefs.getString((mPrefixNVS + "mask").c_str(), msMasque);
@@ -132,6 +177,7 @@ void CWifi::saveToNVS() {
   prefs.putString((mPrefixNVS+"gw").c_str(), msPasserelle);
   prefs.putString((mPrefixNVS+"mask").c_str(), msMasque);
   prefs.putString((mPrefixNVS+"dns").c_str(), msDns);
+  prefs.putBool((mPrefixNVS+"ipap").c_str(), mbIpApprise);
   prefs.putBool((mPrefixNVS+"memo").c_str(), mbMemoCanal);
   prefs.end();
 }
@@ -143,8 +189,8 @@ void CWifi::print() const {
   Serial.printf("     SSID           : %s\n", wifi_ssid.c_str());
   Serial.printf("     MQTT SubTopic  : %s\n", mqttSubTopic.c_str());
   Serial.printf("     Puissance TX   : %s dBm\n", puissanceTexte(mcTxPower).c_str());
-  Serial.printf("     IP fixe        : %s %s (passerelle %s, masque %s, DNS %s)\n", mbIpFixe ? "OUI" : "NON",
-                msIp.c_str(), msPasserelle.c_str(), msMasque.c_str(), msDns.c_str());
+  Serial.printf("     IP fixe        : %s %s%s (passerelle %s, masque %s, DNS %s)\n", mbIpFixe ? "OUI" : "NON",
+                msIp.c_str(), mbIpApprise ? " apprise" : "", msPasserelle.c_str(), msMasque.c_str(), msDns.c_str());
   Serial.printf("     Canal mémorisé : %s\n", mbMemoCanal ? "OUI" : "NON");
 }
 
@@ -159,7 +205,12 @@ void CWifi::loadFromWebServer(WebServer& server) {
     if (puissanceValide(v)) mcTxPower = v;
   }
   mbIpFixe = server.hasArg((mPrefixNVS+"ipfx").c_str());
-  if (server.hasArg((mPrefixNVS+"ip").c_str())) msIp = server.arg(mPrefixNVS+"ip");
+  if (server.hasArg((mPrefixNVS+"ip").c_str())) {
+    String sIp = server.arg(mPrefixNVS+"ip"); sIp.trim();
+    // Adresse modifiée sur la page : saisie à la main (jamais retouchée par le capteur) ; vidée : sera réapprise
+    if (sIp != msIp) mbIpApprise = false;
+    msIp = sIp;
+  }
   if (server.hasArg((mPrefixNVS+"gw").c_str())) msPasserelle = server.arg(mPrefixNVS+"gw");
   if (server.hasArg((mPrefixNVS+"mask").c_str())) msMasque = server.arg(mPrefixNVS+"mask");
   if (server.hasArg((mPrefixNVS+"dns").c_str())) msDns = server.arg(mPrefixNVS+"dns");
@@ -184,7 +235,7 @@ String CWifi::getHTML(int i) {
             // Connexion rapide : IP fixe (adresse à réserver dans la box) et canal mémorisé
             "<div class=\"row\"><div class=\"checkbox-row\"><label>IP fixe</label><input type=\"checkbox\" name=" + (mPrefixNVS+"ipfx").c_str() + " value=\"1\"" + String(mbIpFixe ? " checked" : "") + "></div>"
             "<div class=\"checkbox-row\"><label>Mémoriser le canal</label><input type=\"checkbox\" name=" + (mPrefixNVS+"memo").c_str() + " value=\"1\"" + String(mbMemoCanal ? " checked" : "") + "></div></div>"
-            "<div class=\"row\"><div><label>Adresse IP</label><input type=\"text\" name=" + (mPrefixNVS+"ip").c_str() + " value=\"" + msIp + "\" placeholder=\"" + WiFi.localIP().toString() + "\"></div>"
+            "<div class=\"row\"><div><label>Adresse IP" + String(mbIpApprise ? " (apprise de la box)" : (mbIpFixe && !ipFixeValide() ? " (vide : apprise de la box au prochain démarrage)" : "")) + "</label><input type=\"text\" name=" + (mPrefixNVS+"ip").c_str() + " value=\"" + msIp + "\" placeholder=\"vide (actuelle : " + WiFi.localIP().toString() + ")\"></div>"
             "<div><label>Passerelle</label><input type=\"text\" name=" + (mPrefixNVS+"gw").c_str() + " value=\"" + msPasserelle + "\"></div></div>"
             "<div class=\"row\"><div><label>Masque</label><input type=\"text\" name=" + (mPrefixNVS+"mask").c_str() + " value=\"" + msMasque + "\"></div>"
             "<div><label>DNS</label><input type=\"text\" name=" + (mPrefixNVS+"dns").c_str() + " value=\"" + msDns + "\"></div></div>"
