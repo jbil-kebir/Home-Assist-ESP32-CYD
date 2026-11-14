@@ -3,7 +3,7 @@
 Version du 2026-11-14 : carte **V 1.0 - Novembre 2026** (dessinée le 2026-10-19, jamais commandée avant), complétée
 le 2026-11-14 d'un **emplacement pour le détecteur jour / nuit** (bornier J6, résistance R6, D3 reliée : § 1.3 d) et de
 R2 = 220 kΩ. **État : schéma, placement, routage et sérigraphie FAITS dans EasyEDA Pro** ;
-plans de masse, gouttes, DRC = 0 et exports faits ; prête pour la commande (détail au § 8).
+plans de masse, gouttes, DRC = 0 et exports faits ; **commandée chez JLCPCB le 2026-11-14** (détail au § 8).
 
 Version **XIAO ESP32-C3** de la carte « Capteur S3 » (`pcb/Capteur S3/`) : même circuit imprimé (46 × 65 mm), mêmes
 composants et mêmes variantes, **sans LoRa**. Deux liaisons du XIAO changent (flotteur et mesure des piles, § 1.1),
@@ -438,7 +438,7 @@ Bilan : 27 composants, 13 réseaux. Par rapport à la carte S3 : liaisons `FLOT`
 - [x] Recouler les plans de masse (Maj+B), poser les gouttes, DRC = 0 (2026-11-14).
 - [ ] Contrôle 2D / 3D : sens d'entrée des fils de J6 (vers le bord gauche).
 - [x] Export `.epro2`, vues 2D / 3D, schémas, copie non routée, Gerber (contrôlé : 46 × 65, 4 × M3, 39 vias) dans `pcb/Capteur C3 Xiao/` ; anciens fichiers dans `Archives` (2026-11-14).
-- [ ] Commande JLCPCB.
+- [x] Commande JLCPCB (2026-11-14, Gerber de la commande : `CapteurC3Xiao_Gerber_2026-11-14.zip`).
 - [ ] Essais : démarrage avec cuve pleine, mesure des piles sur D2 (calibre 3,2), Wi-Fi à 19,5 dBm sur piles,
   détecteur jour / nuit sur J6.
 - [ ] Boîtier imprimé (passage des fils de J6, trou de la photorésistance).
