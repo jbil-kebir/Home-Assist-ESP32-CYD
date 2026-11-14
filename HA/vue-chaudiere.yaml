@@ -109,46 +109,8 @@ sections:
                 .shape {
                   background: none !important;
                 }
-          - type: horizontal-stack
-            cards:
-              - type: button
-                name: Réveiller ThSdb
-                icon: mdi:sleep-off
-                tap_action:
-                  action: perform-action
-                  perform_action: script.noeud_commande
-                  data:
-                    capteur: thsdb
-                    commande: "SET sleepA:0"
-                card_mod:
-                  style: "ha-card { height: 60px !important; }"
-              - type: button
-                name: Endormir ThSdb
-                icon: mdi:sleep
-                tap_action:
-                  action: perform-action
-                  perform_action: script.noeud_commande
-                  data:
-                    capteur: thsdb
-                    commande: "SET sleepA:1"
-                card_mod:
-                  style: "ha-card { height: 60px !important; }"
-          - type: entities
-            entities:
-              - entity: input_number.thsdb_delai_sommeil
-                name: Délai avant endormissement
       - type: thermostat
         entity: climate.chaudiere_rdc
-      - type: entities
-        title: Programme chaudière RDC
-        entities:
-          - entity: switch.schedule_5cf4ab
-            name: Programme chaudière
-          - type: attribute
-            entity: switch.schedule_5cf4ab
-            attribute: next_trigger
-            name: "  ↳ Prochain déclenchement"
-            format: datetime
       - type: custom:scheduler-card
         title: Programmation chaudière RDC
         include:
