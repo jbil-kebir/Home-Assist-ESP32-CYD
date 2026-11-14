@@ -1,12 +1,14 @@
 # Capteur C3 Xiao — Circuit imprimé
 
-Version du 2026-10-19 (carte V 1.0 dessinée) ; option détecteur jour / nuit ajoutée le 2026-10-28 (§ 1.3 d, non testée sur cette carte).
-**État : schéma, placement, routage, plans de masse, gouttes et sérigraphie FAITS dans EasyEDA Pro ; contrôle des règles
-(DRC) = 0 erreur ; schéma et PCB identiques. Prêt pour l'export et la commande** (détail au § 8).
+Version du 2026-11-14 : carte **V 1.0 - Novembre 2026** (dessinée le 2026-10-19, jamais commandée avant), complétée
+le 2026-11-14 d'un **emplacement pour le détecteur jour / nuit** (bornier J6, résistance R6, D3 reliée : § 1.3 d) et de
+R2 = 220 kΩ. **État : schéma, placement, routage et sérigraphie FAITS dans EasyEDA Pro** ;
+plans de masse, gouttes, DRC = 0 et exports faits ; prête pour la commande (détail au § 8).
 
 Version **XIAO ESP32-C3** de la carte « Capteur S3 » (`pcb/Capteur S3/`) : même circuit imprimé (46 × 65 mm), mêmes
-composants et mêmes variantes, **sans LoRa**. Seules deux liaisons du XIAO changent (flotteur et mesure des piles,
-§ 1.1), parce que la broche D0 du C3 est une broche de démarrage.
+composants et mêmes variantes, **sans LoRa**. Deux liaisons du XIAO changent (flotteur et mesure des piles, § 1.1),
+parce que la broche D0 du C3 est une broche de démarrage ; et cette carte a en plus l'emplacement du détecteur
+jour / nuit (J6, R6, § 1.3 d).
 
 Méthode et règles : celles de NoeudChauffageSdb et des notices de `D:\Developpement\EasyEda\Notices`.
 
@@ -33,9 +35,9 @@ dimensionnée pour un **fonctionnement continu** ; certains capteurs utiliseront
 | LED témoin chaudière | 20 | D7 | `LED_CAPTEUR_RGB_PIN` | chaudière |
 | Interruption TCS34725 | 21 | D6 | `CAPTEUR_RGB_TCS34725_INTERRUPT` | non câblée |
 | Jour / nuit : mesure (ADC1) | 3 | **D1** | `JOUR_NUIT_PIN` (`CAPTEUR_JOUR_NUIT`) | option, **à la place du flotteur** (§ 1.3 d) |
-| Jour / nuit : alimentation du pont | 5 | D3 | `JOUR_NUIT_ALIM_PIN` (`CAPTEUR_JOUR_NUIT`) | option, **en fil** (non reliée sur le PCB) |
+| Jour / nuit : alimentation du pont (`JN_ALIM`) | 5 | **D3** | `JOUR_NUIT_ALIM_PIN` (`CAPTEUR_JOUR_NUIT`) | option, reliée à **J6** broche 1 |
 | — | 2 | **D0** | — | **non câblée** |
-| — | 5, 8, 9, 10 | D3, D8, D9, D10 | — | non câblées (sauf D3 : option jour / nuit) |
+| — | 8, 9, 10 | D8, D9, D10 | — | non câblées |
 
 Pourquoi ce brochage (différent de la carte S3, où le flotteur est sur D0 et la mesure sur D1) :
 
@@ -90,7 +92,7 @@ Schéma de principe des ajouts (identique à la carte S3, sauf les broches du XI
 
 ### 1.3 Schémas de câblage par variante
 
-Un dessin complet par variante, d'après le schéma EasyEDA (`PDF_Capteur C3 Xiao_2026-10-19.zip`). Le XIAO est vu de dessus, USB-C en haut ;
+Un dessin complet par variante, d'après le schéma EasyEDA (`CapteurC3Xiao_Schemas_2026-11-14.zip`). Le XIAO est vu de dessus, USB-C en haut ;
 1 à 14 = numéros de ses pattes.
 
 Conventions : `+` = connexion ; un trait qui en coupe un autre sans `+` n'y est pas relié ; toutes les masses `GND`
@@ -256,29 +258,34 @@ Pattes libres : D0, D1, D2, D3, D6, D8, D9, D10 ; 5V = entrée USB, rien à y c�
 
 Points de test TP1 à TP4 (3V3, GND, SDA, SCL) non dessinés.
 
-#### d) Option : détecteur jour / nuit, à la place du flotteur (câblage proposé, non testé sur cette carte)
+#### d) Option : détecteur jour / nuit, à la place du flotteur (emplacement J6 / R6, ajouté le 2026-11-14)
 
-Photorésistance + résistance fixe de 10 kΩ, **sans transistor** : la patte D3 alimente le pont pendant la mesure
-seulement (5 ms), puis le coupe ; en deep sleep elle est en haute impédance, le pont ne consomme rien. Code : classe
-`CJourNuit` (`src/MyJourNuit.h`), `#define CAPTEUR_JOUR_NUIT` dans `global.h` (et pas `FLOTTEUR_VERTICAL`).
+Photorésistance (GL5528) + résistance fixe de 10 kΩ, **sans transistor** : la patte D3 alimente le pont pendant la
+mesure seulement (5 ms), puis le coupe ; en deep sleep elle est en haute impédance, le pont ne consomme rien. Code :
+classe `CJourNuit` (`src/MyJourNuit.h`), `#define CAPTEUR_JOUR_NUIT` dans `global.h` (et pas `FLOTTEUR_VERTICAL`).
 
-La mesure passe par le circuit du flotteur (J5, R5, C7, vers D1) :
+La photorésistance est **au bout de deux fils courts, sur le bornier J6** (bord gauche de la carte, sous J1, marqué
+« JOUR/NUIT »), collée derrière un petit trou du boîtier. La mesure passe par le filtre du flotteur (R5, C7, vers D1) :
 
 ```
-   D3 (GPIO5) ---- fil ---- photorésistance ----+---- J5 1 (FLOT_EXT) --- R5 1 k ---+--- D1 (GPIO3, mesure)
-                                                |                                 |
-                                              10 kΩ                           C7 100 nF
-                                                |                                 |
-                                       J5 2 (GND) / GND                          GND
+  J6 « vers photorésistance »
+  1 JN_ALIM --- D3 (GPIO5, alimentation du pont)
+       |
+  photorésistance (au bout des fils)
+       |
+  2 FLOT_EXT ---+--- R5 1 k ---+--- FLOT --- D1 (GPIO3, mesure)
+                |              |
+           R6 10 kΩ       C7 100 nF
+                |              |
+               GND            GND
 
-   R4 (10 k vers 3V3) : NON MONTÉE
+  R4 (10 k vers 3V3) : NON MONTÉE   ;   J5 (flotteur) : NON MONTÉ
 ```
 
-- **Ne pas monter R4** : ce rappel vers 3V3 fausserait complètement la mesure.
-- **R5 et C7** peuvent rester : avec un pont d'au plus 10 kΩ, la constante de temps est d'environ 1,1 ms, et la mesure
+- **R4 OU R6, jamais les deux** (écrit sur la carte, à côté de R6) : R4 est le rappel du flotteur vers 3V3, R6 celui
+  du pont vers GND ; montées ensemble, elles fausseraient les deux mesures.
+- **R5 et C7** restent : avec un pont d'au plus 10 kΩ, la constante de temps est d'environ 1,1 ms, et la mesure
   attend 5 ms après la mise sous tension du pont.
-- **D3 n'est reliée à rien sur le PCB V 1.0** : fil soudé sur la patte du XIAO (ou sur sa barrette).
-- La résistance de 10 kΩ se soude entre les bornes 1 et 2 de J5 (ou à l'extrémité des fils, près de la photorésistance).
 - Plus il y a de lumière, plus la tension sur D1 monte. Valeur remontée : éclairement en % de 3,3 V (0 à 100) ; état
   JOUR / NUIT décidé par une fenêtre d'hystérésis (seuils bas 20 %, haut 30 % par défaut). Trames, réglages
   (`SET jn_sbas …`) : voir `Doc/mqtt.docx`.
@@ -301,7 +308,7 @@ La mesure passe par le circuit du flotteur (J5, R5, C7, vers D1) :
 | Variantes | décrites **dans ce dossier seulement** |
 | Boîtier | impression 3D, non étanche |
 | Composants | tout en traversant ; borniers XY301V (piles, flotteur), JST-XH (interrupteur, modules) |
-| Détecteur jour / nuit (option, 2026-10-28) | à la place du flotteur : mesure sur D1 par J5 / R5 / C7 (R4 non montée), alimentation du pont par D3 en fil, sans transistor |
+| Détecteur jour / nuit (option, 2026-10-28 ; emplacement 2026-11-14) | à la place du flotteur : photorésistance sur le bornier **J6** (fils courts), rappel **R6** 10 k vers GND, mesure sur D1 par R5 / C7, alimentation du pont par **D3** (piste), sans transistor ; **R4 ou R6, jamais les deux** |
 
 ## 3. Composants à monter selon la variante
 
@@ -317,8 +324,11 @@ La mesure passe par le circuit du flotteur (J5, R5, C7, vers D1) :
 | C3, U1, C4, C5 | régulateur 3,3 V | — | ✔ |
 | R2, R3, C6 | mesure de la tension des piles | — | ✔ |
 | J5, R4, R5, C7 | flotteur | — | ✔ |
+| J6, R6 (+ R5, C7) | détecteur jour / nuit (option, à la place du flotteur) | — | option |
 
 Variante cuve sans flotteur : ne pas monter J5, R4, R5, C7 (désactiver `FLOTTEUR_VERTICAL`).
+
+Option jour / nuit (sur piles, à la place du flotteur) : monter J6, R6, R5, C7 ; **ne pas monter J5 ni R4** (§ 1.3 d).
 
 ## 4. Alimentation et règles d'usage
 
@@ -349,7 +359,7 @@ deep sleep.
 
 | Repère | Composant | Pattes → réseau |
 |---|---|---|
-| A1 | XIAO ESP32-C3 (fiche perso) | **D1 → `FLOT`** ; **D2 → `VMES`** ; D4 → `SDA` ; D5 → `SCL` ; D7 → `LED_CHAUD` ; 3V3 → `3V3` ; GND → `GND` ; 5V, **D0**, D3, D6, D8–D10 non connectées |
+| A1 | XIAO ESP32-C3 (fiche perso) | **D1 → `FLOT`** ; **D2 → `VMES`** ; **D3 → `JN_ALIM`** ; D4 → `SDA` ; D5 → `SCL` ; D7 → `LED_CHAUD` ; 3V3 → `3V3` ; GND → `GND` ; 5V, **D0**, D6, D8–D10 non connectées |
 | C1 | céramique 100 nF | `3V3` → `GND` |
 | C2 | électrolytique 10 µF 16 V | + → `3V3` |
 | R1 | 100 Ω | `LED_CHAUD` → `LED_CHAUD_R` |
@@ -358,10 +368,16 @@ deep sleep.
 ### 5.2 Page PÉRIPHÉRIQUES et 5.3 page ALIMENTATION
 
 Identiques à la carte S3 (`pcb/Capteur S3/CapteurS3.md`, § 5.2 et 5.3) : J1, J2, TP1–TP4, J5, R4, R5, C7 ; J3, D2, J4,
-C3, U1, C4, C5, R2, R3, C6.
+C3, U1, C4, C5, R2 (**220 kΩ**, valeur corrigée le 2026-11-14), R3, C6. **Ajoutés le 2026-11-14 sur la page
+Périphériques** :
 
-Bilan : 25 composants, 12 réseaux ; netlist du schéma = PCB (57 liaisons). Par rapport à la carte S3, seules les
-liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
+| Repère | Composant | Pattes → réseau |
+|---|---|---|
+| J6 | bornier XY301V 2 points (même fiche que J5), « vers photorésistance » | 1 → `JN_ALIM` ; 2 → `FLOT_EXT` |
+| R6 | 10 kΩ (même fiche que R4) | 2 → `FLOT_EXT` ; 1 → `GND` |
+
+Bilan : 27 composants, 13 réseaux. Par rapport à la carte S3 : liaisons `FLOT` (A1.1 → A1.2) et `VMES`
+(A1.2 → A1.3), et le réseau `JN_ALIM` (A1.4 = D3 → J6.1).
 
 ## 6. Dimensionnement
 
@@ -378,7 +394,8 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
 ## 7. Boîtier et mécanique
 
 - Comme la carte S3 : **46 × 65 mm**, 4 trous M3 à 3,5 mm des coins ; J3, J4, J5 au bord haut ; USB-C et LED au bord
-  droit ; J1 au bord gauche ; J2 au bord bas.
+  droit ; J1 au bord gauche ; J2 au bord bas. **J6** (jour / nuit) au bord gauche, sous J1, entrée des fils vers le
+  bord : prévoir un passage de fils dans la paroi gauche du boîtier et un petit trou (Ø ≈ 5 mm) pour la photorésistance.
 - **Hauteur** : XIAO C3 seul (sans Wio) sur barrettes femelles → boîtier moins haut que pour la carte S3 (à mesurer :
   hauteur du support de piles et de C5, 11 mm, à prendre en compte).
 - **Antenne** : antenne externe du XIAO C3 (connecteur U.FL), à coller sur une paroi, loin du plan de masse.
@@ -389,7 +406,7 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
 
 | Élément | Valeur |
 |---|---|
-| Projet | cloud « Capteur C3 Xiao » (copie par import de `Capteur_S3_Projet_2026-10-19.epro2`, alors nommé `ProPrj_Capteur S3_2026-10-19.epro2`) ; sauvegarde locale : `pcb/Capteur C3 Xiao/ProPrj_Capteur C3 Xiao_2026-10-19.epro2` |
+| Projet | cloud « Capteur C3 Xiao » (copie par import de `Capteur_S3_Projet_2026-10-19.epro2`, alors nommé `ProPrj_Capteur S3_2026-10-19.epro2`) ; sauvegarde locale : `pcb/Capteur C3 Xiao/CapteurC3Xiao_Projet_2026-11-14.epro2` (vues `CapteurC3Xiao_2D/3D_…`, copie non routée, schémas, Gerber du 2026-11-14 ; versions précédentes dans `Archives`, hors dépôt) |
 | Schéma | « Capteur C3 Xiao », 3 pages : Carte, Périphériques, Alimentation |
 | Règles | « THT soudure main JLCPCB » |
 
@@ -403,15 +420,28 @@ liaisons `FLOT` (A1.1 → A1.2) et `VMES` (A1.2 → A1.3) changent.
 - **Sérigraphie** : titre « Capteur C3 Xiao », « V 1.0 - Octobre 2026 » décalé à droite, « XIAO ESP32-C3 » ; le reste
   est celui de la carte S3. Contrôle : 52 textes, aucun chevauchement, aucun sur une pastille, un via ou un trou.
 
-### 8.3 Reste à faire
+### 8.3 Ajouts du 2026-11-14 (avant la première commande)
 
-- [x] Export `.epro2`, vues 2D / 3D / PCB et PDF dans `pcb/Capteur C3 Xiao/`.
-- [x] Commit du dossier de la carte (les modifications de code du § 1.2 ne sont pas commitées).
+- **J6** (bornier, tourné de 90°, fils vers le bord gauche) en (4,1 ; 37,8) : broche 1 `JN_ALIM` en (4,1 ; 35,3),
+  broche 2 `FLOT_EXT` en (4,1 ; 40,3). **R6** couchée en (14,25 ; 39,75), juste à droite de J6. Via GND de couture
+  (4 ; 37) supprimé.
+- **Pistes** (0,4 mm) : `JN_ALIM` sur le dessus, de J6.1 vers D3 (horizontale à y 36, puis descente à x 33) ;
+  `FLOT_EXT` de J6.2 à R6, horizontale sur le dessus à y 42,3, via en (33,2 ; 42,3), puis dessous jusqu'à la piste
+  `FLOT_EXT` existante J5 → R4.
+- **Sérigraphie** : « V 1.0 - Novembre 2026 » (première commande) ; titre déplacé en y 35,2, « USB : INTER sur ARRET »
+  en (21 ; 41,5) ; ajouts « JOUR/NUIT » sous J1, « R4 OU R6 » à droite de R6 ; repères J6 et R6 à 0°. Contrôle par
+  script : aucun texte sur une pastille ou un via.
+- **Copie non routée** « PCB1 placement V1.0 non route » refaite après ces ajouts (27 composants, 13 réseaux).
+
+### 8.4 Reste à faire
+
+- [x] Recouler les plans de masse (Maj+B), poser les gouttes, DRC = 0 (2026-11-14).
+- [ ] Contrôle 2D / 3D : sens d'entrée des fils de J6 (vers le bord gauche).
+- [x] Export `.epro2`, vues 2D / 3D, schémas, copie non routée, Gerber (contrôlé : 46 × 65, 4 × M3, 39 vias) dans `pcb/Capteur C3 Xiao/` ; anciens fichiers dans `Archives` (2026-11-14).
 - [ ] Commande JLCPCB.
-- [ ] Essais : démarrage avec cuve pleine, mesure des piles sur D2 (calibre 3,2), Wi-Fi à 19,5 dBm sur piles.
-- [ ] Boîtier imprimé.
-- [ ] Détecteur jour / nuit : essayer le câblage du § 1.3 d (R4 non montée, D3 en fil) ; prévoir un vrai emplacement si
-  une V 1.1 est dessinée (à décider).
+- [ ] Essais : démarrage avec cuve pleine, mesure des piles sur D2 (calibre 3,2), Wi-Fi à 19,5 dBm sur piles,
+  détecteur jour / nuit sur J6.
+- [ ] Boîtier imprimé (passage des fils de J6, trou de la photorésistance).
 
 ## 9. Pièces
 
