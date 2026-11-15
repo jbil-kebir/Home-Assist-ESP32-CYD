@@ -1,7 +1,12 @@
 #include "global.h" // Serial -> journal web (voir MyJournal.h)
 #include "MyBatterieAA.h"
 //#include "MyDateTime.h"
+#include "MemoireRTC.h"
 
+// Dernière tension envoyée, gardée pendant le deep sleep (voir MemoireRTC.h)
+RTC_DATA_ATTR static bool   rtcbValide = false;
+RTC_DATA_ATTR static float  rtcTension = -1.0;
+RTC_DATA_ATTR static time_t rtcDernierEnvoi = 0;
 
 int CBatterieAA::setup(const String pref) {
   mPrefixNVS = pref;
@@ -9,6 +14,16 @@ int CBatterieAA::setup(const String pref) {
 
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+  if (reveilDeepSleep() && rtcbValide) {
+    mLastTension = rtcTension;
+    Serial.printf("CBatterieAA::setup() - Réveil : dernière tension envoyée %.2f V (mémoire RTC)\n", mLastTension);
+  }
+  else {
+    // Mise sous tension ou reset : 1re mesure toujours envoyée (loadFromNVS() a repris dans mLastTension la tension
+    // enregistrée par la page Web, clé <préfixe>u : sous le seuil d'écart, plus rien ne partait avant le forçage)
+    mLastTension = -1.0f;
+    rtcDernierEnvoi = time(nullptr);
+  }
   analogReadResolution(12);  // 12 bits (0–4095) sur ESP32
   // Premier relevé
   if (readTension()) {
@@ -35,22 +50,15 @@ int CBatterieAA::loop() {
   if (!active) return -9;
   // Exemple : lecture toutes les 10 secondes
   static unsigned long lastRead = 0UL;
-  static unsigned long lastForcageRemontee = 0UL;
-  bool bForce=false;
-  if ((millis() - lastForcageRemontee) > (mulIntervalleForcageRemonteeMesure*1000UL)/**60 */) { // mulIntervalleForcageRemonteeMesure en secondes pour les tests
-    lastForcageRemontee = millis();
-    lastRead = millis(); // On n'a pas besoin de remontée normale.
-    bForce = true;
-  }
+  static unsigned long ulDerniereTentativeForcage = 0UL;
+  // Forçage compté en heure système depuis le dernier envoi réussi (continue pendant le deep sleep)
+  bool bForce = forcageEchu(rtcDernierEnvoi, mulIntervalleForcageRemonteeMesure, ulDerniereTentativeForcage);
   //static float lastTension=0;
   if ((millis() - lastRead > mulIntervalleMesure * 1000UL /** 60 */) || (lastRead == 0UL) || bForce){ // mulIntervalleMesure en secondes pour les tests
     lastRead = millis();
     //lastForcageRemontee = millis(); 
     if (!active) return -9;
     ret = readAndPublish(bForce); // Lit et publie sur MQTT
-    // lastForcageRemontee n'est remis à zéro que par le forçage lui-même (plus haut) : le remettre à zéro
-    // à chaque mesure normale empêchait tout forçage dès que mulIntervalleMesure < mulIntervalleForcageRemonteeMesure
-    bForce = false;
   }  
   return ret;
 }
@@ -120,7 +128,9 @@ int CBatterieAA::readAndPublish(bool force/*=false*/) {
   int ret = 0;
   if (!active) return -9;
   if (readTension()) {
-    if ( (round(100*newTension) != round(100*mLastTension)) || force) { // On compare au 100ème près
+    // Première mesure (mLastTension < 0), écart d'au moins SEUIL_ENVOI_BATTERIE_V (global.h), ou forçage
+    if (mLastTension < 0.0f || fabsf(newTension - mLastTension) >= SEUIL_ENVOI_BATTERIE_V - 0.001f || force) {
+      float fPrec = mLastTension;
       mLastTension = newTension;
       printTension(); // On affiche sur le moniteur série
       // On publie 
@@ -140,10 +150,18 @@ int CBatterieAA::readAndPublish(bool force/*=false*/) {
       #endif
       //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
       #endif
+      if (mbMesureRemontee) {           // Envoi réussi : mémorisé pour le prochain réveil
+        rtcTension = mLastTension;
+        rtcDernierEnvoi = time(nullptr);
+        rtcbValide = true;
+      }
+      else mLastTension = fPrec;        // Échec : la mesure sera vue comme changée et renvoyée
       ret = 1;
-    } 
-    else
-      ret = 0; // température inchangée
+    }
+    else {
+      mbMesureRemontee = true; // Écart sous le seuil : rien à remonter, le capteur peut s'endormir
+      ret = 0; // tension inchangée
+    }
   }
   else {
     //Serial.println("ds18b20.readTension() - échec");

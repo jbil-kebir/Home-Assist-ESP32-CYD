@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "MyTor.h"
+#include "MemoireRTC.h"
 #ifdef FLOTTEUR_VERTICAL
 #include <time.h>
 #include "esp_sleep.h"
@@ -11,15 +12,27 @@
 RTC_DATA_ATTR static bool   rtcbReveilFlotteurConnu = false;
 RTC_DATA_ATTR static time_t rtcDernierReveilFlotteur = 0;
 
+// Dernier état envoyé, gardé pendant le deep sleep (voir MemoireRTC.h)
+RTC_DATA_ATTR static bool   rtcbValide = false;
+RTC_DATA_ATTR static int    rtcVal = -1;
+RTC_DATA_ATTR static time_t rtcDernierEnvoi = 0;
+
 bool CTor::setup(const String pref) {
   mPrefixNVS = pref;
   mbMesureRemontee = false;
   //mucNbMesuresRemontees = 0;
   //mucNbMesuresRemonteesAvantDeepSleep = DEFAULT_NB_MESURES_REMONTEES_AVANT_DEEP_SLEEP;
-  mbForce=true; // On force une remontée à l'initialisation
+  // Pas de forçage au démarrage : l'état part s'il diffère du dernier envoyé (toujours le cas après une mise
+  // sous tension, et après un réveil par le flotteur), sinon au forçage (voir MemoireRTC.h)
+  mbForce = false;
 
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+  if (reveilDeepSleep() && rtcbValide) {
+    miLastVal = rtcVal;
+    Serial.printf("CTor::setup() - Réveil : dernier état envoyé %d (mémoire RTC)\n", miLastVal);
+  }
+  else rtcDernierEnvoi = time(nullptr);
 
   #if IS_ESP32_S3
   // Après un réveil EXT1, la broche est encore routée vers le domaine RTC : retour en GPIO normale
@@ -58,13 +71,10 @@ int CTor::loop() {
 
   // Exemple : lecture toutes les 10 secondes
   static unsigned long lastRead = 0L;
-  static unsigned long lastForcageRemontee = 0L;
-  if (millis() - lastForcageRemontee > mulIntervalleForcageRemonteeMesure*1000 /**60 */) { // mulIntervalleForcageRemonteeMesure en secondes pour les tests
-    lastForcageRemontee = millis();
+  static unsigned long ulDerniereTentativeForcage = 0L;
+  // Forçage compté en heure système depuis le dernier envoi réussi (continue pendant le deep sleep)
+  if (!mbForce && !bEnvoiEnCours && forcageEchu(rtcDernierEnvoi, mulIntervalleForcageRemonteeMesure, ulDerniereTentativeForcage))
     mbForce = true;
-  //  nbEnvoisAFaire = mucNbEnvois;
-  //  bEnvoiEnCours = true;
-  }
   //static float lastTemperature=0;
   if (millis() - lastRead > mulIntervalleMesure * 1000 /** 60 */){ // mulIntervalleMesure en secondes pour les tests
     lastRead = millis();
@@ -89,8 +99,7 @@ int CTor::loop() {
           bMesureNormale = false;
         }
         if (mbForce) {
-          mbForce = false; 
-          lastForcageRemontee = millis(); 
+          mbForce = false;
           lastRead = millis();
           bMesureNormale = false;
           bMesureNormale = false;
@@ -139,7 +148,8 @@ int CTor::readAndPublish(bool force/*=false*/, bool mesurer/*=false*/) {
 
   if (readStatus) {
     //Serial.printf("miNewVal : %d miLastVal : %d \n", miNewVal, miLastVal);
-    if ( (miNewVal != miLastVal) || force) { // On compare 
+    if ( (miNewVal != miLastVal) || force) { // On compare
+      int iPrec = miLastVal;
       miLastVal = miNewVal;
       //lastHum = newHum;
       //printTMesure(); // On affiche sur le moniteur série
@@ -159,14 +169,22 @@ int CTor::readAndPublish(bool force/*=false*/, bool mesurer/*=false*/) {
       #endif
       #ifdef _WIFI_MODE_
       #ifndef __DESACTIVE_ENVOI_MQTT__
-      mbMesureRemontee = publieSurMqtt(force); 
+      mbMesureRemontee = publieSurMqtt(force);
       #endif
-      //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
+      //if(publieParCC1101(force)) mucNbMesuresRemontees++;
       #endif
+      if (mbMesureRemontee) {           // Envoi réussi : mémorisé pour le prochain réveil
+        rtcVal = miLastVal;
+        rtcDernierEnvoi = time(nullptr);
+        rtcbValide = true;
+      }
+      else miLastVal = iPrec;           // Échec : l'état sera vu comme changé et renvoyé
       ret = 1;
-    } 
-    else
+    }
+    else {
+      mbMesureRemontee = true; // Inchangé : rien à remonter, le capteur peut s'endormir
       ret = 0; // mesure inchangée
+    }
   }
   else {
     //Serial.println("ds18b20.readTemperature() - échec");

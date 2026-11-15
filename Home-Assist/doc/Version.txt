@@ -1,3 +1,13 @@
+3.8
+Moniteur série (platformio.ini) : monitor_dtr = 0 et monitor_rts = 0 ; l'ouverture du moniteur bloquait l'ESP32 en reset
+    (écran éteint) par les lignes DTR/RTS du CH340
+Nœud de présence (RemotePresenceReseauElectrique::loadFromNVS) : isKey() avant de lire <préfixe>pnoeud ; plus d'erreurs
+    « nvs_get_str len fail: *_pnoeud NOT_FOUND » au démarrage pour les appareils sans nœud associé (clé effacée exprès)
+DS18B20 local (MyDS18B20::begin) : « DS18B20 trouvé(s) : n » ou « Aucun DS18B20 sur le GPIO n ! » ; l'ancien
+    « DS18B20 trouvé : » s'affichait avant la recherche, même sans sonde
+MyCC1101.cpp : commentaire sur « addApbChangeCallback(): duplicate » (VSPI partagé entre l'écran et le CC1101, sans
+    conséquence, une fois par démarrage)
+
 3.7
 Émission 433 MHz (CMyRCSwitch::toggleDevice : projecteur, guirlande, lumière cave, chauffage RdC, relais du chauffage
     SdB ; pas la chaudière, émise à part) : detachInterrupt(CC1101_GDO0) au lieu de mySwitch.disableReceive() ; l'instance RCSwitch de

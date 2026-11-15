@@ -505,6 +505,7 @@ int CMyLoraRxTx::sendPacket(const char* message) {
       // Timeout : mise en attente classique (peut écraser un message précédent)
       mPendingMessage = sToSend;
       mbPendingMessage = true;
+      muiNbEmissions++;
       Serial.printf("[SX1262] TX timeout, message mis en attente : <%s>\n", sToSend.c_str());
       return 0;
     }
@@ -514,7 +515,7 @@ int CMyLoraRxTx::sendPacket(const char* message) {
   currentMode = MODE_TX;
   operationDone = false;   // efface l'interruption parasite de la transition d'état
   ret = radio.startTransmit(sToSend.c_str());
-  if (ret == RADIOLIB_ERR_NONE) ret = 0;
+  if (ret == RADIOLIB_ERR_NONE) { ret = 0; muiNbEmissions++; }
   return ret;
 }
 

@@ -1,12 +1,27 @@
 #include <Arduino.h>
 #include "DHT20Sensor.h"
+#include "MemoireRTC.h"
+
+// Dernières température et humidité envoyées, gardées pendant le deep sleep (voir MemoireRTC.h)
+RTC_DATA_ATTR static bool   rtcbValide = false;
+RTC_DATA_ATTR static float  rtcTempC = -127.0;
+RTC_DATA_ATTR static float  rtcHum = -1.0;
+RTC_DATA_ATTR static time_t rtcDernierEnvoi = 0;
 
 bool DHT20Sensor::begin(const String pref) {
   mPrefixNVS = pref;
   mbMesureRemontee = false;
   //mucNbMesuresRemontees = 0;
   //mucNbMesuresRemonteesAvantDeepSleep = DEFAULT_NB_MESURES_REMONTEES_AVANT_DEEP_SLEEP;
-  mbForce=true; // On force une remontée à l'initialisation
+  // Pas de forçage au démarrage : la 1re mesure part si elle diffère de la dernière envoyée (toujours le cas
+  // après une mise sous tension), sinon au forçage (voir MemoireRTC.h)
+  mbForce = false;
+  if (reveilDeepSleep() && rtcbValide) {
+    lastTempC = rtcTempC;
+    lastHum = rtcHum;
+    Serial.printf("DHT20Sensor::begin() - Réveil : dernière mesure envoyée %.1f °C %.1f %% (mémoire RTC)\n", lastTempC, lastHum);
+  }
+  else rtcDernierEnvoi = time(nullptr);
 
   domotique_prefix = "home/";
 
@@ -58,13 +73,10 @@ int DHT20Sensor::loop() {
 
   // Exemple : lecture toutes les 10 secondes
   static unsigned long lastRead = 0L;
-  static unsigned long lastForcageRemontee = 0L;
-  if (millis() - lastForcageRemontee > mulIntervalleForcageRemonteeMesure*1000 /**60 */) { // mulIntervalleForcageRemonteeMesure en secondes pour les tests
-    lastForcageRemontee = millis();
+  static unsigned long ulDerniereTentativeForcage = 0L;
+  // Forçage compté en heure système depuis le dernier envoi réussi (continue pendant le deep sleep)
+  if (!mbForce && !bEnvoiEnCours && forcageEchu(rtcDernierEnvoi, mulIntervalleForcageRemonteeMesure, ulDerniereTentativeForcage))
     mbForce = true;
-  //  nbEnvoisAFaire = mucNbEnvois;
-  //  bEnvoiEnCours = true;
-  }
   //static float lastTemperature=0;
   if (millis() - lastRead > mulIntervalleMesure * 1000 /** 60 */){ // mulIntervalleMesure en secondes pour les tests
     lastRead = millis();
@@ -88,8 +100,6 @@ int DHT20Sensor::loop() {
       }
     }
     else {
-      // lastForcageRemontee n'est remis à zéro que par le forçage lui-même (plus haut) : le remettre à zéro
-      // à chaque fin d'envoi empêchait tout forçage dès que mulIntervalleMesure < mulIntervalleForcageRemonteeMesure
       mbForce = false;
       bMesureNormale = false; lastRead = millis();
       bEnvoiEnCours = false;
@@ -129,7 +139,11 @@ int DHT20Sensor::readAndPublish(bool force/*=false*/, bool mesurer/*=false*/) {
 
   if (readStatus) {
     Serial.printf("newTempC : %.2f lastTempC : %.2f newHum : %.2f lastHum : %.2f \n", newTempC, lastTempC, newHum, lastHum);
-    if ( (round(10*newTempC) != round(10*lastTempC)) || (round(10*newHum) != round(10*lastHum)) || force) { // On compare à la décimale près
+    // Envoi si l'écart à la dernière valeur envoyée atteint le seuil (global.h ; 1re mesure : lastTempC = -127,
+    // lastHum = -1), ou si forcé. 0,001 : tolérance des flottants (20,1 -> 20,3 doit compter pour 0,2)
+    if (fabsf(newTempC - lastTempC) >= SEUIL_ENVOI_TEMP_DHT20 - 0.001f
+        || fabsf(newHum - lastHum) >= SEUIL_ENVOI_HUM_DHT20 - 0.001f || force) {
+      float fPrecTempC = lastTempC, fPrecHum = lastHum;
       lastTempC = newTempC;
       lastHum = newHum;
       //printTemperature(); // On affiche sur le moniteur série
@@ -150,10 +164,19 @@ int DHT20Sensor::readAndPublish(bool force/*=false*/, bool mesurer/*=false*/) {
       #endif
       //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
       #endif
+      if (mbMesureRemontee) {           // Envoi réussi : mémorisé pour le prochain réveil
+        rtcTempC = lastTempC;
+        rtcHum = lastHum;
+        rtcDernierEnvoi = time(nullptr);
+        rtcbValide = true;
+      }
+      else { lastTempC = fPrecTempC; lastHum = fPrecHum; } // Échec : la mesure sera vue comme changée et renvoyée
       ret = 1;
-    } 
-    else
+    }
+    else {
+      mbMesureRemontee = true; // Inchangée : rien à remonter, le capteur peut s'endormir
       ret = 0; // température inchangée
+    }
   }
   else {
     //Serial.println("ds18b20.readTemperature() - échec");

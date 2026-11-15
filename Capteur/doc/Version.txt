@@ -1,3 +1,35 @@
+3.8
+Dernière mesure envoyée gardée en mémoire RTC pendant le deep sleep (MemoireRTC.h, modèle CJourNuit) : DS18B20, DHT20,
+    batterie, TCS34725, flotteur (CTor) ; relue seulement au réveil de deep sleep, mise à jour seulement après un envoi
+    réussi (échec : la mesure reste « changée » et repart). Avant : comparée à -127 / -1 après chaque réveil, tout était
+    renvoyé à chaque réveil
+Forçage compté en heure système (time(), qui avance pendant le deep sleep) depuis le dernier envoi réussi, au lieu de
+    millis() (repart de 0 à chaque réveil : aucun forçage en deep sleep) ; tentatives espacées de 10 s si l'envoi échoue ;
+    plus de forçage au démarrage (mbForce = true supprimé : DHT20, TCS34725, flotteur)
+Mesure inchangée = rien à remonter (mbMesureRemontee = true) : fin d'éveil anticipée aussi en LoRa, deep sleep plus
+    bloqué par une mesure inchangée
+Batterie : envoi hors forçage seulement si l'écart atteint SEUIL_ENVOI_BATTERIE_V = 0,05 V (global.h ; au centième, le bruit de l'ADC la faisait changer
+    presque à chaque réveil)
+DHT20 : envoi hors forçage seulement si l'écart atteint SEUIL_ENVOI_TEMP_DHT20 = 0,2 °C ou SEUIL_ENVOI_HUM_DHT20 = 5 % HR (global.h ; au dixième, l'humidité changeait à chaque
+    réveil : constaté sur ThChRDC le 15/11, envoi à 9 réveils sur 10)
+Batterie, mise sous tension : 1re mesure toujours envoyée (loadFromNVS reprenait dans mLastTension la tension
+    enregistrée par la page Web, clé <préfixe>u : sous le seuil d'écart, rien ne partait avant le forçage)
+Forçage : référence recalée à la synchro NTP (MemoireRTC.h, forcageEchu) ; à la mise sous tension, l'heure du dernier
+    envoi était notée avant la synchro, le saut 1970 -> 2026 donnait des trames FORCE au démarrage (aussi CJourNuit)
+relanceMesuresNonRemontees() sans forçage (TCS34725 avec nouvelle mesure) : une mesure inchangée ne repart plus,
+    même relancée avant la 1re lecture du capteur
+Wi-Fi : fin d'éveil anticipée seulement une fois le MQTT connecté (les mesures inchangées sont « remontées » sans rien
+    publier, parfois avant la connexion : les commandes retained n'auraient pas eu le temps d'arriver)
+LoRa : trame de présence « <nom> EVEIL » sur le topic de config (comme « MUET ») quand rien n'a été émis pendant
+    l'éveil (mesures inchangées), avant la fenêtre d'écoute : Relais-Lora ne remet une commande en attente qu'après une
+    trame du capteur (CMyLoraRxTx::nbEmissions())
+Trame CONFIG envoyée à chaque démarrage hors réveil de deep sleep (avec VERSION, CConfig::traiteReveil) : l'enregistrement
+    de la page Web redémarre le nœud sans réponse CONFIG, et la vue « Nœuds capteurs » de Home Assistant gardait
+    d'anciens réglages (interrupteur « Deep sleep actif » faux : il fallait l'activer puis le désactiver pour réveiller
+    le nœud)
+RadioLib fixée à 7.6.0 (platformio.ini ; dépôt GitHub sans version : la 8.0 ne compile plus, SX1262::begin et
+    setPacketSentAction)
+
 3.7
 Annonce « NONCONFIGURE <modèle>-<fin MAC> … » d'une puce neuve : publiée sur le topic de commande de configuration,
     auquel la puce est abonnée ; elle la recevait elle-même (et celles d'une autre puce neuve) et y répondait par

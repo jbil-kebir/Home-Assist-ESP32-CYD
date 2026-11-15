@@ -44,6 +44,7 @@ private:
   uint16_t muiPreambleLength = LORA_PREAMBLE_LENGTH;
   String mPendingMessage;
   bool mbPendingMessage = false;
+  unsigned int muiNbEmissions = 0; // Voir nbEmissions() : trame de présence EVEIL (CConfig::loop())
   // Paquet reçu mais pas encore traité par loop() au moment d'une émission : mis de côté (sinon perdu)
   String mReceptionEnAttente;
   bool mbReceptionEnAttente = false;
@@ -55,6 +56,7 @@ public:
   void sleep(); // Via RadioLib pour deep-sleep;
   bool isInitialized() const { return mbInitialized; }
   bool emissionEnCours() const; // Émission en cours ou message en attente : ne pas couper le module
+  unsigned int nbEmissions() const { return muiNbEmissions; } // Trames émises (ou mises en attente) depuis le démarrage
   String getLastMessage() const { return msLastReceivedMessage; }
 
   // Callback MQTT (topic, payload) -> int

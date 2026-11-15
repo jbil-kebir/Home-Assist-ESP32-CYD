@@ -1,15 +1,31 @@
 #include <Arduino.h>
 #include "DetecteurRGB_TCS34725.h"
+#include "MemoireRTC.h"
+
+// Dernière mesure envoyée, gardée pendant le deep sleep (voir MemoireRTC.h)
+RTC_DATA_ATTR static bool         rtcbValide = false;
+RTC_DATA_ATTR static unsigned int rtcR = 0, rtcG = 0, rtcB = 0, rtcLux = 0, rtcBrutLux = 0;
+RTC_DATA_ATTR static bool         rtcbEtatOnOff = false;
+RTC_DATA_ATTR static time_t       rtcDernierEnvoi = 0;
 
 bool CDetecteurRGB_TCS34725::begin(const String pref) {
   mPrefixNVS = pref;
   mbMesureRemontee = false;
-  mbForce=true; // On force une remontée à l'initialisation
+  // Pas de forçage au démarrage : la 1re mesure part si elle diffère de la dernière envoyée (toujours le cas
+  // après une mise sous tension), sinon au forçage (voir MemoireRTC.h)
+  mbForce = false;
 
   domotique_prefix = "home/";
 
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+  if (reveilDeepSleep() && rtcbValide) {
+    muiLastR = rtcR; muiLastG = rtcG; muiLastB = rtcB;
+    muiLastLux = rtcLux; muiLastBrutLux = rtcBrutLux;
+    mbLastEtatOnOff = rtcbEtatOnOff;
+    Serial.printf("CDetecteurRGB_TCS34725::begin() - Réveil : dernière mesure envoyée R 0x%x, lux brut 0x%x (mémoire RTC)\n", muiLastR, muiLastBrutLux);
+  }
+  else rtcDernierEnvoi = time(nullptr);
   // Date de départ fixe (pas remise à zéro à chaque tour) : sinon le délai n'est jamais atteint
   // et setup() reste bloqué (plus de serveur Web) quand le TCS34725 ne répond pas.
   unsigned long ulDebut = millis();
@@ -66,13 +82,10 @@ int CDetecteurRGB_TCS34725::loop() {
 
   // Exemple : lecture toutes les 10 secondes
   static unsigned long lastRead = 0L;
-  static unsigned long lastForcageRemontee = 0UL;
-  if (millis() - lastForcageRemontee > mulIntervalleForcageRemonteeMesure*1000 /**60 */) { // mulIntervalleForcageRemonteeMesure en secondes pour les tests
-    lastForcageRemontee = millis();
+  static unsigned long ulDerniereTentativeForcage = 0UL;
+  // Forçage compté en heure système depuis le dernier envoi réussi (continue pendant le deep sleep)
+  if (!mbForce && !bEnvoiEnCours && forcageEchu(rtcDernierEnvoi, mulIntervalleForcageRemonteeMesure, ulDerniereTentativeForcage))
     mbForce = true;
-  //  nbEnvoisAFaire = mucNbEnvois;
-  //  bEnvoiEnCours = true;
-  }
   //static float lastCouleur=0;
   if (millis() - lastRead > mulIntervalleMesure * 1000 /** 60 */){ // mulIntervalleMesure en secondes pour les tests
     lastRead = millis();
@@ -132,7 +145,10 @@ int CDetecteurRGB_TCS34725::readAndPublish(bool force/*=false*/, bool mesurer/*=
     Serial.printf("muiNewG : 0x%x muiLastG : 0x%x\n", muiNewR, muiLastR);
     Serial.printf("muiNewB : 0x%x muiLastB : 0x%x\n", muiNewR, muiLastR);
     Serial.printf("newLux : 0x%x lastLux : 0x%x\n", muiNewLux, muiLastLux);
-    if ( (muiNewR != muiLastR) || (muiNewBrutLux != muiLastBrutLux) || force) { 
+    if ( (muiNewR != muiLastR) || (muiNewBrutLux != muiLastBrutLux) || force) {
+      // Valeurs d'avant, rétablies si l'envoi échoue
+      unsigned int uiPrecR = muiLastR, uiPrecG = muiLastG, uiPrecB = muiLastB, uiPrecLux = muiLastLux, uiPrecBrutLux = muiLastBrutLux;
+      bool bPrecEtat = mbLastEtatOnOff;
       muiLastR = muiNewR;
       muiLastG = muiNewG;
       muiLastB = muiNewB;
@@ -157,14 +173,26 @@ int CDetecteurRGB_TCS34725::readAndPublish(bool force/*=false*/, bool mesurer/*=
       #ifndef __DESACTIVE_ENVOI_MQTT__
       mbMesureRemontee = publieSurMqttOnOff(force); 
       if (remonterMesuresBrutes)
-        mbMesureRemontee = publieSurMqttBrut(force); 
+        mbMesureRemontee = publieSurMqttBrut(force);
       #endif
-      //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
+      //if(publieParCC1101(force)) mucNbMesuresRemontees++;
       #endif
+      if (mbMesureRemontee) {           // Envoi réussi : mémorisé pour le prochain réveil
+        rtcR = muiLastR; rtcG = muiLastG; rtcB = muiLastB; rtcLux = muiLastLux; rtcBrutLux = muiLastBrutLux;
+        rtcbEtatOnOff = mbLastEtatOnOff;
+        rtcDernierEnvoi = time(nullptr);
+        rtcbValide = true;
+      }
+      else {                            // Échec : la mesure sera vue comme changée et renvoyée
+        muiLastR = uiPrecR; muiLastG = uiPrecG; muiLastB = uiPrecB; muiLastLux = uiPrecLux; muiLastBrutLux = uiPrecBrutLux;
+        mbLastEtatOnOff = bPrecEtat;
+      }
       ret = 1;
-    } 
-    else
-      ret = 0; // température inchangée
+    }
+    else {
+      mbMesureRemontee = true; // Inchangée : rien à remonter, le capteur peut s'endormir
+      ret = 0; // mesure inchangée
+    }
   }
   else {
     //Serial.println("ds18b20.readCouleur() - échec");

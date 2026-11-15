@@ -1,13 +1,23 @@
 #include "global.h" // Serial -> journal web (voir MyJournal.h)
 #include "MyDS18B20.h"
 #include "MyDateTime.h"
+#include "MemoireRTC.h"
 
+// Dernière température envoyée, gardée pendant le deep sleep (voir MemoireRTC.h)
+RTC_DATA_ATTR static bool   rtcbValide = false;
+RTC_DATA_ATTR static float  rtcTempC = -127.0;
+RTC_DATA_ATTR static time_t rtcDernierEnvoi = 0;
 
 int MyDS18B20::begin(const String pref) {
   mPrefixNVS = pref;
   mbMesureRemontee = false;
   // On charge les infos de config depuis le NVS
   loadFromNVS();
+  if (reveilDeepSleep() && rtcbValide) {
+    lastTempC = rtcTempC;
+    Serial.printf("MyDS18B20::begin() - Réveil : dernière température envoyée %.1f °C (mémoire RTC)\n", lastTempC);
+  }
+  else rtcDernierEnvoi = time(nullptr); // Mise sous tension ou reset : la 1re mesure sera envoyée
   sensors.begin();
   Serial.print("DS18B20 trouvé : ");
   uint8_t nbDevices = sensors.getDeviceCount();
@@ -39,12 +49,9 @@ int MyDS18B20::loop() {
   if (!active) return -9;
   // Exemple : lecture toutes les 10 secondes
   static unsigned long lastRead = 0;
-  static unsigned long lastForcageRemontee = 0;
-  bool bForce=false;
-  if (millis() - lastForcageRemontee > mulIntervalleForcageRemonteeMesure*1000 /**60 */) { // mulIntervalleForcageRemonteeMesure en secondes pour les tests
-    lastForcageRemontee = millis();
-    bForce = true;
-  }
+  static unsigned long ulDerniereTentativeForcage = 0;
+  // Forçage compté en heure système depuis le dernier envoi réussi (continue pendant le deep sleep)
+  bool bForce = forcageEchu(rtcDernierEnvoi, mulIntervalleForcageRemonteeMesure, ulDerniereTentativeForcage);
   //static float lastTemperature=0;
   if ((millis() - lastRead > mulIntervalleMesure * 1000 /** 60 */) || (lastRead == 0) || bForce){ // mulIntervalleMesure en secondes pour les tests
     lastRead = millis();
@@ -119,6 +126,7 @@ int MyDS18B20::readAndPublish(bool force/*=false*/) {
   if (!active) return -9;
   if (readTemperature()) {
     if ( (round(10*newTempC) != round(10*lastTempC)) || force) { // On compare à la décimale près
+      float fPrec = lastTempC;
       lastTempC = newTempC;
       printTemperature(); // On affiche sur le moniteur série
       // On publie
@@ -136,12 +144,20 @@ int MyDS18B20::readAndPublish(bool force/*=false*/) {
       #ifndef __DESACTIVE_ENVOI_MQTT__
       mbMesureRemontee = publieSurMqtt(force); 
       #endif
-      //if(publieParCC1101(force)) mucNbMesuresRemontees++; 
+      //if(publieParCC1101(force)) mucNbMesuresRemontees++;
       #endif
+      if (mbMesureRemontee) {           // Envoi réussi : mémorisé pour le prochain réveil
+        rtcTempC = lastTempC;
+        rtcDernierEnvoi = time(nullptr);
+        rtcbValide = true;
+      }
+      else lastTempC = fPrec;           // Échec : la mesure sera vue comme changée et renvoyée
       ret = 1;
-    } 
-    else
+    }
+    else {
+      mbMesureRemontee = true; // Inchangée : rien à remonter, le capteur peut s'endormir
       ret = 0; // température inchangée
+    }
   }
   else {
     //Serial.println("ds18b20.readTemperature() - échec");

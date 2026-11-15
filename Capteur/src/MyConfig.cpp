@@ -100,7 +100,12 @@ void CConfig::traiteReveil() {
   #endif
 
   // Mise sous tension ou reset (pas un réveil de deep sleep) : version du firmware (un téléversement passe toujours par là)
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED) envoieVersion();
+  // et configuration : l'enregistrement de la page Web redémarre le nœud sans réponse CONFIG, Home Assistant gardait
+  // alors d'anciens réglages (interrupteur « Deep sleep actif » de la vue Nœuds capteurs faux, vu le 15/11/2026)
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED) {
+    envoieVersion();
+    envoieConfig();
+  }
 }
 
 String CConfig::causeReveil() {
@@ -196,7 +201,9 @@ void CConfig::loop() {
     #ifdef _WIFI_MODE_
     static unsigned long ulDateToutRemonte = 0;
     static unsigned long ulDerniereRelance = 0;
-    if (ulDateToutRemonte == 0 && mesuresToutesRemontees()) { ulDateToutRemonte = millis(); gDiag.ulPub = ulDateToutRemonte; }
+    // MQTT connecté exigé (gDiag.ulMqtt) : les mesures inchangées sont « remontées » sans rien publier, parfois
+    // avant la connexion ; sans cette condition, les commandes retained n'auraient pas le temps d'arriver
+    if (ulDateToutRemonte == 0 && gDiag.ulMqtt != 0 && mesuresToutesRemontees()) { ulDateToutRemonte = millis(); gDiag.ulPub = ulDateToutRemonte; }
     // Publication échouée (MQTT pas encore connecté...) : nouvelle tentative
     if (ulDateToutRemonte == 0 && millis() - ulDerniereRelance >= DELAI_RELANCE_MESURES_MS) {
       ulDerniereRelance = millis();
@@ -208,8 +215,19 @@ void CConfig::loop() {
     // terminée (sinon mLoraRxTx->sleep() la couperait), puis DELAI_COMMANDES_APRES_REMONTEE_MS d'écoute
     // pour les commandes relayées par Relais-Lora.
     static unsigned long ulDateToutEmis = 0;
+    static bool bPresenceTentee = false;
     if (ulDateToutEmis == 0 && mLoraRxTx != nullptr && mLoraRxTx->isInitialized()
         && mesuresToutesRemontees() && !mLoraRxTx->emissionEnCours()) {
+      // Mesures inchangées (mémoire RTC) : rien n'a été émis. Relais-Lora ne remet une commande en attente qu'après
+      // une trame du capteur : trame de présence « <nom> EVEIL » sur le topic de config (comme « MUET »), une fois
+      // par éveil, avant la fenêtre d'écoute (ouverte au tour suivant, une fois l'émission terminée)
+      if (!bPresenceTentee && mLoraRxTx->nbEmissions() == 0) {
+        bPresenceTentee = true;
+        String sPresence = topic_config_state + " " + nomEquipement + " EVEIL";
+        Serial.printf("[Deep Sleep] Rien émis pendant l'éveil : trame de présence %s\n", sPresence.c_str());
+        mLoraRxTx->sendPacket(sPresence.c_str());
+        return;
+      }
       ulDateToutEmis = millis();
       gDiag.ulPub = ulDateToutEmis;
     }
@@ -1142,23 +1160,27 @@ bool CConfig::loopWatchdog() {
 // (le micro n'est pas concerné : il empêche de toute façon le deep sleep)
 //
 //
-// Republie (forcé, sans nouvelle mesure) les capteurs actifs dont la mesure n'a pas été remontée
+// Relance les capteurs actifs dont la mesure n'a pas été remontée.
+// Sans forçage : un envoi raté laisse la dernière valeur envoyée inchangée (mémoire RTC), la mesure est donc
+// vue comme changée et renvoyée ; une mesure inchangée depuis le dernier envoi n'est pas renvoyée.
+// (Forcé, une mesure inchangée repartait à chaque réveil, même avant la 1re lecture du capteur.)
 //
 void CConfig::relanceMesuresNonRemontees() {
   #ifdef CAPTEUR_DS18B20
-  if (ds18b20 != nullptr && ds18b20->active && !ds18b20->mbMesureRemontee) ds18b20->readAndPublish(true);
+  if (ds18b20 != nullptr && ds18b20->active && !ds18b20->mbMesureRemontee) ds18b20->readAndPublish(false);
   #endif
   #ifdef CAPTEUR_DHT20
-  if (dht20 != nullptr && dht20->active && !dht20->mbMesureRemontee) dht20->readAndPublish(true, false);
+  if (dht20 != nullptr && dht20->active && !dht20->mbMesureRemontee) dht20->readAndPublish(false, false);
   #endif
   #ifdef CAPTEUR_RGB_TCS34725
-  if (mCapteurRGB != nullptr && mCapteurRGB->active && !mCapteurRGB->mbMesureRemontee) mCapteurRGB->readAndPublish(true, false);
+  // Avec mesure : sans lecture préalable, les valeurs « nouvelles » ne sont pas significatives
+  if (mCapteurRGB != nullptr && mCapteurRGB->active && !mCapteurRGB->mbMesureRemontee) mCapteurRGB->readAndPublish(false, true);
   #endif
   #ifdef CAPTEUR_BATTERIE
-  if (mBatterieAA != nullptr && mBatterieAA->active && !mBatterieAA->mbMesureRemontee) mBatterieAA->readAndPublish(true);
+  if (mBatterieAA != nullptr && mBatterieAA->active && !mBatterieAA->mbMesureRemontee) mBatterieAA->readAndPublish(false);
   #endif
   #ifdef CAPTEUR_JOUR_NUIT
-  if (mJourNuit != nullptr && mJourNuit->active && !mJourNuit->mbMesureRemontee) mJourNuit->readAndPublish(true);
+  if (mJourNuit != nullptr && mJourNuit->active && !mJourNuit->mbMesureRemontee) mJourNuit->readAndPublish(false);
   #endif
   #ifdef CAPTEUR_PRESENCE_RESEAU
   if (mPresence != nullptr && mPresence->active && !mPresence->mbMesureRemontee) mPresence->publiePresent();

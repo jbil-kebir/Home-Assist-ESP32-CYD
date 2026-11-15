@@ -52,8 +52,8 @@
 #define CAPTEUR_DHT20 // Fonctionne en I2C
 //#define CAPTEUR_DS18B20
 //#define FLOTTEUR_VERTICAL // ThRemise seulement (ThCave / ThNomade : pas de flotteur)
-#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C — ThSdb (capteur chaudière) seulement
-#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF) — ThSdb (capteur chaudière) seulement
+//#define CAPTEUR_RGB_TCS34725 // Fonctionne en I2C — ThSdb (capteur chaudière) seulement
+//#define LED_CAPTEUR_RGB // Signale l'état du capteur (ON/OFF) — ThSdb (capteur chaudière) seulement
 #define CAPTEUR_BATTERIE // Mesure de la tension de la batterie (via un pont diviseur de tension)
 //#define CAPTEUR_MICRO_MAX4466 // Détection des bips ON/OFF par micro (écoute continue : pas de deep sleep)
 //#define CAPTEUR_JOUR_NUIT // Détecteur jour/nuit : photorésistance + 10 kΩ, mesure JOUR_NUIT_PIN, alimentation JOUR_NUIT_ALIM_PIN (voir MyJourNuit.h)
@@ -354,6 +354,17 @@
 #endif
 
 // -----------------------------------------------------------------------------
+// Seuils d'envoi des mesures (voir MemoireRTC.h)
+// -----------------------------------------------------------------------------
+// Hors forçage, une mesure n'est envoyée que si elle s'écarte de la dernière valeur ENVOYÉE (gardée en mémoire RTC
+// pendant le deep sleep) d'au moins ce seuil. Le forçage (page Web : « Intervalle forçage remontée », en secondes)
+// envoie de toute façon la mesure au plus tard après ce délai. Seuils trop fins : le bruit du capteur fait partir la
+// mesure à presque chaque réveil (constaté sur ThChRDC le 15/11/2026 avec l'humidité au dixième).
+#define SEUIL_ENVOI_TEMP_DHT20      0.2f    // °C
+#define SEUIL_ENVOI_HUM_DHT20       5.0f    // % d'humidité relative
+#define SEUIL_ENVOI_BATTERIE_V      0.05f   // V
+
+// -----------------------------------------------------------------------------
 // Macro pour logs de debug (optionnel)
 // -----------------------------------------------------------------------------
 #if defined(DEBUG) || defined(_DEBUG)
@@ -368,7 +379,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "3.7"
+#define VERSION "3.8"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

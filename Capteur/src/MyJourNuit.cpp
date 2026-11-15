@@ -2,6 +2,7 @@
 #include "MyJourNuit.h"
 #include <time.h>
 #include <esp_system.h>
+#include "MemoireRTC.h"
 
 //------------------------------------------------------------------------------
 // Mémoire RTC : conservée pendant le deep sleep, réinitialisée à la mise sous tension et au reset.
@@ -49,7 +50,9 @@ int CJourNuit::loop() {
   if (!active) return -9;
   static bool bPremiereMesure = true;
   static unsigned long lastRead = 0UL;
-  bool bForce = (unsigned long)(time(nullptr) - rtcDernierEnvoi) >= mulIntervalleForcageRemonteeMesure;
+  static unsigned long ulDerniereTentativeForcage = 0UL;
+  // Voir MemoireRTC.h (référence recalée à la synchro NTP, tentatives espacées si l'envoi échoue)
+  bool bForce = forcageEchu(rtcDernierEnvoi, mulIntervalleForcageRemonteeMesure, ulDerniereTentativeForcage);
   if (bPremiereMesure || bForce || (millis() - lastRead > mulIntervalleMesure * 1000UL)) {
     bPremiereMesure = false;
     lastRead = millis();
