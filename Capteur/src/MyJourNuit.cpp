@@ -121,6 +121,7 @@ bool CJourNuit::publie(const String& sMesure, const String& sValeur, bool force)
   String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
   String sVal = nomEquipement + " " + sMesure + " " + sDate + " " + sTime + " " + sValeur;
   if (force) sVal += " FORCE";
+  sVal += suffixeAlerte();
   bool ret = false;
   #ifdef _LORA_P2P_MODE_
   if (onLoraP2PPublish != nullptr) {
@@ -201,6 +202,7 @@ void CJourNuit::loadFromNVS() {
   mcEtatNVS = prefs.getChar((mPrefixNVS+"etat").c_str(), JOUR_NUIT_ETAT_INCONNU);
   mulIntervalleMesure = prefs.getLong((mPrefixNVS+"inter").c_str(), mulDefaultIntervalleMesure);
   mulIntervalleForcageRemonteeMesure = (unsigned long)prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
+  chargeRetardNVS(prefs);
 
   domotique_prefix = "home/";
   mqttSubTopicCommand = domotique_prefix + mqttSubTopic + "command";
@@ -221,6 +223,7 @@ void CJourNuit::saveToNVS() {
   prefs.putBool((mPrefixNVS+"ecl").c_str(), mbRemonterEclairement);
   prefs.putLong((mPrefixNVS+"inter").c_str(), mulIntervalleMesure);
   prefs.putLong((mPrefixNVS+"force").c_str(), mulIntervalleForcageRemonteeMesure);
+  enregistreRetardNVS(prefs);
 
   prefs.end();
 }
@@ -232,6 +235,7 @@ void CJourNuit::loadFromWebServer(WebServer& server) {
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
   if (server.hasArg((mPrefixNVS+"inter").c_str())) mulIntervalleMesure = server.arg((mPrefixNVS+"inter")).toInt();
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
+  litRetardWeb(server);
   // Fenêtre d'hystérésis : 0 <= bas < haut <= 100, sinon les seuils précédents sont conservés
   if (server.hasArg((mPrefixNVS+"sbas").c_str()) && server.hasArg((mPrefixNVS+"shaut").c_str())) {
     int iBas = server.arg((mPrefixNVS+"sbas").c_str()).toInt();
@@ -255,6 +259,7 @@ void CJourNuit::print() const {
   Serial.printf("     Remonter éclairement : %s\n", mbRemonterEclairement ? "OUI" : "NON");
   Serial.printf("     Intervalle mesures : %ld s\n", mulIntervalleMesure);
   Serial.printf("     Forcage remontée   : %ld s\n", mulIntervalleForcageRemonteeMesure);
+  Serial.printf("     Retard toléré      : %lu s (alerte après %lu s)\n", mulRetardTolereS, getDelaiAlerteS());
   Serial.printf("     MQTTSubTopic       : %s\n", mqttSubTopic.c_str());
   Serial.printf("     MQTTCmd            : %s\n", mqttSubTopicCommand.c_str());
   Serial.printf("     MQTTState          : %s\n", mqttSubTopicState.c_str());
@@ -283,6 +288,7 @@ String CJourNuit::getHTML() {
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
+  html += getHTMLRetard();
   html += "<div class=\"row\">"
         "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
@@ -370,6 +376,6 @@ String CJourNuit::getParams() const {
   return mPrefixNVS + "sbas:" + String(miSeuilBas) +
          " " + mPrefixNVS + "shaut:" + String(miSeuilHaut) +
          " " + mPrefixNVS + "ecl:" + String(mbRemonterEclairement ? 1 : 0) +
-         " " + mPrefixNVS + "inter:" + String(mulIntervalleMesure) +
-         " " + mPrefixNVS + "force:" + String(mulIntervalleForcageRemonteeMesure);
+         " " + mPrefixNVS + "inter:" + String(mulIntervalleMesure);
+  // jn_force et jn_retard : CCapteurBase::getParamsAlerte(), ajouté par CConfig::getParams()
 }

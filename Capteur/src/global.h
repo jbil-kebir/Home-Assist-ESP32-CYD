@@ -43,8 +43,15 @@
 
 //#define DEBUG_NO_DEEP_SLEEP
 //#define _RCSWITCH_MODE_ // Envoi par RCSwitch possible si décommentée
-#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
 //#define __DESACTIVE_ENVOI_MQTT__ // Désactive la remontée de mesure par MQTT, laissant uniquement la RF
+
+//----------------------------------------------------------------------------
+// Liaison et capteurs : fixés par le profil du nœud dans platformio.ini (env:ThChRDC_Xiao_C3, env:ThRemise_Xiao_S3...,
+// qui définit PROFIL_NOEUD). Le bloc suivant ne sert qu'aux profils génériques (xiao_c3, xiao_s3 et leurs _debug) :
+// essais, nouveau nœud.
+//----------------------------------------------------------------------------
+#ifndef PROFIL_NOEUD
+#define _WIFI_MODE_ // Envoi par WIFI possible si décommentée
 //#define _LORA_P2P_MODE_ // Envoi par LORA
 //----------------------------------------------------------------------------
 // Décommenter en fonction des capteurs / détecteurs installés
@@ -63,6 +70,7 @@
 // Décommenter en fonction des actionneurs installés
 //----------------------------------------------------------------------------
 //#define ACTIONNEUR_IR
+#endif // PROFIL_NOEUD
 
 //----------------------------------------------------------------------------
 // En cas de perte de la configuration, décommenter la ligne suivante.
@@ -365,6 +373,25 @@
 #define SEUIL_ENVOI_BATTERIE_V      0.05f   // V
 
 // -----------------------------------------------------------------------------
+// Délai d'alerte des capteurs (voir CapteurBase.h)
+// -----------------------------------------------------------------------------
+// Chaque mesure porte « alerte:<s> » : durée sans nouvelles de ce capteur au-delà de laquelle le contrôleur (CYD)
+// le signale. Calculé par le nœud : plus long écart normal entre deux envois (forçage arrondi au réveil suivant)
+// + retard toléré (page Web, par capteur) + marge. Le contrôleur ne peut donc jamais alerter sur un nœud qui suit
+// son rythme normal.
+#define DELAI_ALERTE_MARGE_S            60      // Marge fixe : réveil, connexion, relais LoRa, dérive de l'horloge
+#define DELAI_ALERTE_EVEIL_S            10      // Durée d'éveil estimée par cycle de deep sleep (ajoutée à chaque sommeil)
+#define DELAI_ALERTE_RETARD_DEFAUT_S    0       // Retard toléré par défaut (s) : alerte dès qu'un envoi manque
+#define DELAI_ALERTE_RETARD_MAX_S       604800  // Retard toléré maximal (7 jours)
+// Forçage réglable par SET <préfixe>force (CCapteurBase::setParamAlerte(), mêmes bornes que jn_force)
+#define FORCAGE_MIN_S                   60
+#define FORCAGE_MAX_S                   86400
+
+// Longueur maximale d'une trame LoRa envoyée (le SX1262 accepte 255 octets) : au-delà, la réponse CONFIG est découpée
+// en « <nom> CONFIG ... » puis « <nom> CONFIGSUITE ... » (CConfig::envoieConfig())
+#define LORA_TRAME_MAX                  250
+
+// -----------------------------------------------------------------------------
 // Macro pour logs de debug (optionnel)
 // -----------------------------------------------------------------------------
 #if defined(DEBUG) || defined(_DEBUG)
@@ -379,7 +406,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "3.8"
+#define VERSION "3.9"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

@@ -91,6 +91,9 @@ int MyDHT20::readAndPublish(bool force/*=false*/) {
   int ret = 0;
   if (!active) return -9;
   if (readTemperature()) {
+    mucEchecsConsecutifs = 0;
+    mulDerniereLectureOK = millis();
+    mbDejaLu = true;
     if ( (round(10*newTempC) != round(10*lastTempC)) || force) { // On compare à la décimale près
       lastTempC = newTempC;
       printTemperature(); // On affiche sur le moniteur série
@@ -101,6 +104,7 @@ int MyDHT20::readAndPublish(bool force/*=false*/) {
       ret = 0; // température inchangée
   }
   else {
+    if (mucEchecsConsecutifs < 255) mucEchecsConsecutifs++;
     ret = -1;
   }
   return ret;

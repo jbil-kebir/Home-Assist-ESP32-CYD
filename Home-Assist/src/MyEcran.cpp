@@ -7,6 +7,35 @@
 #include "MyConfig.h"
 #include "global.h"
 #include "MyEcran.h"
+#include "RemoteCapteurBase.h"
+#include "RemoteTh.h"
+#include "RemoteDHT20.h"
+#include "RemoteBatAA.h"
+#include "RemoteTCS34725.h"
+#include "RemoteTor.h"
+#include "RemoteJourNuit.h"
+#include <initializer_list>
+
+//------------------------------------------------------------------------------
+// Délai d'alerte (Home-Assist 3.9) : deux niveaux d'information sur les zones des nœuds
+//   - CAPTEUR (thermomètre, batterie, flotteur, voyant, jour / nuit) : son champ affiche WDG tant qu'il est en retard
+//     (CRemoteCapteurBase::estEnRetard(), tenu à jour chaque seconde), aussi après un changement de série ;
+//   - NŒUD (bandeau derrière le nom) : orange (EVEIL_MUET) quand TOUS ses capteurs actifs sont en retard,
+//     sinon état instantané éveillé / endormi / inconnu.
+//------------------------------------------------------------------------------
+static bool enRetard(const CRemoteCapteurBase* c) { return c != nullptr && c->estEnRetard(); }
+static float wdgMesure(const CRemoteCapteurBase* c, float val) { return enRetard(c) ? -254.0f : val; } // drawMesure1/2
+static float wdgBatterie(const CRemoteCapteurBase* c, float val) { return enRetard(c) ? -2.0f : val; } // drawEtatBatterie
+static int wdgOnOff(const CRemoteCapteurBase* c, int val) { return enRetard(c) ? -10 : val; }        // flotteur, voyant
+static int eveilNoeud(int eveil, std::initializer_list<const CRemoteCapteurBase*> capteurs) {
+  int nbActifs = 0;
+  for (const CRemoteCapteurBase* c : capteurs) {
+    if (c == nullptr || !c->active) continue;
+    nbActifs++;
+    if (!c->estEnRetard()) return eveil;
+  }
+  return nbActifs > 0 ? EVEIL_MUET : eveil;
+}
 
   CEcran::CEcran(CConfig& cfg) : tft(TFT_eSPI()), touch(XPT2046_CS, XPT2046_IRQ), touchSPI(HSPI), mConfig(cfg), 
     mBtnProjecteur(cfg, tft, touch, BOUTON_P_X, BOUTON_P_Y, BOUTON_P_W, BOUTON_P_H, TFT_DARKGREY, BOUTON_P_N), 
@@ -618,9 +647,11 @@ void CEcran::updateThermometreLocal() {
   #ifdef __LOCAL_DS18B20__
   nom = mConfig.ds18b20->nomEquipement;
   temp = mConfig.ds18b20->getLastTemperature();
+  if (mConfig.ds18b20->active && mConfig.ds18b20->estEnPanne()) temp = -254.0; // WDG (main_ds18b20.cpp)
   #elif defined(__LOCAL_DHT20__)
   nom = mConfig.dht20->nomEquipement;
   temp = mConfig.dht20->getLastTemperature();
+  if (mConfig.dht20->active && mConfig.dht20->estEnPanne()) temp = -254.0; // WDG (main_ds18b20.cpp)
   #else
   nom = "";
   temp = -127.0;
@@ -653,17 +684,18 @@ void CEcran::updateRemoteBat_DS18B20(const String& nom, int etatBatterie, float 
 //-------------------------------------- ThCh1er --------------------------------------
 void CEcran::updateRemoteDevice_ThCh1er(const String& nom, float val) {
   if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
-  mZoneMesureOuest.drawMesure1(val, nom, mConfig.mRemoteThCh1er ? mConfig.mRemoteThCh1er->getEveil() : EVEIL_SANS_BANDEAU);
+  mZoneMesureOuest.drawMesure1(wdgMesure(mConfig.mRemoteThCh1er, val), nom,
+                    eveilNoeud(mConfig.mRemoteThCh1er ? mConfig.mRemoteThCh1er->getEveil() : EVEIL_SANS_BANDEAU, {mConfig.mRemoteThCh1er, mConfig.mRemoteBatThCh1er}));
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThCh1erH(const String& nom, float val) {
   if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
-  mZoneMesureOuest.drawMesure2(val, nom);
+  mZoneMesureOuest.drawMesure2(wdgMesure(mConfig.mRemoteThCh1er, val), nom);
 }
 // Batterie du thermomètre Chambre 1er
 void CEcran::updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours == 4 || mucSerieAffichageEnCours == 5) return;
-  mZoneMesureOuest.drawEtatBatterie(val, etatBatterie, nom);
+  mZoneMesureOuest.drawEtatBatterie(wdgBatterie(mConfig.mRemoteBatThCh1er, val), etatBatterie, nom);
 }
 
 
@@ -673,17 +705,18 @@ void CEcran::updateRemoteBat_ThCh1er(const String& nom, int etatBatterie, float 
 //-------------------------------------- ThSdb --------------------------------------
 void CEcran::updateRemoteDevice_ThSdb(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 1 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureCentre.drawMesure1(val, nom, mConfig.mRemoteThSdb ? mConfig.mRemoteThSdb->getEveil() : EVEIL_SANS_BANDEAU);
+  mZoneMesureCentre.drawMesure1(wdgMesure(mConfig.mRemoteThSdb, val), nom,
+                    eveilNoeud(mConfig.mRemoteThSdb ? mConfig.mRemoteThSdb->getEveil() : EVEIL_SANS_BANDEAU, {mConfig.mRemoteThSdb, mConfig.mRemoteCoulSdb, mConfig.mRemoteBatSdb}));
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThSdbH(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 1 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureCentre.drawMesure2(val, nom);
+  mZoneMesureCentre.drawMesure2(wdgMesure(mConfig.mRemoteThSdb, val), nom);
 }
 // Batterie du thermomètre SDB
 void CEcran::updateRemoteBat_ThSdb(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 1 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureCentre.drawEtatBatterie(val, etatBatterie, nom);
+  mZoneMesureCentre.drawEtatBatterie(wdgBatterie(mConfig.mRemoteBatSdb, val), etatBatterie, nom);
 }
 // Couleur
 void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, int val) {
@@ -714,7 +747,7 @@ void CEcran::updateRemoteDevice_ThSdbDel(const String& nom, int val) {
     mZoneCouleurSdb.muiHight = REMOTE_B_1_H;
     mZoneCouleurSdb.calculeCoordonnees();
   }
-  mZoneCouleurSdb.drawMesure(val, nom);
+  mZoneCouleurSdb.drawMesure(wdgOnOff(mConfig.mRemoteCoulSdb, val), nom);
 }
 // Etat réel du chauffage SdB (noeud IR/son)
 void CEcran::updateRemoteDevice_ChauffageSb(const String& nom, int val) {
@@ -728,17 +761,18 @@ void CEcran::updateRemoteDevice_ChauffageSb(const String& nom, int val) {
 //-------------------------------------- ThRemise --------------------------------------
 void CEcran::updateRemoteDevice_ThRemise(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleCentre.drawMesure1(val, nom, mConfig.mRemoteThRemise ? mConfig.mRemoteThRemise->getEveil() : EVEIL_SANS_BANDEAU);
+  mZoneMesureDoubleCentre.drawMesure1(wdgMesure(mConfig.mRemoteThRemise, val), nom,
+                    eveilNoeud(mConfig.mRemoteThRemise ? mConfig.mRemoteThRemise->getEveil() : EVEIL_SANS_BANDEAU, {mConfig.mRemoteThRemise, mConfig.mRemoteBatRemise, mConfig.mRemoteTor}));
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThRemiseH(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleCentre.drawMesure2(val, nom);
+  mZoneMesureDoubleCentre.drawMesure2(wdgMesure(mConfig.mRemoteThRemise, val), nom);
 }
 // Batterie du thermomètre Remise (à la place de thermomètre Chambre 1er)
 void CEcran::updateRemoteBat_ThRemise(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleCentre.drawEtatBatterie(val, etatBatterie, nom);
+  mZoneMesureDoubleCentre.drawEtatBatterie(wdgBatterie(mConfig.mRemoteBatRemise, val), etatBatterie, nom);
 }
 
 //============================================================================================
@@ -746,12 +780,13 @@ void CEcran::updateRemoteBat_ThRemise(const String& nom, int etatBatterie, float
 //============================================================================================
 void CEcran::updateRemoteDevice_ThCave(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleEst.drawMesure1(val, nom, mConfig.mRemoteThCave ? mConfig.mRemoteThCave->getEveil() : EVEIL_SANS_BANDEAU);
+  mZoneMesureDoubleEst.drawMesure1(wdgMesure(mConfig.mRemoteThCave, val), nom,
+                    eveilNoeud(mConfig.mRemoteThCave ? mConfig.mRemoteThCave->getEveil() : EVEIL_SANS_BANDEAU, {mConfig.mRemoteThCave, mConfig.mRemoteBatCave, mConfig.mRemoteJnCave}));
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThCaveH(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 2 && mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleEst.drawMesure2(val, nom);
+  mZoneMesureDoubleEst.drawMesure2(wdgMesure(mConfig.mRemoteThCave, val), nom);
 }
 // Tout ou Rien
 void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
@@ -773,18 +808,18 @@ void CEcran::updateRemoteDevice_ThCaveTor(const String& nom, int val) {
     mZoneFlotteur.mbModeFond = true;
     mZoneFlotteur.calculeCoordonnees();
   }
-  mZoneFlotteur.drawMesure(val, nom);
+  mZoneFlotteur.drawMesure(wdgOnOff(mConfig.mRemoteTor, val), nom);
 }
 
 // Batterie du thermomètre Cave (à la place de thermomètre Chambre 1er). Série 3 : jour / nuit à sa place
 void CEcran::updateRemoteBat_ThCave(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 2) return;
-  mZoneMesureDoubleEst.drawEtatBatterie(val, etatBatterie, nom);
+  mZoneMesureDoubleEst.drawEtatBatterie(wdgBatterie(mConfig.mRemoteBatCave, val), etatBatterie, nom);
 }
 // Détecteur jour / nuit de la cave (série 3, ligne de la batterie). etat -2 : watchdog
 void CEcran::updateRemoteJourNuit_ThCave(int eclairement, int etat) {
   if (mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleEst.drawJourNuit(eclairement, etat);
+  mZoneMesureDoubleEst.drawJourNuit(eclairement, enRetard(mConfig.mRemoteJnCave) ? -2 : etat);
 }
 
 //============================================================================================
@@ -792,17 +827,18 @@ void CEcran::updateRemoteJourNuit_ThCave(int eclairement, int etat) {
 //============================================================================================
 void CEcran::updateRemoteDevice_ThChRdc(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleOuest.drawMesure1(val, nom, mConfig.mRemoteThChRdc ? mConfig.mRemoteThChRdc->getEveil() : EVEIL_SANS_BANDEAU);
+  mZoneMesureDoubleOuest.drawMesure1(wdgMesure(mConfig.mRemoteThChRdc, val), nom,
+                    eveilNoeud(mConfig.mRemoteThChRdc ? mConfig.mRemoteThChRdc->getEveil() : EVEIL_SANS_BANDEAU, {mConfig.mRemoteThChRdc, mConfig.mRemoteBatChRdc}));
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThChRdcH(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleOuest.drawMesure2(val, nom);
+  mZoneMesureDoubleOuest.drawMesure2(wdgMesure(mConfig.mRemoteThChRdc, val), nom);
 }
 // Batterie du thermomètre Chambre RDC
 void CEcran::updateRemoteBat_ThChRdc(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 3) return;
-  mZoneMesureDoubleOuest.drawEtatBatterie(val, etatBatterie, nom);
+  mZoneMesureDoubleOuest.drawEtatBatterie(wdgBatterie(mConfig.mRemoteBatChRdc, val), etatBatterie, nom);
 }
 
 //============================================================================================
@@ -810,12 +846,13 @@ void CEcran::updateRemoteBat_ThChRdc(const String& nom, int etatBatterie, float 
 //============================================================================================
 void CEcran::updateRemoteDevice_ThNomade(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 4) return;
-  mZoneMesureDoubleBas.drawMesure1(val, nom, mConfig.mRemoteThNomade ? mConfig.mRemoteThNomade->getEveil() : EVEIL_SANS_BANDEAU);
+  mZoneMesureDoubleBas.drawMesure1(wdgMesure(mConfig.mRemoteThNomade, val), nom,
+                    eveilNoeud(mConfig.mRemoteThNomade ? mConfig.mRemoteThNomade->getEveil() : EVEIL_SANS_BANDEAU, {mConfig.mRemoteThNomade, mConfig.mRemoteBatNomade, mConfig.mRemoteTorNomade}));
 }
 // Humidité
 void CEcran::updateRemoteDevice_ThNomadeH(const String& nom, float val) {
   if (mucSerieAffichageEnCours != 4) return;
-  mZoneMesureDoubleBas.drawMesure2(val, nom);
+  mZoneMesureDoubleBas.drawMesure2(wdgMesure(mConfig.mRemoteThNomade, val), nom);
 }
 // Tout ou Rien
 void CEcran::updateRemoteDevice_ThNomadeTor(const String& nom, int val) {
@@ -827,7 +864,7 @@ void CEcran::updateRemoteDevice_ThNomadeTor(const String& nom, int val) {
     mZoneTorNomade.muiWidth = SERIE4_COL_W;
     mZoneTorNomade.muiHight = REMOTE_B_1_H; //SERIE4_ROW_H;
     mZoneTorNomade.calculeCoordonnees();
-    mZoneTorNomade.drawMesure(val, nom);
+    mZoneTorNomade.drawMesure(wdgOnOff(mConfig.mRemoteTorNomade, val), nom);
   } else {
     /*mZoneTorNomade.muiPosX = REMOTE_2_X;
     mZoneTorNomade.muiPosY = (REMOTE_2_Y + REMOTE_2_H + 2 + MESURE_2_HAUTEUR + 2);
@@ -840,7 +877,7 @@ void CEcran::updateRemoteDevice_ThNomadeTor(const String& nom, int val) {
 // Batterie du thermomètre Nomade
 void CEcran::updateRemoteBat_ThNomade(const String& nom, int etatBatterie, float val) {
   if (mucSerieAffichageEnCours != 4) return;
-  mZoneMesureDoubleBas.drawEtatBatterie(val, etatBatterie, nom);
+  mZoneMesureDoubleBas.drawEtatBatterie(wdgBatterie(mConfig.mRemoteBatNomade, val), etatBatterie, nom);
 }
 
 //============================================================================================

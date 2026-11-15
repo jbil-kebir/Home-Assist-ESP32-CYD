@@ -286,8 +286,10 @@ bool DHT20Sensor::publieSurMqtt(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sValTemp = nomEquipement + " Temp " + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     String sValHum = nomEquipement + " Hum " + sDate + " " + sTime + " " + String(hum, 1);
     if (force) sValHum += " FORCE";
+    sValHum += suffixeAlerte();
     Serial.println("DHT20Sensor::publieSurMqtt() Temp : " + sValTemp);
     Serial.println("DHT20Sensor::publieSurMqtt() Hum  : " + sValHum);
     if (onMqttPublish != nullptr) {
@@ -313,8 +315,10 @@ bool DHT20Sensor::publieParLoraP2P(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sValTemp = mqttSubTopicState + " " +  nomEquipement + " Temp " + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     String sValHum = mqttSubTopicState + " " + nomEquipement + " Hum " + sDate + " " + sTime + " " + String(hum, 1);
     if (force) sValHum += " FORCE";
+    sValHum += suffixeAlerte();
     Serial.println("DHT20Sensor::publieParLoraP2P() Temp : " + sValTemp);
     Serial.println("DHT20Sensor::publieParLoraP2P() Hum  : " + sValHum);
     if (onLoraP2PPublish != nullptr) {
@@ -494,8 +498,8 @@ void DHT20Sensor::loadFromNVS() {
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
   mucNbEnvois = prefs.getUShort((mPrefixNVS+"renvois").c_str(), 1);
   mulIntervalleEnvoi = prefs.getLong((mPrefixNVS+"interr").c_str(), mulDefaultIntervalleEnvoi);
+  chargeRetardNVS(prefs);
 
-  
   // On forme les subtopic MQTT
   //domotique_prefix = prefs.getString((mPrefixNVS+"domo_pref").c_str(), default_domotique_topic_prefix);
 
@@ -520,6 +524,7 @@ void DHT20Sensor::saveToNVS() {
   prefs.putLong((mPrefixNVS+"force").c_str(), mulIntervalleForcageRemonteeMesure);
   prefs.putUShort((mPrefixNVS+"renvois").c_str(), mucNbEnvois);
   prefs.putLong((mPrefixNVS+"interr").c_str(), mulIntervalleEnvoi);
+  enregistreRetardNVS(prefs);
 //  prefs.putString((mPrefixNVS+"domo_pref").c_str(), domotique_prefix);
 
   prefs.end();
@@ -543,6 +548,7 @@ void DHT20Sensor::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
   if (server.hasArg((mPrefixNVS+"inter").c_str())) mulIntervalleMesure = server.arg((mPrefixNVS+"inter")).toInt();
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
+  litRetardWeb(server);
   if (server.hasArg((mPrefixNVS+"renvois").c_str())) mucNbEnvois = server.arg((mPrefixNVS+"renvois")).toInt();
   if (server.hasArg((mPrefixNVS+"interr").c_str())) mulIntervalleEnvoi = server.arg((mPrefixNVS+"interr")).toInt();
 }
@@ -565,6 +571,7 @@ String DHT20Sensor::getHTML() {
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
+  html += getHTMLRetard();
   html += "<div class=\"row\">"
         "<div><label>Nombre de renvois</label><input type=\"text\" name=" + (mPrefixNVS+"renvois") + " value=\"" + mucNbEnvois + "\"></div>"
         "<div><label>Intervalle de renvoi</label><input type=\"text\" name=" + (mPrefixNVS+"interr") + " value=\"" + mulIntervalleEnvoi + "\"></div>"
@@ -585,6 +592,7 @@ void DHT20Sensor::print() const {
   Serial.printf("     GPIO SCL             : %d\n", mucSclPin);
   Serial.printf("     Intervalle mesures   : %ld s\n", mulIntervalleMesure);
   Serial.printf("     Forcage remontée     : %ld s\n", mulIntervalleForcageRemonteeMesure);
+  Serial.printf("     Retard toléré        : %lu s (alerte après %lu s)\n", mulRetardTolereS, getDelaiAlerteS());
   Serial.printf("     Nombre de renvois    : %d\n", mucNbEnvois);
   Serial.printf("     Intervalle de renvoi : %ld s\n", mulIntervalleEnvoi);
   Serial.printf("     MQTTSubTopic         : %s\n", mqttSubTopic.c_str());

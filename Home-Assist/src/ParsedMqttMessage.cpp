@@ -2,6 +2,13 @@
 #include "ParsedMqttMessage.h"
 
 // Méthodes de détection (à mettre dans la classe ou en helpers)
+// « alerte:<s> » (casse indifférente) : délai d'alerte annoncé par le nœud
+bool ParsedMqttMessage::isDelaiAlerte(const String& s) const {
+    if (s.length() < 8 || !s.substring(0, 7).equalsIgnoreCase("alerte:")) return false;
+    for (unsigned int i = 7; i < s.length(); i++) if (!isDigit(s[i])) return false;
+    return true;
+}
+
 bool ParsedMqttMessage::isForce(const String& s) const {
     return s.equalsIgnoreCase("FORCE");
 }
@@ -39,6 +46,7 @@ bool ParsedMqttMessage::parse(const String& payload) {
     msIp.clear();
     mfValeur = 0.0f;
     mbForce = false;
+    miDelaiAlerteS = 0;
 
     String s = payload;
     s.trim();
@@ -46,7 +54,7 @@ bool ParsedMqttMessage::parse(const String& payload) {
     if (s.length() == 0) return false;
 
     std::vector<String> tokens;
-    
+
 // ──────────────────────────────────────────────────────────────
 // Découpage propre en tokens (remplace le commentaire)
 // ──────────────────────────────────────────────────────────────
@@ -93,6 +101,10 @@ for (size_t i = 1; i < tokens.size(); ++i) {
 
     if (isForce(current)) {
         mbForce = true;
+        // Ne pas ajouter dans mvsMesure
+    }
+    else if (isDelaiAlerte(current)) {   // Avant isTime() (contient ':')
+        miDelaiAlerteS = strtoul(current.c_str() + 7, nullptr, 10);
         // Ne pas ajouter dans mvsMesure
     }
     else if (isIp(current)) {

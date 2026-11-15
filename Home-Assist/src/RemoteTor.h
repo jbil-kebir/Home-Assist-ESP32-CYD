@@ -7,10 +7,10 @@
 #include <functional>
 #include "global.h"
 #include "MyEcran.h"
-#include "EquipementBase.h"
+#include "RemoteCapteurBase.h"
 
 
-class CRemoteTor : public CEquipementBase {
+class CRemoteTor : public CRemoteCapteurBase {
 private:
   CEcran *mEcran=nullptr;
   // On mémorise la Mesure pour n'afficher que les changements
@@ -23,15 +23,12 @@ private:
 
   // En secondes pour les tests. Si l'appareil ne répond pas au delà de cet intervalle, 
   // il est considéré comme KO
-  unsigned long mulWatchdogIntervalle = 60UL; 
-  unsigned long mulWatchdogDefaultIntervalle = 60UL; 
-  unsigned long mulWatchDog;
   bool mbMessageRecu = false; // Au moins un message reçu depuis le démarrage (voir estPresent())
 
 public:
   CRemoteTor(const String& nomEqu, CEcran* ecran, 
       std::function<void(const String&, int)> callback = nullptr,
-      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : mEcran(ecran), onMesureChanged(callback), onMqttPublish(cbonMqttPublish) {
+      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : CRemoteCapteurBase(60UL), mEcran(ecran), onMesureChanged(callback), onMqttPublish(cbonMqttPublish) {
       nomEquipement = nomEqu;
     } 
 
@@ -66,7 +63,6 @@ public:
   bool remonteStatusParMqtt();
   bool estPresent() const; // Message reçu depuis le démarrage et watchdog non expiré
   int etatPresence() const; // 1 : présent, 0 : absent, -1 : inconnu (inactif, ou démarrage sans message)
-  unsigned long getWatchdogIntervalle() const { return mulWatchdogIntervalle; } // en secondes
 };
 
 #endif // __REMOTE_TOR_H__

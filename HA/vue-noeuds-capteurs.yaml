@@ -53,6 +53,26 @@ sections:
                 name: État batterie
               - entity: sensor.flotteur_remise
                 name: Flotteur
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            title: Nouvelles des capteurs
+            content: |
+              {% if is_state('binary_sensor.thremise_en_retard', 'on') %}⚠️ **ThRemise** : aucune nouvelle depuis le {{ state_attr('binary_sensor.thremise_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.thremise_en_retard', 'off') %}✅ **ThRemise** : OK
+              {% else %}❔ **ThRemise** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.batremise_en_retard', 'on') %}⚠️ **BatRemise** : aucune nouvelle depuis le {{ state_attr('binary_sensor.batremise_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.batremise_en_retard', 'off') %}✅ **BatRemise** : OK
+              {% else %}❔ **BatRemise** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.flotteurremise_en_retard', 'on') %}⚠️ **FlotteurRemise** : aucune nouvelle depuis le {{ state_attr('binary_sensor.flotteurremise_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.flotteurremise_en_retard', 'off') %}✅ **FlotteurRemise** : OK
+              {% else %}❔ **FlotteurRemise** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
@@ -176,6 +196,18 @@ sections:
                 name: Éveil maximum
               - entity: input_boolean.thremise_mute
                 name: Mesures muettes
+              - entity: input_number.thremise_thhum_force
+                name: Forçage thermomètre
+              - entity: input_number.thremise_thhum_retard
+                name: Retard toléré thermomètre
+              - entity: input_number.thremise_bat_force
+                name: Forçage batterie
+              - entity: input_number.thremise_bat_retard
+                name: Retard toléré batterie
+              - entity: input_number.thremise_mfv_force
+                name: Forçage flotteur
+              - entity: input_number.thremise_mfv_retard
+                name: Retard toléré flotteur
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -272,6 +304,26 @@ sections:
                 name: Jour / nuit
               - entity: sensor.jncave_eclairement
                 name: Éclairement
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
+            title: Nouvelles des capteurs
+            content: |
+              {% if is_state('binary_sensor.thcave_en_retard', 'on') %}⚠️ **ThCave** : aucune nouvelle depuis le {{ state_attr('binary_sensor.thcave_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.thcave_en_retard', 'off') %}✅ **ThCave** : OK
+              {% else %}❔ **ThCave** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.batcave_en_retard', 'on') %}⚠️ **BatCave** : aucune nouvelle depuis le {{ state_attr('binary_sensor.batcave_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.batcave_en_retard', 'off') %}✅ **BatCave** : OK
+              {% else %}❔ **BatCave** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.jncave_en_retard', 'on') %}⚠️ **JnCave** : aucune nouvelle depuis le {{ state_attr('binary_sensor.jncave_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.jncave_en_retard', 'off') %}✅ **JnCave** : OK
+              {% else %}❔ **JnCave** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
@@ -296,17 +348,12 @@ sections:
                 attribute: jn_inter
                 name: Intervalle de mesure
                 suffix: " s"
-              - type: attribute
-                entity: sensor.thcave_config
-                attribute: jn_force
-                name: Délai max sans envoi
-                suffix: " s"
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             content: |
               Ex. : `SET jn_sbas 15 jn_shaut 25` (commande libre) — clés : `jn_sbas` `jn_shaut` (0 à 100 %, bas < haut),
-              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s), `jn_force` (60 à 86400 s)
+              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s) ; forçage et retard toléré : dans les Réglages
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
@@ -402,6 +449,18 @@ sections:
                 name: Éveil maximum
               - entity: input_boolean.thcave_mute
                 name: Mesures muettes
+              - entity: input_number.thcave_thhum_force
+                name: Forçage thermomètre
+              - entity: input_number.thcave_thhum_retard
+                name: Retard toléré thermomètre
+              - entity: input_number.thcave_bat_force
+                name: Forçage batterie
+              - entity: input_number.thcave_bat_retard
+                name: Retard toléré batterie
+              - entity: input_number.thcave_jn_force
+                name: Forçage jour / nuit
+              - entity: input_number.thcave_jn_retard
+                name: Retard toléré jour / nuit
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -494,6 +553,21 @@ sections:
                 name: Batterie
               - entity: sensor.batchrdc_etat
                 name: État batterie
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
+            title: Nouvelles des capteurs
+            content: |
+              {% if is_state('binary_sensor.thchrdc_en_retard', 'on') %}⚠️ **ThChRDC** : aucune nouvelle depuis le {{ state_attr('binary_sensor.thchrdc_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.thchrdc_en_retard', 'off') %}✅ **ThChRDC** : OK
+              {% else %}❔ **ThChRDC** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.batchrdc_en_retard', 'on') %}⚠️ **BatChRDC** : aucune nouvelle depuis le {{ state_attr('binary_sensor.batchrdc_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.batchrdc_en_retard', 'off') %}✅ **BatChRDC** : OK
+              {% else %}❔ **BatChRDC** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
@@ -594,6 +668,14 @@ sections:
                 name: Éveil maximum
               - entity: input_boolean.thchrdc_mute
                 name: Mesures muettes
+              - entity: input_number.thchrdc_thhum_force
+                name: Forçage thermomètre
+              - entity: input_number.thchrdc_thhum_retard
+                name: Retard toléré thermomètre
+              - entity: input_number.thchrdc_bat_force
+                name: Forçage batterie
+              - entity: input_number.thchrdc_bat_retard
+                name: Retard toléré batterie
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -686,6 +768,21 @@ sections:
                 name: Batterie
               - entity: sensor.batch1er_etat
                 name: État batterie
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
+            title: Nouvelles des capteurs
+            content: |
+              {% if is_state('binary_sensor.thch1er_en_retard', 'on') %}⚠️ **ThCh1er** : aucune nouvelle depuis le {{ state_attr('binary_sensor.thch1er_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.thch1er_en_retard', 'off') %}✅ **ThCh1er** : OK
+              {% else %}❔ **ThCh1er** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.batch1er_en_retard', 'on') %}⚠️ **BatCh1er** : aucune nouvelle depuis le {{ state_attr('binary_sensor.batch1er_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.batch1er_en_retard', 'off') %}✅ **BatCh1er** : OK
+              {% else %}❔ **BatCh1er** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
@@ -786,6 +883,14 @@ sections:
                 name: Éveil maximum
               - entity: input_boolean.thch1er_mute
                 name: Mesures muettes
+              - entity: input_number.thch1er_thhum_force
+                name: Forçage thermomètre
+              - entity: input_number.thch1er_thhum_retard
+                name: Retard toléré thermomètre
+              - entity: input_number.thch1er_bat_force
+                name: Forçage batterie
+              - entity: input_number.thch1er_bat_retard
+                name: Retard toléré batterie
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -891,6 +996,26 @@ sections:
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
+            title: Nouvelles des capteurs
+            content: |
+              {% if is_state('binary_sensor.thsdb_en_retard', 'on') %}⚠️ **ThSdb** : aucune nouvelle depuis le {{ state_attr('binary_sensor.thsdb_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.thsdb_en_retard', 'off') %}✅ **ThSdb** : OK
+              {% else %}❔ **ThSdb** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.batsdb_en_retard', 'on') %}⚠️ **BatSdb** : aucune nouvelle depuis le {{ state_attr('binary_sensor.batsdb_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.batsdb_en_retard', 'off') %}✅ **BatSdb** : OK
+              {% else %}❔ **BatSdb** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+              {% if is_state('binary_sensor.coulsdb_en_retard', 'on') %}⚠️ **CoulSdb** : aucune nouvelle depuis le {{ state_attr('binary_sensor.coulsdb_en_retard', 'le') }}
+              {% elif is_state('binary_sensor.coulsdb_en_retard', 'off') %}✅ **CoulSdb** : OK
+              {% else %}❔ **CoulSdb** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {% endif %}
+
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             content: |
               {% if state_attr('sensor.thsdb_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThSdb n'émet plus ses mesures (MUTE OFF pour les rétablir).
@@ -988,6 +1113,18 @@ sections:
                 name: Éveil maximum
               - entity: input_boolean.thsdb_mute
                 name: Mesures muettes
+              - entity: input_number.thsdb_thhum_force
+                name: Forçage thermomètre
+              - entity: input_number.thsdb_thhum_retard
+                name: Retard toléré thermomètre
+              - entity: input_number.thsdb_bat_force
+                name: Forçage batterie
+              - entity: input_number.thsdb_bat_retard
+                name: Retard toléré batterie
+              - entity: input_number.thsdb_rgb_force
+                name: Forçage voyant chaudière
+              - entity: input_number.thsdb_rgb_retard
+                name: Retard toléré voyant chaudière
           - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -1242,8 +1379,9 @@ sections:
           |---|---|
           | `GET` | Relit la configuration |
           | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
-          | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s), `jn_force` délai max sans envoi (60 à 86400 s) |
+          | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s) |
           | `SET mfv_revmin 300 mfv_ack 1` | Flotteur (ThRemise, Capteur 3.1) : `mfv_rev` réveil par le flotteur 0/1, `mfv_revmin` anti-rafale (0 à 86400 s), `mfv_ack` confirmation par le contrôleur 0/1, `mfv_ackn` nombre d'envois sans confirmation avant de dormir (1 à 10) |
+          | `SET thhum_force 3600 thhum_retard 3600` | Forçage d'un capteur (envoi même sans changement, 60 à 86400 s) et retard toléré, en s (0 à 604800), Capteur 3.9 (jn_force : déjà avant) ; aussi dans les Réglages : `thhum_` thermomètre, `bat_` batterie, `mfv_` flotteur, `jn_` jour / nuit, `rgb_` voyant chaudière. Le nœud y ajoute son intervalle normal et une marge : le CYD signale le capteur au-delà (mail) |
           | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |

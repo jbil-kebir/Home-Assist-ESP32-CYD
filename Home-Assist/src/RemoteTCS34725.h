@@ -8,9 +8,9 @@
 #include "global.h"
 #include "MyEcran.h"
 #include "RCSwitchCodeAnalyzer.h"
-#include "EquipementBase.h"
+#include "RemoteCapteurBase.h"
 
-class CRemoteTCS34725 : public CRCSwitchCodeAnalyzer, public CEquipementBase  {
+class CRemoteTCS34725 : public CRCSwitchCodeAnalyzer, public CRemoteCapteurBase  {
 private:
   CEcran *mEcran=nullptr;
   // On mémorise la température pour n'afficher que les changements
@@ -38,9 +38,6 @@ private:
 
   // En secondes pour les tests. Si l'appareil ne répond pas au delà de cet intervalle, 
   // il est considéré comme KO
-  unsigned long mulWatchdogIntervalle = 60; 
-  unsigned long mulWatchdogDefaultIntervalle = 60; 
-  unsigned long mulWatchDog;
   unsigned char mucCapteurID=0;
   // Codes RCSwitch
   #define NB_MESURES  2 // Température et humidité
@@ -53,7 +50,7 @@ public:
   CRemoteTCS34725(const String& nomEqu, CEcran* ecran, 
       std::function<void(const String&, unsigned long)> callbackCouleur = nullptr, 
       std::function<void(const String&, unsigned long)> callbackLuminosite = nullptr,
-      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : mEcran(ecran), onCouleurChanged(callbackCouleur), onLuminositeChanged(callbackLuminosite), onMqttPublish(cbonMqttPublish) {
+      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : CRemoteCapteurBase(60UL), mEcran(ecran), onCouleurChanged(callbackCouleur), onLuminositeChanged(callbackLuminosite), onMqttPublish(cbonMqttPublish) {
       nomEquipement = nomEqu;
     } 
 

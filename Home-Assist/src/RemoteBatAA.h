@@ -7,7 +7,7 @@
 #include <functional>
 #include "global.h"
 #include "MyEcran.h"
-#include "EquipementBase.h"
+#include "RemoteCapteurBase.h"
 
 struct MQTTMessage_2 {
   String sExpediteur;
@@ -18,7 +18,7 @@ struct MQTTMessage_2 {
   float fVal; 
 };
 
-class CRemoteBatterieAA : public CEquipementBase {
+class CRemoteBatterieAA : public CRemoteCapteurBase {
 private:
   CEcran *mEcran=nullptr;
   // On mémorise la température pour n'afficher que les changements
@@ -29,14 +29,11 @@ private:
 
   // En secondes pour les tests. Si l'appareil ne répond pas au delà de cet intervalle, 
   // il est considéré comme KO
-  unsigned long mulWatchdogIntervalle = 60UL; 
-  unsigned long mulWatchdogDefaultIntervalle = 60UL; 
-  unsigned long mulWatchDog;
 
 public:
   CRemoteBatterieAA(const String& nomEqu, CEcran* ecran, 
       std::function<void(const String&, bool, float)> callback = nullptr,
-      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : mEcran(ecran), onTensionChanged(callback), onMqttPublish(cbonMqttPublish) {
+      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : CRemoteCapteurBase(60UL), mEcran(ecran), onTensionChanged(callback), onMqttPublish(cbonMqttPublish) {
       nomEquipement = nomEqu;
     } 
 

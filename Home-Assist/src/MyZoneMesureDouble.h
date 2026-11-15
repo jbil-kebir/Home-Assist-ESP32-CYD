@@ -20,9 +20,11 @@
 #define EVEIL_INCONNU        -1           // Rien reçu depuis le démarrage du CYD
 #define EVEIL_ENDORMI         0           // Dernière trame : « <nom> DEEPSLEEP ON … »
 #define EVEIL_EVEILLE         1           // Dernière trame : toute autre trame du nœud
+#define EVEIL_MUET            2           // Nœud muet : TOUS ses capteurs en retard (délai d'alerte dépassé), quelle que soit la dernière trame
 #define COLOR_BANDEAU_EVEILLE TFT_GREEN   // Nom en noir
 #define COLOR_BANDEAU_ENDORMI TFT_RED     // Nom en blanc
 #define COLOR_BANDEAU_INCONNU TFT_DARKGREY // Nom en blanc
+#define COLOR_BANDEAU_MUET    TFT_ORANGE  // Nom en noir
 #define BANDEAU_NOM_HAUTEUR  17           // Hauteur du nom (police 2) ; la mesure commence en dessous
 #
 class CZoneMesureDouble {

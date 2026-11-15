@@ -7,9 +7,9 @@
 #include <functional>
 #include "global.h"
 #include "MyEcran.h"
-#include "EquipementBase.h"
+#include "RemoteCapteurBase.h"
 
-class CRemoteThermo : public CEquipementBase {
+class CRemoteThermo : public CRemoteCapteurBase {
 private:
   CEcran *mEcran=nullptr;
   // On mémorise la température pour n'afficher que les changements
@@ -22,18 +22,14 @@ private:
 
   // En secondes pour les tests. Si l'appareil ne répond pas au delà de cet intervalle, 
   // il est considéré comme KO
-  unsigned long mulWatchdogIntervalle = 60; 
-  unsigned long mulWatchdogDefaultIntervalle = 60; 
-  unsigned long mulWatchDog;
 
   int miEveil = -1; // État instantané du nœud : -1 inconnu, 0 endormi, 1 éveillé (EVEIL_* de MyZoneMesureDouble.h)
 
 public:
-  unsigned long getWatchdogIntervalle() const { return mulWatchdogIntervalle; } // en secondes
   int getEveil() const { return miEveil; }
   CRemoteThermo(const String& nomEqu, CEcran* ecran, 
       std::function<void(const String&, float)> callback = nullptr,
-      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : mEcran(ecran), onTemperatureChanged(callback), onMqttPublish(cbonMqttPublish) {
+      std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : CRemoteCapteurBase(60UL), mEcran(ecran), onTemperatureChanged(callback), onMqttPublish(cbonMqttPublish) {
       nomEquipement = nomEqu;
     } 
 

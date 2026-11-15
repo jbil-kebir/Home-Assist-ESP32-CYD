@@ -29,6 +29,7 @@
 #include "RemoteTh.h"
 #include "RemoteDHT20.h"
 #include "RemoteBatAA.h"
+#include "RemoteCapteurBase.h"
 #include "MyIPModule.h"
 
 
@@ -247,10 +248,34 @@ void setup() {
   });
   //#endif
 
+  #ifdef __LOCAL_MODE__
+  // Contrôleur principal seul : capteur en retard / revenu (délai d'alerte annoncé par le nœud, voir RemoteCapteurBase.h),
+  // publié retenu sur home/alerte/<nom> (Home Assistant : affichage et mail ; retenu pour retrouver l'état après un
+  // redémarrage de HA) :
+  //   « RETARD <date> <heure> » : date et heure du DERNIER MESSAGE reçu du capteur (ou du démarrage du CYD)
+  //   « OK <date> <heure> »     : date et heure du retour
+  CRemoteCapteurBase::onAlerte = [](const String& nom, bool enRetard, unsigned long silenceS) {
+      String sTopic = String(TOPIC_ALERTE_CAPTEUR) + nom;
+      String sHorodatage = mDateTime.getDate() + " " + mDateTime.getTime();
+      struct tm tmDernier;
+      time_t tDernier = time(nullptr) - (time_t)silenceS;
+      if (enRetard && localtime_r(&tDernier, &tmDernier) != nullptr && tmDernier.tm_year > 120) { // Heure réglée (> 2020)
+        char sBuf[24];
+        strftime(sBuf, sizeof(sBuf), "%d/%m/%Y %H:%M:%S", &tmDernier);
+        sHorodatage = sBuf;
+      }
+      String sMsg = String(enRetard ? "RETARD " : "OK ") + sHorodatage;
+      mqtt.publish(sTopic.c_str(), sMsg.c_str(), true);
+      DBGLN(DBG_CAPTEURS, "Alerte capteur : " + sTopic + " " + sMsg);
+  };
+  #endif
+
   #ifdef __CYD__
   ecran.setup("ecr", &mvsControleurs, &mvsEsclaves);
 
   ecran.drawMainInterface();
+  // Capteur en retard / revenu : WDG dans son champ, bandeau orange si tout le nœud est muet (voir MyEcran.cpp)
+  CRemoteCapteurBase::onChangementRetard = []() { ecran.updateAppareilsDeMesure(); };
   #endif
  
   #ifdef FORCE_CONNEXION_WIFI
@@ -445,7 +470,13 @@ void loop() {
   loop_ThChRdc();
   loop_homeassistant();
   loop_chauffageSb();
-  
+  // Chien de garde de tous les capteurs distants (passage en retard : voir RemoteCapteurBase.h), une fois par seconde
+  static unsigned long ulDerniereVerifCapteurs = 0;
+  if (millis() - ulDerniereVerifCapteurs >= 1000UL) {
+    ulDerniereVerifCapteurs = millis();
+    CRemoteCapteurBase::verifieTous();
+  }
+
   #ifdef __CYD__  
   int btnNum = ecran.getPressedButton();
 

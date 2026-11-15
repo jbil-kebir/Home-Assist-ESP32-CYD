@@ -19,7 +19,7 @@ int CRemoteBatterieAA::begin(const String pref) {
 //--------------------------------------------------------------------------
 int CRemoteBatterieAA::loop() {
   int ret = -99;
-  if ((millis() - mulWatchDog) >= mulWatchdogIntervalle*1000) {
+  if (verifieWatchdog()) {
     // Ca fait trop longtemps que rien n'a été reçu
     return -10;
   }
@@ -59,7 +59,7 @@ void CRemoteBatterieAA::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
   nomEquipement = prefs.getString((mPrefixNVS+"nom").c_str(), nomParDefaut);
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), "bat/");
-  mulWatchdogIntervalle = prefs.getLong((mPrefixNVS+"wdog").c_str(), mulWatchdogDefaultIntervalle);
+  chargeWatchdogNVS();
   prefs.end();
 
   // Topics recalculés avec le bon mqttSubTopic
@@ -68,13 +68,13 @@ void CRemoteBatterieAA::loadFromNVS() {
 }
 void CRemoteBatterieAA::saveToNVS() {
   prefs.begin(nvs_namespace, false);
-  prefs.putLong((mPrefixNVS+"wdog").c_str(), mulWatchdogIntervalle);
+  enregistreWatchdogNVS();
   prefs.end();
   CEquipementBase::saveToNVS();
 }
 
 void CRemoteBatterieAA::loadFromWebServer (WebServer& server) {
-  if (server.hasArg((mPrefixNVS+"wdog").c_str())) mulWatchdogIntervalle = server.arg((mPrefixNVS+"wdog")).toInt();
+  litWatchdogWeb(server);
   CEquipementBase::loadFromWebServer (server);
 }
 
@@ -130,7 +130,7 @@ void CRemoteBatterieAA::handleMqttState(const String& payload) {
   mqttMessageToStruct_split(st, cmd);
   mqttMessageToStruct_split(stOrg, cmdOrg);
   // On réinitiallise le WatchDog
-  mulWatchDog = millis();
+  noteReception(payload); // Chien de garde + délai d'alerte annoncé
   if (st.sAction == "TENSION") {
     if (onTensionChanged != nullptr) {
       lastTension = st.fVal;
@@ -218,7 +218,7 @@ String CRemoteBatterieAA::getHTML() {
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active").c_str() + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Intervalle Watchdog (s)</label><input type=\"text\" name=" + (mPrefixNVS + "wdog").c_str() + " value=\"" + mulWatchdogIntervalle + "\"></div>"
+        + getHTMLWatchdog() +
         "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS + "subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 

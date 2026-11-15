@@ -12,6 +12,7 @@
 #include "RemoteRCDevice.h"
 #endif
 #include "RemoteBatAA.h"
+#include "RemoteCapteurBase.h"
 #include "MyDateTime.h"
 
 extern CConfig config;
@@ -75,6 +76,33 @@ void setup_ds18b20() {
 #endif
 }
 
+#ifdef __LOCAL_MODE__
+#if defined(__LOCAL_DS18B20__) || defined(__LOCAL_DHT20__)
+//
+// Thermomètre local (ThCYD) en panne / revenu (LOCAL_THERMO_ECHECS_PANNE lectures ratées d'affilée) :
+// - écran : WDG à la place de la température (CEcran::updateThermometreLocal()), redessiné à chaque changement ;
+// - Home Assistant : « RETARD » / « OK » sur home/alerte/ThCYD, comme les capteurs distants (onAlerte, main.cpp).
+//   Publié à chaque changement et une fois après le démarrage (1re lecture réussie ou panne), dès que MQTT est
+//   connecté (efface un RETARD retenu d'avant le redémarrage). Thermomètre inactif : jamais en panne.
+//
+template <class T> static void surveillePanneThermoLocal(T& th) {
+  static bool sbPanneAffichee = false;
+  static int8_t sciEtatPublie = -1;          // -1 rien publié, 0 OK, 1 panne
+  bool bPanne = th.active && th.estEnPanne();
+  if (bPanne != sbPanneAffichee) {
+    sbPanneAffichee = bPanne;
+    DBGLN(DBG_CAPTEURS, th.nomEquipement + (bPanne ? " en panne (WDG)" : " revenu"));
+    ecran.updateThermometreLocal();
+  }
+  int8_t ciEtat = bPanne ? 1 : ((th.aDejaLu() || !th.active) ? 0 : -1);
+  if (ciEtat != -1 && ciEtat != sciEtatPublie && mqtt.isConnected() && CRemoteCapteurBase::onAlerte != nullptr) {
+    CRemoteCapteurBase::onAlerte(th.nomEquipement, bPanne, th.getSilenceS());
+    sciEtatPublie = ciEtat;
+  }
+}
+#endif
+#endif
+
 void loop_ds18b20() {
   #ifdef __LOCAL_DS18B20__
   static bool inactifAffiche = false;
@@ -123,5 +151,13 @@ void loop_ds18b20() {
   if (ret != -9) inactifAffiche = false;
 
   #endif // __LOCAL_DS18B20__ / __LOCAL_DHT20__
+
+  #ifdef __LOCAL_MODE__
+  #ifdef __LOCAL_DS18B20__
+  surveillePanneThermoLocal(ds18b20);
+  #elif defined(__LOCAL_DHT20__)
+  surveillePanneThermoLocal(dht20);
+  #endif
+  #endif
   
 }

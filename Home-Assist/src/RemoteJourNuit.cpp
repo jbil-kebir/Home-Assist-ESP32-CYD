@@ -21,7 +21,7 @@ int CRemoteJourNuit::setup(const String pref) {
 //--------------------------------------------------------------------------
 int CRemoteJourNuit::loop() {
   if (!active) return -2;
-  if ((millis() - mulWatchDog) >= mulWatchdogIntervalle*1000) return -10;
+  if (verifieWatchdog()) return -10;
   return -99;
 }
 
@@ -41,19 +41,19 @@ void CRemoteJourNuit::loadFromNVS() {
   CEquipementBase::loadFromNVS();    // Sans clé « nom » en NVS, il le remplace par « Thermomètre »
   prefs.begin(nvs_namespace, true);
   if (!prefs.isKey((mPrefixNVS+"nom").c_str())) nomEquipement = sNomDefaut;
-  mulWatchdogIntervalle = prefs.getLong((mPrefixNVS+"wdog").c_str(), mulWatchdogDefaultIntervalle);
+  chargeWatchdogNVS();
   prefs.end();
 }
 
 void CRemoteJourNuit::saveToNVS() {
   prefs.begin(nvs_namespace, false);
-  prefs.putLong((mPrefixNVS+"wdog").c_str(), mulWatchdogIntervalle);
+  enregistreWatchdogNVS();
   prefs.end();
   CEquipementBase::saveToNVS();
 }
 
 void CRemoteJourNuit::loadFromWebServer (WebServer& server) {
-  if (server.hasArg((mPrefixNVS+"wdog").c_str())) mulWatchdogIntervalle = server.arg((mPrefixNVS+"wdog")).toInt();
+  litWatchdogWeb(server);
   CEquipementBase::loadFromWebServer (server);
 }
 
@@ -90,7 +90,7 @@ void CRemoteJourNuit::handleMqttState(const String& payload) {
 
   if (onEquipement != nullptr) onEquipement(msg.msExpediteur, msg.msIp);
   // On réinitialise le watchdog
-  mulWatchDog = millis();
+  noteReception(payload); // Chien de garde + délai d'alerte annoncé
   mbMessageRecu = true;
   if (!msg.msIp.isEmpty()) mIP = msg.msIp;
 
@@ -134,7 +134,7 @@ String CRemoteJourNuit::getHTML() {
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active").c_str() + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Intervalle Watchdog (s)</label><input type=\"text\" name=" + (mPrefixNVS + "wdog").c_str() + " value=\"" + mulWatchdogIntervalle + "\"></div>"
+        + getHTMLWatchdog() +
         "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS + "subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
   return html;

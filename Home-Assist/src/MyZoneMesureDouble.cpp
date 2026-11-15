@@ -62,9 +62,10 @@ int CZoneMesureDouble::drawMesure1(float val, const String& nom/*=""*/, int evei
   unsigned int couleurNom = bKO ? muiKOColorMesure : muiOKColorMesure;
   if (eveil != EVEIL_SANS_BANDEAU) {
     unsigned int fond = (eveil == EVEIL_EVEILLE) ? COLOR_BANDEAU_EVEILLE :
-                        (eveil == EVEIL_ENDORMI) ? COLOR_BANDEAU_ENDORMI : COLOR_BANDEAU_INCONNU;
+                        (eveil == EVEIL_ENDORMI) ? COLOR_BANDEAU_ENDORMI :
+                        (eveil == EVEIL_MUET)    ? COLOR_BANDEAU_MUET : COLOR_BANDEAU_INCONNU;
     mTft.fillRect(muiPosX, muiPosY, muiWidth, BANDEAU_NOM_HAUTEUR, fond);
-    couleurNom = (eveil == EVEIL_EVEILLE) ? TFT_BLACK : TFT_WHITE;
+    couleurNom = (eveil == EVEIL_EVEILLE || eveil == EVEIL_MUET) ? TFT_BLACK : TFT_WHITE;
   }
   mTft.setTextColor(couleurNom);
   mTft.drawString(nom, muiLabelX, muiLabelY, muiLabelFont);

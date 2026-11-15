@@ -26,6 +26,10 @@ private:
   // On mémorise la température pour n'afficher que les changements
   float lastTempC = -127.0;  // Valeur invalide par défaut
   float newTempC = -127.0;  // Valeur invalide par défaut
+  // Surveillance de la lecture (readAndPublish)
+  uint8_t mucEchecsConsecutifs = 0;
+  unsigned long mulDerniereLectureOK = 0;   // millis()
+  bool mbDejaLu = false;
   float lastHum = -1.0;     // Valeur invalide par défaut
 
 public:
@@ -54,6 +58,12 @@ public:
   bool publieSurMqtt(bool force=false);
   int readAndPublish(bool force=false);
   bool remonteStatusParMqtt();
+
+  // Panne (lectures ratées d'affilée, voir LOCAL_THERMO_ECHECS_PANNE) : comptée par readAndPublish()
+  bool estEnPanne() const { return mucEchecsConsecutifs >= LOCAL_THERMO_ECHECS_PANNE; }
+  bool aDejaLu() const { return mbDejaLu; }
+  // Secondes depuis la dernière lecture réussie (depuis le démarrage si aucune)
+  unsigned long getSilenceS() const { return (millis() - mulDerniereLectureOK) / 1000UL; }
 
 };
 

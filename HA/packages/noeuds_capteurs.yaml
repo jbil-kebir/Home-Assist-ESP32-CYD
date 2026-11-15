@@ -19,6 +19,10 @@
 #           attribut texte) : vue Relais LoRa ; connexion = signal de moins de 3 min (ALIVE toutes les 60 s)
 #           input_boolean.<id>_sleepa, input_number.<id>_sleepi / _sleeps / _sleepm / _sleepl / _wakei
 #           input_text.<id>_commande (commande libre)
+#           Délai d'alerte (Capteur 3.9, Home-Assist 3.9) : input_number.<id>_<préfixe>_retard (retard toléré de chaque
+#           capteur : thhum, bat, mfv, jn, rgb ; attributs <préfixe>_retard de sensor.<id>_config),
+#           binary_sensor.<capteur>_en_retard (home/alerte/<capteur>, publié par le CYD principal ; attribut « le »),
+#           automatisation « Capteurs - Mail capteur en retard ou revenu »
 # Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
 # ============================================================
 
@@ -36,11 +40,18 @@ template:
         state: "{{ trigger.payload[:255] }}"
 
   # ---------- ThRemise : réponse CONFIG (« ThRemise CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « ThRemise CONFIG ... » puis « ThRemise CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confthremise/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confthremise/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "ThRemise Config"
         unique_id: thremise_config
@@ -49,41 +60,78 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
           mfv_rev: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_rev:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_rev:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_rev') if suite else none) }}
           mfv_revmin: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_revmin:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_revmin:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_revmin') if suite else none) }}
           mfv_ack: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_ack:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_ack:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_ack') if suite else none) }}
           mfv_ackn: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mfv_ackn:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_ackn:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_ackn') if suite else none) }}
+          thhum_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
+          thhum_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+          bat_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
+          bat_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+          mfv_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_force') if suite else none) }}
+          mfv_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_retard') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- ThRemise : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « ThRemise ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -168,11 +216,18 @@ template:
         state: "{{ trigger.payload[:255] }}"
 
   # ---------- ThNomade : réponse CONFIG (« ThNomade CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « ThNomade CONFIG ... » puis « ThNomade CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confthnomade/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confthnomade/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "ThNomade Config"
         unique_id: thnomade_config
@@ -181,29 +236,62 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
+          thhum_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
+          thhum_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+          bat_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
+          bat_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+          mfv_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_force') if suite else none) }}
+          mfv_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_retard') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- ThNomade : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « ThNomade ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -288,11 +376,18 @@ template:
         state: "{{ trigger.payload[:255] }}"
 
   # ---------- ThCave : réponse CONFIG (« ThCave CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « ThCave CONFIG ... » puis « ThCave CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confthcave/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confthcave/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "ThCave Config"
         unique_id: thcave_config
@@ -301,44 +396,78 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
           jn_sbas: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_sbas:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_sbas:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('jn_sbas') if suite else none) }}
           jn_shaut: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_shaut:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_shaut:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('jn_shaut') if suite else none) }}
           jn_ecl: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_ecl:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_ecl:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('jn_ecl') if suite else none) }}
           jn_inter: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_inter:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_inter:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('jn_inter') if suite else none) }}
+          thhum_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
+          thhum_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+          bat_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
+          bat_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
           jn_force: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('jn_force:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('jn_force') if suite else none) }}
+          jn_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('jn_retard') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- ThCave : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « ThCave ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -426,11 +555,18 @@ template:
           {{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}
 
   # ---------- ThChRDC : réponse CONFIG (« ThChRDC CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « ThChRDC CONFIG ... » puis « ThChRDC CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confthchrdc/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confthchrdc/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "ThChRDC Config"
         unique_id: thchrdc_config
@@ -439,29 +575,54 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
+          thhum_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
+          thhum_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+          bat_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
+          bat_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- ThChRDC : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « ThChRDC ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -545,11 +706,18 @@ template:
           {{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}
 
   # ---------- ThCh1er : réponse CONFIG (« ThCh1er CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « ThCh1er CONFIG ... » puis « ThCh1er CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confthch1er/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confthch1er/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "ThCh1er Config"
         unique_id: thch1er_config
@@ -558,29 +726,54 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
+          thhum_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
+          thhum_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+          bat_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
+          bat_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- ThCh1er : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « ThCh1er ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -664,11 +857,18 @@ template:
           {{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}
 
   # ---------- ThSdb : réponse CONFIG (« ThSdb CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « ThSdb CONFIG ... » puis « ThSdb CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confthsdb/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confthsdb/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "ThSdb Config"
         unique_id: thsdb_config
@@ -677,29 +877,62 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
+          thhum_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
+          thhum_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+          bat_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
+          bat_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+          rgb_force: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' rgb_force:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('rgb_force') if suite else none) }}
+          rgb_retard: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' rgb_retard:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('rgb_retard') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- ThSdb : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « ThSdb ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -787,11 +1020,18 @@ template:
           {{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}
 
   # ---------- PrGuirlande : réponse CONFIG (« PrGuirlande CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « PrGuirlande CONFIG ... » puis « PrGuirlande CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confprguirlande/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confprguirlande/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "PrGuirlande Config"
         unique_id: prguirlande_config
@@ -800,29 +1040,38 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- PrGuirlande : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « PrGuirlande ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -910,11 +1159,18 @@ template:
           {{ 'aucune' if p == '' or p | lower is search(' offline$') else p[:255] }}
 
   # ---------- Noeud : réponse CONFIG (« Noeud CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « Noeud CONFIG ... » puis « Noeud CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/confnoeud/state"
         value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/confnoeud/state"
+        value_template: "{{ (value.split(' ') + [''])[1] | upper }}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "Noeud Config"
         unique_id: noeud_config
@@ -923,29 +1179,38 @@ template:
         state: "{{ now().isoformat() }}"
         attributes:
           sleepA: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepA:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepA:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepA') if suite else none) }}
           sleepI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
           sleepS: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepS:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepS') if suite else none) }}
           sleepM: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepM:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepM:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepM') if suite else none) }}
           sleepL: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('sleepL:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepL:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepL') if suite else none) }}
           wakeI: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('wakeI:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' wakeI:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('wakeI') if suite else none) }}
           mute: >-
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('mute:(\d+)') -%}
-            {{ m[0] | int if m else none }}
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mute:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mute') if suite else none) }}
           erreur: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
-            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1 else '' }}
+            {{ p[1] | regex_replace(' \d{1,3}(\.\d{1,3}){3}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}
 
   # ---------- Noeud : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « Noeud ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -1010,6 +1275,278 @@ template:
             {%- set w = trigger.payload.split(' VERSION ')[1].split(' ') -%}
             {{ (w[1] ~ ' ' ~ w[2]) if w | count > 2 else '' }}
           recu: "{{ now().isoformat() }}"
+
+  # ---------- ThRemise : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'thremise' }}"
+    binary_sensor:
+      - name: "ThRemise En retard"
+        unique_id: thremise_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- BatRemise : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'batremise' }}"
+    binary_sensor:
+      - name: "BatRemise En retard"
+        unique_id: batremise_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- FlotteurRemise : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'flotteurremise' }}"
+    binary_sensor:
+      - name: "FlotteurRemise En retard"
+        unique_id: flotteurremise_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- ThNomade : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'thnomade' }}"
+    binary_sensor:
+      - name: "ThNomade En retard"
+        unique_id: thnomade_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- BatNomade : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'batnomade' }}"
+    binary_sensor:
+      - name: "BatNomade En retard"
+        unique_id: batnomade_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- FlotteurNomade : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'flotteurnomade' }}"
+    binary_sensor:
+      - name: "FlotteurNomade En retard"
+        unique_id: flotteurnomade_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- ThCave : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'thcave' }}"
+    binary_sensor:
+      - name: "ThCave En retard"
+        unique_id: thcave_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- BatCave : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'batcave' }}"
+    binary_sensor:
+      - name: "BatCave En retard"
+        unique_id: batcave_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- JnCave : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'jncave' }}"
+    binary_sensor:
+      - name: "JnCave En retard"
+        unique_id: jncave_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- ThChRDC : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'thchrdc' }}"
+    binary_sensor:
+      - name: "ThChRDC En retard"
+        unique_id: thchrdc_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- BatChRDC : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'batchrdc' }}"
+    binary_sensor:
+      - name: "BatChRDC En retard"
+        unique_id: batchrdc_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- ThCh1er : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'thch1er' }}"
+    binary_sensor:
+      - name: "ThCh1er En retard"
+        unique_id: thch1er_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- BatCh1er : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'batch1er' }}"
+    binary_sensor:
+      - name: "BatCh1er En retard"
+        unique_id: batch1er_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- ThSdb : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'thsdb' }}"
+    binary_sensor:
+      - name: "ThSdb En retard"
+        unique_id: thsdb_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- BatSdb : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'batsdb' }}"
+    binary_sensor:
+      - name: "BatSdb En retard"
+        unique_id: batsdb_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- CoulSdb : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'coulsdb' }}"
+    binary_sensor:
+      - name: "CoulSdb En retard"
+        unique_id: coulsdb_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
+
+  # ---------- ThCYD : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.topic.split('/')[-1] | lower == 'thcyd' }}"
+    binary_sensor:
+      - name: "ThCYD En retard"
+        unique_id: thcyd_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}"
+        attributes:
+          le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
 
   # ---------- RelaisLora : version du firmware (au démarrage et après STATUS) ----------
   - trigger:
@@ -1236,6 +1773,54 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-sand
+  thremise_thhum_force:
+    name: "ThRemise Forçage thermomètre"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thremise_thhum_retard:
+    name: "ThRemise Retard toléré thermomètre"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thremise_bat_force:
+    name: "ThRemise Forçage batterie"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thremise_bat_retard:
+    name: "ThRemise Retard toléré batterie"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thremise_mfv_force:
+    name: "ThRemise Forçage flotteur"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thremise_mfv_retard:
+    name: "ThRemise Retard toléré flotteur"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
 
   # ---------- ThNomade (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
   thnomade_sleepi:
@@ -1278,6 +1863,54 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-sand
+  thnomade_thhum_force:
+    name: "ThNomade Forçage thermomètre"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thnomade_thhum_retard:
+    name: "ThNomade Retard toléré thermomètre"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thnomade_bat_force:
+    name: "ThNomade Forçage batterie"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thnomade_bat_retard:
+    name: "ThNomade Retard toléré batterie"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thnomade_mfv_force:
+    name: "ThNomade Forçage flotteur"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thnomade_mfv_retard:
+    name: "ThNomade Retard toléré flotteur"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
 
   # ---------- ThCave (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
   thcave_sleepi:
@@ -1320,6 +1953,54 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-sand
+  thcave_thhum_force:
+    name: "ThCave Forçage thermomètre"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thcave_thhum_retard:
+    name: "ThCave Retard toléré thermomètre"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thcave_bat_force:
+    name: "ThCave Forçage batterie"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thcave_bat_retard:
+    name: "ThCave Retard toléré batterie"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thcave_jn_force:
+    name: "ThCave Forçage jour / nuit"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thcave_jn_retard:
+    name: "ThCave Retard toléré jour / nuit"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
 
   # ---------- ThChRDC (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
   thchrdc_sleepi:
@@ -1362,6 +2043,38 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-sand
+  thchrdc_thhum_force:
+    name: "ThChRDC Forçage thermomètre"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thchrdc_thhum_retard:
+    name: "ThChRDC Retard toléré thermomètre"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thchrdc_bat_force:
+    name: "ThChRDC Forçage batterie"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thchrdc_bat_retard:
+    name: "ThChRDC Retard toléré batterie"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
 
   # ---------- ThCh1er (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
   thch1er_sleepi:
@@ -1404,6 +2117,38 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-sand
+  thch1er_thhum_force:
+    name: "ThCh1er Forçage thermomètre"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thch1er_thhum_retard:
+    name: "ThCh1er Retard toléré thermomètre"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thch1er_bat_force:
+    name: "ThCh1er Forçage batterie"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thch1er_bat_retard:
+    name: "ThCh1er Retard toléré batterie"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
 
   # ---------- ThSdb (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
   thsdb_sleepi:
@@ -1446,6 +2191,54 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-sand
+  thsdb_thhum_force:
+    name: "ThSdb Forçage thermomètre"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thsdb_thhum_retard:
+    name: "ThSdb Retard toléré thermomètre"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thsdb_bat_force:
+    name: "ThSdb Forçage batterie"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thsdb_bat_retard:
+    name: "ThSdb Retard toléré batterie"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
+  thsdb_rgb_force:
+    name: "ThSdb Forçage voyant chaudière"
+    min: 60
+    max: 86400
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline
+  thsdb_rgb_retard:
+    name: "ThSdb Retard toléré voyant chaudière"
+    min: 0
+    max: 604800
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline
 
   # ---------- PrGuirlande (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
   prguirlande_sleepi:
@@ -1651,6 +2444,14 @@ script:
               {%- set v = states('input_number.' ~ capteur ~ '_' ~ k | lower) | float(0) | int -%}
               {%- if v > 0 and v != state_attr(cfg, k) -%}{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}{%- endif -%}
             {%- endfor -%}
+            {#- Forçages et retards tolérés (Capteur 3.9) : seulement ceux de la dernière config reçue et dont le
+                 champ existe ; retard 0 permis, forçage de 60 s au moins (bornes du champ) -#}
+            {%- for k in ['bat_force', 'bat_retard', 'jn_force', 'jn_retard', 'mfv_force', 'mfv_retard', 'rgb_force', 'rgb_retard', 'thhum_force', 'thhum_retard'] -%}
+              {%- if state_attr(cfg, k) is not none and states('input_number.' ~ capteur ~ '_' ~ k) not in ['unknown', 'unavailable'] -%}
+                {%- set v = states('input_number.' ~ capteur ~ '_' ~ k) | float(-1) | int -%}
+                {%- if v >= 0 and v != state_attr(cfg, k) -%}{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
             {{- ns.s | trim -}}
           # Réglages trop courts (faute de frappe, champs restés au minimum) : 10 s au moins
           trop_courts: >-
@@ -1770,6 +2571,94 @@ automation:
                     entity_id: "input_number.{{ capteur }}_{{ repeat.item | lower }}"
                   data:
                     value: "{{ state_attr(trigger.entity_id, repeat.item) }}"
+      # Forçages et retards tolérés (Capteur 3.9), si le nœud les envoie et que le champ existe
+      - repeat:
+          for_each: ['bat_force', 'bat_retard', 'jn_force', 'jn_retard', 'mfv_force', 'mfv_retard', 'rgb_force', 'rgb_retard', 'thhum_force', 'thhum_retard']
+          sequence:
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ state_attr(trigger.entity_id, repeat.item) is number
+                       and states('input_number.' ~ capteur ~ '_' ~ repeat.item) not in ['unknown', 'unavailable'] }}
+              then:
+                - action: input_number.set_value
+                  target:
+                    entity_id: "input_number.{{ capteur }}_{{ repeat.item }}"
+                  data:
+                    value: "{{ state_attr(trigger.entity_id, repeat.item) }}"
+
+  # ------------------------------------------------------------
+  # Capteur en retard / revenu (home/alerte/<capteur>, publié par le CYD principal) : mail.
+  # Déclenché par le changement d'état (pas par le message MQTT) : le message retenu relu au redémarrage de HA
+  # ne renvoie pas de mail.
+  # ------------------------------------------------------------
+  - id: capteurs_alerte_retard_mail
+    alias: Capteurs - Mail capteur en retard ou revenu
+    description: Délai d'alerte dépassé (Capteur 3.9, Home-Assist 3.9)
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.thremise_en_retard
+          - binary_sensor.batremise_en_retard
+          - binary_sensor.flotteurremise_en_retard
+          - binary_sensor.thnomade_en_retard
+          - binary_sensor.batnomade_en_retard
+          - binary_sensor.flotteurnomade_en_retard
+          - binary_sensor.thcave_en_retard
+          - binary_sensor.batcave_en_retard
+          - binary_sensor.jncave_en_retard
+          - binary_sensor.thchrdc_en_retard
+          - binary_sensor.batchrdc_en_retard
+          - binary_sensor.thch1er_en_retard
+          - binary_sensor.batch1er_en_retard
+          - binary_sensor.thsdb_en_retard
+          - binary_sensor.batsdb_en_retard
+          - binary_sensor.coulsdb_en_retard
+          - binary_sensor.thcyd_en_retard
+        to: "on"
+        not_from:
+          - "on"
+          - "unavailable"
+      - trigger: state
+        entity_id:
+          - binary_sensor.thremise_en_retard
+          - binary_sensor.batremise_en_retard
+          - binary_sensor.flotteurremise_en_retard
+          - binary_sensor.thnomade_en_retard
+          - binary_sensor.batnomade_en_retard
+          - binary_sensor.flotteurnomade_en_retard
+          - binary_sensor.thcave_en_retard
+          - binary_sensor.batcave_en_retard
+          - binary_sensor.jncave_en_retard
+          - binary_sensor.thchrdc_en_retard
+          - binary_sensor.batchrdc_en_retard
+          - binary_sensor.thch1er_en_retard
+          - binary_sensor.batch1er_en_retard
+          - binary_sensor.thsdb_en_retard
+          - binary_sensor.batsdb_en_retard
+          - binary_sensor.coulsdb_en_retard
+          - binary_sensor.thcyd_en_retard
+        from: "on"
+        to: "off"
+    actions:
+      - variables:
+          capteur: "{{ trigger.to_state.name | replace(' En retard', '') }}"
+          le: "{{ trigger.to_state.attributes.le | default(now().strftime('%d/%m/%Y %H:%M:%S')) }}"
+          date: "{{ le.split(' ')[0] }}"
+          heure: "{{ (le.split(' ') + [''])[1][:5] }}"
+      - action: notify.email_kebir
+        data:
+          title: >-
+            {{ '⚠️ ' ~ capteur ~ ' : plus de nouvelles' if trigger.to_state.state == 'on'
+               else '✅ ' ~ capteur ~ ' : de retour' }}
+          message: >-
+            {%- if trigger.to_state.state == 'on' -%}
+            ⚠ {{ capteur }} : aucune nouvelle depuis le {{ date }} à {{ heure }} (délai d'alerte dépassé).
+            {%- else -%}
+            ✅ {{ capteur }} : de nouveau des nouvelles ({{ date }} à {{ heure }}).
+            {%- endif -%}
+
 
   # ------------------------------------------------------------
   # Appareils RF vérifiés par un nœud de présence : notification quand le CYD principal signale un échec

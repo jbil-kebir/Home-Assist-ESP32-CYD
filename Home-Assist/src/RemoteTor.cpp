@@ -20,7 +20,7 @@ int CRemoteTor::setup(const String pref) {
 // le premier intervalle de watchdog, comme le laisse supposer loop()).
 //--------------------------------------------------------------------------
 bool CRemoteTor::estPresent() const {
-  return active && mbMessageRecu && (millis() - mulWatchDog) < mulWatchdogIntervalle*1000;
+  return active && mbMessageRecu && !delaiDepasse();
 }
 
 //--------------------------------------------------------------------------
@@ -34,7 +34,7 @@ bool CRemoteTor::estPresent() const {
 int CRemoteTor::etatPresence() const {
   if (!active) return -1;
   if (estPresent()) return 1;
-  if (!mbMessageRecu && (millis() - mulWatchDog) < mulWatchdogIntervalle*1000) return -1;
+  if (!mbMessageRecu && !delaiDepasse()) return -1;
   return 0;
 }
 
@@ -48,7 +48,7 @@ int CRemoteTor::etatPresence() const {
 int CRemoteTor::loop() {
   int ret = -99;
   if (!active) return -2;
-  if ((millis() - mulWatchDog) >= mulWatchdogIntervalle*1000) {
+  if (verifieWatchdog()) {
     // Ca fait trop longtemps que rien n'a été reçu
     return -10;
   }
@@ -82,20 +82,20 @@ void CRemoteTor::loadFromNVS() {
   prefs.begin(nvs_namespace, true);
 
   mqttSubTopic = prefs.getString((mPrefixNVS+"subtopic").c_str(), "bat/");
-  mulWatchdogIntervalle = prefs.getLong((mPrefixNVS+"wdog").c_str(), mulWatchdogDefaultIntervalle);
+  chargeWatchdogNVS();
   prefs.end();
   CEquipementBase::loadFromNVS();
    
 }
 void CRemoteTor::saveToNVS() {
   prefs.begin(nvs_namespace, false);
-  prefs.putLong((mPrefixNVS+"wdog").c_str(), mulWatchdogIntervalle);
+  enregistreWatchdogNVS();
   prefs.end();
   CEquipementBase::saveToNVS();
 }
 
 void CRemoteTor::loadFromWebServer (WebServer& server) {
-  if (server.hasArg((mPrefixNVS+"wdog").c_str())) mulWatchdogIntervalle = server.arg((mPrefixNVS+"wdog")).toInt();
+  litWatchdogWeb(server);
   CEquipementBase::loadFromWebServer (server);
 }
 
@@ -164,7 +164,7 @@ void CRemoteTor::handleMqttState(const String& payload) {
       return;
     }
     // On réinitiallise le WatchDog
-    mulWatchDog = millis();
+    noteReception(payload); // Chien de garde + délai d'alerte annoncé
     mbMessageRecu = true;
 
     if (!msg.msIp.isEmpty()) mIP = msg.msIp;
@@ -272,7 +272,7 @@ String CRemoteTor::getHTML() {
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active").c_str() + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Intervalle Watchdog (s)</label><input type=\"text\" name=" + (mPrefixNVS + "wdog").c_str() + " value=\"" + mulWatchdogIntervalle + "\"></div>"
+        + getHTMLWatchdog() +
         "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS + "subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 

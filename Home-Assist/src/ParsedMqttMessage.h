@@ -15,9 +15,13 @@ public:
     float mfValeur = 0.0f;                  // la valeur numérique extraite (ex: 23.5)
     bool mbForce = false;
     bool mbIsValid = false;
+    // Délai d'alerte annoncé par le nœud (Capteur 3.9 : « alerte:<s> » en fin de trame de mesure), 0 si absent.
+    // Jamais rangé dans mvsMesure (les classes Remote lisent la valeur dans mvsMesure.back()).
+    unsigned long miDelaiAlerteS = 0;
 
     ParsedMqttMessage() = default;
 
+    bool isDelaiAlerte(const String& s) const;
     bool isForce(const String& s) const;
     bool isIp(const String& s) const;
     bool isDate(const String& s) const;

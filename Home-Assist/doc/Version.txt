@@ -1,3 +1,33 @@
+3.9
+Délai d'alerte annoncé par les capteurs (Capteur 3.9 : « alerte:<s> » en fin de chaque trame de mesure) :
+    ParsedMqttMessage le range à part (miDelaiAlerteS) au lieu de le prendre pour une valeur (les classes Remote lisent
+    la valeur dans mvsMesure.back()). À flasher AVANT tout nœud en 3.9
+Superclasse CRemoteCapteurBase (RemoteCapteurBase.h/.cpp, ancien fichier inutilisé réécrit) : chien de garde de
+    CRemoteThermo, CRemoteDHT20, CRemoteBatterieAA, CRemoteTCS34725, CRemoteTor et CRemoteJourNuit, jusque-là recopié
+    dans chacune ; délai appliqué = délai annoncé par le nœud (gardé en NVS <préfixe>wdann, écrit seulement s'il change)
+    sinon délai saisi (<préfixe>wdog, « Intervalle Watchdog de secours ») ; page : « Délai d'alerte : 1 h 01 (annoncé
+    par le nœud) » ou « (saisi ici : le nœud n'annonce rien) » ; getWatchdogIntervalle() renvoie le délai appliqué
+    (série 5, nœud chauffage inchangé : il n'annonce rien)
+Contrôleur principal : capteur en retard / revenu publié retenu sur home/alerte/<nom> (« RETARD <date> <heure> » : heure
+    du dernier message reçu ; « OK <date> <heure> » : heure du retour) pour Home Assistant, seulement pour les capteurs qui annoncent leur délai ; tous les capteurs
+    vérifiés une fois par seconde (CRemoteCapteurBase::verifieTous() : le loop() des batteries, flotteurs, couleur...
+    n'est pas appelé)
+Capteur inactif (case « Actif » décochée) : jamais en retard (CRemoteCapteurBase::verifieWatchdog()) ;
+    CRemoteDHT20::loop() ne testait pas « active » : ThNomade décoché affichait quand même « n'a pas répondu depuis
+    longtemps ==> KO »
+Écran, deux niveaux (MyEcran.cpp) : CAPTEUR = son champ (température, humidité, batterie, flotteur, voyant chaudière,
+    jour / nuit) affiche WDG tant qu'il est en retard, y compris après un changement de série (avant : WDG dessiné une
+    seule fois, à l'expiration, et seulement si la série du nœud était affichée ; un changement de série remettait la
+    dernière mesure ; jamais de WDG pour les batteries, le flotteur ni le voyant) ; NŒUD = bandeau derrière le nom,
+    ORANGE (EVEIL_MUET) quand tous ses capteurs actifs sont en retard, sinon vert / rouge / gris comme avant.
+    Redessin à chaque passage en retard ou retour (CRemoteCapteurBase::onChangementRetard)
+Après un redémarrage du CYD principal, la 1re trame de chaque capteur qui annonce son délai publie OK sur
+    home/alerte/<nom> : HA restait sur le RETARD retenu d'avant le redémarrage (le CYD avait oublié le retard)
+Thermomètre local du contrôleur principal (ThCYD, DS18B20 ou DHT20) : en panne après LOCAL_THERMO_ECHECS_PANNE = 3
+    lectures ratées d'affilée (global.h) → WDG à l'écran à la place de la dernière température (avant : gardée sans
+    signal, seul l'auxiliaire affichait WDG) et « RETARD » sur home/alerte/ThCYD (mail HA) ; 1re lecture réussie →
+    température et « OK » (main_ds18b20.cpp, surveillePanneThermoLocal) ; CMqtt::isConnected()
+
 3.8
 Moniteur série (platformio.ini) : monitor_dtr = 0 et monitor_rts = 0 ; l'ouverture du moniteur bloquait l'ESP32 en reset
     (écran éteint) par les lignes DTR/RTS du CH340

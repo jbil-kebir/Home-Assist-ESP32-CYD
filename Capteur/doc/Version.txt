@@ -1,3 +1,28 @@
+3.9
+Délai d'alerte par capteur (superclasse CCapteurBase, CapteurBase.h/.cpp) : chaque mesure porte « alerte:<s> », en
+    dernier (après FORCE, avant l'IP) = durée sans nouvelles au-delà de laquelle le contrôleur (CYD) signale le capteur.
+    Calculé par le nœud : forçage arrondi au réveil suivant (nombre de réveils compté avec le sommeil seul, chacun
+    compté sommeil + DELAI_ALERTE_EVEIL_S = 10 s ; sans deep sleep : le forçage) + retard toléré + DELAI_ALERTE_MARGE_S
+    = 60 s (global.h). Incohérence avec le rythme du nœud impossible : rien à refuser
+Retard toléré (s, 0 à 7 jours, 0 par défaut) par capteur : page Web (à côté du forçage, avec la ligne « → alerte si
+    aucune nouvelle pendant … »), NVS <préfixe>retard, SET <préfixe>retard, trame CONFIG (<préfixe>retard:<s>)
+Capteurs concernés : DHT20, DS18B20, batterie, flotteur (CTor), TCS34725, jour / nuit ; pas le micro du nœud
+    chauffage (sa disparition, relais coupé, est son fonctionnement normal)
+Forçage (mulIntervalleForcageRemonteeMesure) déplacé dans CCapteurBase ; chaque classe garde sa valeur par défaut
+SET : tous les capteurs réenregistrés en NVS (avant : jour / nuit et flotteur seulement)
+Profils de compilation par nœud (platformio.ini, PRODUCTION) : ThChRDC_Xiao_C3, ThCh1er_Xiao_C3, ThSdb_Xiao_C3,
+    PrGuirlande_Xiao_C3, NoeudChauffageSdb_Xiao_C3, ThRemise_Xiao_S3, ThCave_Xiao_S3 : carte, liaison (Wi-Fi / LoRa) et
+    capteurs fixés par le profil (-D PROFIL_NOEUD) ; global.h n'est plus à modifier pour eux (son bloc liaison / capteurs
+    ne sert plus qu'aux profils génériques xiao_c3, xiao_s3 et leurs _debug)
+Forçage de chaque capteur réglable à distance : SET <préfixe>force <s> (FORCAGE_MIN_S = 60 à FORCAGE_MAX_S = 86400,
+    global.h ; CCapteurBase::setParamAlerte), trame CONFIG « <préfixe>force:<s> <préfixe>retard:<s> » par capteur
+    (getParamsAlerte) ; jn_force n'est plus ajouté par CJourNuit::getParams() (il y serait en double)
+Trame CONFIG en LoRa : si topic + message dépasse LORA_TRAME_MAX = 250 octets (global.h ; ThRemise ≈ 248), découpée
+    aux espaces : « <nom> CONFIG ... » puis « <nom> CONFIGSUITE ... » ; partie ERREUR entière, dans la dernière trame.
+    MQTT : toujours une seule trame. HA (genere_noeuds.py) cumule les trames CONFIGSUITE ; la page du relais
+    n'affiche que la 1re partie
+⚠ Le CYD doit comprendre le champ alerte: AVANT qu'un nœud passe en 3.9 (sinon il le lit comme valeur de la mesure)
+
 3.8
 Dernière mesure envoyée gardée en mémoire RTC pendant le deep sleep (MemoireRTC.h, modèle CJourNuit) : DS18B20, DHT20,
     batterie, TCS34725, flotteur (CTor) ; relue seulement au réveil de deep sleep, mise à jour seulement après un envoi

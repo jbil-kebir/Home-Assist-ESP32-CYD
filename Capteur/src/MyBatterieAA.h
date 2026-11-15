@@ -6,6 +6,7 @@
 #include <Preferences.h>
 #include "global.h"
 #include "MyDateTime.h"
+#include "CapteurBase.h"
 
 // Structure utilisée par handleMqttCommand()
 struct MQTT_COMMAND_2 {
@@ -15,7 +16,7 @@ struct MQTT_COMMAND_2 {
 };
 
 
-class CBatterieAA {
+class CBatterieAA : public CCapteurBase {
 private:
   Preferences prefs;
   unsigned char mucPin;
@@ -34,11 +35,13 @@ private:
 public:
   CBatterieAA(uint8_t gpioPin, CMyDateTime& dateTime,
     std::function<int(const char*, const char*)> cbonMqttPublish = nullptr,
-    std::function<int(const char*)> cbonLoraP2PPublish = nullptr) : 
-    mucPin(gpioPin), mDateTime(&dateTime), 
-    onMqttPublish(cbonMqttPublish), 
-    onLoraP2PPublish(cbonLoraP2PPublish) 
-    {} 
+    std::function<int(const char*)> cbonLoraP2PPublish = nullptr) :
+    CCapteurBase(60UL),
+    mucPin(gpioPin), mDateTime(&dateTime),
+    onMqttPublish(cbonMqttPublish),
+    onLoraP2PPublish(cbonLoraP2PPublish)
+    {}
+  String getPrefixNVS() const override { return mPrefixNVS; }
 
   String domotique_prefix;
   String nomEquipement = "Batt";
@@ -49,9 +52,8 @@ public:
   String mqttSubTopicCommand;
   String mqttSubTopicState;
   unsigned long mulIntervalleMesure = 30UL, mulDefaultIntervalleMesure = 30UL; // en secondes : Intervalle entre deux mesures. En secondes pour les tests
-  // en minutes : Intervalle de forcage de la rmontée de mesure, même si la valeur n'a pas changé. En secondes pour les tests
-  unsigned long mulIntervalleForcageRemonteeMesure = 60UL, mulDefaultIntervalleForcageRemonteeMesure = 60UL; // En secondes
- 
+  // Forçage de la remontée : voir CCapteurBase (60 s par défaut)
+
   // MQTT callback
   std::function<int(const char*, const char*)> onMqttPublish;    
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT

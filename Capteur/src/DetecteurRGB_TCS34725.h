@@ -12,6 +12,7 @@
 #include <Adafruit_TCS34725.h>
 #include "MyDateTime.h"
 #include "MyRCSwitch.h"
+#include "CapteurBase.h"
 
 #define DEFAULT_CAPTEUR_RGB_TCS34725_ID (random(0, 256))  // Aléatoire
 
@@ -26,7 +27,7 @@ struct MQTT_COMMAND_33 {
 };
 
 
-class CDetecteurRGB_TCS34725 {
+class CDetecteurRGB_TCS34725 : public CCapteurBase {
 private:
   Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
 
@@ -40,8 +41,7 @@ private:
   unsigned char mucIntegrationTime = TCS34725_INTEGRATIONTIME_614MS; // 614 ms = max sensibilité
   unsigned char mucGain = TCS34725_GAIN_60X; // Gain X60 = max
   unsigned long mulIntervalleMesure = 10L, mulDefaultIntervalleMesure = 10L; // en minutes : Intervalle entre deux mesures. En secondes pour les tests
-  // en minutes : Intervalle de forcage de la rmontée de mesure, même si la valeur n'a pas changé. En secondes pour les tests
-  unsigned long mulIntervalleForcageRemonteeMesure = 20L, mulDefaultIntervalleForcageRemonteeMesure = 20L; 
+  // Forçage de la remontée : voir CCapteurBase (20 s par défaut)
   unsigned char mucNbEnvois = 1; // Nombre de fois qu'il faut remonter les mesures à chaque réveil
   unsigned long mulIntervalleEnvoi = 10L, mulDefaultIntervalleEnvoi = 10L; // en secondes : Intervalle entre deux envois. 
   bool mbForce = true; // On force une remontée à l'initialisation
@@ -87,10 +87,12 @@ private:
 public:
     CDetecteurRGB_TCS34725(CMyDateTime& dateTime,
         std::function<int(const char*, const char*)> cbonMqttPublish = nullptr,
-        std::function<int(const char*)> cbonLoraP2PPublish = nullptr) : 
-        mDateTime(&dateTime), 
-        onMqttPublish(cbonMqttPublish), onLoraP2PPublish(cbonLoraP2PPublish) 
+        std::function<int(const char*)> cbonLoraP2PPublish = nullptr) :
+        CCapteurBase(20UL),
+        mDateTime(&dateTime),
+        onMqttPublish(cbonMqttPublish), onLoraP2PPublish(cbonLoraP2PPublish)
         {}
+    String getPrefixNVS() const override { return mPrefixNVS; }
 
     String domotique_prefix;
     String nomEquipement = "thEquipement";

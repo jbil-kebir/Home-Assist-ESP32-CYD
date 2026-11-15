@@ -272,6 +272,7 @@ bool CTor::publieSurMqtt(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sValTemp = nomEquipement + " OnOff " + sDate + " " + sTime + " " + String(temp);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     //String sValHum = nomEquipement + " Hum " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(hum, 1);
     //if (force) sValHum += " FORCE";
     Serial.println("CTor::publieSurMqtt() Temp : " + sValTemp);
@@ -294,6 +295,7 @@ bool CTor::publieParLoraP2P(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sValTemp = mqttSubTopicState + " " +  nomEquipement + " OnOff " + sDate + " " + sTime + " " + String(temp);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     //String sValHum = nomEquipement + " Hum " + mDateTime->getDate() + " " + mDateTime->getTime() + " " + String(hum, 1);
     //if (force) sValHum += " FORCE";
     Serial.println("CTor::publieParLoraP2P() Temp : " + sValTemp);
@@ -432,6 +434,7 @@ void CTor::loadFromNVS() {
   mulReveilMinS = prefs.getULong((mPrefixNVS+"revmin").c_str(), FLOTTEUR_REVEIL_MIN_S_DEFAUT);
   if (mucAckEssais < 1 || mucAckEssais > FLOTTEUR_ACK_ESSAIS_MAX) mucAckEssais = FLOTTEUR_ACK_ESSAIS_DEFAUT;
   if (mulReveilMinS > FLOTTEUR_REVEIL_MIN_S_MAX) mulReveilMinS = FLOTTEUR_REVEIL_MIN_S_DEFAUT;
+  chargeRetardNVS(prefs);
 
 
   // On forme les subtopic MQTT
@@ -462,6 +465,7 @@ void CTor::saveToNVS() {
   prefs.putUChar((mPrefixNVS+"ackn").c_str(), mucAckEssais);
   prefs.putBool((mPrefixNVS+"rev").c_str(), mbReveil);
   prefs.putULong((mPrefixNVS+"revmin").c_str(), mulReveilMinS);
+  enregistreRetardNVS(prefs);
 
   prefs.end();
 }
@@ -503,6 +507,7 @@ void CTor::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
   if (server.hasArg((mPrefixNVS+"inter").c_str())) mulIntervalleMesure = server.arg((mPrefixNVS+"inter")).toInt();
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
+  litRetardWeb(server);
   if (server.hasArg((mPrefixNVS+"renvois").c_str())) mucNbEnvois = server.arg((mPrefixNVS+"renvois")).toInt();
   if (server.hasArg((mPrefixNVS+"interr").c_str())) mulIntervalleEnvoi = server.arg((mPrefixNVS+"interr")).toInt();
   if (server.hasArg((mPrefixNVS+"ack").c_str())) mbAckNeeded = true; else mbAckNeeded = false;
@@ -538,6 +543,7 @@ String CTor::getHTML() {
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
+  html += getHTMLRetard();
   html += "<div class=\"row\">"
         "<div><label>Nombre de renvois</label><input type=\"text\" name=" + (mPrefixNVS+"renvois") + " value=\"" + mucNbEnvois + "\"></div>"
         "<div><label>Intervalle de renvoi</label><input type=\"text\" name=" + (mPrefixNVS+"interr") + " value=\"" + mulIntervalleEnvoi + "\"></div>"
@@ -560,6 +566,7 @@ void CTor::print() const {
   Serial.printf("     Mode                 : %s\n", mucPinMode == INPUT_PULLUP ? "INPUT_PULLUP" : "INPUT_PULLDOWN");
   Serial.printf("     Intervalle mesures   : %ld s\n", mulIntervalleMesure);
   Serial.printf("     Forcage remontée     : %ld s\n", mulIntervalleForcageRemonteeMesure);
+  Serial.printf("     Retard toléré        : %lu s (alerte après %lu s)\n", mulRetardTolereS, getDelaiAlerteS());
   Serial.printf("     Nombre de renvois    : %d\n", mucNbEnvois);
   Serial.printf("     Intervalle de renvoi : %ld s\n", mulIntervalleEnvoi);
   Serial.printf("     MQTTSubTopic         : %s\n", mqttSubTopic.c_str());

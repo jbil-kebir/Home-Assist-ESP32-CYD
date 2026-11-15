@@ -12,6 +12,7 @@
 #include <DHT20.h>
 #include "MyDateTime.h"
 #include "MyRCSwitch.h"
+#include "CapteurBase.h"
 
 #define DEFAULT_CAPTEUR_ID (random(0, 256))  // Aléatoire
 
@@ -26,15 +27,14 @@ struct MQTT_COMMAND_3 {
 };
 
 
-class DHT20Sensor {
+class DHT20Sensor : public CCapteurBase {
 private:
   DHT20 dht;
   bool _initialized = false;
   unsigned char mucSdaPin =  DEFAULT_SDA_PIN;
   unsigned char mucSclPin =  DEFAULT_SCL_PIN;
   unsigned long mulIntervalleMesure = 10L, mulDefaultIntervalleMesure = 10L; // en minutes : Intervalle entre deux mesures. En secondes pour les tests
-  // en minutes : Intervalle de forcage de la rmontée de mesure, même si la valeur n'a pas changé. En secondes pour les tests
-  unsigned long mulIntervalleForcageRemonteeMesure = 20L, mulDefaultIntervalleForcageRemonteeMesure = 20L; 
+  // Forçage de la remontée : voir CCapteurBase (20 s par défaut)
   unsigned char mucNbEnvois = 1; // Nombre de fois qu'il faut remonter les mesures à chaque réveil
   unsigned long mulIntervalleEnvoi = 10L, mulDefaultIntervalleEnvoi = 10L; // en secondes : Intervalle entre deux envois. 
   bool mbForce = true; // On force une remontée à l'initialisation
@@ -58,10 +58,12 @@ public:
     //DHT20Sensor() {}
     DHT20Sensor(CMyDateTime& dateTime,
         std::function<int(const char*, const char*)> cbonMqttPublish = nullptr,
-        std::function<int(const char*)> cbonLoraP2PPublish = nullptr) : 
-        mDateTime(&dateTime), 
-        onMqttPublish(cbonMqttPublish), onLoraP2PPublish(cbonLoraP2PPublish) 
+        std::function<int(const char*)> cbonLoraP2PPublish = nullptr) :
+        CCapteurBase(20UL),
+        mDateTime(&dateTime),
+        onMqttPublish(cbonMqttPublish), onLoraP2PPublish(cbonLoraP2PPublish)
         {}
+    String getPrefixNVS() const override { return mPrefixNVS; }
 
     String domotique_prefix;
     String nomEquipement = "ThCh1er";

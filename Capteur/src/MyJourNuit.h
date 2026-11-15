@@ -6,6 +6,7 @@
 #include <Preferences.h>
 #include "global.h"
 #include "MyDateTime.h"
+#include "CapteurBase.h"
 
 //------------------------------------------------------------------------------
 // Détecteur jour / nuit : photorésistance alimentée par une GPIO (coupée hors mesure et en deep sleep)
@@ -40,7 +41,7 @@
 #define JOUR_NUIT_FORCE_MIN_SEC     60
 #define JOUR_NUIT_FORCE_MAX_SEC     86400
 
-class CJourNuit {
+class CJourNuit : public CCapteurBase {
 private:
   Preferences prefs;
   unsigned char mucPin;      // Entrée ADC1
@@ -63,7 +64,8 @@ private:
 
 public:
   CJourNuit(uint8_t gpioPin, uint8_t gpioPinAlim, CMyDateTime& dateTime) :
-    mucPin(gpioPin), mucPinAlim(gpioPinAlim), mDateTime(&dateTime) {}
+    CCapteurBase(600UL), mucPin(gpioPin), mucPinAlim(gpioPinAlim), mDateTime(&dateTime) {}
+  String getPrefixNVS() const override { return mPrefixNVS; }
 
   String domotique_prefix;
   String nomEquipement = "Jn";
@@ -73,8 +75,7 @@ public:
   String mqttSubTopicCommand;
   String mqttSubTopicState;
   unsigned long mulIntervalleMesure = 30UL, mulDefaultIntervalleMesure = 30UL; // En secondes
-  // En secondes, compté à travers le deep sleep (heure système, voir loop())
-  unsigned long mulIntervalleForcageRemonteeMesure = 600UL, mulDefaultIntervalleForcageRemonteeMesure = 600UL;
+  // Forçage de la remontée : voir CCapteurBase (600 s par défaut), compté à travers le deep sleep (heure système)
 
   // MQTT callback
   std::function<int(const char*, const char*)> onMqttPublish = nullptr;
@@ -99,6 +100,7 @@ public:
   int handleMqttCommand(const String& payload);
   int readAndPublish(bool force=false);
   // Commande SET (voir CConfig::setParam()) : clés jn_sbas, jn_shaut, jn_ecl, jn_inter, jn_force
+  // (jn_retard : CCapteurBase::setParamAlerte(), appelé par CConfig ; jn_force traité ici d'abord)
   int setParam(const String& cle, const String& valeur);
   bool valideSeuils();
   String getParams() const;

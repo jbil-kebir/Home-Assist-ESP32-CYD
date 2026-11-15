@@ -78,6 +78,7 @@ bool CBatterieAA::publieSurMqtt(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sVal = nomEquipement + " Tension " + sEtatBatterie + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sVal += " FORCE";
+    sVal += suffixeAlerte();
     Serial.println("CBatterieAA::publieSurMqtt() : " + sVal);
     bool ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
     return ret;
@@ -97,6 +98,7 @@ bool CBatterieAA::publieParLoraP2P(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sVal = mqttSubTopicState + " " +  nomEquipement + " Tension " + sEtatBatterie + sDate + " " + sTime + " " + String(temp, 1);
     if (force) sVal += " FORCE";
+    sVal += suffixeAlerte();
     Serial.println("CBatterieAA::publieParLoraP2P() : " + sVal);
     bool ret = (onLoraP2PPublish(sVal.c_str()) == 0);
     return ret;
@@ -194,7 +196,8 @@ void CBatterieAA::loadFromNVS() {
   mCalibre = prefs.getFloat((mPrefixNVS + "cal").c_str(), mDefaultCalibre);
   mulIntervalleMesure = prefs.getLong((mPrefixNVS+"inter").c_str(), mulDefaultIntervalleMesure);
   mulIntervalleForcageRemonteeMesure = (unsigned long)prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
-  
+  chargeRetardNVS(prefs);
+
   // On forme les subtopic MQTT
 //  domotique_prefix = prefs.getString("domo_prefix", default_domotique_topic_prefix);
   domotique_prefix = "home/";
@@ -218,6 +221,7 @@ void CBatterieAA::saveToNVS() {
   prefs.putFloat((mPrefixNVS + "cal").c_str(), mCalibre);
   prefs.putLong((mPrefixNVS+"inter").c_str(), mulIntervalleMesure);
   prefs.putLong((mPrefixNVS+"force").c_str(), mulIntervalleForcageRemonteeMesure);
+  enregistreRetardNVS(prefs);
 
   prefs.end();
 }
@@ -241,6 +245,7 @@ void CBatterieAA::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
   if (server.hasArg((mPrefixNVS+"inter").c_str())) mulIntervalleMesure = server.arg((mPrefixNVS+"inter")).toInt();
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
+  litRetardWeb(server);
 }
 
 void CBatterieAA::print() const {
@@ -253,6 +258,7 @@ void CBatterieAA::print() const {
   Serial.printf("     Calibre            : %.2f\n", mCalibre);
   Serial.printf("     Intervalle mesures : %ld s\n", mulIntervalleMesure);
   Serial.printf("     Forcage remontée   : %ld s\n", mulIntervalleForcageRemonteeMesure);
+  Serial.printf("     Retard toléré      : %lu s (alerte après %lu s)\n", mulRetardTolereS, getDelaiAlerteS());
   Serial.printf("     MQTTSubTopic       : %s\n", mqttSubTopic.c_str());
   Serial.printf("     MQTTCmd            : %s\n", mqttSubTopicCommand.c_str());
   Serial.printf("     MQTTState          : %s\n", mqttSubTopicState.c_str());
@@ -277,6 +283,7 @@ String CBatterieAA::getHTML() {
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
+  html += getHTMLRetard();
   html += "<div class=\"row\">"
         "<div><label>Calibre</label><input type=\"text\" name=" + (mPrefixNVS+"cal") + " value=\"" + mCalibre + "\"></div>"
         "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"

@@ -72,11 +72,44 @@ def trames(n):
     return n.get("trames") or [("home/thermometre/state", (u + n["suffixe"]).upper()) for u in n["unites"]]
 # Réglages du détecteur jour / nuit (attributs de sensor.<id>_config, lecture seule) : (clé, libellé, unité)
 PARAMS_JN = [("jn_sbas", "Seuil bas jour → nuit", "%"), ("jn_shaut", "Seuil haut nuit → jour", "%"),
-             ("jn_ecl", "Remonter l'éclairement (1 oui, 0 non)", ""), ("jn_inter", "Intervalle de mesure", "s"),
-             ("jn_force", "Délai max sans envoi", "s")]
+             ("jn_ecl", "Remonter l'éclairement (1 oui, 0 non)", ""), ("jn_inter", "Intervalle de mesure", "s")]
+# (jn_force : réglable comme le forçage des autres capteurs, voir CLES_ALERTE)
 # Réglages du flotteur (Capteur 3.1, attributs de sensor.<id>_config, lecture seule) : (clé, libellé, unité)
 PARAMS_FL = [("mfv_rev", "Réveil par le flotteur (1 oui, 0 non)", ""), ("mfv_revmin", "Anti-rafale", "s"),
              ("mfv_ack", "Confirmation par le contrôleur (1 oui, 0 non)", ""), ("mfv_ackn", "Essais de confirmation", "")]
+# Délai d'alerte (Capteur 3.9, Home-Assist 3.9) : préfixe NVS, côté Capteur, de chaque capteur unitaire (clé de son
+# retard toléré : <préfixe>_retard, dans la trame CONFIG et pour SET ; 0 à 7 jours, en secondes)
+PREFIXES_RETARD = {"Th": "thhum", "Bat": "bat", "Flotteur": "mfv", "Jn": "jn", "Coul": "rgb"}
+RETARD_MAX_S = 604800
+# Forçage de la remontée de mesure de chaque capteur (Capteur 3.9 : SET <préfixe>_force, 60 à 86400 s ;
+# jn_force existait déjà)
+FORCE_MIN_S = 60
+FORCE_MAX_S = 86400
+# Clés réglables de chaque capteur dans la config (forçage et retard toléré)
+CLES_ALERTE = sorted(set(p + suf for p in PREFIXES_RETARD.values() for suf in ("_force", "_retard")))
+LIBELLES_UNITES = {"Th": "thermomètre", "Bat": "batterie", "Flotteur": "flotteur", "Jn": "jour / nuit", "Coul": "voyant chaudière"}
+
+
+# Capteurs unitaires d'un nœud : (unité, nom de l'équipement, clé du retard toléré)
+def capteurs_unitaires(n):
+    return [(u, u + n["suffixe"], PREFIXES_RETARD[u] + "_retard") for u in n["unites"] if u in PREFIXES_RETARD]
+
+
+# Capteurs surveillés hors des nœuds (binary_sensor <nom>_en_retard + mail) : thermomètre local du CYD principal
+# (Home-Assist 3.9 : RETARD après 3 lectures ratées d'affilée, OK au retour)
+CAPTEURS_ALERTE_HORS_NOEUDS = ["ThCYD"]
+
+
+# Noms de tous les capteurs publiés sur home/alerte/<nom> par le CYD principal
+def noms_alerte():
+    return [nom_c for n in NOEUDS for _, nom_c, _ in capteurs_unitaires(n)] + CAPTEURS_ALERTE_HORS_NOEUDS
+
+
+# Clés de config réglables des capteurs d'un nœud : <préfixe>_force et <préfixe>_retard
+def cles_alerte(n):
+    return [PREFIXES_RETARD[u] + suf for u in n["unites"] if u in PREFIXES_RETARD for suf in ("_force", "_retard")]
+
+
 PARAMS = [("sleepi", "Intervalle deep sleep", 86400, "mdi:timer-outline"),
           ("sleeps", "Sommeil court (SLEEPS)", 86400, "mdi:timer-outline"),
           ("sleepm", "Sommeil moyen (SLEEPM)", 86400, "mdi:timer-outline"),
@@ -307,6 +340,10 @@ def paquet():
 #           attribut texte) : vue Relais LoRa ; connexion = signal de moins de 3 min (ALIVE toutes les 60 s)
 #           input_boolean.<id>_sleepa, input_number.<id>_sleepi / _sleeps / _sleepm / _sleepl / _wakei
 #           input_text.<id>_commande (commande libre)
+#           Délai d'alerte (Capteur 3.9, Home-Assist 3.9) : input_number.<id>_<préfixe>_retard (retard toléré de chaque
+#           capteur : thhum, bat, mfv, jn, rgb ; attributs <préfixe>_retard de sensor.<id>_config),
+#           binary_sensor.<capteur>_en_retard (home/alerte/<capteur>, publié par le CYD principal ; attribut « le »),
+#           automatisation « Capteurs - Mail capteur en retard ou revenu »
 # Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
 # ============================================================
 
@@ -342,11 +379,18 @@ template:""")
 """)
         # Actionneur : pas de config de sommeil ; le sensor Config est créé quand même (inutilisé, sans effet)
         w(f"""  # ---------- {nom} : réponse CONFIG (« {nom} CONFIG sleepA:1 sleepI:30 ... [ERREUR cle:val] <IP> ») ----------
+  # LoRa (Capteur 3.9) : config trop longue pour une trame → « {nom} CONFIG ... » puis « {nom} CONFIGSUITE ... » ;
+  # une trame CONFIGSUITE ne change que les attributs qu'elle contient (les autres gardent la valeur précédente),
+  # une trame CONFIG remet à none ceux qu'elle ne contient pas. ERREUR est toujours dans la dernière trame.
   - trigger:
       - trigger: mqtt
         topic: "home/conf{i}/state"
         value_template: "{{{{ (value.split(' ') + [''])[1] | upper }}}}"
         payload: "CONFIG"
+      - trigger: mqtt
+        topic: "home/conf{i}/state"
+        value_template: "{{{{ (value.split(' ') + [''])[1] | upper }}}}"
+        payload: "CONFIGSUITE"
     sensor:
       - name: "{nom} Config"
         unique_id: {i}_config
@@ -356,15 +400,21 @@ template:""")
         attributes:""")
         # mute : absent de la réponse d'un firmware antérieur au 28/10/2026 → none
         # jn_* : nœud équipé du détecteur jour / nuit seulement ; mfv_* : nœud équipé du flotteur (fl) seulement
+        # <préfixe>_force, <préfixe>_retard : forçage et retard toléré de chaque capteur (Capteur 3.9 ; absents avant :
+        # none, sauf jn_force)
         for k in (["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI", "mute"]
                   + ([c for c, _, _ in PARAMS_JN] if n.get("jn") else [])
-                  + ([c for c, _, _ in PARAMS_FL] if n.get("fl") else [])):
+                  + ([c for c, _, _ in PARAMS_FL] if n.get("fl") else [])
+                  + cles_alerte(n)):
             w(f"""          {k}: >-
-            {{%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall('{k}:(\\d+)') -%}}
-            {{{{ m[0] | int if m else none }}}}""")
+            {{%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}}
+            {{%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' {k}:(\\d+)') -%}}
+            {{{{ m[0] | int if m else (this.attributes.get('{k}') if suite else none) }}}}""")
         w(f"""          erreur: >-
+            {{%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}}
             {{%- set p = trigger.payload.split(' ERREUR ') -%}}
-            {{{{ p[1] | regex_replace(' \\d{{1,3}}(\\.\\d{{1,3}}){{3}}$', '') if p | length > 1 else '' }}}}
+            {{{{ p[1] | regex_replace(' \\d{{1,3}}(\\.\\d{{1,3}}){{3}}$', '') if p | length > 1
+               else (this.attributes.get('erreur', '') if suite else '') }}}}
 
   # ---------- {nom} : réponse STATUS ----------
   # Wi-Fi et LoRa : une ligne « {nom} ETAT <date> <heure> | [IP : <ip> | ]Wdog : ... | Uptime : ...s <IP> »
@@ -427,6 +477,27 @@ template:""")
           {{%- set ip = trigger.payload.split(' ')[-1] -%}}
           {{{{ ip if ip is match('^\\d{{1,3}}(\\.\\d{{1,3}}){{3}}$') else this.state }}}}
 """)
+    # Capteur en retard : publié retenu par le CYD principal (Home-Assist 3.9) sur home/alerte/<capteur>,
+    # « RETARD <date> <heure> » ou « OK <date> <heure> », pour les capteurs qui annoncent leur délai d'alerte (Capteur 3.9).
+    # Nom comparé sans la casse (le CYD publie le nom tel qu'il est réglé chez lui). Attribut « le » : date et heure du
+    # passage en retard ou du retour. État gardé au redémarrage de HA (et message retenu relu).
+    for nom_c in noms_alerte():
+            w(f"""  # ---------- {nom_c} : en retard (délai d'alerte dépassé) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/alerte/+"
+    conditions:
+      - condition: template
+        value_template: "{{{{ trigger.topic.split('/')[-1] | lower == '{nom_c.lower()}' }}}}"
+    binary_sensor:
+      - name: "{nom_c} En retard"
+        unique_id: {nom_c.lower()}_en_retard
+        device_class: problem
+        icon: mdi:clock-alert-outline
+        state: "{{{{ trigger.payload.split(' ')[0] | upper == 'RETARD' }}}}"
+        attributes:
+          le: "{{{{ trigger.payload.split(' ')[1:3] | join(' ') }}}}"
+""")
     w(capteur_version("RelaisLora", "relaislora", "home/confrelaislora/state", "au démarrage et après STATUS"))
     for a in APPAREILS_VERIFIES:
         w(entites_appareil_verifie(*a))
@@ -453,6 +524,23 @@ template:""")
     mode: box
     unit_of_measurement: "s"
     icon: {ic}""")
+        for u, nom_c, k in capteurs_unitaires(n):
+            w(f"""  {n['id']}_{PREFIXES_RETARD[u]}_force:
+    name: "{n['nom']} Forçage {LIBELLES_UNITES[u]}"
+    min: {FORCE_MIN_S}
+    max: {FORCE_MAX_S}
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:timer-refresh-outline""")
+            w(f"""  {n['id']}_{k}:
+    name: "{n['nom']} Retard toléré {LIBELLES_UNITES[u]}"
+    min: 0
+    max: {RETARD_MAX_S}
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+    icon: mdi:clock-alert-outline""")
         w("")
     w("input_text:")
     for n in NOEUDS:
@@ -575,6 +663,14 @@ template:""")
               {{%- set v = states('input_number.' ~ capteur ~ '_' ~ k | lower) | float(0) | int -%}}
               {{%- if v > 0 and v != state_attr(cfg, k) -%}}{{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}}{{%- endif -%}}
             {{%- endfor -%}}
+            {{#- Forçages et retards tolérés (Capteur 3.9) : seulement ceux de la dernière config reçue et dont le
+                 champ existe ; retard 0 permis, forçage de {FORCE_MIN_S} s au moins (bornes du champ) -#}}
+            {{%- for k in {liste_yaml(CLES_ALERTE)} -%}}
+              {{%- if state_attr(cfg, k) is not none and states('input_number.' ~ capteur ~ '_' ~ k) not in ['unknown', 'unavailable'] -%}}
+                {{%- set v = states('input_number.' ~ capteur ~ '_' ~ k) | float(-1) | int -%}}
+                {{%- if v >= 0 and v != state_attr(cfg, k) -%}}{{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}}{{%- endif -%}}
+              {{%- endif -%}}
+            {{%- endfor -%}}
             {{{{- ns.s | trim -}}}}
           # Réglages trop courts (faute de frappe, champs restés au minimum) : 10 s au moins
           trop_courts: >-
@@ -689,7 +785,67 @@ automation:
                     entity_id: "input_number.{{{{ capteur }}}}_{{{{ repeat.item | lower }}}}"
                   data:
                     value: "{{{{ state_attr(trigger.entity_id, repeat.item) }}}}"
+      # Forçages et retards tolérés (Capteur 3.9), si le nœud les envoie et que le champ existe
+      - repeat:
+          for_each: {liste_yaml(CLES_ALERTE)}
+          sequence:
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{{{ state_attr(trigger.entity_id, repeat.item) is number
+                       and states('input_number.' ~ capteur ~ '_' ~ repeat.item) not in ['unknown', 'unavailable'] }}}}
+              then:
+                - action: input_number.set_value
+                  target:
+                    entity_id: "input_number.{{{{ capteur }}}}_{{{{ repeat.item }}}}"
+                  data:
+                    value: "{{{{ state_attr(trigger.entity_id, repeat.item) }}}}"
 
+  # ------------------------------------------------------------
+  # Capteur en retard / revenu (home/alerte/<capteur>, publié par le CYD principal) : mail.
+  # Déclenché par le changement d'état (pas par le message MQTT) : le message retenu relu au redémarrage de HA
+  # ne renvoie pas de mail.
+  # ------------------------------------------------------------
+  - id: capteurs_alerte_retard_mail
+    alias: Capteurs - Mail capteur en retard ou revenu
+    description: Délai d'alerte dépassé (Capteur 3.9, Home-Assist 3.9)
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id:""")
+    for nom_c in noms_alerte():
+            w(f"          - binary_sensor.{nom_c.lower()}_en_retard")
+    # Passage à « on » depuis « off » ou « unknown » (1er message reçu = déjà un retard) ; pas depuis « unavailable »
+    # (rechargement des templates) ni « on » (changement d'attribut seul)
+    w(f"""        to: "on"
+        not_from:
+          - "on"
+          - "unavailable"
+      - trigger: state
+        entity_id:""")
+    for nom_c in noms_alerte():
+            w(f"          - binary_sensor.{nom_c.lower()}_en_retard")
+    w(f"""        from: "on"
+        to: "off"
+    actions:
+      - variables:
+          capteur: "{{{{ trigger.to_state.name | replace(' En retard', '') }}}}"
+          le: "{{{{ trigger.to_state.attributes.le | default(now().strftime('%d/%m/%Y %H:%M:%S')) }}}}"
+          date: "{{{{ le.split(' ')[0] }}}}"
+          heure: "{{{{ (le.split(' ') + [''])[1][:5] }}}}"
+      - action: notify.email_kebir
+        data:
+          title: >-
+            {{{{ '⚠️ ' ~ capteur ~ ' : plus de nouvelles' if trigger.to_state.state == 'on'
+               else '✅ ' ~ capteur ~ ' : de retour' }}}}
+          message: >-
+            {{%- if trigger.to_state.state == 'on' -%}}
+            ⚠ {{{{ capteur }}}} : aucune nouvelle depuis le {{{{ date }}}} à {{{{ heure }}}} (délai d'alerte dépassé).
+            {{%- else -%}}
+            ✅ {{{{ capteur }}}} : de nouveau des nouvelles ({{{{ date }}}} à {{{{ heure }}}}).
+            {{%- endif -%}}
+""")
+    w(f"""
   # ------------------------------------------------------------
   # Appareils RF vérifiés par un nœud de présence : notification quand le CYD principal signale un échec
   # (« <nom> ECHEC ON|OFF <essais> » sur home/<appareil>/state, Home-Assist 3.6)
@@ -844,6 +1000,18 @@ sections:""")
             for e, lib in n["mesures"]:
                 w(f"""              - entity: {e}
                 name: {lib}""")
+        if capteurs_unitaires(n):
+            # Délai d'alerte (home/alerte/<capteur>, CYD principal) : une ligne par capteur
+            w("""          - type: markdown
+            title: Nouvelles des capteurs
+            content: |""")
+            for u, nom_c, _ in capteurs_unitaires(n):
+                b = f"binary_sensor.{nom_c.lower()}_en_retard"
+                w(f"""              {{% if is_state('{b}', 'on') %}}⚠️ **{nom_c}** : aucune nouvelle depuis le {{{{ state_attr('{b}', 'le') }}}}
+              {{% elif is_state('{b}', 'off') %}}✅ **{nom_c}** : OK
+              {{% else %}}❔ **{nom_c}** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {{% endif %}}
+""")  # Ligne vide : un paragraphe par capteur
         if n.get("jn"):
             w("""          - type: entities
             title: Jour / nuit (réglages reçus ; SET jn_... par la commande libre)
@@ -859,7 +1027,7 @@ sections:""")
             w("""          - type: markdown
             content: |
               Ex. : `SET jn_sbas 15 jn_shaut 25` (commande libre) — clés : `jn_sbas` `jn_shaut` (0 à 100 %, bas < haut),
-              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s), `jn_force` (60 à 86400 s)""")
+              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s) ; forçage et retard toléré : dans les Réglages""")
         if n.get("fl"):
             w("""          - type: entities
             title: Flotteur (réglages reçus ; SET mfv_... par la commande libre)
@@ -919,6 +1087,11 @@ sections:""")
                 name: {lib}""")
         w(f"""              - entity: input_boolean.{i}_mute
                 name: Mesures muettes""")
+        for u, nom_c, k in capteurs_unitaires(n):
+            w(f"""              - entity: input_number.{i}_{PREFIXES_RETARD[u]}_force
+                name: Forçage {LIBELLES_UNITES[u]}
+              - entity: input_number.{i}_{k}
+                name: Retard toléré {LIBELLES_UNITES[u]}""")
         w(f"""          - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -963,8 +1136,9 @@ sections:""")
           |---|---|
           | `GET` | Relit la configuration |
           | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
-          | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s), `jn_force` délai max sans envoi (60 à 86400 s) |
+          | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s) |
           | `SET mfv_revmin 300 mfv_ack 1` | Flotteur (ThRemise, Capteur 3.1) : `mfv_rev` réveil par le flotteur 0/1, `mfv_revmin` anti-rafale (0 à 86400 s), `mfv_ack` confirmation par le contrôleur 0/1, `mfv_ackn` nombre d'envois sans confirmation avant de dormir (1 à 10) |
+          | `SET thhum_force 3600 thhum_retard 3600` | Forçage d'un capteur (envoi même sans changement, 60 à 86400 s) et retard toléré, en s (0 à 604800), Capteur 3.9 (jn_force : déjà avant) ; aussi dans les Réglages : `thhum_` thermomètre, `bat_` batterie, `mfv_` flotteur, `jn_` jour / nuit, `rgb_` voyant chaudière. Le nœud y ajoute son intervalle normal et une marge : le CYD signale le capteur au-delà (mail) |
           | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |

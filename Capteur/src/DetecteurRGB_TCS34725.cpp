@@ -315,9 +315,11 @@ bool CDetecteurRGB_TCS34725::publieSurMqttBrut(bool force/*=false*/) {
     //unsigned int luxBrut = muiLastBrutLux;
     String sValTemp = nomEquipement + " Coul " + sDate + " " + sTime + " " + String(muiLastR) + " " + String(muiLastG) + " " + String(muiLastB) + " " + String(muiLastLux) +  + " " + String(muiLastBrutLux);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     //lux = 0xFFFFFF00 | lux; // Pour permettre le contrôle à l'arrivée
     String sValLux = nomEquipement + " Lux " + sDate + " " + sTime + " " + String(muiLastLux);
     //if (force) sValLux += " FORCE";
+    sValLux += suffixeAlerte();
     Serial.println("CDetecteurRGB_TCS34725::publieSurMqttBrut() Coul : " + sValTemp);
     //Serial.println("CDetecteurRGB_TCS34725::publieSurMqttBrut() Lux  : " + sValLux);
     if (onMqttPublish != nullptr) {
@@ -358,9 +360,11 @@ bool CDetecteurRGB_TCS34725::publieParLoraP2PBrut(bool force/*=false*/) {
     //unsigned long luxBrut = lastBrutLux;
     String sValTemp = mqttSubTopicState + " " + nomEquipement + " Coul " + sDate + " " + sTime + " " + String(muiLastR) + " " + String(muiLastG) + " " + String(muiLastB) + " " + String(muiLastLux) + " " + String(muiLastBrutLux);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     //lux = 0xFFFFFF00 | lux; // Pour permettre le contrôle à l'arrivée
     String sValLux = mqttSubTopicState + " " + nomEquipement + " Lux " + sDate + " " + sTime + " " + String(muiLastLux);
     //if (force) sValLux += " FORCE";
+    sValLux += suffixeAlerte();
     Serial.println("CDetecteurRGB_TCS34725::publieParLoraP2PBrut() Coul : " + sValTemp);
     //Serial.println("CDetecteurRGB_TCS34725::publieParLoraP2PBrut() Lux  : " + sValLux);
     if (onLoraP2PPublish != nullptr) {
@@ -396,6 +400,7 @@ bool CDetecteurRGB_TCS34725::publieSurMqttOnOff(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sValTemp = nomEquipement + " Del " + sDate + " " + sTime + " " + String(mbLastEtatOnOff);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     Serial.println("CDetecteurRGB_TCS34725::publieSurMqttOnOff() Del : " + sValTemp);
     if (onMqttPublish != nullptr) {
       ret = (onMqttPublish(mqttSubTopicState.c_str(), sValTemp.c_str()) == 0);
@@ -433,6 +438,7 @@ bool CDetecteurRGB_TCS34725::publieParLoraP2POnOff(bool force/*=false*/) {
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sValTemp = mqttSubTopicState + " " + nomEquipement + " Del " + sDate + " " + sTime + " " + String(mbLastEtatOnOff);
     if (force) sValTemp += " FORCE";
+    sValTemp += suffixeAlerte();
     Serial.println("CDetecteurRGB_TCS34725::publieParLoraP2POnOff() Del : " + sValTemp);
     if (onLoraP2PPublish != nullptr) {
       ret = (onLoraP2PPublish(sValTemp.c_str()) == 0);
@@ -623,6 +629,7 @@ void CDetecteurRGB_TCS34725::loadFromNVS() {
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
   mucNbEnvois = prefs.getUShort((mPrefixNVS+"renvois").c_str(), 1);
   mulIntervalleEnvoi = prefs.getLong((mPrefixNVS+"interr").c_str(), mulDefaultIntervalleEnvoi);
+  chargeRetardNVS(prefs);
   mucIntegrationTime = prefs.getUChar((mPrefixNVS+"integr").c_str(), TCS34725_INTEGRATIONTIME_614MS);
   mucGain = prefs.getUChar((mPrefixNVS+"gain").c_str(), TCS34725_GAIN_60X);
   muiRougeOn = prefs.getUInt((mPrefixNVS+"ron").c_str(), VAL_LED_ROUGE_ON);
@@ -659,6 +666,7 @@ void CDetecteurRGB_TCS34725::saveToNVS() {
   prefs.putLong((mPrefixNVS+"force").c_str(), mulIntervalleForcageRemonteeMesure);
   prefs.putUShort((mPrefixNVS+"renvois").c_str(), mucNbEnvois);
   prefs.putLong((mPrefixNVS+"interr").c_str(), mulIntervalleEnvoi);
+  enregistreRetardNVS(prefs);
   prefs.putUChar((mPrefixNVS+"integr").c_str(), mucIntegrationTime);
   prefs.putUChar((mPrefixNVS+"gain").c_str(), mucGain);
   prefs.putUInt((mPrefixNVS+"ron").c_str(), muiRougeOn);
@@ -692,6 +700,7 @@ void CDetecteurRGB_TCS34725::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
   if (server.hasArg((mPrefixNVS+"inter").c_str())) mulIntervalleMesure = server.arg((mPrefixNVS+"inter")).toInt();
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
+  litRetardWeb(server);
   if (server.hasArg((mPrefixNVS+"renvois").c_str())) mucNbEnvois = server.arg((mPrefixNVS+"renvois")).toInt();
   if (server.hasArg((mPrefixNVS+"interr").c_str())) mulIntervalleEnvoi = server.arg((mPrefixNVS+"interr")).toInt();
   if (server.hasArg((mPrefixNVS+"integr").c_str())) mucIntegrationTime = server.arg((mPrefixNVS+"integr")).toInt();
@@ -745,6 +754,7 @@ String CDetecteurRGB_TCS34725::getHTML() {
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
+  html += getHTMLRetard();
   html += "<div class=\"row\">"
         "<div><label>Nombre de renvois</label><input type=\"text\" name=" + (mPrefixNVS+"renvois") + " value=\"" + mucNbEnvois + "\"></div>"
         "<div><label>Intervalle de renvoi</label><input type=\"text\" name=" + (mPrefixNVS+"interr") + " value=\"" + mulIntervalleEnvoi + "\"></div>"
@@ -776,6 +786,7 @@ void CDetecteurRGB_TCS34725::print() const {
   Serial.printf("     Remontée brute       : %s\n", remonterMesuresBrutes ? "OUI" : "NON");
   Serial.printf("     Intervalle mesures   : %ld s\n", mulIntervalleMesure);
   Serial.printf("     Forcage remontée     : %ld s\n", mulIntervalleForcageRemonteeMesure);
+  Serial.printf("     Retard toléré        : %lu s (alerte après %lu s)\n", mulRetardTolereS, getDelaiAlerteS());
   Serial.printf("     Nombre de renvois    : %d\n", mucNbEnvois);
   Serial.printf("     Intervalle de renvoi : %ld s\n", mulIntervalleEnvoi);
   Serial.printf("     MQTTSubTopic         : %s\n", mqttSubTopic.c_str());

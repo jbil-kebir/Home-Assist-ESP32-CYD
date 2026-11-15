@@ -12,6 +12,7 @@
 //#include <DHT20.h>
 #include "MyDateTime.h"
 #include "MyRCSwitch.h"
+#include "CapteurBase.h"
 
 #ifdef FLOTTEUR_VERTICAL
 
@@ -26,7 +27,7 @@ struct MQTT_COMMAND_4 {
 };
 
 
-class CTor {
+class CTor : public CCapteurBase {
 private:
   //DHT20 dht;
   bool _initialized = false;
@@ -35,10 +36,9 @@ private:
   unsigned char mucPin =  DEFAULT_TOR_PIN;
   unsigned char mucPinMode = DEFAULT_TOR_PULL_UP_DOWN_MODE;
   unsigned long mulIntervalleMesure = 10L, mulDefaultIntervalleMesure = 10L; // en minutes : Intervalle entre deux mesures. En secondes pour les tests
-  // en minutes : Intervalle de forcage de la rmontée de mesure, même si la valeur n'a pas changé. En secondes pour les tests
-  unsigned long mulIntervalleForcageRemonteeMesure = 20L, mulDefaultIntervalleForcageRemonteeMesure = 20L; 
+  // Forçage de la remontée : voir CCapteurBase (20 s par défaut)
   unsigned char mucNbEnvois = 1; // Nombre de fois qu'il faut remonter les mesures à chaque réveil
-  unsigned long mulIntervalleEnvoi = 10L, mulDefaultIntervalleEnvoi = 10L; // en secondes : Intervalle entre deux envois. 
+  unsigned long mulIntervalleEnvoi = 10L, mulDefaultIntervalleEnvoi = 10L; // en secondes : Intervalle entre deux envois.
   bool mbForce = true; // On force une remontée à l'initialisation
   Preferences prefs;
   // On mémorise la température pour n'afficher que les changements
@@ -65,11 +65,13 @@ private:
 public:
     CTor(CMyDateTime& dateTime,
         std::function<int(const char*, const char*)> cbonMqttPublish = nullptr,
-        std::function<int(const char*)> cbonLoraP2PPublish = nullptr) : 
-        mDateTime(&dateTime), 
-        onMqttPublish(cbonMqttPublish), 
+        std::function<int(const char*)> cbonLoraP2PPublish = nullptr) :
+        CCapteurBase(20UL),
+        mDateTime(&dateTime),
+        onMqttPublish(cbonMqttPublish),
         onLoraP2PPublish(cbonLoraP2PPublish)
-        {/*bLocal = true;*/} 
+        {/*bLocal = true;*/}
+  String getPrefixNVS() const override { return mPrefixNVS; }
   String domotique_prefix;
   String nomEquipement = "Tor";
   String mqttSubTopic = "tor";

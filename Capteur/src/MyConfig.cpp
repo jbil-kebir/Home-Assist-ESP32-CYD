@@ -138,6 +138,7 @@ String CConfig::causeReset() {
 void CConfig::setup() {
 
  loadFromNVS();
+ CCapteurBase::setConfig(this); // Sommeil du nœud, pour le délai d'alerte des capteurs
 
  #ifdef DEBUG_NO_DEEP_SLEEP
  mbDeepSleepActive = false;
@@ -902,9 +903,8 @@ int CConfig::handleMqttCommand(const String& payload) {
       mJourNuit->saveToNVS();
     }
     #endif
-    #ifdef FLOTTEUR_VERTICAL
-    if (mFlotteurVertical != nullptr) mFlotteurVertical->saveToNVS();
-    #endif
+    // Capteurs (retard toléré <préfixe>retard, réglages du flotteur...)
+    for (CCapteurBase* c : capteursAlerte()) c->saveToNVS();
     saveToNVS();
     envoieConfig(sErreurs);
     if (sErreurs.length() > 0) ret = -2;
@@ -968,14 +968,45 @@ int CConfig::setParam(const String& cle, const String& valeur) {
     #ifdef FLOTTEUR_VERTICAL
     if (r == -1 && mFlotteurVertical != nullptr) r = mFlotteurVertical->setParam(cle, v);
     #endif
+    // Forçage et retard toléré de chaque capteur (<préfixe>force, <préfixe>retard : délai d'alerte, voir CapteurBase.h)
+    for (CCapteurBase* capteur : capteursAlerte())
+      if (r == -1) r = capteur->setParamAlerte(cle, v);
     if (r != 0) return r;
   }
   Serial.println("CConfig::setParam() - " + cle + " = " + v);
   return 0;
 }
 
+// Capteurs qui joignent un délai d'alerte à leurs mesures (CCapteurBase). Le micro du nœud chauffage (CMax4466)
+// n'en fait pas partie : sa disparition (relais coupé) est son fonctionnement normal, interprétée par le CYD.
+std::vector<CCapteurBase*> CConfig::capteursAlerte() const {
+  std::vector<CCapteurBase*> v;
+  #ifdef CAPTEUR_DS18B20
+  if (ds18b20 != nullptr) v.push_back(ds18b20);
+  #endif
+  #ifdef CAPTEUR_DHT20
+  if (dht20 != nullptr) v.push_back(dht20);
+  #endif
+  #ifdef FLOTTEUR_VERTICAL
+  if (mFlotteurVertical != nullptr) v.push_back(mFlotteurVertical);
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  if (mCapteurRGB != nullptr) v.push_back(mCapteurRGB);
+  #endif
+  #ifdef CAPTEUR_BATTERIE
+  if (mBatterieAA != nullptr) v.push_back(mBatterieAA);
+  #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (mJourNuit != nullptr) v.push_back(mJourNuit);
+  #endif
+  return v;
+}
+
 // Séparateur « : » : Relais-Lora refuse un '=' dans une trame
+// Taille : peut dépasser une trame LoRa avec les forçages et retards (ThRemise ≈ 248 octets) : voir envoieConfig()
 String CConfig::getParams() const {
+  String sRetards;
+  for (CCapteurBase* c : capteursAlerte()) sRetards += " " + c->getParamsAlerte();
   return "sleepA:" + String(mbDeepSleepActive ? 1 : 0) +
          " sleepI:" + String(mulSleepDuration) +
          " sleepS:" + String(mulSleepDurationS) +
@@ -989,20 +1020,52 @@ String CConfig::getParams() const {
          #ifdef FLOTTEUR_VERTICAL
          + (mFlotteurVertical != nullptr ? " " + mFlotteurVertical->getParams() : String(""))
          #endif
-         ;
+         + sRetards;
 }
 
 // « <nom> CONFIG <paramètres> [ERREUR <cle:valeur ...>] » sur topic_config_state, par MQTT et par LoRa.
-// Une trame LoRa fait au plus 255 octets : à découper en plusieurs trames si la liste des paramètres s'allonge.
+// MQTT : toujours une seule trame.
+// LoRa : une trame fait au plus 255 octets ; si topic + message dépasse LORA_TRAME_MAX, découpage aux espaces :
+//   « <nom> CONFIG <paramètres...> » puis « <nom> CONFIGSUITE <paramètres...> » ; la partie ERREUR, jamais
+//   coupée, va dans la dernière trame (HA : sensor.<id>_config cumule les attributs des trames CONFIGSUITE).
 void CConfig::envoieConfig(const String& sErreurs) {
-  String sMsg = nomEquipement + " CONFIG " + getParams();
-  if (sErreurs.length() > 0) sMsg += " ERREUR " + sErreurs;
+  String sParams = getParams();
+  String sErreur = sErreurs.length() > 0 ? "ERREUR " + sErreurs : String("");
+  String sMsg = nomEquipement + " CONFIG " + sParams;
+  if (sErreur.length() > 0) sMsg += " " + sErreur;
   Serial.println("CConfig::envoieConfig() - " + sMsg);
   if (onMqttPublish != nullptr)
     onMqttPublish(topic_config_state.c_str(), sMsg.c_str());
   #ifdef _LORA_P2P_MODE_
-  if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized())
-    mLoraRxTx->sendPacket((topic_config_state + " " + sMsg).c_str());
+  if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized()) {
+    String sEntete = topic_config_state + " " + nomEquipement + " CONFIG";
+    String sTrame = sEntete;
+    String reste = sParams;
+    reste.trim();
+    bool bErreurPlacee = (sErreur.length() == 0);
+    bool bDecoupee = false;
+    while (reste.length() > 0 || !bErreurPlacee) {
+      // Morceau suivant : un paramètre, puis la partie ERREUR entière
+      String sMorceau;
+      if (reste.length() > 0) {
+        int i = reste.indexOf(' ');
+        sMorceau = (i < 0) ? reste : reste.substring(0, i);
+        reste = (i < 0) ? "" : reste.substring(i + 1);
+        reste.trim();
+      }
+      else { sMorceau = sErreur; bErreurPlacee = true; }
+      if (sTrame != sEntete && sTrame.length() + 1 + sMorceau.length() > LORA_TRAME_MAX) {
+        Serial.println("CConfig::envoieConfig() - LoRa : " + sTrame);
+        mLoraRxTx->sendPacket(sTrame.c_str());
+        sEntete = topic_config_state + " " + nomEquipement + " CONFIGSUITE";
+        bDecoupee = true;
+        sTrame = sEntete;
+      }
+      sTrame += " " + sMorceau;
+    }
+    if (bDecoupee) Serial.println("CConfig::envoieConfig() - LoRa : " + sTrame);
+    mLoraRxTx->sendPacket(sTrame.c_str());
+  }
   #endif
 }
 

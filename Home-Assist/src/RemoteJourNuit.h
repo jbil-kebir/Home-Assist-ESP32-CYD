@@ -6,7 +6,7 @@
 #include <functional>
 #include "global.h"
 #include "MyEcran.h"
-#include "EquipementBase.h"
+#include "RemoteCapteurBase.h"
 
 //------------------------------------------------------------------------------
 // Détecteur jour / nuit distant (classe CJourNuit du projet Capteur). Trames reçues sur home/thermometre/state :
@@ -15,7 +15,7 @@
 //------------------------------------------------------------------------------
 #define JOUR_NUIT_INCONNU  -1  // État ou éclairement pas encore reçu
 
-class CRemoteJourNuit : public CEquipementBase {
+class CRemoteJourNuit : public CRemoteCapteurBase {
 private:
   CEcran *mEcran=nullptr;
   int miLastEclairement = JOUR_NUIT_INCONNU; // En %
@@ -25,13 +25,10 @@ private:
 
   // En secondes. Au-delà sans message, le capteur est considéré KO. Plus long que le forçage du capteur
   // (600 s par défaut) : sans remontée de l'éclairement, il n'émet qu'aux bascules et au forçage.
-  unsigned long mulWatchdogIntervalle = 1500UL;
-  unsigned long mulWatchdogDefaultIntervalle = 1500UL;
-  unsigned long mulWatchDog;
   bool mbMessageRecu = false; // Au moins un message reçu depuis le démarrage
 
 public:
-  CRemoteJourNuit(const String& nomEqu, CEcran* ecran) : mEcran(ecran) {
+  CRemoteJourNuit(const String& nomEqu, CEcran* ecran) : CRemoteCapteurBase(1500UL), mEcran(ecran) {
       nomEquipement = nomEqu;
     }
 
@@ -56,7 +53,6 @@ public:
   void print() const;
   void handleMqttState(const String& payload);
   bool remonteStatusParMqtt();
-  unsigned long getWatchdogIntervalle() const { return mulWatchdogIntervalle; } // en secondes
 };
 
 #endif // __REMOTE_JOUR_NUIT_H__

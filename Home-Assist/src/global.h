@@ -134,8 +134,15 @@
 // Confirmation des trames des flotteurs (contrôleur principal, __LOCAL_MODE__) : « <nom> ACK » sur ce topic
 #define TOPIC_CONFIRMATION_FLOTTEUR "home/thermometre/command"
 
+// Capteur en retard / revenu (contrôleur principal, __LOCAL_MODE__) : publié retenu sur ce topic suivi du nom du capteur,
+// « RETARD <date> <heure> » ou « OK <date> <heure> » (voir RemoteCapteurBase.h)
+#define TOPIC_ALERTE_CAPTEUR "home/alerte/"
+// Thermomètre local du contrôleur principal (ThCYD, DS18B20 ou DHT20) : en panne après ce nombre de lectures ratées
+// d'affilée → WDG à l'écran et « RETARD » sur TOPIC_ALERTE_CAPTEUR (main_ds18b20.cpp) ; revenu à la 1re lecture réussie
+#define LOCAL_THERMO_ECHECS_PANNE 3
+
 // Version du logiciel
-#define VERSION "3.8"
+#define VERSION "3.9"
 
 
 //----------------------------------------------------------------------------
