@@ -1,3 +1,12 @@
+4.0
+Bandeau éveillé / endormi des nœuds : toute trame d'un capteur du nœud (batterie, flotteur, jour / nuit, couleur) le passe au
+    vert, plus seulement celles du thermomètre (CRemoteThermo / CRemoteDHT20::noteEveil(), appelée par CMqtt::callback()) ;
+    en LoRa, un réveil par la minuterie n'envoie souvent que le flotteur ou la batterie avant « DEEPSLEEP ON » :
+    le bandeau de ThRemise restait rouge (16/11/2026)
+Redessin complet de l'écran (changement de série…) : nom, bandeau, température et humidité d'un capteur sans valeur (KO,
+    après un reflash) n'étaient pas redessinés, seule la batterie restait : le garde-fou anti-rafraîchissement de
+    drawMesure1/2 ignorait l'effacement → CZoneMesure(Double)::oublieAffichage() appelée par drawMainInterface()
+
 3.9
 Délai d'alerte annoncé par les capteurs (Capteur 3.9 : « alerte:<s> » en fin de chaque trame de mesure) :
     ParsedMqttMessage le range à part (miDelaiAlerteS) au lieu de le prendre pour une valeur (les classes Remote lisent

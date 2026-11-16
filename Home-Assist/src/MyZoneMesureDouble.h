@@ -52,6 +52,9 @@ class CZoneMesureDouble {
         unsigned int muiPosX, muiPosY, muiWidth, muiHight, muiBgColor; // Cadre contenant le nom et la mesure. Initialisées par le constructeur
         unsigned int muiPosMesure2X, muiPosMesure2Y, muiMesure2Width, muiMesure2Hight, muiMesure2BgColor; // Cadre contenant la mesure 2. Calculé
 
+        // Écran effacé (drawMainInterface() : fillScreen) : oublie les dernières valeurs dessinées, pour que le prochain
+        // draw…() redessine tout, même une valeur KO inchangée (sinon nom, bandeau et mesures restaient effacés, 16/11/2026)
+        void oublieAffichage() { mfOldMesure1 = mfOldMesure2 = mfOldValBatterie = 0.0; miOldEclairement = miOldEtatJourNuit = -2; miOldEveil = -3; }
         void calculeCoordonnees();
         CZoneMesureDouble(/*CConfig& cfg, */TFT_eSPI& tft, unsigned int x, unsigned int y, unsigned int w, unsigned int h, unsigned int bgcolor, String name="");
 

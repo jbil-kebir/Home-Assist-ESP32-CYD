@@ -36,6 +36,8 @@ private:
 
 public:
   int getEveil() const { return miEveil; }
+  // Trame d'un capteur du nœud (le thermomètre, sa batterie, son flotteur…) : « DEEPSLEEP ON » = endormi, sinon éveillé
+  void noteEveil(const String& payload);
   CRemoteDHT20(const String& nomEqu, CEcran* ecran,
       std::function<void(const String&, float)> callbackTemerature = nullptr, 
       std::function<void(const String&, float)> callbackHumidite = nullptr,

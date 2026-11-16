@@ -101,6 +101,21 @@ void CRemoteDHT20::setMqttPublishCallback(std::function<int(const char*, const c
         onMqttPublish = cb;
     }
 
+// État éveillé / endormi du nœud (bandeau derrière le nom sur le CYD) : « <nom> DEEPSLEEP ON … » = endormi, toute autre
+// trame = éveillé. Appelée pour les trames du thermomètre ET pour celles des autres capteurs du même nœud (CMqtt::callback() :
+// en LoRa, un réveil par la minuterie n'envoie souvent que la batterie ou le flotteur avant « DEEPSLEEP ON », 16/11/2026).
+// Au changement, la zone est redessinée avec la dernière température.
+void CRemoteDHT20::noteEveil(const String& payload) {
+  if (!active) return;
+  int iEspace = payload.indexOf(' ');
+  if (iEspace <= 0) return;
+  int eveil = payload.substring(iEspace + 1).startsWith("DEEPSLEEP ON") ? 0 : 1;
+  if (eveil != miEveil) {
+    miEveil = eveil;
+    if (onTemperatureChanged != nullptr) onTemperatureChanged(nomEquipement, lastTempC);
+  }
+}
+
 void CRemoteDHT20::handleMqttState(const String& payload) {
   //String cmd = payload;
   //cmd.trim();
@@ -114,16 +129,9 @@ void CRemoteDHT20::handleMqttState(const String& payload) {
   }
   inactifAffiche = false;
 
-  // État éveillé / endormi (bandeau derrière le nom sur le CYD) : « <nom> DEEPSLEEP ON … » = endormi,
-  // toute autre trame du nœud = éveillé. Au changement, la zone est redessinée avec la dernière température.
+  // État éveillé / endormi (bandeau derrière le nom sur le CYD)
   int iEspace = payload.indexOf(' ');
-  if (iEspace > 0 && payload.substring(0, iEspace).equalsIgnoreCase(nomEquipement)) {
-    int eveil = payload.substring(iEspace + 1).startsWith("DEEPSLEEP ON") ? 0 : 1;
-    if (eveil != miEveil) {
-      miEveil = eveil;
-      if (onTemperatureChanged != nullptr) onTemperatureChanged(nomEquipement, lastTempC);
-    }
-  }
+  if (iEspace > 0 && payload.substring(0, iEspace).equalsIgnoreCase(nomEquipement)) noteEveil(payload);
 
   ParsedMqttMessage msg;
   msg.parse(payload);

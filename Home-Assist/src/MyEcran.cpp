@@ -471,6 +471,14 @@ String CEcran::getHTML() {
 
 void CEcran::drawMainInterface() {
   tft.fillScreen(COULEUR_FOND_ECRAN);
+  // Écran effacé : chaque zone de mesure se redessinera entièrement (le garde-fou anti-rafraîchissement sautait les valeurs KO)
+  mZoneMesureOuest.oublieAffichage();
+  mZoneMesureEst.oublieAffichage();
+  mZoneMesureCentre.oublieAffichage();
+  mZoneMesureDoubleOuest.oublieAffichage();
+  mZoneMesureDoubleCentre.oublieAffichage();
+  mZoneMesureDoubleEst.oublieAffichage();
+  mZoneMesureDoubleBas.oublieAffichage();
   mZoneTitle.drawTitle();
 
 

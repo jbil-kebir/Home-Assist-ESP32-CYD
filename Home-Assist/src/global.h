@@ -142,7 +142,7 @@
 #define LOCAL_THERMO_ECHECS_PANNE 3
 
 // Version du logiciel
-#define VERSION "3.9"
+#define VERSION "4.0"
 
 
 //----------------------------------------------------------------------------

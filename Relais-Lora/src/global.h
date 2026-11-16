@@ -84,9 +84,13 @@
 
 
 // Version du logiciel
-#define VERSION "2.5"
+#define VERSION "2.6"
 // Attente maximale de la fin d'une émission LoRa avant d'en commencer une autre (CMyLoraRxTx::sendPacket())
 #define LORA_ATTENTE_TX_MS 2000
+// Envois différés (ACK du flotteur relayé depuis MQTT) : émis après FILE_CMD_SILENCE_MS sans trame reçue,
+// au plus LORA_DIFFERE_MAX_MS après leur mise en attente ; LORA_DIFFERES_MAX messages en attente au plus
+#define LORA_DIFFERE_MAX_MS 5000
+#define LORA_DIFFERES_MAX   4
 
 
 #endif // __GLOBAL_H__

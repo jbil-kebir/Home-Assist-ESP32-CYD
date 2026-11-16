@@ -41,6 +41,13 @@ private:
   float mfOutputPower = LORA_OUTPUT_POWER;
   uint16_t muiPreambleLength = LORA_PREAMBLE_LENGTH;
 
+  // Envois différés (ACK du flotteur...) : émis quand aucune trame n'est arrivée depuis FILE_CMD_SILENCE_MS,
+  // pour ne pas émettre par-dessus la rafale de trames d'un capteur (radio semi-duplex : relais sourd en émission)
+  unsigned long mulDerniereReception = 0;   // millis() de la dernière trame reçue (valide ou non)
+  std::vector<String> mvDifferes;           // Messages en attente (topic + " " + payload)
+  unsigned long mulPremierDiffere = 0;      // millis() de mise en attente du plus ancien
+  void envoieDifferes();                    // Appelée par loop()
+
 public:
   CMyLoraRxTx(CConfig& cfg, SX1262& radio) : mConfig(&cfg), mRadio(radio) {
   };
@@ -63,6 +70,7 @@ public:
   void receivePacket();
   int sendPacket(const char* topic, const char* pyload);
   int sendPacket(const char* message);
+  int sendPacketDiffere(const char* topic, const char* pyload); // Émis au prochain silence (voir envoieDifferes())
   int validateParameters();
   int parseMessage(ParsedLoraP2PMessage& result, const String& input);
   int handleIncommingLoraP2PMessage(const String& inMessage);

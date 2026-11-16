@@ -32,6 +32,9 @@ class CZoneMesure {
     public:
         unsigned int muiPosX, muiPosY, muiWidth, muiHight, muiBgColor; // Cadre contenant le nom et la mesure. Initialisées par le constructeur
         unsigned int muiValMesureX, muiValMesureY, muiValMesureFont; // Position et Police de la mesure 1 (température, ...)
+        // Écran effacé (drawMainInterface() : fillScreen) : oublie les dernières valeurs dessinées, pour que le prochain
+        // draw…() redessine tout, même une valeur KO inchangée (16/11/2026)
+        void oublieAffichage() { mfOldMesure = mfOldValBatterie = 0.0; miOldEveil = -3; }
 
         void calculeCoordonnees();
         CZoneMesure(/*CConfig& cfg, */TFT_eSPI& tft, unsigned int x, unsigned int y, unsigned int w, unsigned int h, unsigned int bgcolor, String name=""); 

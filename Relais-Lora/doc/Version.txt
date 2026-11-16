@@ -1,3 +1,9 @@
+2.6
+ACK du flotteur (commandes relayées depuis home/thermometre/command) : émis au prochain silence radio
+    (FILE_CMD_SILENCE_MS sans trame reçue, au plus LORA_DIFFERE_MAX_MS = 5 s d'attente, file de LORA_DIFFERES_MAX = 4) ;
+    avant, émis dès sa réception MQTT, pendant la rafale de trames du capteur : relais sourd, une trame perdue
+    (CMyLoraRxTx::sendPacketDiffere() / envoieDifferes(), 16/11/2026)
+
 2.5
 CMyLoraRxTx::sendPacket() : attend la fin de l'émission en cours (LORA_ATTENTE_TX_MS = 2 s au plus) avant d'en
     commencer une autre ; avant, la 2e émission coupait la 1re (commande d'un capteur suivie de l'ACK du flotteur :

@@ -27,6 +27,8 @@ private:
 
 public:
   int getEveil() const { return miEveil; }
+  // Trame d'un capteur du nœud (le thermomètre, sa batterie, son flotteur…) : « DEEPSLEEP ON » = endormi, sinon éveillé
+  void noteEveil(const String& payload);
   CRemoteThermo(const String& nomEqu, CEcran* ecran, 
       std::function<void(const String&, float)> callback = nullptr,
       std::function<int(const char*, const char*)> cbonMqttPublish = nullptr) : CRemoteCapteurBase(60UL), mEcran(ecran), onTemperatureChanged(callback), onMqttPublish(cbonMqttPublish) {

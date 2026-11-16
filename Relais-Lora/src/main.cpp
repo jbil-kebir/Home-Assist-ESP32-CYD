@@ -41,8 +41,9 @@ void setup() {
   config.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
       return mqtt.publish(topic, payload);
   });
+  // Commandes relayées depuis home/thermometre/command (ACK du flotteur) : émises au prochain silence radio
   config.setLoraPublishCallback([](const char* topic, const char* payload) -> int {
-      return mLoraRxTx.sendPacket(topic, payload);
+      return mLoraRxTx.sendPacketDiffere(topic, payload);
   });
   
   int ret = mLoraRxTx.setup();

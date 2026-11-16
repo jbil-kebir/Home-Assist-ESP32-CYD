@@ -22,6 +22,13 @@ static CRCDevice* appareilDuNoeudDePresence(CConfig& cfg, const String& topic) {
 }
 #endif
 
+// Trame d'un capteur du nœud autre que le thermomètre (batterie, flotteur, jour / nuit, couleur) : le nœud est éveillé
+// (bandeau vert derrière le nom du thermomètre). CRemoteThermo ou CRemoteDHT20 ; nullptr : rien
+template <typename T>
+static void noteEveilNoeud(T* thermo, const String& payload) {
+  if (thermo != nullptr) thermo->noteEveil(payload);
+}
+
 void CMqtt::setup(const String pref) {
   mPrefixNVS = pref;
   loadFromNVS();
@@ -282,48 +289,58 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       mConfig.mRemoteThSdb->handleMqttState(messageOrg);
     }
     else if (message.startsWith("COULSDB")) {
+      noteEveilNoeud(mConfig.mRemoteThSdb, messageOrg);
       mConfig.mRemoteCoulSdb->handleMqttState(messageOrg);
     }
     else if (message.startsWith("BATSDB")) {
+      noteEveilNoeud(mConfig.mRemoteThSdb, messageOrg);
       mConfig.mRemoteBatSdb->handleMqttState(messageOrg);
     }
     else if (message.startsWith("THCH1ER")) {
       mConfig.mRemoteThCh1er->handleMqttState(messageOrg);
     }
     else if (message.startsWith("BATCH1ER")) {
+      noteEveilNoeud(mConfig.mRemoteThCh1er, messageOrg);
       mConfig.mRemoteBatThCh1er->handleMqttState(messageOrg);
     }
     else if (message.startsWith("THCAVE")) {
       mConfig.mRemoteThCave->handleMqttState(messageOrg);
     }
     else if (message.startsWith("FLOTTEURREMISE")) {
+      noteEveilNoeud(mConfig.mRemoteThRemise, messageOrg);
       mConfig.mRemoteTor->handleMqttState(messageOrg);
     }
     else if (message.startsWith("BATCAVE")) {
+      noteEveilNoeud(mConfig.mRemoteThCave, messageOrg);
       mConfig.mRemoteBatCave->handleMqttState(messageOrg);
     }
     else if (message.startsWith("JNCAVE")) {
+      noteEveilNoeud(mConfig.mRemoteThCave, messageOrg);
       if (mConfig.mRemoteJnCave != nullptr) mConfig.mRemoteJnCave->handleMqttState(messageOrg);
     }
     else if (message.startsWith("THNOMADE")) {
       mConfig.mRemoteThNomade->handleMqttState(messageOrg);
     }
     else if (message.startsWith("FLOTTEURNOMADE")) {
+      noteEveilNoeud(mConfig.mRemoteThNomade, messageOrg);
       mConfig.mRemoteTorNomade->handleMqttState(messageOrg);
     }
     else if (message.startsWith("BATNOMADE")) {
+      noteEveilNoeud(mConfig.mRemoteThNomade, messageOrg);
       mConfig.mRemoteBatNomade->handleMqttState(messageOrg);
     }
     else if (message.startsWith("THREMISE")) {
       mConfig.mRemoteThRemise->handleMqttState(messageOrg);
     }
     else if (message.startsWith("BATREMISE")) {
+      noteEveilNoeud(mConfig.mRemoteThRemise, messageOrg);
       mConfig.mRemoteBatRemise->handleMqttState(messageOrg);
     }
     else if (message.startsWith("THCHRDC")) {
       mConfig.mRemoteThChRdc->handleMqttState(messageOrg);
     }
     else if (message.startsWith("BATCHRDC")) {
+      noteEveilNoeud(mConfig.mRemoteThChRdc, messageOrg);
       mConfig.mRemoteBatChRdc->handleMqttState(messageOrg);
     }
     else {

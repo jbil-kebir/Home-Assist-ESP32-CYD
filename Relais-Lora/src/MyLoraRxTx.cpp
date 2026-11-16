@@ -280,6 +280,7 @@ int CMyLoraRxTx::loop() {
       } else {
         // C'était une réception
         String received;
+        mulDerniereReception = millis();
         int state = mRadio.readData(received);
         float fRssi = mRadio.getRSSI();
         float fSnr = mRadio.getSNR();
@@ -305,10 +306,38 @@ int CMyLoraRxTx::loop() {
         ret = handleIncommingLoraP2PMessage(received);
       }
     }
-  
 
-  
+  envoieDifferes();
+
   return ret;
+}
+
+// Message mis en attente (ACK du flotteur relayé depuis MQTT, 16/11/2026) : avant, émis dès sa réception MQTT, il
+// partait pendant la rafale de trames du capteur, dont une était perdue
+int CMyLoraRxTx::sendPacketDiffere(const char* topic, const char* pyload) {
+  if (!mbInitialized) return -9;
+  if (mvDifferes.empty()) mulPremierDiffere = millis();
+  if (mvDifferes.size() >= LORA_DIFFERES_MAX) {
+    Serial.printf("[LoRa] File des envois différés pleine : <%s> abandonné\n", mvDifferes.front().c_str());
+    mvDifferes.erase(mvDifferes.begin());
+  }
+  mvDifferes.push_back(String(topic) + " " + String(pyload));
+  Serial.printf("[LoRa] Envoi différé (silence attendu) : <%s %s>\n", topic, pyload);
+  return 0;
+}
+
+// Un message différé par passage, quand la radio écoute et qu'aucune trame n'est arrivée depuis FILE_CMD_SILENCE_MS
+// (au plus LORA_DIFFERE_MAX_MS d'attente pour le plus ancien, si les trames ne s'arrêtent pas)
+void CMyLoraRxTx::envoieDifferes() {
+  if (mvDifferes.empty() || currentMode != MODE_RX) return;
+  bool bSilence = millis() - mulDerniereReception >= FILE_CMD_SILENCE_MS;
+  bool bTropAttendu = millis() - mulPremierDiffere >= LORA_DIFFERE_MAX_MS;
+  if (!bSilence && !bTropAttendu) return;
+  if (!bSilence) Serial.println(F("[LoRa] Envoi différé : pas de silence, envoi forcé"));
+  String sMessage = mvDifferes.front();
+  mvDifferes.erase(mvDifferes.begin());
+  mulPremierDiffere = millis();   // Le suivant attend à son tour
+  sendPacket(sMessage.c_str());
 }
 
 
