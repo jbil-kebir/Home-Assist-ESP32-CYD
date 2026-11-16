@@ -1,3 +1,9 @@
+4.1
+LoRa : écoute avant émission (CAD, attendCanalLibre() dans MyLoraRxTx.cpp) : canal occupé par un autre émetteur → attente
+    aléatoire de LORA_CAD_ATTENTE_MIN_MS à LORA_CAD_ATTENTE_MAX_MS (50 à 300 ms), LORA_CAD_ESSAIS (8) fois au plus, puis
+    émission quand même. Le 16/11/2026, le DEEPSLEEP ON de ThCave et le EVEIL de ThRemise sont partis ensemble : trame
+    illisible au relais (CRC), bandeau de ThCave resté vert 15 min sur le CYD
+
 4.0
 Trame CONFIG LoRa : la limite de découpage comptait 250 octets de texte, sans les marqueurs START_STOP (2 × 10 octets)
     ajoutés par sendPacket() : paquet de 270 octets refusé par le SX1262 (max 255). Limite = LORA_PAQUET_MAX (255) moins

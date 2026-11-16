@@ -399,6 +399,11 @@
 // Doit couvrir : silence attendu par le relais (FILE_CMD_SILENCE_MS = 600 ms) + durée de la commande (~200 ms).
 // Relancée par toute émission (réponse à une commande). Avant le 16/11 : 1000 ms
 #define LORA_FENETRE_ECOUTE_MS          1500
+// Écoute avant émission (CAD, attendCanalLibre() dans MyLoraRxTx.cpp) : canal occupé → attente aléatoire entre MIN et MAX
+// puis nouvel essai, ESSAIS fois au plus (puis émission quand même). Une trame dure ~100 à 390 ms en SF7 / 125 kHz
+#define LORA_CAD_ESSAIS                 8
+#define LORA_CAD_ATTENTE_MIN_MS         50
+#define LORA_CAD_ATTENTE_MAX_MS         300
 
 // -----------------------------------------------------------------------------
 // Macro pour logs de debug (optionnel)
@@ -415,7 +420,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "4.0"
+#define VERSION "4.1"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

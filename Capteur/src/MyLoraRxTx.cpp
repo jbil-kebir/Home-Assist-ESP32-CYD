@@ -31,6 +31,25 @@ void setFlag(void) {
   operationDone = true;
 }
 
+// Écoute avant émission (détection d'activité LoRa, CAD) : si un autre émetteur occupe le canal, attente aléatoire
+// (LORA_CAD_ATTENTE_MIN_MS à LORA_CAD_ATTENTE_MAX_MS) puis nouvel essai, LORA_CAD_ESSAIS fois au plus ; ensuite on
+// émet quand même. Deux nœuds qui émettaient ensemble perdaient leurs trames (16/11/2026 : DEEPSLEEP ON de ThCave
+// et EVEIL de ThRemise, erreur CRC au relais). La radio sort de la réception pendant le CAD.
+static void attendCanalLibre() {
+  for (int i = 0; i < LORA_CAD_ESSAIS; i++) {
+    int state = radio.scanChannel();  // Bloquant, quelques ms en SF7
+    operationDone = false;            // L'interruption « CAD terminé » passe par setFlag()
+    if (state != RADIOLIB_LORA_DETECTED) {
+      if (state != RADIOLIB_CHANNEL_FREE) Serial.printf("[SX1262] Écoute avant émission : erreur %d, émission\n", state);
+      return;
+    }
+    unsigned long ulAttente = random(LORA_CAD_ATTENTE_MIN_MS, LORA_CAD_ATTENTE_MAX_MS + 1);
+    Serial.printf("[SX1262] Canal occupé (essai %d/%d) : attente %lu ms\n", i + 1, LORA_CAD_ESSAIS, ulAttente);
+    delay(ulAttente);
+  }
+  Serial.println(F("[SX1262] Canal toujours occupé : émission quand même"));
+}
+
 CMyLoraRxTx::CMyLoraRxTx(CConfig& cfg/*, SX1262& radio*/) : mConfig(&cfg)/*, mRadio(radio)*/ {
   //mRadio = &
   };
@@ -377,6 +396,7 @@ int CMyLoraRxTx::loop() {
       if (mbPendingMessage) {
         mbPendingMessage = false;
         Serial.printf("[SX1262] Envoi message en attente <%s> ... \n", mPendingMessage.c_str());
+        attendCanalLibre();
         currentMode = MODE_TX;
         operationDone = false;
         if (radio.startTransmit(mPendingMessage.c_str()) != RADIOLIB_ERR_NONE) {
@@ -518,6 +538,16 @@ int CMyLoraRxTx::sendPacket(const char* message) {
   }
 
   Serial.printf("[SX1262] Sending packet <%s> ... \n", sToSend.c_str());
+  if (currentMode == MODE_RX && operationDone) {
+    // Paquet arrivé depuis le contrôle du début : le mettre de côté avant que le CAD ne quitte la réception
+    operationDone = false;
+    String received;
+    if (radio.readData(received) == RADIOLIB_ERR_NONE) {
+      mReceptionEnAttente = received;
+      mbReceptionEnAttente = true;
+    }
+  }
+  attendCanalLibre();
   currentMode = MODE_TX;
   operationDone = false;   // efface l'interruption parasite de la transition d'état
   ret = radio.startTransmit(sToSend.c_str());
