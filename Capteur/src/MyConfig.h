@@ -187,7 +187,9 @@ public:
   int  handleMqttCommand(const String& payload);
   int  setParam(const String& cle, const String& valeur);  // Paramètre modifiable à distance (SET) ou par la page Web
   String getParams() const;                                // « cle:valeur ... » de tous les paramètres modifiables
-  std::vector<CCapteurBase*> capteursAlerte() const;       // Capteurs à délai d'alerte (retard toléré, voir CapteurBase.h)
+  std::vector<CCapteurBase*> capteursAlerte() const;
+  void renvoieMesuresSiDelaiChange(const std::vector<unsigned long>& vDelaisAvant); // Après une commande (voir .cpp)
+  void renvoieMesure(CCapteurBase* capteur);              // Dernière mesure renvoyée, forcée       // Capteurs à délai d'alerte (retard toléré, voir CapteurBase.h)
   void envoieConfig(const String& sErreurs = "");          // Réponse aux commandes GET / SET (MQTT et LoRa)
   void envoieVersion();                                     // « <nom> VERSION 3.4 31/10/2026 14:05 » (démarrage et GET)
   void setSleepIntervalle(unsigned long st);

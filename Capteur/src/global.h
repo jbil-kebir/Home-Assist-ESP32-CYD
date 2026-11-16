@@ -387,9 +387,18 @@
 #define FORCAGE_MIN_S                   60
 #define FORCAGE_MAX_S                   86400
 
-// Longueur maximale d'une trame LoRa envoyée (le SX1262 accepte 255 octets) : au-delà, la réponse CONFIG est découpée
-// en « <nom> CONFIG ... » puis « <nom> CONFIGSUITE ... » (CConfig::envoieConfig())
-#define LORA_TRAME_MAX                  250
+// Taille maximale d'un paquet LoRa (SX1262 : 255 octets), marqueurs START_STOP (2 × 10) et IP éventuelle compris :
+// au-delà, la réponse CONFIG est découpée en « <nom> CONFIG ... » puis « <nom> CONFIGSUITE ... » (CConfig::envoieConfig()
+// retire elle-même les marqueurs et l'IP : texte utile ≤ 235 octets sans Wi-Fi). Un paquet plus long est refusé par la
+// radio (CMyLoraRxTx::sendPacket() repasse alors en réception)
+#define LORA_PAQUET_MAX                 255
+// Attente avant de traiter (et donc de répondre à) une commande reçue par LoRa : le relais peut encore émettre
+// (un paquet court dure ~100 ms en SF7 / 125 kHz) et n'écoute pas pendant ce temps
+#define LORA_DELAI_REPONSE_MS           300
+// Fenêtre d'écoute des commandes après la dernière émission, avant le deep sleep (LoRa seul ; Wi-Fi : 1 s, MyConfig.h).
+// Doit couvrir : silence attendu par le relais (FILE_CMD_SILENCE_MS = 600 ms) + durée de la commande (~200 ms).
+// Relancée par toute émission (réponse à une commande). Avant le 16/11 : 1000 ms
+#define LORA_FENETRE_ECOUTE_MS          1500
 
 // -----------------------------------------------------------------------------
 // Macro pour logs de debug (optionnel)
@@ -406,7 +415,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "3.9"
+#define VERSION "4.0"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

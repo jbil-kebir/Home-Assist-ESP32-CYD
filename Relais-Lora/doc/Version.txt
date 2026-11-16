@@ -1,3 +1,13 @@
+2.5
+CMyLoraRxTx::sendPacket() : attend la fin de l'émission en cours (LORA_ATTENTE_TX_MS = 2 s au plus) avant d'en
+    commencer une autre ; avant, la 2e émission coupait la 1re (commande d'un capteur suivie de l'ACK du flotteur :
+    l'un des deux paquets perdu, constaté le 16/11 sur ThRemise). Émission refusée par la radio : retour en écoute
+File de commandes : FILE_CMD_SILENCE_MS 300 → 600 ms ; une trame de 255 octets dure ~390 ms : le relais croyait le
+    capteur silencieux et émettait par-dessus sa trame suivante (VERSION et CONFIG du démarrage perdues le 16/11)
+Réception : écoute relancée (startRx) juste après readData(), avant le traitement (affichages, MQTT, file) ; avant,
+    relancée à la fin et operationDone effacé : la trame arrivée pendant le traitement était perdue (CONFIGSUITE
+    juste après une longue trame CONFIG, 16/11)
+
 2.3
 Version du firmware avec la date et l'heure de compilation (« 2.3 31/10/2026 14:05 », MyVersion.cpp, comme Capteur 3.4) :
     trame « <nom> VERSION 2.3 31/10/2026 14:05 » sur topic_config_state (home/confrelaislora/state)

@@ -213,7 +213,7 @@ void CConfig::loop() {
     bFinAnticipee = (ulDateToutRemonte != 0) && (millis() - ulDateToutRemonte >= DELAI_COMMANDES_APRES_REMONTEE_MS);
     #elif defined(_LORA_P2P_MODE_)
     // LoRa seul : fin d'éveil anticipée dès que toutes les mesures sont parties ET que la dernière émission est
-    // terminée (sinon mLoraRxTx->sleep() la couperait), puis DELAI_COMMANDES_APRES_REMONTEE_MS d'écoute
+    // terminée (sinon mLoraRxTx->sleep() la couperait), puis LORA_FENETRE_ECOUTE_MS d'écoute
     // pour les commandes relayées par Relais-Lora.
     static unsigned long ulDateToutEmis = 0;
     static bool bPresenceTentee = false;
@@ -232,7 +232,10 @@ void CConfig::loop() {
       ulDateToutEmis = millis();
       gDiag.ulPub = ulDateToutEmis;
     }
-    bFinAnticipee = (ulDateToutEmis != 0) && (millis() - ulDateToutEmis >= DELAI_COMMANDES_APRES_REMONTEE_MS);
+    // Émission en cours après l'ouverture de la fenêtre (réponse à une commande : CONFIG, CONFIGSUITE, accusé...) :
+    // la fenêtre repart de la fin de cette émission (sinon le deep sleep pouvait couper la réponse)
+    if (ulDateToutEmis != 0 && mLoraRxTx != nullptr && mLoraRxTx->emissionEnCours()) ulDateToutEmis = millis();
+    bFinAnticipee = (ulDateToutEmis != 0) && (millis() - ulDateToutEmis >= LORA_FENETRE_ECOUTE_MS);
     // Même si l'éveil maximum (wakeI) est dépassé, la fenêtre d'écoute est gardée : sans elle, aucune commande
     // ne peut plus atteindre le capteur (wakeI 1 → capteur injoignable à distance, vu le 27/10/2026)
     if (!bFinAnticipee && ulDateToutEmis != 0) return;
@@ -854,6 +857,9 @@ int CConfig::handleMqttCommand(const String& payload) {
   String cmd = payload;
   cmd.toUpperCase();
   cmd.trim();
+  // Délais d'alerte avant la commande (SET d'un forçage / retard, sommeil...) : voir renvoieMesuresSiDelaiChange()
+  std::vector<unsigned long> vDelais;
+  for (CCapteurBase* c : capteursAlerte()) vDelais.push_back(c->getDelaiAlerteS());
 
   if (cmd.startsWith("SLEEP")) {
     Serial.println("CConfig::handleMqttCommand - Commande SLEEP détectée : " + cmd); Serial.flush();
@@ -920,7 +926,45 @@ int CConfig::handleMqttCommand(const String& payload) {
     ret = -1; // Commande inconnue
   }
 
+  renvoieMesuresSiDelaiChange(vDelais);
   return ret;
+}
+
+//
+// Délai d'alerte d'un capteur changé par une commande (forçage, retard toléré, sommeil) : le contrôleur ne l'apprend
+// qu'avec la mesure suivante, et garde d'ici là l'ancien délai (fausse alerte si le nouveau est plus long : constaté
+// le 16/11 sur FlotteurRemise, forçage 20 s → 3600 s). Les mesures des capteurs concernés sont donc renvoyées tout de
+// suite (forcées, dernière valeur, sans nouvelle lecture), avec leur nouveau délai.
+//
+void CConfig::renvoieMesuresSiDelaiChange(const std::vector<unsigned long>& vDelaisAvant) {
+  std::vector<CCapteurBase*> v = capteursAlerte();
+  for (size_t i = 0; i < v.size() && i < vDelaisAvant.size(); i++) {
+    if (v[i]->getDelaiAlerteS() == vDelaisAvant[i]) continue;
+    Serial.printf("CConfig::renvoieMesuresSiDelaiChange() - %s : délai d'alerte %lu s -> %lu s, mesure renvoyée\n",
+                  v[i]->getPrefixNVS().c_str(), vDelaisAvant[i], v[i]->getDelaiAlerteS());
+    renvoieMesure(v[i]);
+  }
+}
+
+void CConfig::renvoieMesure(CCapteurBase* capteur) {
+  #ifdef CAPTEUR_DS18B20
+  if (capteur == ds18b20 && ds18b20->active) ds18b20->readAndPublish(true);
+  #endif
+  #ifdef CAPTEUR_DHT20
+  if (capteur == dht20 && dht20->active) dht20->readAndPublish(true, false);
+  #endif
+  #ifdef FLOTTEUR_VERTICAL
+  if (capteur == mFlotteurVertical && mFlotteurVertical->active) mFlotteurVertical->readAndPublish(true, false);
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  if (capteur == mCapteurRGB && mCapteurRGB->active) mCapteurRGB->readAndPublish(true, false);
+  #endif
+  #ifdef CAPTEUR_BATTERIE
+  if (capteur == mBatterieAA && mBatterieAA->active) mBatterieAA->readAndPublish(true);
+  #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (capteur == mJourNuit && mJourNuit->active) mJourNuit->readAndPublish(true);
+  #endif
 }
 
 //
@@ -1025,7 +1069,7 @@ String CConfig::getParams() const {
 
 // « <nom> CONFIG <paramètres> [ERREUR <cle:valeur ...>] » sur topic_config_state, par MQTT et par LoRa.
 // MQTT : toujours une seule trame.
-// LoRa : une trame fait au plus 255 octets ; si topic + message dépasse LORA_TRAME_MAX, découpage aux espaces :
+// LoRa : un paquet fait au plus LORA_PAQUET_MAX octets, marqueurs et IP compris ; au-delà, découpage aux espaces :
 //   « <nom> CONFIG <paramètres...> » puis « <nom> CONFIGSUITE <paramètres...> » ; la partie ERREUR, jamais
 //   coupée, va dans la dernière trame (HA : sensor.<id>_config cumule les attributs des trames CONFIGSUITE).
 void CConfig::envoieConfig(const String& sErreurs) {
@@ -1038,6 +1082,9 @@ void CConfig::envoieConfig(const String& sErreurs) {
     onMqttPublish(topic_config_state.c_str(), sMsg.c_str());
   #ifdef _LORA_P2P_MODE_
   if (mLoraRxTx != nullptr && mLoraRxTx->isInitialized()) {
+    // Place disponible : paquet moins les marqueurs START_STOP et l'IP ajoutés par sendPacket()
+    unsigned int uiMax = LORA_PAQUET_MAX - 2 * strlen(START_STOP);
+    if (WiFi.status() == WL_CONNECTED) uiMax -= 1 + WiFi.localIP().toString().length();
     String sEntete = topic_config_state + " " + nomEquipement + " CONFIG";
     String sTrame = sEntete;
     String reste = sParams;
@@ -1054,7 +1101,7 @@ void CConfig::envoieConfig(const String& sErreurs) {
         reste.trim();
       }
       else { sMorceau = sErreur; bErreurPlacee = true; }
-      if (sTrame != sEntete && sTrame.length() + 1 + sMorceau.length() > LORA_TRAME_MAX) {
+      if (sTrame != sEntete && sTrame.length() + 1 + sMorceau.length() > uiMax) {
         Serial.println("CConfig::envoieConfig() - LoRa : " + sTrame);
         mLoraRxTx->sendPacket(sTrame.c_str());
         sEntete = topic_config_state + " " + nomEquipement + " CONFIGSUITE";

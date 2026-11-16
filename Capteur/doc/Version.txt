@@ -1,3 +1,20 @@
+4.0
+Trame CONFIG LoRa : la limite de découpage comptait 250 octets de texte, sans les marqueurs START_STOP (2 × 10 octets)
+    ajoutés par sendPacket() : paquet de 270 octets refusé par le SX1262 (max 255). Limite = LORA_PAQUET_MAX (255) moins
+    les marqueurs et l'IP éventuelle, calculée dans CConfig::envoieConfig() (texte utile ≤ 235 octets sans Wi-Fi)
+CMyLoraRxTx : émission refusée par la radio (startTransmit en erreur, aussi pour un message en attente) → retour en
+    réception ; avant, currentMode restait à MODE_TX et le nœud devenait muet jusqu'au redémarrage (constaté sur ThRemise
+    le 16/11 après un SET dont la réponse CONFIG dépassait 255 octets)
+Commande reçue par LoRa : traitée (et donc réponse CONFIG émise) après LORA_DELAI_REPONSE_MS = 300 ms (global.h) ;
+    le relais émet souvent un 2e paquet juste après la commande (ACK du flotteur) et n'écoute pas pendant ce temps
+    (1re trame CONFIG perdue, constaté le 16/11 sur ThRemise)
+Délai d'alerte changé par une commande (SET forçage / retard / sommeil, SLEEP...) : mesure des capteurs concernés
+    renvoyée aussitôt, forcée, avec le nouveau délai (CConfig::renvoieMesuresSiDelaiChange()) ; avant, le CYD gardait
+    l'ancien délai jusqu'à la mesure suivante (fausse alerte de FlotteurRemise après forçage 20 s → 3600 s)
+LoRa + deep sleep : fenêtre d'écoute des commandes LORA_FENETRE_ECOUTE_MS = 1500 ms (avant : 1000 ms, commun avec le
+    Wi-Fi), relancée tant qu'une émission est en cours (réponse à une commande : le deep sleep pouvait la couper) ;
+    va avec Relais-Lora 2.5 (silence de 600 ms avant d'envoyer une commande)
+
 3.9
 Délai d'alerte par capteur (superclasse CCapteurBase, CapteurBase.h/.cpp) : chaque mesure porte « alerte:<s> », en
     dernier (après FORCE, avant l'IP) = durée sans nouvelles au-delà de laquelle le contrôleur (CYD) signale le capteur.

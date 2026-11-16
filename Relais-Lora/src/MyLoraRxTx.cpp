@@ -281,24 +281,28 @@ int CMyLoraRxTx::loop() {
         // C'était une réception
         String received;
         int state = mRadio.readData(received);
+        float fRssi = mRadio.getRSSI();
+        float fSnr = mRadio.getSNR();
+        // Écoute relancée AVANT le traitement (affichages, MQTT, file de commandes) : un capteur envoie ses trames
+        // coup sur coup ; relancée après (et operationDone effacé par startRx()), la trame arrivée pendant le
+        // traitement était perdue (CONFIGSUITE juste après une longue trame CONFIG : 16/11/2026)
+        startRx();
 
         if (state == RADIOLIB_ERR_NONE) {
           Serial.print(F("[LoRa] Reçu : "));
           Serial.println(received);
           Serial.print(F("  RSSI : "));
-          Serial.print(mRadio.getRSSI());
+          Serial.print(fRssi);
           Serial.print(F(" dBm  SNR : "));
-          Serial.print(mRadio.getSNR());
+          Serial.print(fSnr);
           Serial.println(F(" dB"));
         } else {
           Serial.print(F("[LoRa] Erreur RX, code "));
           Serial.println(state);
         }
-        Serial.printf("int CMyLoraRxTx::loop() - Reçu (RSSI: %.1f dBm) : %s\n", mRadio.getRSSI(), received.c_str());
+        Serial.printf("int CMyLoraRxTx::loop() - Reçu (RSSI: %.1f dBm) : %s\n", fRssi, received.c_str());
 
         ret = handleIncommingLoraP2PMessage(received);
-
-        startRx();
       }
     }
   
@@ -354,12 +358,29 @@ int CMyLoraRxTx::sendPacket(const char* message) {
   int ret = 0;//RADIOLIB_ERR_NONE;
   if (!mbInitialized) return -9;
   String sToSend = START_STOP + String(message) + START_STOP;
+  if (currentMode == MODE_TX) {
+    // Émission précédente en cours (commande d'un capteur puis ACK du flotteur, par exemple) : l'attendre
+    // (LORA_ATTENTE_TX_MS au plus). Avant, le nouveau startTransmit() coupait le paquet en cours, perdu
+    // (constaté le 16/11 sur ThRemise)
+    unsigned long tAttente = millis();
+    while (!operationDone && millis() - tAttente < LORA_ATTENTE_TX_MS) delay(5);
+    if (operationDone) {
+      operationDone = false;
+      mRadio.finishTransmit();
+    }
+    else Serial.println(F("[SX1262] Émission précédente non terminée : interrompue"));
+  }
   Serial.printf("[SX1262] Sending packet <%s> ... \n", sToSend.c_str());
   currentMode = MODE_TX;
   operationDone = false;   // efface l'interruption parasite de la transition d'état
   /*transmissionState = */ret = mRadio.startTransmit(sToSend.c_str());
   //transmitFlag = true;
   if (ret == RADIOLIB_ERR_NONE) ret = 0;
+  else {
+    // Refusée (paquet trop long...) : aucune émission en cours, retour en écoute (sinon le relais restait en MODE_TX)
+    Serial.printf("[SX1262] Émission refusée, code %d\n", ret);
+    startRx();
+  }
   return ret;
 }
 

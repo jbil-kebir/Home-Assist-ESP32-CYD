@@ -284,6 +284,9 @@ int CMyLoraRxTx::handleIncommingLoraP2PMessage(const String& inMessage) {
     // Commandes de configuration
   if (topic == mConfig->topic_config_command) {
     Serial.println("int CMyLoraRxTx::handleIncommingLoraP2PMessage() - Commande configuration reçue : " + payload);
+    // Le relais émet souvent un 2e paquet juste après la commande (ACK du flotteur...) : pendant ce temps il
+    // n'écoute pas, une réponse immédiate (CONFIG) serait perdue (constaté le 16/11 sur ThRemise)
+    delay(LORA_DELAI_REPONSE_MS);
     mConfig->handleMqttCommand(payload);
     // Accusé de réception : Relais-Lora le publie sur MQTT et retire la commande de sa file d'attente
     if (payload.length() > 0) {
@@ -376,7 +379,10 @@ int CMyLoraRxTx::loop() {
         Serial.printf("[SX1262] Envoi message en attente <%s> ... \n", mPendingMessage.c_str());
         currentMode = MODE_TX;
         operationDone = false;
-        radio.startTransmit(mPendingMessage.c_str());
+        if (radio.startTransmit(mPendingMessage.c_str()) != RADIOLIB_ERR_NONE) {
+          Serial.println(F("[SX1262] Émission du message en attente refusée"));
+          startRx();
+        }
       } else {
         startRx();
       }
@@ -516,6 +522,13 @@ int CMyLoraRxTx::sendPacket(const char* message) {
   operationDone = false;   // efface l'interruption parasite de la transition d'état
   ret = radio.startTransmit(sToSend.c_str());
   if (ret == RADIOLIB_ERR_NONE) { ret = 0; muiNbEmissions++; }
+  else {
+    // Refusé (paquet de plus de LORA_PAQUET_MAX octets...) : aucune émission en cours, retour en réception.
+    // Sinon currentMode restait à MODE_TX sans fin d'émission à attendre : tous les envois suivants partaient
+    // en attente et n'étaient jamais émis (nœud muet).
+    Serial.printf("[SX1262] Émission refusée, code %d (%u octets)\n", ret, sToSend.length());
+    startRx();
+  }
   return ret;
 }
 

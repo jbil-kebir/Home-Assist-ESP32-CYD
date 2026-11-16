@@ -71,7 +71,10 @@
   { "home/confthnomade/command", "Nomade" }, \
   { "home/confthcave/command", "Cave" } }
 #define FILE_CMD_NB_MAX_CAPTEURS    8
-#define FILE_CMD_SILENCE_MS         300   // Silence après la dernière trame du capteur avant d'envoyer (il écoute 1 s)
+// Silence après la dernière trame du capteur avant d'envoyer : plus long qu'une trame de 255 octets (~390 ms en SF7 /
+// 125 kHz), sinon le relais émet par-dessus la trame suivante du capteur (VERSION, CONFIG perdues : 16/11, avec 300 ms).
+// Le capteur écoute LORA_FENETRE_ECOUTE_MS = 1,5 s après sa dernière émission (Capteur 4.0 ; 1 s avant)
+#define FILE_CMD_SILENCE_MS         600
 #define FILE_CMD_NOUVEAU_REVEIL_MS  5000  // Silence au-delà duquel une trame marque un nouveau réveil
 #define FILE_CMD_MAX_ENVOIS         10    // Réveils sans accusé avant abandon
 
@@ -81,7 +84,9 @@
 
 
 // Version du logiciel
-#define VERSION "2.4"
+#define VERSION "2.5"
+// Attente maximale de la fin d'une émission LoRa avant d'en commencer une autre (CMyLoraRxTx::sendPacket())
+#define LORA_ATTENTE_TX_MS 2000
 
 
 #endif // __GLOBAL_H__
