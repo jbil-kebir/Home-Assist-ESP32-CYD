@@ -313,7 +313,7 @@ bool CRemoteTCS34725::remonteCouleurParMqtt() {
     String sValTemp = nomEquipement + " COULR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(temp, 1);
     sValTemp += " FORCE";
     //Serial.println("CRemoteTCS34725::publieSurMqtt() Temp : " + sValTemp);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValTemp.c_str()) == 0);
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValTemp.c_str()) == 0);
     return ret;
 } 
 
@@ -330,7 +330,7 @@ bool CRemoteTCS34725::remonteLuminositeParMqtt() {
     String sValLux = nomEquipement + " LUXR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(muiLastLux);
     sValLux += " FORCE";
     //Serial.println("CRemoteTCS34725::publieSurMqtt() Lux  : " + sValLux);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValLux.c_str()) == 0);
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValLux.c_str()) == 0);
     return ret;
 } 
 
@@ -353,8 +353,8 @@ bool CRemoteTCS34725::remonteStatusParMqtt() {
     sValLux += " FORCE";
     Serial.println("CRemoteTCS34725::publieSurMqtt() Coul : " + sValTemp);
     Serial.println("CRemoteTCS34725::publieSurMqtt() Lux  : " + sValLux);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValTemp.c_str()) == 0);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValLux.c_str()) == 0);*/
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValTemp.c_str()) == 0);
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValLux.c_str()) == 0);*/
     return ret;
 } 
 

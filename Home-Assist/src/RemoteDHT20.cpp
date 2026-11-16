@@ -106,7 +106,7 @@ void CRemoteDHT20::setMqttPublishCallback(std::function<int(const char*, const c
 // en LoRa, un réveil par la minuterie n'envoie souvent que la batterie ou le flotteur avant « DEEPSLEEP ON », 16/11/2026).
 // Au changement, la zone est redessinée avec la dernière température.
 void CRemoteDHT20::noteEveil(const String& payload) {
-  if (!active) return;
+  if (!active || sbTrameCopie) return; // Copie republiée par le principal : pas une trame du nœud
   int iEspace = payload.indexOf(' ');
   if (iEspace <= 0) return;
   int eveil = payload.substring(iEspace + 1).startsWith("DEEPSLEEP ON") ? 0 : 1;
@@ -228,7 +228,7 @@ bool CRemoteDHT20::remonteTemperatureParMqtt() {
     String sValTemp = nomEquipement + " TEMPR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(temp, 1);
     sValTemp += " FORCE";
     //Serial.println("CRemoteDHT20::publieSurMqtt() Temp : " + sValTemp);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValTemp.c_str()) == 0);
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValTemp.c_str()) == 0);
     return ret;
 } 
 
@@ -245,7 +245,7 @@ bool CRemoteDHT20::remonteHumiditeParMqtt() {
     String sValHum = nomEquipement + " HUMR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(hum, 1);
     sValHum += " FORCE";
     //Serial.println("CRemoteDHT20::publieSurMqtt() Hum  : " + sValHum);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValHum.c_str()) == 0);
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValHum.c_str()) == 0);
     return ret;
 } 
 
@@ -268,8 +268,8 @@ bool CRemoteDHT20::remonteStatusParMqtt() {
     sValHum += " FORCE";
     Serial.println("CRemoteDHT20::publieSurMqtt() Temp : " + sValTemp);
     Serial.println("CRemoteDHT20::publieSurMqtt() Hum  : " + sValHum);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValTemp.c_str()) == 0);
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sValHum.c_str()) == 0);*/
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValTemp.c_str()) == 0);
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValHum.c_str()) == 0);*/
     return ret;
 } 
 

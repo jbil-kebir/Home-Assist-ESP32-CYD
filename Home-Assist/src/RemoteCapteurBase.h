@@ -32,6 +32,13 @@ public:
   static std::function<void()> onChangementRetard;
   // Vérifie le chien de garde de tous les capteurs actifs (passage en retard). À appeler par loop() du programme.
   static void verifieTous();
+  // Copies des dernières valeurs republiées par le CYD principal pour un auxiliaire qui démarre (« DEVICE CYD ») :
+  // publiées sur « …/copie » au lieu de « …/state » (home/thermometre/copie, home/noeud/copie), écoutées par les
+  // auxiliaires seuls. Sur le topic d'état, le principal (bandeau d'éveil, chien de garde) et HA (Éveillé, Dernière
+  // trame) les prenaient pour des trames des nœuds (16/11/2026).
+  static String topicCopie(const String& topicState);
+  // true pendant le traitement d'une copie (auxiliaires, CMqtt::callback()) : pas d'effet sur le bandeau d'éveil
+  static bool sbTrameCopie;
   // Durée lisible : « 45 s », « 21 min », « 1 h 01 », « 2 j 3 h 05 »
   static String formateDuree(unsigned long s);
 

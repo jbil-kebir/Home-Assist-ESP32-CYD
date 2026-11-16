@@ -112,7 +112,7 @@ void CRemoteThermo::setMqttPublishCallback(std::function<int(const char*, const 
 // en LoRa, un réveil par la minuterie n'envoie souvent que la batterie ou le flotteur avant « DEEPSLEEP ON », 16/11/2026).
 // Au changement, la zone est redessinée avec la dernière température.
 void CRemoteThermo::noteEveil(const String& payload) {
-  if (!active) return;
+  if (!active || sbTrameCopie) return; // Copie republiée par le principal : pas une trame du nœud
   int iEspace = payload.indexOf(' ');
   if (iEspace <= 0) return;
   int eveil = payload.substring(iEspace + 1).startsWith("DEEPSLEEP ON") ? 0 : 1;
@@ -241,14 +241,14 @@ bool CRemoteThermo::remonteStatusParMqtt() {
     sVal = nomEquipement + " INACTIFR " + mDateTime.getDate() + " " + mDateTime.getTime();
   }
   DBGLN(DBG_CAPTEURS, "CRemoteThermo::remonteStatusParMqtt() : " + sVal);
-  bool ret = onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str());
+  bool ret = onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sVal.c_str());
 
   // Humidité : uniquement si le capteur en fournit une (DHT20 : ThSdb, ThCh1er)
   if (active && lastHum != -1.0) {
     String sValHum = nomEquipement + " HUMR " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(lastHum, 1);
     sValHum += " FORCE";
     DBGLN(DBG_CAPTEURS, "CRemoteThermo::remonteStatusParMqtt() : " + sValHum);
-    onMqttPublish(mqttSubTopicState.c_str(), sValHum.c_str());
+    onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sValHum.c_str());
   }
   return ret;
 } 

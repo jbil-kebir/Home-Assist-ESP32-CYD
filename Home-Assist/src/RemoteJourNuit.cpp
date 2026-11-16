@@ -119,10 +119,10 @@ bool CRemoteJourNuit::remonteStatusParMqtt() {
   if (miLastEtat == JOUR_NUIT_INCONNU) return false; // Aucune mesure reçue depuis le démarrage
   CMyDateTime mDateTime;
   String sVal = nomEquipement + " Jour " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(miLastEtat) + " FORCE";
-  bool ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
+  bool ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sVal.c_str()) == 0);
   if (miLastEclairement != JOUR_NUIT_INCONNU) {
     sVal = nomEquipement + " Eclairement " + mDateTime.getDate() + " " + mDateTime.getTime() + " " + String(miLastEclairement) + " FORCE";
-    ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0) && ret;
+    ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sVal.c_str()) == 0) && ret;
   }
   return ret;
 }

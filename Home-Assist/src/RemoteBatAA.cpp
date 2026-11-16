@@ -189,7 +189,7 @@ bool CRemoteBatterieAA::remonteStatusParMqtt() {
     sVal = nomEquipement + " INACTIFR " + mDateTime.getDate() + " " + mDateTime.getTime();
   }
   DBGLN(DBG_CAPTEURS, "CBatterieAA::publieSurMqtt() : " + sVal);
-  bool ret = (onMqttPublish(mqttSubTopicState.c_str(), sVal.c_str()) == 0);
+  bool ret = (onMqttPublish(topicCopie(mqttSubTopicState).c_str(), sVal.c_str()) == 0);
   return ret;
 } 
 

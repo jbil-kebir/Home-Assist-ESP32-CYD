@@ -1,6 +1,13 @@
 #include "RemoteCapteurBase.h"
 
 std::function<void(const String&, bool, unsigned long)> CRemoteCapteurBase::onAlerte = nullptr;
+bool CRemoteCapteurBase::sbTrameCopie = false;
+
+// « home/thermometre/state » → « home/thermometre/copie » (topic sans « /state » final : « <topic>/copie »)
+String CRemoteCapteurBase::topicCopie(const String& topicState) {
+  if (topicState.endsWith("/state")) return topicState.substring(0, topicState.length() - 6) + "/copie";
+  return topicState + "/copie";
+}
 std::function<void()> CRemoteCapteurBase::onChangementRetard = nullptr;
 
 std::vector<CRemoteCapteurBase*>& CRemoteCapteurBase::registre() {

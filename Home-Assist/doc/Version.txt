@@ -1,3 +1,11 @@
+4.1
+Copies des dernières valeurs republiées par le principal au démarrage d'un auxiliaire (« DEVICE CYD » : TEMPR, HUMR,
+    TENSIONR, ONOFFR, COULR, LUXR, Jour / Eclairement FORCE) : publiées sur home/thermometre/copie (home/noeud/copie)
+    au lieu du topic d'état (CRemoteCapteurBase::topicCopie()), écoutées par les auxiliaires seuls, sans effet sur
+    leur bandeau d'éveil (sbTrameCopie). Sur le topic d'état, le principal les prenait pour des trames des nœuds :
+    tous les bandeaux verts et chiens de garde remis à zéro ; HA aussi (« Éveillé », « Dernière trame ») (16/11/2026).
+    Principal et auxiliaires à flasher ensemble (un auxiliaire en 4.0 ne reçoit plus les copies)
+
 4.0
 Bandeau éveillé / endormi des nœuds : toute trame d'un capteur du nœud (batterie, flotteur, jour / nuit, couleur) le passe au
     vert, plus seulement celles du thermomètre (CRemoteThermo / CRemoteDHT20::noteEveil(), appelée par CMqtt::callback()) ;

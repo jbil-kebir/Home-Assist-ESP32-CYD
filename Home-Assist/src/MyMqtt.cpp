@@ -123,6 +123,13 @@ client.publish("home/chaudiere/status",  "", true);*/
       client.subscribe(mConfig.mRemoteThCh1er->mqttSubTopicState.c_str());
       DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteTorChauffageSb->mqttSubTopicState);
       client.subscribe(mConfig.mRemoteTorChauffageSb->mqttSubTopicState.c_str());
+      #ifndef __LOCAL_MODE__
+      // Copies des dernières valeurs republiées par le principal au démarrage d'un auxiliaire (« DEVICE CYD ») :
+      // auxiliaires seulement (voir CRemoteCapteurBase::topicCopie())
+      DBGLN(DBG_MQTT, "Abonnement à " + CRemoteCapteurBase::topicCopie(mConfig.mRemoteThCh1er->mqttSubTopicState));
+      client.subscribe(CRemoteCapteurBase::topicCopie(mConfig.mRemoteThCh1er->mqttSubTopicState).c_str());
+      client.subscribe(CRemoteCapteurBase::topicCopie(mConfig.mRemoteTorChauffageSb->mqttSubTopicState).c_str());
+      #endif
       if (mConfig.mRemoteNewNas) {
         DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteNewNas->mqttSubTopicState);
         client.subscribe(mConfig.mRemoteNewNas->mqttSubTopicState.c_str());
@@ -211,6 +218,20 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   message.toUpperCase();
 
   DBG(DBG_MQTT, "void CMqtt::callback() - reçu : %s :  %s\n", topicStr.c_str(), message.c_str());
+
+  // Copie republiée par le principal (auxiliaires seulement) : traitée comme une trame du topic d'état
+  // correspondant, mais sans effet sur le bandeau d'éveil (CRemoteThermo / CRemoteDHT20::noteEveil())
+  CRemoteCapteurBase::sbTrameCopie = false;
+  #ifndef __LOCAL_MODE__
+  if (topicStr == CRemoteCapteurBase::topicCopie(mConfig.mRemoteThCh1er->mqttSubTopicState)) {
+    topicStr = mConfig.mRemoteThCh1er->mqttSubTopicState;
+    CRemoteCapteurBase::sbTrameCopie = true;
+  }
+  else if (topicStr == CRemoteCapteurBase::topicCopie(mConfig.mRemoteTorChauffageSb->mqttSubTopicState)) {
+    topicStr = mConfig.mRemoteTorChauffageSb->mqttSubTopicState;
+    CRemoteCapteurBase::sbTrameCopie = true;
+  }
+  #endif
 
   #ifdef __LOCAL_MODE__
   if (topicStr == mConfig.chaudiere->mqttSubTopicCommand) {
