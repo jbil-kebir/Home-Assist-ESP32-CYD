@@ -67,6 +67,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
@@ -243,6 +247,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
@@ -403,6 +411,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
@@ -582,6 +594,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
@@ -733,6 +749,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
@@ -884,6 +904,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
@@ -1047,6 +1071,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}
@@ -1186,6 +1214,10 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepI:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('sleepI') if suite else none) }}
+          sleepC: >-
+            {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepC:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('sleepC') if suite else none) }}
           sleepS: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' sleepS:(\d+)') -%}

@@ -349,7 +349,7 @@ void CConfig::enterDeepSleep() {
    Serial.println("Entrée en deep sleep... Mode Deep Sleep Inactif (commutateur). On sort."); Serial.flush();
    return;
   #endif
-  Serial.printf("Deep sleep pour %lu secondes...\n", mulSleepDuration);
+  Serial.printf("Deep sleep pour %lu secondes...\n", getSommeilEnCours());
   Serial.flush();           // Attend que le serial soit vide
   delay(100);               // Sécurité
 
@@ -365,7 +365,7 @@ void CConfig::enterDeepSleep() {
   // Après un deep sleep la puce redémarre : millis() est directement la durée d'éveil depuis le boot
   String sDureeEveil = String(millis()) + " ms";
 
-  String sMqttMsg = nomEquipement + " DEEPSLEEP ON " + sDate + " " + sHeure + " " + String(mulSleepDuration) + " Durée éveil : " + sDureeEveil;
+  String sMqttMsg = nomEquipement + " DEEPSLEEP ON " + sDate + " " + sHeure + " " + String(getSommeilEnCours()) + " Durée éveil : " + sDureeEveil;
   Serial.println(sMqttMsg + String(". Deep sleep in few seconds ..."));
   Serial.flush();           // Attend que le serial soit vide
   mbWakeFromDeepSleep = true;
@@ -544,7 +544,7 @@ void CConfig::enterDeepSleep() {
   delay(10);
   #endif
 
-  esp_sleep_enable_timer_wakeup(mulSleepDuration * 1000000ULL);
+  esp_sleep_enable_timer_wakeup(getSommeilEnCours() * 1000000ULL); // Durée temporaire (SLEEPS/M/L) ou sleepI
   #ifdef __ESP32_C3__
   pinMode(9, OUTPUT);
   digitalWrite(9, HIGH);
@@ -564,6 +564,7 @@ void CConfig::loadFromNVS() {
   mulSleepDurationS = prefs.getLong((mPrefixNVS+"sleepS").c_str(), DEFAULT_SLEEP_DURATIONS_SEC);
   mulSleepDurationM = prefs.getLong((mPrefixNVS+"sleepM").c_str(), DEFAULT_SLEEP_DURATIONM_SEC);
   mulSleepDurationL = prefs.getLong((mPrefixNVS+"sleepL").c_str(), DEFAULT_SLEEP_DURATIONL_SEC);
+  mulSleepTemporaire = prefs.getLong((mPrefixNVS+"sleepT").c_str(), 0);
   mulWakeDuration = prefs.getLong((mPrefixNVS+"wakeI").c_str(), DEFAULT_WAKE_DURATION_SEC);
   mbWakeFromDeepSleep = prefs.getBool((mPrefixNVS+"wkFDS").c_str(), false);
   mulDateMiseEnSommeil = prefs.getLong((mPrefixNVS+"dtSom").c_str(), 0UL);
@@ -602,6 +603,7 @@ void CConfig::saveToNVS() {
   prefs.putLong((mPrefixNVS+"sleepS").c_str(), mulSleepDurationS);
   prefs.putLong((mPrefixNVS+"sleepM").c_str(), mulSleepDurationM);
   prefs.putLong((mPrefixNVS+"sleepL").c_str(), mulSleepDurationL);
+  prefs.putLong((mPrefixNVS+"sleepT").c_str(), mulSleepTemporaire);
   prefs.putLong((mPrefixNVS+"wakeI").c_str(), mulWakeDuration);
   prefs.putBool((mPrefixNVS+"wkFDS").c_str(), mbWakeFromDeepSleep);
   prefs.putLong((mPrefixNVS+"dtSom").c_str(), mulDateMiseEnSommeil);
@@ -636,6 +638,7 @@ void CConfig::print() const {
   Serial.printf("  VERSION                 : %s\n", versionComplete().c_str());
   Serial.printf("  Deep Sleep              : %s\n", mbDeepSleepActive ? "ACTIF" : "INACTIF");
   Serial.printf("  Intervalle Deep Sleep   : %ld s\n", mulSleepDuration);
+  Serial.printf("  Sommeil en cours        : %lu s%s\n", getSommeilEnCours(), mulSleepTemporaire > 0 ? " (temporaire)" : "");
   Serial.printf("  Intervalle Deep SleepS  : %ld s\n", mulSleepDurationS);
   Serial.printf("  Intervalle Deep SleepM  : %ld s\n", mulSleepDurationM);
   Serial.printf("  Intervalle Deep SleepL  : %ld s\n", mulSleepDurationL);
@@ -661,7 +664,8 @@ String CConfig::getHTML() {
         "<div class=\"checkbox-row\"><label>Deep Sleep</label><input type=\"checkbox\" name=" + (mPrefixNVS+"sleepA") + " value=\"1\"" + String(mbDeepSleepActive ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Intervalle Deep Sleep</label><input type=\"text\" name=" + (mPrefixNVS+"sleepI") + " value=\"" + mulSleepDuration + "\"></div>"
+        "<div><label>Intervalle Deep Sleep (standard ; en cours : " + String(getSommeilEnCours()) + " s" +
+          String(mulSleepTemporaire > 0 ? ", temporaire SLEEPS/M/L" : "") + ")</label><input type=\"text\" name=" + (mPrefixNVS+"sleepI") + " value=\"" + mulSleepDuration + "\"></div>"
         "<div><label>Intervalle Deep Sleep Small</label><input type=\"text\" name=" + (mPrefixNVS+"sleepS") + " value=\"" + mulSleepDurationS + "\"></div>"
       "</div>"
       "<div class=\"row\">"
@@ -712,19 +716,19 @@ int CConfig::parseSleepCommandSML(const String& msg) {
     switch (s.charAt(5)) {
       case 'S':
         Serial.println("CConfig::parseSleepCommandSML() - SLEEP SMALL");
-        setSleepIntervalle(mulSleepDurationS);
+        setSommeilTemporaire(mulSleepDurationS); // Temporaire : sleepI garde la durée standard
         setDeepSleep(true); // Active le deep sleep
         result = 0;
         break;
       case 'M':
         Serial.println("CConfig::parseSleepCommandSML() - SLEEP MEDIUM");
-        setSleepIntervalle(mulSleepDurationM);
+        setSommeilTemporaire(mulSleepDurationM); // Temporaire : sleepI garde la durée standard
         setDeepSleep(true); // Active le deep sleep
         result = 0;
         break;
       case 'L':
         Serial.println("CConfig::parseSleepCommandSML() - SLEEP LARGE");
-        setSleepIntervalle(mulSleepDurationL);
+        setSommeilTemporaire(mulSleepDurationL); // Temporaire : sleepI garde la durée standard
         setDeepSleep(true); // Active le deep sleep
         result = 0;
         break;
@@ -788,6 +792,12 @@ int CConfig::parseSleepCommand(const String& msg) {
   s.trim();
   s.toUpperCase();
 
+  // SLEEPI : fin de la durée temporaire (SLEEPS/M/L), retour à sleepI (la durée standard)
+  if (s == "SLEEPI") {
+    Serial.println("CConfig::parseSleepCommand() - SLEEPI : retour à la durée standard");
+    setSommeilTemporaire(0);
+    return 0;
+  }
   // SLEEPS / SLEEPM / SLEEPL [durée] sans le préfixe « SLEEP » (SLEEP SLEEPS reste accepté plus bas)
   if (s.startsWith("SLEEPS") || s.startsWith("SLEEPM") || s.startsWith("SLEEPL"))
     return parseSleepCommandSML(s);
@@ -864,6 +874,9 @@ int CConfig::handleMqttCommand(const String& payload) {
   if (cmd.startsWith("SLEEP")) {
     Serial.println("CConfig::handleMqttCommand - Commande SLEEP détectée : " + cmd); Serial.flush();
     parseSleepCommand(cmd);
+    // Réponse CONFIG (sleepC, sleepA...) : sans elle, Home Assistant gardait la durée de sommeil d'avant la commande
+    // et n'envoyait jamais le SLEEPI de retour (ThCh1er resté à 120 s thermostat arrêté, 18/11/2026)
+    envoieConfig();
   }
   else if (cmd.startsWith("WDOG")) {
     Serial.println("CConfig::handleMqttCommand - Commande WDOG détectée : " + cmd); Serial.flush();
@@ -1053,6 +1066,7 @@ String CConfig::getParams() const {
   for (CCapteurBase* c : capteursAlerte()) sRetards += " " + c->getParamsAlerte();
   return "sleepA:" + String(mbDeepSleepActive ? 1 : 0) +
          " sleepI:" + String(mulSleepDuration) +
+         " sleepC:" + String(getSommeilEnCours()) +   // Durée en cours (temporaire SLEEPS/M/L ou sleepI), lecture seule
          " sleepS:" + String(mulSleepDurationS) +
          " sleepM:" + String(mulSleepDurationM) +
          " sleepL:" + String(mulSleepDurationL) +
@@ -1428,6 +1442,15 @@ void CConfig::annonceNonConfiguree() {
 
   return ret;
 }*/
+
+  // Durée temporaire (SLEEPS / SLEEPM / SLEEPL), 0 : retour à sleepI (SLEEPI). Gardée en NVS : survit à une coupure
+  void CConfig::setSommeilTemporaire(unsigned long st) {
+    mulSleepTemporaire = st;
+    prefs.begin(nvs_namespace, false);
+    prefs.putLong((mPrefixNVS+"sleepT").c_str(), mulSleepTemporaire);
+    prefs.end();
+    Serial.println("Deep Sleep - Durée en cours : " + String(getSommeilEnCours()) + (st > 0 ? " s (temporaire)" : " s (standard)"));
+  }
 
   void CConfig::setSleepIntervalle(unsigned long st) {
     mulSleepDuration = st;

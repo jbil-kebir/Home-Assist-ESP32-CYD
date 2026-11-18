@@ -105,6 +105,12 @@ sections:
             card_mod:
               style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             content: |
+              {% set sc = state_attr('sensor.thremise_config', 'sleepC') %}
+              {% set si = state_attr('sensor.thremise_config', 'sleepI') %}
+              {% if sc is not none %}
+              💤 **Sommeil en cours** : {{ sc }} s{% if sc != si %} (temporaire SLEEPS/M/L ; SLEEPI pour revenir à l'intervalle standard, {{ si }} s){% else %} (intervalle standard){% endif %}.
+
+              {% endif %}
               {% if state_attr('sensor.thremise_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThRemise n'émet plus ses mesures (MUTE OFF pour les rétablir).
 
@@ -358,6 +364,12 @@ sections:
             card_mod:
               style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             content: |
+              {% set sc = state_attr('sensor.thcave_config', 'sleepC') %}
+              {% set si = state_attr('sensor.thcave_config', 'sleepI') %}
+              {% if sc is not none %}
+              💤 **Sommeil en cours** : {{ sc }} s{% if sc != si %} (temporaire SLEEPS/M/L ; SLEEPI pour revenir à l'intervalle standard, {{ si }} s){% else %} (intervalle standard){% endif %}.
+
+              {% endif %}
               {% if state_attr('sensor.thcave_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThCave n'émet plus ses mesures (MUTE OFF pour les rétablir).
 
@@ -572,6 +584,12 @@ sections:
             card_mod:
               style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
             content: |
+              {% set sc = state_attr('sensor.thchrdc_config', 'sleepC') %}
+              {% set si = state_attr('sensor.thchrdc_config', 'sleepI') %}
+              {% if sc is not none %}
+              💤 **Sommeil en cours** : {{ sc }} s{% if sc != si %} (temporaire SLEEPS/M/L ; SLEEPI pour revenir à l'intervalle standard, {{ si }} s){% else %} (intervalle standard){% endif %}.
+
+              {% endif %}
               {% if state_attr('sensor.thchrdc_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThChRDC n'émet plus ses mesures (MUTE OFF pour les rétablir).
 
@@ -787,6 +805,12 @@ sections:
             card_mod:
               style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
             content: |
+              {% set sc = state_attr('sensor.thch1er_config', 'sleepC') %}
+              {% set si = state_attr('sensor.thch1er_config', 'sleepI') %}
+              {% if sc is not none %}
+              💤 **Sommeil en cours** : {{ sc }} s{% if sc != si %} (temporaire SLEEPS/M/L ; SLEEPI pour revenir à l'intervalle standard, {{ si }} s){% else %} (intervalle standard){% endif %}.
+
+              {% endif %}
               {% if state_attr('sensor.thch1er_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThCh1er n'émet plus ses mesures (MUTE OFF pour les rétablir).
 
@@ -1017,6 +1041,12 @@ sections:
             card_mod:
               style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             content: |
+              {% set sc = state_attr('sensor.thsdb_config', 'sleepC') %}
+              {% set si = state_attr('sensor.thsdb_config', 'sleepI') %}
+              {% if sc is not none %}
+              💤 **Sommeil en cours** : {{ sc }} s{% if sc != si %} (temporaire SLEEPS/M/L ; SLEEPI pour revenir à l'intervalle standard, {{ si }} s){% else %} (intervalle standard){% endif %}.
+
+              {% endif %}
               {% if state_attr('sensor.thsdb_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : ThSdb n'émet plus ses mesures (MUTE OFF pour les rétablir).
 
@@ -1219,6 +1249,12 @@ sections:
             card_mod:
               style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
             content: |
+              {% set sc = state_attr('sensor.prguirlande_config', 'sleepC') %}
+              {% set si = state_attr('sensor.prguirlande_config', 'sleepI') %}
+              {% if sc is not none %}
+              💤 **Sommeil en cours** : {{ sc }} s{% if sc != si %} (temporaire SLEEPS/M/L ; SLEEPI pour revenir à l'intervalle standard, {{ si }} s){% else %} (intervalle standard){% endif %}.
+
+              {% endif %}
               {% if state_attr('sensor.prguirlande_config', 'mute') == 1 %}
               🔇 **Mesures muettes** : PrGuirlande n'émet plus ses mesures (MUTE OFF pour les rétablir).
 

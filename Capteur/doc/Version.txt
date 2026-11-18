@@ -1,3 +1,12 @@
+4.2
+Sommeil temporaire : SLEEPS / SLEEPM / SLEEPL n'écrasent plus sleepI (durée standard) ; ils imposent une durée temporaire
+    (sleepS / sleepM / sleepL), gardée en NVS (sleepT), jusqu'à la nouvelle commande SLEEPI (retour à sleepI).
+    CONFIG : nouveau champ sleepC (durée en cours, lecture seule) ; DEEPSLEEP ON, minuterie et délai d'alerte annoncé
+    utilisent la durée en cours (CConfig::getSommeilEnCours()). Sert au thermostat : HA règle le sommeil de ThCh1er
+    selon l'écart à la consigne (16/11/2026)
+Commandes SLEEP… (SLEEPS/M/L, SLEEPI, SLEEP ENABLE…) : réponse CONFIG (CConfig::handleMqttCommand). Sans elle, HA gardait
+    l'ancien sleepC : ThCh1er resté en SLEEPS (120 s) thermostat arrêté, le SLEEPI de retour n'étant jamais envoyé (18/11/2026)
+
 4.1
 LoRa : écoute avant émission (CAD, attendCanalLibre() dans MyLoraRxTx.cpp) : canal occupé par un autre émetteur → attente
     aléatoire de LORA_CAD_ATTENTE_MIN_MS à LORA_CAD_ATTENTE_MAX_MS (50 à 300 ms), LORA_CAD_ESSAIS (8) fois au plus, puis

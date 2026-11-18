@@ -402,7 +402,8 @@ template:""")
         # jn_* : nœud équipé du détecteur jour / nuit seulement ; mfv_* : nœud équipé du flotteur (fl) seulement
         # <préfixe>_force, <préfixe>_retard : forçage et retard toléré de chaque capteur (Capteur 3.9 ; absents avant :
         # none, sauf jn_force)
-        for k in (["sleepA", "sleepI", "sleepS", "sleepM", "sleepL", "wakeI", "mute"]
+        # sleepC : durée de sommeil en cours (Capteur 4.2 : temporaire SLEEPS/M/L ou sleepI ; absente avant : none)
+        for k in (["sleepA", "sleepI", "sleepC", "sleepS", "sleepM", "sleepL", "wakeI", "mute"]
                   + ([c for c, _, _ in PARAMS_JN] if n.get("jn") else [])
                   + ([c for c, _, _ in PARAMS_FL] if n.get("fl") else [])
                   + cles_alerte(n)):
@@ -1045,6 +1046,12 @@ sections:""")
               `mfv_revmin` (0 à 86400 s), `mfv_ack` 0/1 (confirmation par le contrôleur), `mfv_ackn` (1 à 10 envois)""")
         w(f"""          - type: markdown
             content: |
+              {{% set sc = state_attr('sensor.{i}_config', 'sleepC') %}}
+              {{% set si = state_attr('sensor.{i}_config', 'sleepI') %}}
+              {{% if sc is not none %}}
+              💤 **Sommeil en cours** : {{{{ sc }}}} s{{% if sc != si %}} (temporaire SLEEPS/M/L ; SLEEPI pour revenir à l'intervalle standard, {{{{ si }}}} s){{% else %}} (intervalle standard){{% endif %}}.
+
+              {{% endif %}}
               {{% if state_attr('sensor.{i}_config', 'mute') == 1 %}}
               🔇 **Mesures muettes** : {nom} n'émet plus ses mesures (MUTE OFF pour les rétablir).
 

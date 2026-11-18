@@ -9,8 +9,8 @@ const CConfig* CCapteurBase::smConfig = nullptr;
 unsigned long CCapteurBase::getDelaiAlerteS() const {
   unsigned long forcage = mulIntervalleForcageRemonteeMesure > 0 ? mulIntervalleForcageRemonteeMesure : 1UL;
   unsigned long intervalle = forcage;
-  if (smConfig != nullptr && smConfig->mbDeepSleepActive && smConfig->mulSleepDuration > 0) {
-    unsigned long sommeil = smConfig->mulSleepDuration;
+  if (smConfig != nullptr && smConfig->mbDeepSleepActive && smConfig->getSommeilEnCours() > 0) {
+    unsigned long sommeil = smConfig->getSommeilEnCours(); // Durée en cours (temporaire SLEEPS/M/L ou sleepI)
     // Nombre de réveils compté avec le sommeil seul (au moins un) : si l'éveil réel est plus court que
     // DELAI_ALERTE_EVEIL_S, il peut falloir un réveil de plus qu'en comptant le cycle complet
     unsigned long nbReveils = (forcage + sommeil - 1) / sommeil;

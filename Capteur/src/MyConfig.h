@@ -122,6 +122,11 @@ public:
   unsigned int mulSleepDurationS = DEFAULT_SLEEP_DURATIONS_SEC;  // Durée deep-sleep
   unsigned int mulSleepDurationM = DEFAULT_SLEEP_DURATIONM_SEC;  // Durée deep-sleep
   unsigned int mulSleepDurationL = DEFAULT_SLEEP_DURATIONL_SEC;  // Durée deep-sleep
+  // Durée TEMPORAIRE imposée par SLEEPS / SLEEPM / SLEEPL (Capteur 4.2) : remplace sleepI tant qu'elle est active,
+  // 0 = aucune (sleepI s'applique). Gardée en NVS (sleepT), annulée par la commande SLEEPI. Avant la 4.2, SLEEPS/M/L
+  // écrasaient sleepI. Sert au thermostat : HA règle le sommeil de ThCh1er selon l'écart à la consigne.
+  unsigned int mulSleepTemporaire = 0;
+  unsigned long getSommeilEnCours() const { return mulSleepTemporaire > 0 ? mulSleepTemporaire : mulSleepDuration; }
 
   unsigned int mulWakeDuration = DEFAULT_WAKE_DURATION_SEC; // Durée maximale d'éveil avant un deep sleep (garde-fou si les mesures ne sont pas remontées)
   // Wi-Fi : délai entre la remontée de toutes les mesures et le deep sleep, pour traiter les commandes MQTT retained
@@ -193,6 +198,7 @@ public:
   void envoieConfig(const String& sErreurs = "");          // Réponse aux commandes GET / SET (MQTT et LoRa)
   void envoieVersion();                                     // « <nom> VERSION 3.4 31/10/2026 14:05 » (démarrage et GET)
   void setSleepIntervalle(unsigned long st);
+  void setSommeilTemporaire(unsigned long st);   // Durée temporaire (SLEEPS/M/L) ; 0 : retour à sleepI (SLEEPI)
   void setWakeIntervalle(unsigned long st);
   void setDeepSleep(bool active);
   void enterDeepSleep();

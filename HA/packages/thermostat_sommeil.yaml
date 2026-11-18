@@ -1,0 +1,114 @@
+# ============================================================
+# Package : sommeil de ThCh1er selon l'écart à la consigne du thermostat « Chaudière RDC »
+#
+# Le thermostat (generic_thermostat, configuration.yaml) suit sensor.thch1er_temperature ; tolérances 0,5 °C.
+# Près de la consigne, ThCh1er doit mesurer souvent (le thermostat allume / éteint à consigne ∓ 0,5) ; loin d'elle,
+# il peut dormir plus longtemps.
+#   - thermostat à l'arrêt (mode off)            -> SLEEPI : intervalle standard (sleepI, 900 s)
+#   - en chauffe, |consigne - T| <= seuil court  -> SLEEPS : sommeil court (sleepS, 120 s)
+#   - en chauffe, |écart| <= seuil moyen          -> SLEEPM : sommeil moyen (sleepM, 300 s)
+#   - en chauffe, |écart| > seuil moyen           -> SLEEPL : sommeil long  (sleepL, 600 s)
+# Durées = réglages de ThCh1er (vue Nœuds capteurs, ou sa page Web). Seuils : ci-dessous (1 et 2 °C).
+# Nécessite Capteur 4.2 : SLEEPS/M/L temporaires (sleepI garde la durée standard), commande SLEEPI, champ sleepC
+# (durée en cours) dans la réponse CONFIG.
+#
+# Commande envoyée seulement si la durée voulue diffère de sleepC (dernière CONFIG reçue) ; par script.noeud_commande
+# (Wi-Fi : message retenu, lu au prochain réveil). Commande en attente :
+#   - commande de sommeil (SLEEPI/S/M/L) : remplacée par la nouvelle si elle diffère ;
+#   - autre commande (SET lancé à la main...) : rien n'est envoyé, nouvel essai au déclenchement suivant.
+# ============================================================
+
+input_number:
+  thch1er_seuil_court:
+    name: "ThCh1er Seuil sommeil court"
+    icon: mdi:thermometer-chevron-down
+    min: 0.2
+    max: 5
+    step: 0.1
+    initial: 1
+    unit_of_measurement: "°C"
+    mode: box
+  thch1er_seuil_moyen:
+    name: "ThCh1er Seuil sommeil moyen"
+    icon: mdi:thermometer-chevron-down
+    min: 0.5
+    max: 10
+    step: 0.1
+    initial: 2
+    unit_of_measurement: "°C"
+    mode: box
+
+automation:
+  - id: thch1er_sommeil_ecart_consigne
+    alias: ThCh1er - Sommeil selon l'écart à la consigne
+    description: >-
+      Règle la durée de sommeil de ThCh1er (SLEEPS / SLEEPM / SLEEPL, ou SLEEPI à l'arrêt) selon l'écart entre la
+      consigne du thermostat Chaudière RDC et la température de ThCh1er.
+    mode: queued
+    max: 3
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: sensor.thch1er_temperature
+      - trigger: state
+        entity_id: climate.chaudiere_rdc
+      - trigger: state
+        entity_id: climate.chaudiere_rdc
+        attribute: temperature
+      - trigger: state
+        entity_id: sensor.thch1er_config
+      - trigger: state
+        entity_id:
+          - input_number.thch1er_seuil_court
+          - input_number.thch1er_seuil_moyen
+      - trigger: homeassistant
+        event: start
+    variables:
+      cfg: sensor.thch1er_config
+      mode_thermostat: "{{ states('climate.chaudiere_rdc') }}"
+      t: "{{ states('sensor.thch1er_temperature') | float(none) }}"
+      consigne: "{{ state_attr('climate.chaudiere_rdc', 'temperature') | float(none) }}"
+      seuil_court: "{{ states('input_number.thch1er_seuil_court') | float(1) }}"
+      seuil_moyen: "{{ states('input_number.thch1er_seuil_moyen') | float(2) }}"
+      commande: >-
+        {%- if mode_thermostat != 'heat' -%} SLEEPI
+        {%- elif t is none or consigne is none -%}
+        {%- else -%}
+          {%- set e = (consigne - t) | abs -%}
+          {{ 'SLEEPS' if e <= seuil_court else ('SLEEPM' if e <= seuil_moyen else 'SLEEPL') }}
+        {%- endif -%}
+      duree_voulue: >-
+        {%- set cle = {'SLEEPI': 'sleepI', 'SLEEPS': 'sleepS', 'SLEEPM': 'sleepM', 'SLEEPL': 'sleepL'}.get(commande) -%}
+        {{ state_attr(cfg, cle) if cle else none }}
+      duree_en_cours: "{{ state_attr(cfg, 'sleepC') }}"
+      attente: "{{ states('sensor.thch1er_commande_en_attente') | trim }}"
+      rien_en_attente: "{{ attente in ['aucune', 'unknown', 'unavailable', ''] }}"
+      sommeil_en_attente: "{{ attente | upper in ['SLEEPI', 'SLEEPS', 'SLEEPM', 'SLEEPL'] }}"
+    conditions:
+      # Commande calculable, config Capteur 4.2 reçue (sleepC), et durée à changer
+      - condition: template
+        value_template: "{{ commande != '' and duree_voulue is not none and duree_en_cours is not none }}"
+      - condition: template
+        value_template: "{{ duree_voulue | int != duree_en_cours | int }}"
+      # Même commande déjà en attente, ou autre commande en attente : rien
+      - condition: template
+        value_template: "{{ attente | upper != commande }}"
+      - condition: template
+        value_template: "{{ rien_en_attente or sommeil_en_attente }}"
+    actions:
+      # Commande de sommeil différente en attente : l'annuler d'abord (noeud_commande refuse sinon)
+      - if:
+          - condition: template
+            value_template: "{{ sommeil_en_attente }}"
+        then:
+          - action: script.noeud_commande
+            data:
+              capteur: thch1er
+              commande: ANNULER
+          - wait_template: "{{ states('sensor.thch1er_commande_en_attente') in ['aucune', 'unknown', 'unavailable', ''] }}"
+            timeout: "00:00:15"
+            continue_on_timeout: false
+      - action: script.noeud_commande
+        data:
+          capteur: thch1er
+          commande: "{{ commande }}"
