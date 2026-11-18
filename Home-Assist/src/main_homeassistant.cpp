@@ -17,11 +17,13 @@ CRemoteTor mRemoteBigNas(String("BigNas"), &ecran);
 
 void setup_homeassistant() {
   mRemoteNewNas.setup("ha1_");
+  mRemoteNewNas.setDelaiSaisi(true); // États HA : pas de délai annoncé
   mRemoteNewNas.nomEquipement = "NewNas";
   mRemoteNewNas.mqttSubTopicState   = "home/homeassistant/state";
   mRemoteNewNas.mqttSubTopicCommand = "home/homeassistant/command";
 
   mRemoteBigNas.setup("ha2_");
+  mRemoteBigNas.setDelaiSaisi(true);
   mRemoteBigNas.nomEquipement = "BigNas";
   mRemoteBigNas.mqttSubTopicState   = "home/homeassistant/state";
   mRemoteBigNas.mqttSubTopicCommand = "home/homeassistant/command";

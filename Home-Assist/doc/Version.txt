@@ -1,3 +1,9 @@
+4.2
+Champ « Intervalle Watchdog » retiré de la page des capteurs des nœuds : tous annoncent leur délai d'alerte (Capteur
+    3.9+). Gardé pour les équipements qui n'annoncent rien (CRemoteCapteurBase::setDelaiSaisi(true)) : NoeudChauffageSb,
+    NewNas, BigNas, ThCYD et BatMain (vus des auxiliaires). Capteur de nœud jamais entendu : DELAI_ALERTE_DEFAUT_S
+    (3600 s) au lieu de la valeur saisie (16/11/2026)
+
 4.1
 Copies des dernières valeurs republiées par le principal au démarrage d'un auxiliaire (« DEVICE CYD » : TEMPR, HUMR,
     TENSIONR, ONOFFR, COULR, LUXR, Jour / Eclairement FORCE) : publiées sur home/thermometre/copie (home/noeud/copie)

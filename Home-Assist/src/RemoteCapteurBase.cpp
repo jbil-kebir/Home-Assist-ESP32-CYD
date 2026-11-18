@@ -91,16 +91,21 @@ void CRemoteCapteurBase::chargeWatchdogNVS() {
 
 // Le délai annoncé n'est pas écrit ici : il l'est à sa réception (noteReception())
 void CRemoteCapteurBase::enregistreWatchdogNVS() {
+  if (!mbDelaiSaisi) return; // Champ absent de la page : valeur NVS laissée telle quelle
   prefs.putLong((mPrefixNVS + "wdog").c_str(), mulWatchdogIntervalle);
 }
 
 void CRemoteCapteurBase::litWatchdogWeb(WebServer& server) {
-  if (server.hasArg((mPrefixNVS + "wdog").c_str())) mulWatchdogIntervalle = server.arg((mPrefixNVS + "wdog")).toInt();
+  if (mbDelaiSaisi && server.hasArg((mPrefixNVS + "wdog").c_str())) mulWatchdogIntervalle = server.arg((mPrefixNVS + "wdog")).toInt();
 }
 
 String CRemoteCapteurBase::getHTMLWatchdog() const {
-  String sProvenance = (mulDelaiAnnonceS > 0) ? "annoncé par le nœud" : "saisi ici : le nœud n'annonce rien";
-  return "<div><label>Délai d'alerte : " + formateDuree(getWatchdogIntervalle()) + " (" + sProvenance + ")</label></div>"
-         "<div><label>Intervalle Watchdog de secours (s)</label><input type=\"text\" name=" + (mPrefixNVS + "wdog") +
-           " value=\"" + String(mulWatchdogIntervalle) + "\"></div>";
+  String sProvenance = (mulDelaiAnnonceS > 0) ? "annoncé par le nœud"
+                     : mbDelaiSaisi ? "saisi ici : l'équipement n'annonce rien"
+                     : "par défaut : aucune annonce reçue du nœud";
+  String s = "<div><label>Délai d'alerte : " + formateDuree(getWatchdogIntervalle()) + " (" + sProvenance + ")</label></div>";
+  if (mbDelaiSaisi)
+    s += "<div><label>Intervalle Watchdog (s)</label><input type=\"text\" name=" + (mPrefixNVS + "wdog") +
+         " value=\"" + String(mulWatchdogIntervalle) + "\"></div>";
+  return s;
 }

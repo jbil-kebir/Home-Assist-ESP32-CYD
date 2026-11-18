@@ -47,6 +47,7 @@ void setup_chauffageSb() {
 
   //--------------------------- Etat réel (Tout Ou Rien) ---------------------------
   mRemoteTorChauffageSb.setup("torsb_");
+  mRemoteTorChauffageSb.setDelaiSaisi(true); // Nœud chauffage : n'annonce pas de délai d'alerte
   // Premier démarrage (rien dans le NVS) : nom et topic initiaux, au lieu des valeurs
   // par défaut de CEquipementBase ("Thermomètre", "thermometre/").
   // Ensuite, ils sont modifiables depuis la page Web.

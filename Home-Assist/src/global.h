@@ -141,8 +141,12 @@
 // d'affilée → WDG à l'écran et « RETARD » sur TOPIC_ALERTE_CAPTEUR (main_ds18b20.cpp) ; revenu à la 1re lecture réussie
 #define LOCAL_THERMO_ECHECS_PANNE 3
 
+// Délai d'alerte d'un capteur de nœud dont aucune annonce (« alerte:<s> ») n'a jamais été reçue (capteur ajouté,
+// mémoire NVS vierge) : remplace le champ « Intervalle Watchdog » retiré de la page (CRemoteCapteurBase)
+#define DELAI_ALERTE_DEFAUT_S 3600UL
+
 // Version du logiciel
-#define VERSION "4.1"
+#define VERSION "4.2"
 
 
 //----------------------------------------------------------------------------

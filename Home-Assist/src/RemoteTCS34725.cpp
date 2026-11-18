@@ -112,7 +112,7 @@ void CRemoteTCS34725::print() const {
   DBG(DBG_CAPTEURS, "     Nom              : %s\n", nomEquipement.c_str());
   DBG(DBG_CAPTEURS, "     ID                 : %d\n", mucCapteurID);
   DBG(DBG_CAPTEURS, "     Actif            : %s\n", active ? "OUI" : "NON");
-  DBG(DBG_CAPTEURS, "     Watchdog         : %ld s\n", mulWatchdogIntervalle);
+  DBG(DBG_CAPTEURS, "     Watchdog         : %lu s\n", getWatchdogIntervalle());
   DBG(DBG_CAPTEURS, "     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
   DBG(DBG_CAPTEURS, "     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
   DBG(DBG_CAPTEURS, "     MQTTState        : %s\n", mqttSubTopicState.c_str());

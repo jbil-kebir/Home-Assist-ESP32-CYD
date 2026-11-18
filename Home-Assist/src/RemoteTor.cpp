@@ -104,7 +104,7 @@ void CRemoteTor::print() const {
   DBG(DBG_ACTIONNEURS, "==========================================================\n");
   DBG(DBG_ACTIONNEURS, "     Nom              : %s\n", nomEquipement.c_str());
   DBG(DBG_ACTIONNEURS, "     Actif            : %s\n", active ? "OUI" : "NON");
-  DBG(DBG_ACTIONNEURS, "     Watchdog         : %ld s\n", mulWatchdogIntervalle);
+  DBG(DBG_ACTIONNEURS, "     Watchdog         : %lu s\n", getWatchdogIntervalle());
   DBG(DBG_ACTIONNEURS, "     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
   DBG(DBG_ACTIONNEURS, "     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
   DBG(DBG_ACTIONNEURS, "     MQTTState        : %s\n", mqttSubTopicState.c_str());

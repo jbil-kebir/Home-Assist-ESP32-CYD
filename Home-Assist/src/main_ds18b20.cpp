@@ -53,7 +53,9 @@ void setup_ds18b20() {
   config.mRemoteThMain = &mRemoteThMain;
   config.mRemoteBatMain = &mRemoteBatMain;
   mRemoteThMain.begin("th_");
+  mRemoteThMain.setDelaiSaisi(true);  // ThCYD (thermomètre du principal) : n'annonce pas de délai d'alerte
   mRemoteBatMain.begin("batmn_"); // Préfixe propre (partageait bat1er_ avec BatCh1er)
+  mRemoteBatMain.setDelaiSaisi(true);
   // Affichage écran
   mRemoteThMain.setDisplayCallback([](const String& exp, float temp) {
       ecran.updateRemoteDevice_DS18B20(exp, temp);

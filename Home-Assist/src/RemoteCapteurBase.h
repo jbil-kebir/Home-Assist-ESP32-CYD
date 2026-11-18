@@ -15,8 +15,10 @@
 //   - délai d'alerte ANNONCÉ par le nœud (Capteur 3.9 : « alerte:<s> » en fin de chaque trame de mesure), calculé
 //     par le nœud d'après son sommeil, son forçage et le retard toléré réglé sur sa page Web ; le dernier reçu est
 //     gardé en NVS (<préfixe>wdann, écrit seulement s'il change) pour être juste dès le redémarrage du CYD ;
-//   - sinon (ancien firmware, actionneur, état HA...) : délai SAISI sur la page du CYD (<préfixe>wdog), en secours.
-//     À supprimer quand tous les capteurs seront passés en 3.9.
+//   - sinon, pour les équipements qui n'annoncent rien (setDelaiSaisi(true) : nœud chauffage, états HA NewNas /
+//     BigNas, ThCYD vu des auxiliaires) : délai SAISI sur la page du CYD (<préfixe>wdog) ;
+//   - sinon (capteur de nœud jamais entendu depuis l'installation) : DELAI_ALERTE_DEFAUT_S (global.h).
+//     Le champ de saisie a été retiré des capteurs des nœuds (16/11/2026 : tous annoncent leur délai, Capteur 3.9+).
 // Passage en retard et retour : onAlerte(nom, enRetard), défini par le CYD principal seul (publication MQTT retenue
 // sur home/alerte/<nom>, voir main.cpp), et SEULEMENT pour un capteur qui a annoncé son délai : ni les anciens
 // firmwares, ni le nœud chauffage (sa disparition, relais coupé, est normale), ni les états HA (NewNas, BigNas).
@@ -43,7 +45,12 @@ public:
   static String formateDuree(unsigned long s);
 
   // Délai appliqué (s) : annoncé par le nœud s'il en a annoncé un, sinon saisi
-  unsigned long getWatchdogIntervalle() const { return mulDelaiAnnonceS > 0 ? mulDelaiAnnonceS : mulWatchdogIntervalle; }
+  unsigned long getWatchdogIntervalle() const {
+    if (mulDelaiAnnonceS > 0) return mulDelaiAnnonceS;
+    return mbDelaiSaisi ? mulWatchdogIntervalle : DELAI_ALERTE_DEFAUT_S;
+  }
+  // Équipement qui n'annonce pas son délai : délai saisi sur la page Web (champ <préfixe>wdog affiché)
+  void setDelaiSaisi(bool b) { mbDelaiSaisi = b; }
   unsigned long getDelaiAnnonce() const { return mulDelaiAnnonceS; }
   bool estEnRetard() const { return mbEnRetard; }
 
@@ -58,6 +65,7 @@ protected:
   unsigned long mulWatchdogIntervalle;          // Saisi (secours)
   unsigned long mulWatchdogDefaultIntervalle;
   unsigned long mulDelaiAnnonceS = 0;           // Annoncé par le nœud, 0 : jamais
+  bool mbDelaiSaisi = false;                    // Délai saisi sur la page (équipement qui n'annonce rien)
   unsigned long mulWatchDog = 0;                // millis() du dernier message reçu (ou du démarrage)
   bool mbEnRetard = false;                      // Retard signalé (onAlerte), pas encore revenu
   bool mbEtatPublie = false;                    // Un état (RETARD / OK) a été publié depuis le démarrage du CYD : sinon,

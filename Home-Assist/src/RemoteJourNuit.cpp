@@ -63,7 +63,7 @@ void CRemoteJourNuit::print() const {
   DBG(DBG_CAPTEURS, "     Actif            : %s\n", active ? "OUI" : "NON");
   DBG(DBG_CAPTEURS, "     Éclairement      : %d %%\n", miLastEclairement);
   DBG(DBG_CAPTEURS, "     État             : %d (0 nuit, 1 jour, -1 inconnu)\n", miLastEtat);
-  DBG(DBG_CAPTEURS, "     Watchdog         : %ld s\n", mulWatchdogIntervalle);
+  DBG(DBG_CAPTEURS, "     Watchdog         : %lu s\n", getWatchdogIntervalle());
   DBG(DBG_CAPTEURS, "     MQTTSubTopic     : %s\n", mqttSubTopic.c_str());
   DBG(DBG_CAPTEURS, "     MQTTCmd          : %s\n", mqttSubTopicCommand.c_str());
   DBG(DBG_CAPTEURS, "     MQTTState        : %s\n", mqttSubTopicState.c_str());
