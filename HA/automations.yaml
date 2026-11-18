@@ -583,6 +583,9 @@
   - trigger: state
     entity_id: sensor.flotteur_remise
     to: Cuve pleine
+    not_from:
+    - unavailable
+    - unknown
   actions:
   - action: notify.email_kebir
     data:

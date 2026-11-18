@@ -160,6 +160,10 @@ mqtt:
     - name: "ThSdb Temperature"
       unique_id: thsdb_temp
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "°C"
       device_class: temperature
       value_template: >
@@ -167,12 +171,16 @@ mqtt:
         {% if parts[0]|upper == 'THSDB' and parts[1]|upper == 'TEMP' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thsdb_temperature') }}
+          {{ 'None' if states('sensor.thsdb_temperature') in ['unavailable', 'unknown'] else states('sensor.thsdb_temperature') }}
         {% endif %}
 
     - name: "ThSdb Humidite"
       unique_id: thsdb_hum
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "%"
       device_class: humidity
       value_template: >
@@ -180,12 +188,16 @@ mqtt:
         {% if parts[0]|upper == 'THSDB' and parts[1]|upper == 'HUM' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thsdb_humidite') }}
+          {{ 'None' if states('sensor.thsdb_humidite') in ['unavailable', 'unknown'] else states('sensor.thsdb_humidite') }}
         {% endif %}
 
     - name: "ThCave Temperature"
       unique_id: thcave_temp
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThCave"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "°C"
       device_class: temperature
       value_template: >
@@ -193,12 +205,16 @@ mqtt:
         {% if parts[0]|upper == 'THCAVE' and parts[1]|upper == 'TEMP' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thcave_temperature') }}
+          {{ 'None' if states('sensor.thcave_temperature') in ['unavailable', 'unknown'] else states('sensor.thcave_temperature') }}
         {% endif %}
 
     - name: "ThCave Humidite"
       unique_id: thcave_hum
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThCave"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "%"
       device_class: humidity
       value_template: >
@@ -206,12 +222,16 @@ mqtt:
         {% if parts[0]|upper == 'THCAVE' and parts[1]|upper == 'HUM' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thcave_humidite') }}
+          {{ 'None' if states('sensor.thcave_humidite') in ['unavailable', 'unknown'] else states('sensor.thcave_humidite') }}
         {% endif %}
 
     - name: "ThChRDC Temperature"
       unique_id: thchrdc_temp
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThChRDC"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "°C"
       device_class: temperature
       value_template: >
@@ -219,12 +239,16 @@ mqtt:
         {% if parts[0]|upper == 'THCHRDC' and parts[1]|upper == 'TEMP' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thchrdc_temperature') }}
+          {{ 'None' if states('sensor.thchrdc_temperature') in ['unavailable', 'unknown'] else states('sensor.thchrdc_temperature') }}
         {% endif %}
 
     - name: "ThChRDC Humidite"
       unique_id: thchrdc_hum
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThChRDC"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "%"
       device_class: humidity
       value_template: >
@@ -232,12 +256,16 @@ mqtt:
         {% if parts[0]|upper == 'THCHRDC' and parts[1]|upper == 'HUM' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thchrdc_humidite') }}
+          {{ 'None' if states('sensor.thchrdc_humidite') in ['unavailable', 'unknown'] else states('sensor.thchrdc_humidite') }}
         {% endif %}
 
     - name: "ThCYD Temperature"
       unique_id: thcyd_temp
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThCYD"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "°C"
       device_class: temperature
       value_template: >
@@ -245,12 +273,16 @@ mqtt:
         {% if parts[0]|upper == 'THCYD' and parts[1]|upper == 'TEMP' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thcyd_temperature') }}
+          {{ 'None' if states('sensor.thcyd_temperature') in ['unavailable', 'unknown'] else states('sensor.thcyd_temperature') }}
         {% endif %}
 
     - name: "ThCYD Humidite"
       unique_id: thcyd_hum
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThCYD"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "%"
       device_class: humidity
       value_template: >
@@ -258,12 +290,16 @@ mqtt:
         {% if parts[0]|upper == 'THCYD' and parts[1]|upper == 'HUM' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thcyd_humidite') }}
+          {{ 'None' if states('sensor.thcyd_humidite') in ['unavailable', 'unknown'] else states('sensor.thcyd_humidite') }}
         {% endif %}
 
     - name: "ThCh1er Temperature"
       unique_id: thch1er_temp
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThCh1er"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "°C"
       device_class: temperature
       value_template: >
@@ -271,12 +307,16 @@ mqtt:
         {% if parts[0]|upper == 'THCH1ER' and parts[1]|upper == 'TEMP' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thch1er_temperature') }}
+          {{ 'None' if states('sensor.thch1er_temperature') in ['unavailable', 'unknown'] else states('sensor.thch1er_temperature') }}
         {% endif %}
 
     - name: "ThCh1er Humidite"
       unique_id: thch1er_hum
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThCh1er"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "%"
       device_class: humidity
       value_template: >
@@ -284,12 +324,16 @@ mqtt:
         {% if parts[0]|upper == 'THCH1ER' and parts[1]|upper == 'HUM' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thch1er_humidite') }}
+          {{ 'None' if states('sensor.thch1er_humidite') in ['unavailable', 'unknown'] else states('sensor.thch1er_humidite') }}
         {% endif %}
 
     - name: "ThRemise Temperature"
       unique_id: thremise_temp
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThRemise"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "°C"
       device_class: temperature
       value_template: >
@@ -297,12 +341,16 @@ mqtt:
         {% if parts[0]|upper == 'THREMISE' and parts[1]|upper == 'TEMP' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thremise_temperature') }}
+          {{ 'None' if states('sensor.thremise_temperature') in ['unavailable', 'unknown'] else states('sensor.thremise_temperature') }}
         {% endif %}
 
     - name: "ThRemise Humidite"
       unique_id: thremise_hum
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/ThRemise"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "%"
       device_class: humidity
       value_template: >
@@ -310,78 +358,106 @@ mqtt:
         {% if parts[0]|upper == 'THREMISE' and parts[1]|upper == 'HUM' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.thremise_humidite') }}
+          {{ 'None' if states('sensor.thremise_humidite') in ['unavailable', 'unknown'] else states('sensor.thremise_humidite') }}
         {% endif %}
 
     - name: "CoulSdb DEL"
       unique_id: coulsdb_del
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/CoulSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'DEL' %}
           {% if parts[4] == '0' %}Eteinte{% else %}Allumee{% endif %}
         {% else %}
-          {{ states('sensor.coulsdb_del') }}
+          {{ 'None' if states('sensor.coulsdb_del') in ['unavailable', 'unknown'] else states('sensor.coulsdb_del') }}
         {% endif %}
 
     - name: "CoulSdb Rouge"
       unique_id: coulsdb_r
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/CoulSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.coulsdb_rouge') }}
+          {{ 'None' if states('sensor.coulsdb_rouge') in ['unavailable', 'unknown'] else states('sensor.coulsdb_rouge') }}
         {% endif %}
 
     - name: "CoulSdb Vert"
       unique_id: coulsdb_g
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/CoulSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
           {{ parts[5] }}
         {% else %}
-          {{ states('sensor.coulsdb_vert') }}
+          {{ 'None' if states('sensor.coulsdb_vert') in ['unavailable', 'unknown'] else states('sensor.coulsdb_vert') }}
         {% endif %}
 
     - name: "CoulSdb Bleu"
       unique_id: coulsdb_b
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/CoulSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
           {{ parts[6] }}
         {% else %}
-          {{ states('sensor.coulsdb_bleu') }}
+          {{ 'None' if states('sensor.coulsdb_bleu') in ['unavailable', 'unknown'] else states('sensor.coulsdb_bleu') }}
         {% endif %}
 
     - name: "CoulSdb Intensite"
       unique_id: coulsdb_lux
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/CoulSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
           {{ parts[7] }}
         {% else %}
-          {{ states('sensor.coulsdb_intensite') }}
+          {{ 'None' if states('sensor.coulsdb_intensite') in ['unavailable', 'unknown'] else states('sensor.coulsdb_intensite') }}
         {% endif %}
 
     - name: "CoulSdb Intensite brute"
       unique_id: coulsdb_lux_raw
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/CoulSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
           {{ parts[8] }}
         {% else %}
-          {{ states('sensor.coulsdb_intensite_brute') }}
+          {{ 'None' if states('sensor.coulsdb_intensite_brute') in ['unavailable', 'unknown'] else states('sensor.coulsdb_intensite_brute') }}
         {% endif %}
 
     - name: "BatSdb Tension"
       unique_id: batsdb_tension
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "V"
       device_class: voltage
       value_template: >
@@ -389,23 +465,31 @@ mqtt:
         {% if parts[0]|upper == 'BATSDB' and parts[1]|upper == 'TENSION' %}
           {{ parts[5] }}
         {% else %}
-          {{ states('sensor.batsdb_tension') }}
+          {{ 'None' if states('sensor.batsdb_tension') in ['unavailable', 'unknown'] else states('sensor.batsdb_tension') }}
         {% endif %}
 
     - name: "BatSdb Etat"
       unique_id: batsdb_etat
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatSdb"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'BATSDB' and parts[1]|upper == 'TENSION' %}
           {{ parts[2] | capitalize }}
         {% else %}
-          {{ states('sensor.batsdb_etat') }}
+          {{ 'None' if states('sensor.batsdb_etat') in ['unavailable', 'unknown'] else states('sensor.batsdb_etat') }}
         {% endif %}
 
     - name: "BatCave Tension"
       unique_id: batcave_tension
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatCave"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "V"
       device_class: voltage
       value_template: >
@@ -413,18 +497,22 @@ mqtt:
         {% if parts[0]|upper == 'BATCAVE' and parts[1]|upper == 'TENSION' %}
           {{ parts[5] }}
         {% else %}
-          {{ states('sensor.batcave_tension') }}
+          {{ 'None' if states('sensor.batcave_tension') in ['unavailable', 'unknown'] else states('sensor.batcave_tension') }}
         {% endif %}
 
     - name: "BatCave Etat"
       unique_id: batcave_etat
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatCave"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'BATCAVE' and parts[1]|upper == 'TENSION' %}
           {{ parts[2] | capitalize }}
         {% else %}
-          {{ states('sensor.batcave_etat') }}
+          {{ 'None' if states('sensor.batcave_etat') in ['unavailable', 'unknown'] else states('sensor.batcave_etat') }}
         {% endif %}
 
     # Détecteur jour / nuit de ThCave (classe CJourNuit du Capteur) :
@@ -432,18 +520,26 @@ mqtt:
     - name: "JnCave Etat"
       unique_id: jncave_etat
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/JnCave"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       icon: mdi:theme-light-dark
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'JNCAVE' and parts[1]|upper == 'JOUR' %}
           {{ 'Jour' if parts[4] == '1' else 'Nuit' }}
         {% else %}
-          {{ states('sensor.jncave_etat') }}
+          {{ 'None' if states('sensor.jncave_etat') in ['unavailable', 'unknown'] else states('sensor.jncave_etat') }}
         {% endif %}
 
     - name: "JnCave Eclairement"
       unique_id: jncave_eclairement
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/JnCave"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "%"
       state_class: measurement
       icon: mdi:brightness-6
@@ -452,12 +548,16 @@ mqtt:
         {% if parts[0]|upper == 'JNCAVE' and parts[1]|upper == 'ECLAIREMENT' %}
           {{ parts[4] }}
         {% else %}
-          {{ states('sensor.jncave_eclairement') }}
+          {{ 'None' if states('sensor.jncave_eclairement') in ['unavailable', 'unknown'] else states('sensor.jncave_eclairement') }}
         {% endif %}
 
     - name: "BatCh1er Tension"
       unique_id: batch1er_tension
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatCh1er"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "V"
       device_class: voltage
       value_template: >
@@ -465,23 +565,31 @@ mqtt:
         {% if parts[0]|upper == 'BATCH1ER' and parts[1]|upper == 'TENSION' %}
           {{ parts[5] }}
         {% else %}
-          {{ states('sensor.batch1er_tension') }}
+          {{ 'None' if states('sensor.batch1er_tension') in ['unavailable', 'unknown'] else states('sensor.batch1er_tension') }}
         {% endif %}
 
     - name: "BatCh1er Etat"
       unique_id: batch1er_etat
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatCh1er"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'BATCH1ER' and parts[1]|upper == 'TENSION' %}
           {{ parts[2] | capitalize }}
         {% else %}
-          {{ states('sensor.batch1er_etat') }}
+          {{ 'None' if states('sensor.batch1er_etat') in ['unavailable', 'unknown'] else states('sensor.batch1er_etat') }}
         {% endif %}
 
     - name: "BatChRDC Tension"
       unique_id: batchrdc_tension
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatChRDC"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "V"
       device_class: voltage
       value_template: >
@@ -489,23 +597,31 @@ mqtt:
         {% if parts[0]|upper == 'BATCHRDC' and parts[1]|upper == 'TENSION' %}
           {{ parts[5] }}
         {% else %}
-          {{ states('sensor.batchrdc_tension') }}
+          {{ 'None' if states('sensor.batchrdc_tension') in ['unavailable', 'unknown'] else states('sensor.batchrdc_tension') }}
         {% endif %}
 
     - name: "BatChRDC Etat"
       unique_id: batchrdc_etat
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatChRDC"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'BATCHRDC' and parts[1]|upper == 'TENSION' %}
           {{ parts[2] | capitalize }}
         {% else %}
-          {{ states('sensor.batchrdc_etat') }}
+          {{ 'None' if states('sensor.batchrdc_etat') in ['unavailable', 'unknown'] else states('sensor.batchrdc_etat') }}
         {% endif %}
 
     - name: "BatRemise Tension"
       unique_id: batremise_tension
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatRemise"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       unit_of_measurement: "V"
       device_class: voltage
       value_template: >
@@ -513,29 +629,37 @@ mqtt:
         {% if parts[0]|upper == 'BATREMISE' and parts[1]|upper == 'TENSION' %}
           {{ parts[5] }}
         {% else %}
-          {{ states('sensor.batremise_tension') }}
+          {{ 'None' if states('sensor.batremise_tension') in ['unavailable', 'unknown'] else states('sensor.batremise_tension') }}
         {% endif %}
 
     - name: "BatRemise Etat"
       unique_id: batremise_etat
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/BatRemise"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'BATREMISE' and parts[1]|upper == 'TENSION' %}
           {{ parts[2] | capitalize }}
         {% else %}
-          {{ states('sensor.batremise_etat') }}
+          {{ 'None' if states('sensor.batremise_etat') in ['unavailable', 'unknown'] else states('sensor.batremise_etat') }}
         {% endif %}
 
     - name: "Flotteur Remise"
       unique_id: flotteurremise_onoff
       state_topic: "home/thermometre/state"
+      # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+      availability:
+        - topic: "home/alerte/FlotteurRemise"
+          value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
       value_template: >
         {% set parts = value.split(' ') %}
         {% if parts[0]|upper == 'FLOTTEURREMISE' and parts[1]|upper == 'ONOFF' %}
           {% if parts[4] | float > 0 %}Cuve vide{% else %}Cuve pleine{% endif %}
         {% else %}
-          {{ states('sensor.flotteur_remise') }}
+          {{ 'None' if states('sensor.flotteur_remise') in ['unavailable', 'unknown'] else states('sensor.flotteur_remise') }}
         {% endif %}
         
     - name: "BatCYD Tension"
