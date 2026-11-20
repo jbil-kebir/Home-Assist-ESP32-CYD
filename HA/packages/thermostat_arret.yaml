@@ -1,0 +1,72 @@
+# ============================================================
+# Package : mise en veille à l'arrêt du thermostat « Chaudière RDC » (19/11/2026)
+#
+# Problème corrigé (nuit du 19/11, 02:00) : le planificateur passe le thermostat de l'arrêt à la chauffe AVANT de
+# régler la consigne. Le generic_thermostat compare alors la température à la consigne gardée en mémoire pendant
+# l'arrêt (20 °C de la soirée) : il envoie ON_FORCE ; la nouvelle consigne (17,5) arrive avant le retour ONR du CYD,
+# il ne coupe donc pas → chaudière allumée jusqu'à la mesure suivante de ThCh1er (≈ 15 min).
+#
+# À chaque passage du thermostat à l'arrêt (planificateur ou à la main) :
+#   1. consigne mémorisée abaissée au minimum du thermostat (min_temp) : au prochain passage en chauffe, la
+#      comparaison se fait avec ce minimum, puis avec la consigne de la plage ;
+#   2. DISABLE envoyé au CYD principal (home/chaudiere/command), une fois l'extinction faite : sécurité contre un
+#      allumage manuel (bouton ON du CYD ou de HA) hors période de chauffe. Le thermostat, lui, envoie ON_FORCE, qui
+#      réactive le CYD : la chauffe programmée n'est pas bloquée.
+#      PRUDENCE : un CYD désactivé n'émet plus aucune trame (ni OFF ni maintien, MyChaudiere.cpp loop_envoi_trames).
+#      DISABLE n'est donc envoyé qu'après : chaudière éteinte (switch.chaudiere off et DEL CoulSdb éteinte), puis
+#      2 min pour laisser partir la commande OFF et ses premiers maintiens (+7, +15, +56, +86 s). Si l'extinction
+#      n'est pas confirmée en 15 min : rien n'est envoyé, notification.
+# ============================================================
+
+automation:
+  - id: thermostat_rdc_veille_a_l_arret
+    alias: Thermostat RDC - Veille à l'arrêt
+    description: >-
+      À l'arrêt du thermostat Chaudière RDC : consigne mémorisée abaissée au minimum (évite un allumage au prochain
+      passage en chauffe avec l'ancienne consigne), puis DISABLE au CYD une fois la chaudière éteinte.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: climate.chaudiere_rdc
+        to: "off"
+    actions:
+      # 1. Consigne au minimum (thermostat à l'arrêt : aucune commande de chaudière n'en résulte)
+      - if:
+          - condition: template
+            value_template: >-
+              {{ state_attr('climate.chaudiere_rdc', 'temperature') | float(0)
+                 > state_attr('climate.chaudiere_rdc', 'min_temp') | float(0) }}
+        then:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.chaudiere_rdc
+            data:
+              temperature: "{{ state_attr('climate.chaudiere_rdc', 'min_temp') | float }}"
+      # 2. Attendre l'extinction confirmée (commande et DEL)
+      - wait_template: >-
+          {{ is_state('switch.chaudiere', 'off') and is_state('sensor.coulsdb_del', 'Eteinte') }}
+        timeout: "00:15:00"
+        continue_on_timeout: true
+      - if:
+          - condition: template
+            value_template: "{{ not wait.completed }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              notification_id: thermostat_rdc_veille
+              title: Thermostat RDC à l'arrêt
+              message: >-
+                Extinction de la chaudière non confirmée 15 min après l'arrêt du thermostat
+                (Chaudiere : {{ states('switch.chaudiere') }}, DEL : {{ states('sensor.coulsdb_del') }}) :
+                DISABLE non envoyé au CYD.
+          - stop: Extinction non confirmée
+      # 3. Laisser partir la commande OFF et ses premiers maintiens
+      - delay: "00:02:00"
+      # 4. Toujours à l'arrêt ? Alors désactiver le CYD
+      - condition: state
+        entity_id: climate.chaudiere_rdc
+        state: "off"
+      - action: mqtt.publish
+        data:
+          topic: home/chaudiere/command
+          payload: DISABLE

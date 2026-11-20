@@ -502,45 +502,6 @@ views:
             icon:
             - color: |
                 [[[return states['switch.chauffage_enable'].state === 'on' ? 'green' : 'red']]]
-    - type: entities
-      title: Programmes chauffage SDB
-      show_header_toggle: true
-      entities:
-      - entity: switch.schedule_lundi_q1
-        name: Lundi Q1
-      - type: attribute
-        entity: switch.schedule_lundi_q1
-        attribute: next_trigger
-        name: '  ↳ Prochain déclenchement'
-        format: datetime
-      - entity: switch.schedule_mardi_mercredi_q1
-        name: Mardi Mercredi Q1
-      - type: attribute
-        entity: switch.schedule_mardi_mercredi_q1
-        attribute: next_trigger
-        name: '  ↳ Prochain déclenchement'
-        format: datetime
-      - entity: switch.schedule_mardi_mercredi_q2
-        name: Mardi Mercredi Q2
-      - type: attribute
-        entity: switch.schedule_mardi_mercredi_q2
-        attribute: next_trigger
-        name: '  ↳ Prochain déclenchement'
-        format: datetime
-      - entity: switch.schedule_jeudi
-        name: Jeudi
-      - type: attribute
-        entity: switch.schedule_jeudi
-        attribute: next_trigger
-        name: '  ↳ Prochain déclenchement'
-        format: datetime
-      - entity: switch.schedule_vendredi_q2
-        name: Vendredi Q2
-      - type: attribute
-        entity: switch.schedule_vendredi_q2
-        attribute: next_trigger
-        name: '  ↳ Prochain déclenchement'
-        format: datetime
     - type: custom:scheduler-card
       title: Programmation chauffage SDB
       include:
