@@ -399,6 +399,11 @@
 // Doit couvrir : silence attendu par le relais (FILE_CMD_SILENCE_MS = 600 ms) + durée de la commande (~200 ms).
 // Relancée par toute émission (réponse à une commande). Avant le 16/11 : 1000 ms
 #define LORA_FENETRE_ECOUTE_MS          1500
+// Wi-Fi : attente maximale, après la remontée des mesures, de l'écho de connexion (CMqtt::reconnect) qui prouve que les
+// commandes retained ont été reçues et traitées. Sans écho dans ce délai : deep sleep quand même (comme avant la 4.3).
+// Vu le 20/11/2026 : SET sleepA:0 traité 2,7 s après l'abonnement, après la décision de dormir (ThSdb resté 10 min
+// endormi de plus)
+#define WIFI_ATTENTE_MAX_RETENUS_MS     4000
 // Écoute avant émission (CAD, attendCanalLibre() dans MyLoraRxTx.cpp) : canal occupé → attente aléatoire entre MIN et MAX
 // puis nouvel essai, ESSAIS fois au plus (puis émission quand même). Une trame dure ~100 à 390 ms en SF7 / 125 kHz
 #define LORA_CAD_ESSAIS                 8
@@ -420,7 +425,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "4.2"
+#define VERSION "4.3"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

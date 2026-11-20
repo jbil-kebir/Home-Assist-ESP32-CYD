@@ -210,7 +210,10 @@ void CConfig::loop() {
       ulDerniereRelance = millis();
       relanceMesuresNonRemontees();
     }
-    bFinAnticipee = (ulDateToutRemonte != 0) && (millis() - ulDateToutRemonte >= DELAI_COMMANDES_APRES_REMONTEE_MS);
+    // 4.3 : en plus, écho de connexion reçu (commandes retained traitées : un SET sleepA:0 traité après la décision de
+    // dormir ne prenait effet qu'au réveil suivant), ou WIFI_ATTENTE_MAX_RETENUS_MS écoulé sans écho
+    bFinAnticipee = (ulDateToutRemonte != 0) && (millis() - ulDateToutRemonte >= DELAI_COMMANDES_APRES_REMONTEE_MS)
+                    && (mbRetenusLus || millis() - ulDateToutRemonte >= WIFI_ATTENTE_MAX_RETENUS_MS);
     #elif defined(_LORA_P2P_MODE_)
     // LoRa seul : fin d'éveil anticipée dès que toutes les mesures sont parties ET que la dernière émission est
     // terminée (sinon mLoraRxTx->sleep() la couperait), puis LORA_FENETRE_ECOUTE_MS d'écoute

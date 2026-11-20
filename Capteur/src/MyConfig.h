@@ -134,7 +134,10 @@ public:
   const unsigned long DELAI_COMMANDES_APRES_REMONTEE_MS = 1000UL;
   // Wi-Fi : intervalle entre deux nouvelles tentatives de publication des mesures non remontées
   const unsigned long DELAI_RELANCE_MESURES_MS = 2000UL;
-  bool mbDeepSleepActive = false;  
+  bool mbDeepSleepActive = false;
+  // Wi-Fi (4.3) : écho de connexion reçu (CMqtt::reconnect / callback) : les commandes retained, délivrées par le broker
+  // avant cet écho, ont été traitées. Le deep sleep l'attend (WIFI_ATTENTE_MAX_RETENUS_MS au plus).
+  bool mbRetenusLus = false;
   bool mbWakeFromDeepSleep = false; // Variable qui indiquera qu'on s'est réveillé d'un deep sleep
   unsigned long mulDateMiseEnSommeil=0; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.
   unsigned long mulDateReveil=0L; // en s. Enregistré dans le NVS. Valeur absolue depuis 01/01/1970.

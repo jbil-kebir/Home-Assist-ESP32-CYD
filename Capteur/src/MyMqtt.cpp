@@ -110,6 +110,18 @@ void CMqtt::reconnect() {
 
       client.subscribe(mConfig.topic_config_command.c_str(), 1);
       Serial.println("Abonnement à : " + mConfig.topic_config_command);
+
+      // Écho de connexion (4.3) : abonnement puis publication sur <topic config state>/echo, APRÈS les abonnements
+      // aux commandes. Le broker délivre les retained d'un abonnement avant de traiter les publications suivantes :
+      // recevoir l'écho prouve que les commandes retained sont arrivées (et traitées, PubSubClient les passant dans
+      // l'ordre au callback). CConfig::loop() attend mbRetenusLus avant le deep sleep.
+      // Puce non configurée : elle ne publie rien d'autre que son annonce NONCONFIGURE, et ignore les commandes.
+      if (mConfig.mbConfiguree) {
+        String sTopicEcho = mConfig.topic_config_state + "/echo";
+        client.subscribe(sTopicEcho.c_str(), 0);
+        client.publish(sTopicEcho.c_str(), mConfig.nomEquipement.c_str(), false);
+      }
+      else mConfig.mbRetenusLus = true;
  
  
       String sDate = (mConfig.mDateTime != nullptr) ? mConfig.mDateTime->getDate() : "DATE";
@@ -207,7 +219,8 @@ int CMqtt::publish(const char* topic, const char* payload) {
 
 void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
   if (!active) return;
-  if (String(topic).endsWith("/echo")) { mbEchoRecu = true; return; } // Écho de powerDown()
+  // Écho de connexion (reconnect) ou de powerDown() : les messages délivrés avant lui (commandes retained) sont traités
+  if (String(topic).endsWith("/echo")) { mbEchoRecu = true; mConfig.mbRetenusLus = true; return; }
   String message, messageOrg;
   for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
   message.trim();
