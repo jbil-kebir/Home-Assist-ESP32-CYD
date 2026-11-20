@@ -93,3 +93,25 @@ template:
         state: >
           {% set prix = states('input_text.linky_cout_kwh') | replace(',', '.') | float(0) %}
           {{ (states('sensor.mesure_nas_projection_energie_1_an') | float(0) * prix) | round(2) }}
+  # Santé des NAS (déplacé de configuration.yaml le 20/11/2026)
+  - sensor:
+      - name: "NewNas Sante"
+        state: >
+          {{ 'ok' if states('sensor.newnas_volume_1_etat') == 'normal'
+            and states('sensor.newnas_drive_1_etat') == 'normal'
+            and states('sensor.newnas_drive_2_etat') == 'normal'
+            and states('binary_sensor.newnas_drive_1_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.newnas_drive_1_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            and states('binary_sensor.newnas_drive_2_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.newnas_drive_2_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            else 'probleme' }}
+      - name: "BigNas Sante"
+        state: >
+          {{ 'ok' if states('sensor.bignas_volume_1_etat') == 'normal'
+            and states('sensor.bignas_drive_1_etat') == 'normal'
+            and states('sensor.bignas_drive_2_etat') == 'normal'
+            and states('binary_sensor.bignas_drive_1_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.bignas_drive_1_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            and states('binary_sensor.bignas_drive_2_en_dessous_de_la_duree_de_vie_restante_minimale') == 'off'
+            and states('binary_sensor.bignas_drive_2_depassement_du_nombre_maximal_de_secteurs_defectueux') == 'off'
+            else 'probleme' }}

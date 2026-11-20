@@ -1,0 +1,111 @@
+# Capteurs MQTT du nœud ThCave (ThCave, BatCave, JnCave)
+# Inclus par configuration.yaml (mqtt: sensor: !include_dir_merge_list mqtt/capteurs/) :
+# liste YAML, chaque élément = un capteur. Découpé de configuration.yaml le 20/11/2026.
+
+
+- name: "ThCave Temperature"
+  unique_id: thcave_temp
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThCave"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "°C"
+  device_class: temperature
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THCAVE' and parts[1]|upper == 'TEMP' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thcave_temperature') in ['unavailable', 'unknown'] else states('sensor.thcave_temperature') }}
+    {% endif %}
+
+
+- name: "ThCave Humidite"
+  unique_id: thcave_hum
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThCave"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "%"
+  device_class: humidity
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THCAVE' and parts[1]|upper == 'HUM' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thcave_humidite') in ['unavailable', 'unknown'] else states('sensor.thcave_humidite') }}
+    {% endif %}
+
+
+- name: "BatCave Tension"
+  unique_id: batcave_tension
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatCave"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "V"
+  device_class: voltage
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATCAVE' and parts[1]|upper == 'TENSION' %}
+      {{ parts[5] }}
+    {% else %}
+      {{ 'None' if states('sensor.batcave_tension') in ['unavailable', 'unknown'] else states('sensor.batcave_tension') }}
+    {% endif %}
+
+
+- name: "BatCave Etat"
+  unique_id: batcave_etat
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatCave"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATCAVE' and parts[1]|upper == 'TENSION' %}
+      {{ parts[2] | capitalize }}
+    {% else %}
+      {{ 'None' if states('sensor.batcave_etat') in ['unavailable', 'unknown'] else states('sensor.batcave_etat') }}
+    {% endif %}
+
+
+# Détecteur jour / nuit de ThCave (classe CJourNuit du Capteur) :
+#   « JnCave Jour <date> <heure> 1|0 [FORCE] [IP] » et « JnCave Eclairement <date> <heure> <pct> [FORCE] [IP] »
+- name: "JnCave Etat"
+  unique_id: jncave_etat
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/JnCave"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  icon: mdi:theme-light-dark
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'JNCAVE' and parts[1]|upper == 'JOUR' %}
+      {{ 'Jour' if parts[4] == '1' else 'Nuit' }}
+    {% else %}
+      {{ 'None' if states('sensor.jncave_etat') in ['unavailable', 'unknown'] else states('sensor.jncave_etat') }}
+    {% endif %}
+
+
+- name: "JnCave Eclairement"
+  unique_id: jncave_eclairement
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/JnCave"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "%"
+  state_class: measurement
+  icon: mdi:brightness-6
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'JNCAVE' and parts[1]|upper == 'ECLAIREMENT' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.jncave_eclairement') in ['unavailable', 'unknown'] else states('sensor.jncave_eclairement') }}
+    {% endif %}

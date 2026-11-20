@@ -1,0 +1,89 @@
+# Capteurs MQTT du nœud ThRemise (ThRemise, BatRemise, Flotteur Remise)
+# Inclus par configuration.yaml (mqtt: sensor: !include_dir_merge_list mqtt/capteurs/) :
+# liste YAML, chaque élément = un capteur. Découpé de configuration.yaml le 20/11/2026.
+
+
+- name: "ThRemise Temperature"
+  unique_id: thremise_temp
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThRemise"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "°C"
+  device_class: temperature
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THREMISE' and parts[1]|upper == 'TEMP' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thremise_temperature') in ['unavailable', 'unknown'] else states('sensor.thremise_temperature') }}
+    {% endif %}
+
+
+- name: "ThRemise Humidite"
+  unique_id: thremise_hum
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThRemise"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "%"
+  device_class: humidity
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THREMISE' and parts[1]|upper == 'HUM' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thremise_humidite') in ['unavailable', 'unknown'] else states('sensor.thremise_humidite') }}
+    {% endif %}
+
+
+- name: "BatRemise Tension"
+  unique_id: batremise_tension
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatRemise"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "V"
+  device_class: voltage
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATREMISE' and parts[1]|upper == 'TENSION' %}
+      {{ parts[5] }}
+    {% else %}
+      {{ 'None' if states('sensor.batremise_tension') in ['unavailable', 'unknown'] else states('sensor.batremise_tension') }}
+    {% endif %}
+
+
+- name: "BatRemise Etat"
+  unique_id: batremise_etat
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatRemise"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATREMISE' and parts[1]|upper == 'TENSION' %}
+      {{ parts[2] | capitalize }}
+    {% else %}
+      {{ 'None' if states('sensor.batremise_etat') in ['unavailable', 'unknown'] else states('sensor.batremise_etat') }}
+    {% endif %}
+
+
+- name: "Flotteur Remise"
+  unique_id: flotteurremise_onoff
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/FlotteurRemise"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'FLOTTEURREMISE' and parts[1]|upper == 'ONOFF' %}
+      {% if parts[4] | float > 0 %}Cuve vide{% else %}Cuve pleine{% endif %}
+    {% else %}
+      {{ 'None' if states('sensor.flotteur_remise') in ['unavailable', 'unknown'] else states('sensor.flotteur_remise') }}
+    {% endif %}

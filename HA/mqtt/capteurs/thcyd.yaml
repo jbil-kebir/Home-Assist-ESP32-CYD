@@ -1,0 +1,65 @@
+# Capteurs MQTT du nœud ThCYD (ThCYD, BatCYD)
+# Inclus par configuration.yaml (mqtt: sensor: !include_dir_merge_list mqtt/capteurs/) :
+# liste YAML, chaque élément = un capteur. Découpé de configuration.yaml le 20/11/2026.
+
+
+- name: "ThCYD Temperature"
+  unique_id: thcyd_temp
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThCYD"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "°C"
+  device_class: temperature
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THCYD' and parts[1]|upper == 'TEMP' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thcyd_temperature') in ['unavailable', 'unknown'] else states('sensor.thcyd_temperature') }}
+    {% endif %}
+
+
+- name: "ThCYD Humidite"
+  unique_id: thcyd_hum
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThCYD"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "%"
+  device_class: humidity
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THCYD' and parts[1]|upper == 'HUM' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thcyd_humidite') in ['unavailable', 'unknown'] else states('sensor.thcyd_humidite') }}
+    {% endif %}
+
+    
+- name: "BatCYD Tension"
+  unique_id: batcyd_tension
+  state_topic: "home/thermometre/state"
+  unit_of_measurement: "V"
+  device_class: voltage
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATCYD' and parts[1]|upper == 'TENSION' %}
+      {{ parts[5] }}
+    {% else %}
+      {{ states('sensor.batcyd_tension') }}
+    {% endif %}
+
+
+- name: "BatCYD Etat"
+  unique_id: batcyd_etat
+  state_topic: "home/thermometre/state"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATCYD' and parts[1]|upper == 'TENSION' %}
+      {{ parts[2] | capitalize }}
+    {% else %}
+      {{ states('sensor.batcyd_etat') }}
+    {% endif %}

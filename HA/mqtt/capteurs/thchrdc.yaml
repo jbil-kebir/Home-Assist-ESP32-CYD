@@ -1,0 +1,73 @@
+# Capteurs MQTT du nœud ThChRDC (ThChRDC, BatChRDC)
+# Inclus par configuration.yaml (mqtt: sensor: !include_dir_merge_list mqtt/capteurs/) :
+# liste YAML, chaque élément = un capteur. Découpé de configuration.yaml le 20/11/2026.
+
+
+- name: "ThChRDC Temperature"
+  unique_id: thchrdc_temp
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThChRDC"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "°C"
+  device_class: temperature
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THCHRDC' and parts[1]|upper == 'TEMP' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thchrdc_temperature') in ['unavailable', 'unknown'] else states('sensor.thchrdc_temperature') }}
+    {% endif %}
+
+
+- name: "ThChRDC Humidite"
+  unique_id: thchrdc_hum
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThChRDC"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "%"
+  device_class: humidity
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THCHRDC' and parts[1]|upper == 'HUM' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thchrdc_humidite') in ['unavailable', 'unknown'] else states('sensor.thchrdc_humidite') }}
+    {% endif %}
+
+
+- name: "BatChRDC Tension"
+  unique_id: batchrdc_tension
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatChRDC"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "V"
+  device_class: voltage
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATCHRDC' and parts[1]|upper == 'TENSION' %}
+      {{ parts[5] }}
+    {% else %}
+      {{ 'None' if states('sensor.batchrdc_tension') in ['unavailable', 'unknown'] else states('sensor.batchrdc_tension') }}
+    {% endif %}
+
+
+- name: "BatChRDC Etat"
+  unique_id: batchrdc_etat
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatChRDC"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATCHRDC' and parts[1]|upper == 'TENSION' %}
+      {{ parts[2] | capitalize }}
+    {% else %}
+      {{ 'None' if states('sensor.batchrdc_etat') in ['unavailable', 'unknown'] else states('sensor.batchrdc_etat') }}
+    {% endif %}

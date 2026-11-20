@@ -1,0 +1,9 @@
+# Capteurs MQTT du nœud CYD principal (journal)
+# Inclus par configuration.yaml (mqtt: sensor: !include_dir_merge_list mqtt/capteurs/) :
+# liste YAML, chaque élément = un capteur. Découpé de configuration.yaml le 20/11/2026.
+
+    
+- name: "CYD Log"
+  unique_id: cyd_log
+  state_topic: "home/log"
+  value_template: "{{ value }}"

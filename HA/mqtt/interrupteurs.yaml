@@ -1,0 +1,135 @@
+# Interrupteurs MQTT (actionneurs commandés par le CYD), inclus par configuration.yaml (mqtt: switch:)
+# Liste YAML : chaque élément = un interrupteur. Découpé de configuration.yaml le 20/11/2026.
+
+- name: "Projecteur"
+  unique_id: mqtt_projecteur
+  command_topic: "home/projecteur/command"
+  state_topic: "home/projecteur/command"
+  payload_on: "ON"
+  payload_off: "OFF"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:projector
+
+- name: "Guirlande"
+  unique_id: mqtt_guirlande
+  command_topic: "home/guirlande/command"
+  state_topic: "home/guirlande/command"
+  payload_on: "ON"
+  payload_off: "OFF"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:string-lights
+
+- name: "Chauffage"
+  unique_id: mqtt_chauffage
+  command_topic: "home/chauffage/command"
+  state_topic: "home/chauffage/command"
+  payload_on: "ON"
+  payload_off: "OFF"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:radiator      
+  
+- name: "Chaudiere"
+  unique_id: mqtt_chaudiere
+  command_topic: "home/chaudiere/command"
+  state_topic: "home/chaudiere/command"
+  payload_on: "ON"
+  payload_off: "OFF"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:fire
+
+- name: "Chaudiere Enable"
+  unique_id: mqtt_chaudiere_enable
+  command_topic: "home/chaudiere/command"
+  state_topic: "home/chaudiere/command"
+  payload_on: "ENABLE"
+  payload_off: "DISABLE"
+  state_on: "ENABLER"
+  state_off: "DISABLER"
+  icon: mdi:fire
+
+- name: "Projecteur Enable"
+  unique_id: mqtt_projecteur_enable
+  command_topic: "home/projecteur/command"
+  state_topic: "home/projecteur/command"
+  payload_on: "ENABLE"
+  payload_off: "DISABLE"
+  state_on: "ENABLER"
+  state_off: "DISABLER"
+  icon: mdi:projector
+
+- name: "Guirlande Enable"
+  unique_id: mqtt_guirlande_enable
+  command_topic: "home/guirlande/command"
+  state_topic: "home/guirlande/command"
+  payload_on: "ENABLE"
+  payload_off: "DISABLE"
+  state_on: "ENABLER"
+  state_off: "DISABLER"
+  icon: mdi:string-lights
+
+# Lumière de la cave : prise 433 MHz (code 1FCF24, protocole 1, 301 µs) émise par le CYD principal (main_lumierecave.cpp)
+- name: "Lumière cave"
+  unique_id: mqtt_lumiere_cave
+  command_topic: "home/lumierecave/command"
+  state_topic: "home/lumierecave/command"
+  payload_on: "ON"
+  payload_off: "OFF"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:lightbulb
+
+- name: "Lumière cave Enable"
+  unique_id: mqtt_lumiere_cave_enable
+  command_topic: "home/lumierecave/command"
+  state_topic: "home/lumierecave/command"
+  payload_on: "ENABLE"
+  payload_off: "DISABLE"
+  state_on: "ENABLER"
+  state_off: "DISABLER"
+  icon: mdi:lightbulb
+
+# Chauffage de la chambre du rez-de-chaussée : prise 433 MHz (code 5B0E64, protocole 1, 306 µs) émise par le CYD
+# principal (main_chauffagerdc.cpp)
+- name: "Chauffage RdC"
+  unique_id: mqtt_chauffage_rdc
+  command_topic: "home/chauffagerdc/command"
+  state_topic: "home/chauffagerdc/command"
+  payload_on: "ON"
+  payload_off: "OFF"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:radiator
+
+- name: "Chauffage RdC Enable"
+  unique_id: mqtt_chauffage_rdc_enable
+  command_topic: "home/chauffagerdc/command"
+  state_topic: "home/chauffagerdc/command"
+  payload_on: "ENABLE"
+  payload_off: "DISABLE"
+  state_on: "ENABLER"
+  state_off: "DISABLER"
+  icon: mdi:radiator
+
+- name: "Chauffage Enable"
+  unique_id: mqtt_chauffage_enable
+  command_topic: "home/chauffage/command"
+  state_topic: "home/chauffage/command"
+  payload_on: "ENABLE"
+  payload_off: "DISABLE"
+  state_on: "ENABLER"
+  state_off: "DISABLER"
+  icon: mdi:radiator
+
+- name: "Chaudiere Programmation"
+  unique_id: mqtt_chaudiere_programmation
+  command_topic: "home/chaudiere/command"
+  payload_on: "ON_FORCE"
+  payload_off: "OFF_FORCE"
+  state_topic: "home/chaudiere/command"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:fire

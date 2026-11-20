@@ -50,3 +50,42 @@ template:
         availability: "{{ has_value('sensor.linky_debut_facturation') }}"
         state: >
           {{ (now().date() - strptime(states('sensor.linky_debut_facturation'), '%d/%m/%Y').date()).days }}
+  # Calculs depuis la dernière facture (déplacés de configuration.yaml le 20/11/2026)
+  - sensor:
+            
+      - name: "Linky Consommation Depuis Facture"
+        unit_of_measurement: "kWh"
+        state: >
+          {{ (states('sensor.linky_index_base') | float - states('input_text.linky_index_facture') | float) | round(1) }}     
+          
+      - name: "Linky Cout Depuis Facture"
+        unit_of_measurement: "€"
+        state: >
+          {{ ((states('sensor.linky_index_base') | float - states('input_text.linky_index_facture') | float) * states('input_text.linky_cout_kwh') | float) | round(2) }}          
+
+# Valeurs saisies (déplacées de configuration.yaml le 20/11/2026)
+input_text:
+    
+  linky_index_facture:
+    name: "Linky Index Facture"
+    max: 10
+    icon: mdi:receipt
+    
+  linky_cout_kwh:
+    name: "Linky Cout kWh"
+    max: 10
+    icon: mdi:currency-eur
+
+  linky_date_facture:
+    name: "Linky Date Facture"
+    max: 10
+    icon: mdi:calendar
+    
+  linky_consommation_derniere_facture:
+    name: "Linky Conso dernière Facture"
+    max: 10
+    icon: mdi:receipt
+  linky_cout_derniere_facture:
+    name: "Linky Cout dernière facture"
+    max: 10
+    icon: mdi:currency-eur

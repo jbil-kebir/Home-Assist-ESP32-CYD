@@ -1,0 +1,37 @@
+# ============================================================
+# Package : chaudière (déplacé de configuration.yaml le 20/11/2026)
+#  - climate.chaudiere_rdc : thermostat (generic_thermostat) sur switch.chaudiere_programmation (mqtt/interrupteurs.yaml),
+#    mesure de ThCh1er ; min_temp = consigne posée à l'arrêt (packages/thermostat_arret.yaml)
+#  - switch.chaudiere_programme : ENABLE puis ON / OFF puis DISABLE
+# ============================================================
+
+climate:
+  - platform: generic_thermostat
+    name: Chaudière RDC
+    heater: switch.chaudiere_programmation
+    target_sensor: sensor.thch1er_temperature
+    min_temp: 6
+    max_temp: 25
+    cold_tolerance: 0.5
+    hot_tolerance: 0.5
+    target_temp: 6
+
+template:
+  - switch:
+      - name: "Chaudiere Programme"
+        unique_id: chaudiere_programme
+        state: "{{ is_state('switch.chaudiere', 'on') }}"
+        turn_on:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.chaudiere_enable
+          - action: switch.turn_on
+            target:
+              entity_id: switch.chaudiere
+        turn_off:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.chaudiere
+          - action: switch.turn_off
+            target:
+              entity_id: switch.chaudiere_enable

@@ -1,0 +1,168 @@
+# Capteurs MQTT du nœud ThSdb (ThSdb, CoulSdb = voyant chaudière, BatSdb)
+# Inclus par configuration.yaml (mqtt: sensor: !include_dir_merge_list mqtt/capteurs/) :
+# liste YAML, chaque élément = un capteur. Découpé de configuration.yaml le 20/11/2026.
+
+- name: "ThSdb Temperature"
+  unique_id: thsdb_temp
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "°C"
+  device_class: temperature
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THSDB' and parts[1]|upper == 'TEMP' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thsdb_temperature') in ['unavailable', 'unknown'] else states('sensor.thsdb_temperature') }}
+    {% endif %}
+
+
+- name: "ThSdb Humidite"
+  unique_id: thsdb_hum
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/ThSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "%"
+  device_class: humidity
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'THSDB' and parts[1]|upper == 'HUM' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.thsdb_humidite') in ['unavailable', 'unknown'] else states('sensor.thsdb_humidite') }}
+    {% endif %}
+
+
+- name: "CoulSdb DEL"
+  unique_id: coulsdb_del
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/CoulSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'DEL' %}
+      {% if parts[4] == '0' %}Eteinte{% else %}Allumee{% endif %}
+    {% else %}
+      {{ 'None' if states('sensor.coulsdb_del') in ['unavailable', 'unknown'] else states('sensor.coulsdb_del') }}
+    {% endif %}
+
+
+- name: "CoulSdb Rouge"
+  unique_id: coulsdb_r
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/CoulSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+      {{ parts[4] }}
+    {% else %}
+      {{ 'None' if states('sensor.coulsdb_rouge') in ['unavailable', 'unknown'] else states('sensor.coulsdb_rouge') }}
+    {% endif %}
+
+
+- name: "CoulSdb Vert"
+  unique_id: coulsdb_g
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/CoulSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+      {{ parts[5] }}
+    {% else %}
+      {{ 'None' if states('sensor.coulsdb_vert') in ['unavailable', 'unknown'] else states('sensor.coulsdb_vert') }}
+    {% endif %}
+
+
+- name: "CoulSdb Bleu"
+  unique_id: coulsdb_b
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/CoulSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+      {{ parts[6] }}
+    {% else %}
+      {{ 'None' if states('sensor.coulsdb_bleu') in ['unavailable', 'unknown'] else states('sensor.coulsdb_bleu') }}
+    {% endif %}
+
+
+- name: "CoulSdb Intensite"
+  unique_id: coulsdb_lux
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/CoulSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+      {{ parts[7] }}
+    {% else %}
+      {{ 'None' if states('sensor.coulsdb_intensite') in ['unavailable', 'unknown'] else states('sensor.coulsdb_intensite') }}
+    {% endif %}
+
+
+- name: "CoulSdb Intensite brute"
+  unique_id: coulsdb_lux_raw
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/CoulSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'COULSDB' and parts[1]|upper == 'COUL' %}
+      {{ parts[8] }}
+    {% else %}
+      {{ 'None' if states('sensor.coulsdb_intensite_brute') in ['unavailable', 'unknown'] else states('sensor.coulsdb_intensite_brute') }}
+    {% endif %}
+
+
+- name: "BatSdb Tension"
+  unique_id: batsdb_tension
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  unit_of_measurement: "V"
+  device_class: voltage
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATSDB' and parts[1]|upper == 'TENSION' %}
+      {{ parts[5] }}
+    {% else %}
+      {{ 'None' if states('sensor.batsdb_tension') in ['unavailable', 'unknown'] else states('sensor.batsdb_tension') }}
+    {% endif %}
+
+
+- name: "BatSdb Etat"
+  unique_id: batsdb_etat
+  state_topic: "home/thermometre/state"
+  # Indisponible tant que le CYD signale le capteur en retard (home/alerte/<capteur> : OK / RETARD, retenu)
+  availability:
+    - topic: "home/alerte/BatSdb"
+      value_template: "{{ 'online' if value.startswith('OK') else 'offline' }}"
+  value_template: >
+    {% set parts = value.split(' ') %}
+    {% if parts[0]|upper == 'BATSDB' and parts[1]|upper == 'TENSION' %}
+      {{ parts[2] | capitalize }}
+    {% else %}
+      {{ 'None' if states('sensor.batsdb_etat') in ['unavailable', 'unknown'] else states('sensor.batsdb_etat') }}
+    {% endif %}

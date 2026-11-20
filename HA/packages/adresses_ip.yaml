@@ -1,0 +1,48 @@
+# ============================================================
+# Package : adresses IP des équipements (input_text ip_*),
+# remplies par les automatisations « … - Recevoir IP » (automations.yaml). Déplacé de configuration.yaml le 20/11/2026.
+# ============================================================
+
+input_text:
+
+  ip_thsdb:
+    name: "IP ThSdb"
+    max: 15
+  ip_thcave:
+    name: "IP ThCave"
+    max: 15
+  ip_thchrdc:
+    name: "IP ThChRDC"
+    max: 15
+  ip_thch1er:
+    name: "IP ThCh1er"
+    max: 15
+  ip_thremise:
+    name: "IP ThRemise"
+    max: 15
+  ip_thcyd:
+    name: "IP ThCYD"
+    max: 15
+  ip_cyd:
+    name: "IP CYD"
+    max: 15
+  ip_cyd_aux:
+    name: "IP CYD AUX"
+    max: 15
+  ip_cyd_aux2:
+    name: "IP CYD AUX2"
+    max: 15
+  ip_relaislora:
+    name: "IP Relais LoRa"
+    max: 15
+    
+  ip_ha:
+    name: "IP HA"
+    max: 15
+
+  ip_newnas:
+    name: "IP NewNas"
+    max: 15
+  ip_bignas:
+    name: "IP BigNas"
+    max: 15    
