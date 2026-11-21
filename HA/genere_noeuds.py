@@ -1615,7 +1615,7 @@ def carte_ota():
                "{%- endfor %}\n\n"
                "**Comment** : dans VS Code, profil `<appareil>_ota` puis flèche « Upload » (ou page `http://<IP>/update`, "
                "même mot de passe, secret.h). Notification à chaque étape, mail du résultat.\n\n"
-               "- **Relais LoRa, CYD** : toujours joignables.\n"
+               "- **Relais LoRa, CYD** : toujours joignables ; **NoeudChauffageSdb** : dès qu'il est alimenté (relais du chauffage).\n"
                "- **Nœud Wi-Fi** : éveillé (`sleepA:0`) ou commande `OTA` (reçue au réveil, 10 min d'éveil).\n"
                "- **Nœud LoRa** (ThRemise .240, ThCave .241) : répéteur Wi-Fi à quelques mètres du nœud (pas collé), "
                "commande `OTA`, attendre 🔧 « prêt 10 min sur le Wi-Fi de la maison », puis Upload. Sans Wi-Fi en 30 s : "
