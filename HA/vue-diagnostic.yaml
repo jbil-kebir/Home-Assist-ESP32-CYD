@@ -67,7 +67,9 @@ sections:
           ('sensor.thch1er_mise_a_jour_firmware', 'ThCh1er'),
           ('sensor.thsdb_mise_a_jour_firmware', 'ThSdb'),
           ('sensor.thremise_mise_a_jour_firmware', 'ThRemise'),
-          ('sensor.thcave_mise_a_jour_firmware', 'ThCave')
+          ('sensor.thcave_mise_a_jour_firmware', 'ThCave'),
+          ('sensor.noeud_mise_a_jour_firmware', 'NoeudChauffageSdb'),
+          ('sensor.prguirlande_mise_a_jour_firmware', 'PrGuirlande')
       ] -%}
       | Appareil | Dernière étape | Détail | Quand |
       |:--|:--:|:--|:--|

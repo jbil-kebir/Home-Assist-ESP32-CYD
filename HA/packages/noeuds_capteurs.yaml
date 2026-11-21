@@ -1697,6 +1697,32 @@ template:
           message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
           appareil: "ThCave"
 
+  # ---------- NoeudChauffageSdb : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/Noeud"
+    sensor:
+      - name: "Noeud Mise à jour firmware"
+        unique_id: noeud_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "NoeudChauffageSdb"
+
+  # ---------- PrGuirlande : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/PrGuirlande"
+    sensor:
+      - name: "PrGuirlande Mise à jour firmware"
+        unique_id: prguirlande_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "PrGuirlande"
+
   # ---------- RelaisLora : version du firmware (au démarrage et après STATUS) ----------
   - trigger:
       - trigger: mqtt
@@ -2828,6 +2854,8 @@ automation:
           - sensor.thsdb_mise_a_jour_firmware
           - sensor.thremise_mise_a_jour_firmware
           - sensor.thcave_mise_a_jour_firmware
+          - sensor.noeud_mise_a_jour_firmware
+          - sensor.prguirlande_mise_a_jour_firmware
         attribute: message
     conditions:
       - condition: template

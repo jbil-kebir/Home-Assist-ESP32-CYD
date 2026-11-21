@@ -109,7 +109,8 @@ CAPTEURS_ALERTE_HORS_NOEUDS = ["ThCYD"]
 # les nœuds Wi-Fi ajoutent leur IP en fin de message : retirée de l'attribut message.
 APPAREILS_OTA = [("RelaisLora", "Relais LoRa"), ("configuration", "CYD principal"), ("configaux", "CYD Aux"),
                  ("configaux2", "CYD Aux2"), ("ThChRDC", "ThChRDC"), ("ThCh1er", "ThCh1er"), ("ThSdb", "ThSdb"),
-                 ("ThRemise", "ThRemise"), ("ThCave", "ThCave")]
+                 ("ThRemise", "ThRemise"), ("ThCave", "ThCave"),
+                 ("Noeud", "NoeudChauffageSdb"), ("PrGuirlande", "PrGuirlande")]   # topic = nomEquipement du nœud (« Noeud »)
 
 
 # Noms de tous les capteurs publiés sur home/alerte/<nom> par le CYD principal
