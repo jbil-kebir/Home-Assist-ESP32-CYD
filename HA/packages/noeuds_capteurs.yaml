@@ -1580,6 +1580,123 @@ template:
         attributes:
           le: "{{ trigger.payload.split(' ')[1:3] | join(' ') }}"
 
+  # ---------- Relais LoRa : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/RelaisLora"
+    sensor:
+      - name: "RelaisLora Mise à jour firmware"
+        unique_id: relaislora_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "Relais LoRa"
+
+  # ---------- CYD principal : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/configuration"
+    sensor:
+      - name: "configuration Mise à jour firmware"
+        unique_id: configuration_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "CYD principal"
+
+  # ---------- CYD Aux : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/configaux"
+    sensor:
+      - name: "configaux Mise à jour firmware"
+        unique_id: configaux_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "CYD Aux"
+
+  # ---------- CYD Aux2 : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/configaux2"
+    sensor:
+      - name: "configaux2 Mise à jour firmware"
+        unique_id: configaux2_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "CYD Aux2"
+
+  # ---------- ThChRDC : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/ThChRDC"
+    sensor:
+      - name: "ThChRDC Mise à jour firmware"
+        unique_id: thchrdc_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "ThChRDC"
+
+  # ---------- ThCh1er : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/ThCh1er"
+    sensor:
+      - name: "ThCh1er Mise à jour firmware"
+        unique_id: thch1er_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "ThCh1er"
+
+  # ---------- ThSdb : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/ThSdb"
+    sensor:
+      - name: "ThSdb Mise à jour firmware"
+        unique_id: thsdb_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "ThSdb"
+
+  # ---------- ThRemise : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/ThRemise"
+    sensor:
+      - name: "ThRemise Mise à jour firmware"
+        unique_id: thremise_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "ThRemise"
+
+  # ---------- ThCave : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/ThCave"
+    sensor:
+      - name: "ThCave Mise à jour firmware"
+        unique_id: thcave_ota
+        icon: mdi:update
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+          appareil: "ThCave"
+
   # ---------- RelaisLora : version du firmware (au démarrage et après STATUS) ----------
   - trigger:
       - trigger: mqtt
@@ -2691,6 +2808,56 @@ automation:
             ✅ {{ capteur }} : de nouveau des nouvelles ({{ date }} à {{ heure }}).
             {%- endif -%}
 
+
+  # ------------------------------------------------------------
+  # Mise à jour du firmware à distance : notification à chaque étape, mail du résultat (OK, ECHEC, RETOUR)
+  # Déclenchée par un changement du message (pas par sa relecture au redémarrage de HA : même message, rien ne change)
+  # ------------------------------------------------------------
+  - id: firmware_mise_a_jour_notification
+    alias: Firmware - Mise à jour à distance (notification et mail)
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id:
+          - sensor.relaislora_mise_a_jour_firmware
+          - sensor.configuration_mise_a_jour_firmware
+          - sensor.configaux_mise_a_jour_firmware
+          - sensor.configaux2_mise_a_jour_firmware
+          - sensor.thchrdc_mise_a_jour_firmware
+          - sensor.thch1er_mise_a_jour_firmware
+          - sensor.thsdb_mise_a_jour_firmware
+          - sensor.thremise_mise_a_jour_firmware
+          - sensor.thcave_mise_a_jour_firmware
+        attribute: message
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.from_state.state not in ['unknown', 'unavailable']
+             and trigger.to_state.attributes.message is defined }}
+    actions:
+      - variables:
+          appareil: "{{ trigger.to_state.attributes.appareil }}"
+          etape: "{{ trigger.to_state.state }}"
+          message: "{{ trigger.to_state.attributes.message }}"
+          icone: >-
+            {{ {'OK': '✅', 'ECHEC': '❌', 'RETOUR': '↩️', 'DEBUT': '⏳', 'TRANSFERT': '⏳', 'ATTENTE': '🔧'}.get(etape, 'ℹ️') }}
+          libelle: >-
+            {{ {'OK': 'mise à jour réussie', 'ECHEC': 'mise à jour refusée ou échouée',
+                 'RETOUR': 'retour au firmware précédent', 'DEBUT': 'mise à jour commencée',
+                 'TRANSFERT': 'firmware reçu, redémarrage',
+                 'ATTENTE': 'prêt pour une mise à jour (commande OTA)'}.get(etape, etape) }}
+      - action: persistent_notification.create
+        data:
+          title: "{{ icone }} {{ appareil }} : {{ libelle }}"
+          message: "{{ message }}"
+      - if:
+          - condition: template
+            value_template: "{{ etape in ['OK', 'ECHEC', 'RETOUR'] }}"
+        then:
+          - action: notify.email_kebir
+            data:
+              title: "{{ icone }} {{ appareil }} : {{ libelle }}"
+              message: "{{ icone }} {{ appareil }} : {{ libelle }}. Détail : {{ message }}"
 
   # ------------------------------------------------------------
   # Appareils RF vérifiés par un nœud de présence : notification quand le CYD principal signale un échec

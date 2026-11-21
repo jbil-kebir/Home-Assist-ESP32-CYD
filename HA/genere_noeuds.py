@@ -103,6 +103,15 @@ def capteurs_unitaires(n):
 CAPTEURS_ALERTE_HORS_NOEUDS = ["ThCYD"]
 
 
+# Mise à jour du firmware à distance (MyOta, Relais-Lora 2.9) : appareils qui publient leurs étapes, retenues, sur
+# home/ota/<topic> : « DEBUT|ECHEC|TRANSFERT|OK|RETOUR <version> <date> <heure> [détail] ». (topic, libellé)
+# Nœuds (Capteur 4.5) : topic = nom du nœud ; les nœuds LoRa publient par le relais (non retenu, « 0.0.0.0 » en fin),
+# les nœuds Wi-Fi ajoutent leur IP en fin de message : retirée de l'attribut message.
+APPAREILS_OTA = [("RelaisLora", "Relais LoRa"), ("configuration", "CYD principal"), ("configaux", "CYD Aux"),
+                 ("configaux2", "CYD Aux2"), ("ThChRDC", "ThChRDC"), ("ThCh1er", "ThCh1er"), ("ThSdb", "ThSdb"),
+                 ("ThRemise", "ThRemise"), ("ThCave", "ThCave")]
+
+
 # Noms de tous les capteurs publiés sur home/alerte/<nom> par le CYD principal
 def noms_alerte():
     return [nom_c for n in NOEUDS for _, nom_c, _ in capteurs_unitaires(n)] + CAPTEURS_ALERTE_HORS_NOEUDS
@@ -501,6 +510,22 @@ template:""")
         attributes:
           le: "{{{{ trigger.payload.split(' ')[1:3] | join(' ') }}}}"
 """)
+    # Mise à jour du firmware : dernière étape publiée par l'appareil (message retenu, relu au redémarrage de HA ;
+    # pas d'attribut horodaté, pour qu'une relecture identique ne relance pas l'automatisation)
+    for top, lib in APPAREILS_OTA:
+            w(f"""  # ---------- {lib} : mise à jour du firmware ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/ota/{top}"
+    sensor:
+      - name: "{top} Mise à jour firmware"
+        unique_id: {top.lower()}_ota
+        icon: mdi:update
+        state: "{{{{ trigger.payload.split(' ')[0] | upper }}}}"
+        attributes:
+          message: "{{{{ trigger.payload | regex_replace(' \\\\d{{1,3}}(\\\\.\\\\d{{1,3}}){{3}}$', '') }}}}"
+          appareil: "{lib}"
+""")
     w(capteur_version("RelaisLora", "relaislora", "home/confrelaislora/state", "au démarrage et après STATUS"))
     for a in APPAREILS_VERIFIES:
         w(entites_appareil_verifie(*a))
@@ -849,6 +874,47 @@ automation:
             {{%- endif -%}}
 """)
     w(f"""
+  # ------------------------------------------------------------
+  # Mise à jour du firmware à distance : notification à chaque étape, mail du résultat (OK, ECHEC, RETOUR)
+  # Déclenchée par un changement du message (pas par sa relecture au redémarrage de HA : même message, rien ne change)
+  # ------------------------------------------------------------
+  - id: firmware_mise_a_jour_notification
+    alias: Firmware - Mise à jour à distance (notification et mail)
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id:
+{''.join(f"          - sensor.{top.lower()}_mise_a_jour_firmware" + chr(10) for top, _ in APPAREILS_OTA)}        attribute: message
+    conditions:
+      - condition: template
+        value_template: >-
+          {{{{ trigger.from_state is not none and trigger.from_state.state not in ['unknown', 'unavailable']
+             and trigger.to_state.attributes.message is defined }}}}
+    actions:
+      - variables:
+          appareil: "{{{{ trigger.to_state.attributes.appareil }}}}"
+          etape: "{{{{ trigger.to_state.state }}}}"
+          message: "{{{{ trigger.to_state.attributes.message }}}}"
+          icone: >-
+            {{{{ {{'OK': '✅', 'ECHEC': '❌', 'RETOUR': '↩️', 'DEBUT': '⏳', 'TRANSFERT': '⏳', 'ATTENTE': '🔧'}}.get(etape, 'ℹ️') }}}}
+          libelle: >-
+            {{{{ {{'OK': 'mise à jour réussie', 'ECHEC': 'mise à jour refusée ou échouée',
+                 'RETOUR': 'retour au firmware précédent', 'DEBUT': 'mise à jour commencée',
+                 'TRANSFERT': 'firmware reçu, redémarrage',
+                 'ATTENTE': 'prêt pour une mise à jour (commande OTA)'}}.get(etape, etape) }}}}
+      - action: persistent_notification.create
+        data:
+          title: "{{{{ icone }}}} {{{{ appareil }}}} : {{{{ libelle }}}}"
+          message: "{{{{ message }}}}"
+      - if:
+          - condition: template
+            value_template: "{{{{ etape in ['OK', 'ECHEC', 'RETOUR'] }}}}"
+        then:
+          - action: notify.email_kebir
+            data:
+              title: "{{{{ icone }}}} {{{{ appareil }}}} : {{{{ libelle }}}}"
+              message: "{{{{ icone }}}} {{{{ appareil }}}} : {{{{ libelle }}}}. Détail : {{{{ message }}}}"
+
   # ------------------------------------------------------------
   # Appareils RF vérifiés par un nœud de présence : notification quand le CYD principal signale un échec
   # (« <nom> ECHEC ON|OFF <essais> » sur home/<appareil>/state, Home-Assist 3.6)
@@ -1530,6 +1596,30 @@ def carte_versions():
         {"type": "markdown", "content": contenu, "grid_options": {"columns": "full"}}]}
 
 
+TITRE_OTA = "Mises à jour du firmware"
+
+
+def carte_ota():
+    lignes = ",\n".join(f"    ('sensor.{top.lower()}_mise_a_jour_firmware', '{lib}')" for top, lib in APPAREILS_OTA)
+    contenu = ("{%- set eq = [\n" + lignes + "\n] -%}\n"
+               "| Appareil | Dernière étape | Détail | Quand |\n"
+               "|:--|:--:|:--|:--|\n"
+               "{%- for e, lib in eq %}\n"
+               "{%- set s = states(e) %}\n"
+               "| {{ lib }} | "
+               "{{ {'OK': '✅ OK', 'ECHEC': '❌ ÉCHEC', 'RETOUR': '↩️ RETOUR', 'DEBUT': '⏳ début', "
+               "'TRANSFERT': '⏳ transfert', 'ATTENTE': '🔧 en attente'}.get(s, '—') }} | "
+               "{{ state_attr(e, 'message') or 'aucune mise à jour' }} | "
+               "{{ relative_time(states[e].last_changed) if s not in ['unknown', 'unavailable'] else '—' }} |\n"
+               "{%- endfor %}\n\n"
+               "Par PlatformIO (--upload-port <IP>, ou profils *_ota du relais et des CYD) ou par la page /update de "
+               "l'appareil (même mot de passe, secret.h). Nœud : éveillé (sleepA:0) ou commande OTA (10 min ; nœud LoRa : "
+               "point d'accès « <nom>-MAJ », 192.168.4.1). Notification à chaque étape, mail du résultat.\n")
+    return {"type": "grid", "cards": [
+        {"type": "heading", "heading": TITRE_OTA, "heading_style": "title", "icon": "mdi:update"},
+        {"type": "markdown", "content": contenu, "grid_options": {"columns": "full"}}]}
+
+
 def vue_diagnostic():
     import json
     import yaml
@@ -1543,8 +1633,9 @@ def vue_diagnostic():
     vue = next(v for v in cfg["views"] if v.get("path") == VUE_DIAGNOSTIC)
     vue.pop("cards", None)  # « cards: [] » ajouté par HA dans une vue en sections
     vue["sections"] = [s for s in vue["sections"]
-                       if not (s.get("cards") and s["cards"][0].get("heading") == TITRE_VERSIONS)]
+                       if not (s.get("cards") and s["cards"][0].get("heading") in (TITRE_VERSIONS, TITRE_OTA))]
     vue["sections"].insert(0, carte_versions())
+    vue["sections"].insert(1, carte_ota())
     entete = (f"# Vue « {vue.get('title')} » du tableau Système (https://ha.jbil.org/dashboard-systeme/{VUE_DIAGNOSTIC})\n"
               "# Généré par genere_noeuds.py à partir de .storage/lovelace.dashboard_systeme + section « Versions des firmwares »\n"
               "# (sensor.<id>_version : packages/noeuds_capteurs.yaml et packages/cyd.yaml).\n"

@@ -52,6 +52,35 @@ sections:
       columns: full
 - type: grid
   cards:
+  - type: heading
+    heading: Mises à jour du firmware
+    heading_style: title
+    icon: mdi:update
+  - type: markdown
+    content: |
+      {%- set eq = [
+          ('sensor.relaislora_mise_a_jour_firmware', 'Relais LoRa'),
+          ('sensor.configuration_mise_a_jour_firmware', 'CYD principal'),
+          ('sensor.configaux_mise_a_jour_firmware', 'CYD Aux'),
+          ('sensor.configaux2_mise_a_jour_firmware', 'CYD Aux2'),
+          ('sensor.thchrdc_mise_a_jour_firmware', 'ThChRDC'),
+          ('sensor.thch1er_mise_a_jour_firmware', 'ThCh1er'),
+          ('sensor.thsdb_mise_a_jour_firmware', 'ThSdb'),
+          ('sensor.thremise_mise_a_jour_firmware', 'ThRemise'),
+          ('sensor.thcave_mise_a_jour_firmware', 'ThCave')
+      ] -%}
+      | Appareil | Dernière étape | Détail | Quand |
+      |:--|:--:|:--|:--|
+      {%- for e, lib in eq %}
+      {%- set s = states(e) %}
+      | {{ lib }} | {{ {'OK': '✅ OK', 'ECHEC': '❌ ÉCHEC', 'RETOUR': '↩️ RETOUR', 'DEBUT': '⏳ début', 'TRANSFERT': '⏳ transfert', 'ATTENTE': '🔧 en attente'}.get(s, '—') }} | {{ state_attr(e, 'message') or 'aucune mise à jour' }} | {{ relative_time(states[e].last_changed) if s not in ['unknown', 'unavailable'] else '—' }} |
+      {%- endfor %}
+
+      Par PlatformIO (--upload-port <IP>, ou profils *_ota du relais et des CYD) ou par la page /update de l'appareil (même mot de passe, secret.h). Nœud : éveillé (sleepA:0) ou commande OTA (10 min ; nœud LoRa : point d'accès « <nom>-MAJ », 192.168.4.1). Notification à chaque étape, mail du résultat.
+    grid_options:
+      columns: full
+- type: grid
+  cards:
   - type: vertical-stack
     cards:
     - type: heading
