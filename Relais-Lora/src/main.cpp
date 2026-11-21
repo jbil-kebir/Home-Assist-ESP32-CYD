@@ -10,6 +10,8 @@
 #include "MyDateTime.h"
 #include "MyLoraRxTx.h"
 #include "FileCommandes.h"
+#include "MyOta.h"
+#include "secret.h"   // OTA_MOT_DE_PASSE (exclu du dépôt ; modèle : secret.exemple.h)
 
 
 // === OBJETS GLOBAUX ===
@@ -32,6 +34,7 @@ void print();
 //----------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
+  gOta.debutDemarrage();   // Nouveau firmware à l'essai : retour au précédent sans connexion MQTT à temps
   unsigned long start = millis();
   while(!Serial && millis() - start < 10000); // Attend max 10 secondes
 
@@ -133,6 +136,12 @@ void setup() {
     Serial.println("Initiallisation Serveur Web...");
     webServer.setup();
     Serial.println("...Serveur Web OK");
+    // Mise à jour à distance : PlatformIO (profil seeed_xiao_esp32s3_ota) et page /update ; étapes publiées,
+    // retenues, sur home/ota/RelaisLora
+    gOta.begin("RelaisLora", OTA_MOT_DE_PASSE, String(VERSION),
+               [](const char* topic, const char* msg) { mqtt.publish(topic, msg, true); },
+               []() { return mDateTime.getDate() + " " + mDateTime.getTime(); });
+    gOta.ajoutePagesWeb(webServer.serveur());
   }
 
   #ifndef __PREMIER_DEMARRAGE__
@@ -140,6 +149,7 @@ void setup() {
   mqtt.begin();
   mqtt.reconnect();
   Serial.println("...MQTT OK !");
+  gOta.confirme();   // MQTT connecté : nouveau firmware validé (OK), ou retour arrière signalé (RETOUR)
   #endif
 
   config.traiteReveil();
@@ -175,6 +185,7 @@ void loop() {
   mqtt.loop();  // Toujours actif, même écran éteint
   #endif
   webServer.loop(); // Toujours actif, même écran éteint
+  gOta.loop();      // Mise à jour par PlatformIO (ArduinoOTA)
   
 
   int retRCS = mLoraRxTx.loop(); // On écoute sur la fréquence Lora

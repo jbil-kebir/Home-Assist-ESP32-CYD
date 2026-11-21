@@ -89,7 +89,9 @@
 
 
 // Version du logiciel
-#define VERSION "2.8"
+#define VERSION "2.9"
+// Étiquette du firmware (MyOta.cpp) : la page /update refuse un fichier qui n'a pas celle de l'appareil
+#define ETIQUETTE_FIRMWARE "Relais-Lora"
 // Attente maximale de la fin d'une émission LoRa avant d'en commencer une autre (CMyLoraRxTx::sendPacket())
 #define LORA_ATTENTE_TX_MS 2000
 // Écart minimal entre la fin d'une émission et le début de la suivante (CMyLoraRxTx::pretAEmettre()) : le capteur

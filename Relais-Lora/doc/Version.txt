@@ -1,3 +1,14 @@
+2.9
+Mise à jour du firmware à distance (MyOta.h/.cpp, module prévu aussi pour le CYD et les nœuds) :
+    - PlatformIO par le réseau : profil seeed_xiao_esp32s3_ota (ArduinoOTA, espota, 192.168.1.107) ;
+    - page Web /update (navigateur, téléphone), refuse un firmware sans l'étiquette ETIQUETTE_FIRMWARE de l'appareil ;
+    - même mot de passe : OTA_MOT_DE_PASSE dans src/secret.h (non commité ; modèle secret.exemple.h) ;
+    - retour arrière (chargeur Arduino 3.x avec rollback) : nouveau firmware validé seulement une fois MQTT connecté,
+      sinon retour au précédent après OTA_DELAI_VALIDATION_S (120 s) ou au premier plantage ;
+    - étapes publiées, retenues, sur home/ota/RelaisLora : DEBUT, ECHEC, TRANSFERT, OK, RETOUR (Home Assistant :
+      notification à chaque étape, mail du résultat).
+    Flash 8 Mo (default_8MB.csv) : deux emplacements de 3,2 Mo, pas de changement de découpage (21/11/2026)
+
 2.8
 Capteur LoRa éveillé (dernière config sleepA:0 et pas de DEEPSLEEP ON depuis) : commande envoyée directement, sans
     attendre une trame du capteur, puis renvoyée toutes les FILE_CMD_RENVOI_EVEILLE_MS (30 s) jusqu'à l'accusé ;
