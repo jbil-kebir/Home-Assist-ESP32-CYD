@@ -38,6 +38,7 @@ public:
 
   void setup();
   void loop();
+  WebServer& serveur() { return server; }   // Pages ajoutées par d'autres modules (MyOta : /update)
 };
 
 #endif

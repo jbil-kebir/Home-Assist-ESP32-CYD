@@ -146,7 +146,16 @@
 #define DELAI_ALERTE_DEFAUT_S 3600UL
 
 // Version du logiciel
-#define VERSION "4.2"
+#define VERSION "4.3"
+// Étiquette du firmware (MyOta.cpp) : la page /update refuse un fichier qui n'a pas celle du profil de l'appareil
+// (un firmware de CYD auxiliaire ne peut pas remplacer celui du principal, et inversement)
+#if defined(CYD_AUXILIAIRE)
+#define ETIQUETTE_FIRMWARE "CYD-auxiliaire"
+#elif defined(SANS_CYD)
+#define ETIQUETTE_FIRMWARE "Principal-sans-CYD"
+#else
+#define ETIQUETTE_FIRMWARE "CYD-principal"
+#endif
 
 
 //----------------------------------------------------------------------------

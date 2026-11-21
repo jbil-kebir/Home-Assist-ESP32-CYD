@@ -9,3 +9,5 @@
 #define FORCE_MQTT_PORT 1883
 #define FORCE_MQTT_USER "xxxxxxxx"
 #define FORCE_MQTT_PWD "xxxxxxxx"
+// Mot de passe de la mise à jour à distance (ArduinoOTA depuis PlatformIO, page /update). Le même pour tous les appareils.
+#define OTA_MOT_DE_PASSE "changez-moi"

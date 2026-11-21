@@ -37,6 +37,8 @@
 
 
 // === OBJETS GLOBAUX ===
+#include "MyOta.h"
+#include "secret.h"   // OTA_MOT_DE_PASSE (exclu du dépôt ; modèle : secret.exemple.h)
 CConfig config(NOM_EQUIPEMENT);
 CWifi mWifi[MAX_WIFI_NETS];
 CEcran ecran(config);
@@ -204,6 +206,7 @@ extern void loop_chauffageSb();
 //-------------------------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
+  gOta.debutDemarrage();   // Nouveau firmware à l'essai : retour au précédent sans connexion MQTT à temps
   unsigned long start = millis();
   while(!Serial && millis() - start < 3000); // Attend max 3 secondes
   Serial.printf("\n=== %s %s ===\n", NOM_EQUIPEMENT, versionComplete().c_str());
@@ -341,6 +344,15 @@ void setup() {
     Serial.println("Initialisation Serveur Web...");
     webServer.setup();
     Serial.println("...Serveur Web OK");
+    // Mise à jour à distance : PlatformIO (profil cyd-principal-ota) et page /update. Étapes publiées, retenues, sur
+    // home/ota/<topic de config du CYD> : configuration (principal), configaux, configaux2 (repère déjà utilisé par HA)
+    String sTopicOta = config.topic_config_state;                       // home/configuration/state
+    sTopicOta = sTopicOta.substring(sTopicOta.indexOf('/') + 1);
+    sTopicOta = sTopicOta.substring(0, sTopicOta.indexOf('/'));         // configuration
+    gOta.begin(sTopicOta, OTA_MOT_DE_PASSE, String(VERSION),
+               [](const char* topic, const char* msg) { mqtt.publish(topic, msg, true); },
+               []() { return mDateTime.getDate() + " " + mDateTime.getTime(); });
+    gOta.ajoutePagesWeb(webServer.serveur());
   }
   
   #if defined(DISABLE_EFFECTEUR_CHAUDIERE) || defined(DISABLE_EFFECTEUR_RC_SWITCH)
@@ -358,6 +370,7 @@ void setup() {
   mqtt.begin();
   #endif
   mqtt.reconnect(); // KJ
+  gOta.confirme();   // MQTT connecté : nouveau firmware validé (OK), ou retour arrière signalé (RETOUR)
   gLogger.setPublishCallback(mqttLogPublish);
   ecran.updateStatus("...MQTT OK !");
 
@@ -448,6 +461,7 @@ void loop() {
   #endif
   mqtt.loop();  // Toujours actif, même écran éteint
   webServer.loop(); // Toujours actif, même écran éteint
+  gOta.loop();      // Mise à jour par PlatformIO (ArduinoOTA)
   
 
   #ifdef __LOCAL_MODE__

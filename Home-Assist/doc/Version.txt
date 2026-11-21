@@ -1,3 +1,15 @@
+4.3
+Mise à jour du firmware à distance (MyOta.h/.cpp, même module que Relais-Lora 2.9) :
+    - PlatformIO par le réseau : profils cyd-principal-ota (192.168.1.94) et cyd-aux-ota (--upload-port <IP>) ;
+    - page Web /update, refuse un firmware sans l'étiquette du profil (CYD-principal, CYD-auxiliaire,
+      Principal-sans-CYD : ETIQUETTE_FIRMWARE, global.h) ;
+    - mot de passe OTA_MOT_DE_PASSE dans src/secret.h (non commité ; modèle secret.exemple.h) ;
+    - retour arrière (chargeur Arduino 2.0.17 avec rollback) : validé à la connexion MQTT, sinon retour au précédent
+      après 120 s ou au premier plantage ;
+    - étapes publiées, retenues, sur home/ota/configuration (principal), home/ota/configaux, home/ota/configaux2.
+    Découpage de la flash min_spiffs.csv (deux emplacements de 1,9 Mo ; firmware 1,15 Mo) : 1re installation par USB.
+    (21/11/2026)
+
 4.2
 Champ « Intervalle Watchdog » retiré de la page des capteurs des nœuds : tous annoncent leur délai d'alerte (Capteur
     3.9+). Gardé pour les équipements qui n'annoncent rien (CRemoteCapteurBase::setDelaiSaisi(true)) : NoeudChauffageSb,
