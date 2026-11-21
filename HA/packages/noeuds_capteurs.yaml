@@ -23,9 +23,10 @@
 #           jn, rgb ; attributs de même nom de sensor.<id>_config,
 #           binary_sensor.<capteur>_en_retard (home/alerte/<capteur>, publié par le CYD principal ; attribut « le »),
 #           automatisation « Capteurs - Mail capteur en retard ou revenu »
-#           Mode maintenance (Capteur 4.9, nœuds Wi-Fi à sommeil) : input_boolean.<id>_maintenance,
-#           input_number.<id>_maintenance_duree (min), input_datetime.<id>_maintenance_fin, sensor.<id>_maintenance
-#           (home/conf<id>/maintenance/etat) ; ordre retenu sur home/conf<id>/maintenance
+#           Mode maintenance (Capteur 4.9 Wi-Fi, 5.0 LoRa) : input_boolean.<id>_maintenance,
+#           input_number.<id>_maintenance_duree (min), input_datetime.<id>_maintenance_fin (Wi-Fi), sensor.<id>_maintenance
+#           (home/conf<id>/maintenance/etat) ; ordre retenu sur home/conf<id>/maintenance (Wi-Fi) ou commande
+#           MAINTENANCE par la file du relais (LoRa)
 # Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
 # ============================================================
 
@@ -1726,6 +1727,30 @@ template:
           message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
           appareil: "PrGuirlande"
 
+  # ---------- ThRemise : mode maintenance (état publié par le nœud) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthremise/maintenance/etat"
+    sensor:
+      - name: "ThRemise Maintenance"
+        unique_id: thremise_maintenance
+        icon: mdi:wrench
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+
+  # ---------- ThCave : mode maintenance (état publié par le nœud) ----------
+  - trigger:
+      - trigger: mqtt
+        topic: "home/confthcave/maintenance/etat"
+    sensor:
+      - name: "ThCave Maintenance"
+        unique_id: thcave_maintenance
+        icon: mdi:wrench
+        state: "{{ trigger.payload.split(' ')[0] | upper }}"
+        attributes:
+          message: "{{ trigger.payload | regex_replace(' \\d{1,3}(\\.\\d{1,3}){3}$', '') }}"
+
   # ---------- ThChRDC : mode maintenance (état publié par le nœud) ----------
   - trigger:
       - trigger: mqtt
@@ -1945,6 +1970,14 @@ input_boolean:
     name: "PrGuirlande Mesures muettes"
     icon: mdi:volume-off
 
+  thremise_maintenance:
+    name: "ThRemise Maintenance"
+    icon: mdi:wrench
+
+  thcave_maintenance:
+    name: "ThCave Maintenance"
+    icon: mdi:wrench
+
   thchrdc_maintenance:
     name: "ThChRDC Maintenance"
     icon: mdi:wrench
@@ -1958,6 +1991,22 @@ input_boolean:
     icon: mdi:wrench
 
 input_number:
+  thremise_maintenance_duree:
+    name: "ThRemise Durée de maintenance"
+    min: 5
+    max: 120
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
+    icon: mdi:timer-cog-outline
+  thcave_maintenance_duree:
+    name: "ThCave Durée de maintenance"
+    min: 5
+    max: 120
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
+    icon: mdi:timer-cog-outline
   thchrdc_maintenance_duree:
     name: "ThChRDC Durée de maintenance"
     min: 5
@@ -2915,7 +2964,7 @@ automation:
       # à la sortie, mail si le capteur est toujours en retard (automatisation noeuds_maintenance_etat)
       - condition: template
         value_template: >-
-          {%- set noeuds = {'thchrdc': 'thchrdc', 'batchrdc': 'thchrdc', 'thch1er': 'thch1er', 'batch1er': 'thch1er', 'thsdb': 'thsdb', 'batsdb': 'thsdb', 'coulsdb': 'thsdb'} -%}
+          {%- set noeuds = {'thremise': 'thremise', 'batremise': 'thremise', 'flotteurremise': 'thremise', 'thcave': 'thcave', 'batcave': 'thcave', 'jncave': 'thcave', 'thchrdc': 'thchrdc', 'batchrdc': 'thchrdc', 'thch1er': 'thch1er', 'batch1er': 'thch1er', 'thsdb': 'thsdb', 'batsdb': 'thsdb', 'coulsdb': 'thsdb'} -%}
           {%- set c = trigger.entity_id.split('.')[1] | replace('_en_retard', '') -%}
           {{ c not in noeuds or not is_state('sensor.' ~ noeuds[c] ~ '_maintenance', 'ACTIVE') }}
     actions:
@@ -2938,10 +2987,15 @@ automation:
 
 
   # ------------------------------------------------------------
-  # Mode maintenance (Capteur 4.9) : ordre au nœud, publié RETENU sur home/conf<id>/maintenance (lu à son réveil).
-  # Interrupteur allumé : heure de fin = maintenant + durée (au plus 120 min, plafond du nœud aussi),
-  # « ON AAAA-MM-JJ HH:MM » ; éteint : « OFF ». À l'échéance (ou au démarrage de HA si elle est passée) : éteint.
-  # Le nœud sort seul à l'heure de fin, même sans le OFF.
+  # Mode maintenance : ordre au nœud.
+  # Wi-Fi (Capteur 4.9) : publié RETENU sur home/conf<id>/maintenance (lu à son réveil). Interrupteur allumé : heure de
+  # fin = maintenant + durée (au plus 120 min, plafond du nœud aussi), « ON AAAA-MM-JJ HH:MM » ;
+  # éteint : « OFF ». À l'échéance (ou au démarrage de HA si elle est passée) : éteint. Le nœud sort seul à l'heure de
+  # fin, même sans le OFF.
+  # LoRa (Capteur 5.0) : « MAINTENANCE <min> » par la file du relais (refusé si une commande y attend déjà) ; rien à
+  # l'échéance (le nœud compte depuis son entrée, sort seul et envoie INACTIVE, qui éteint l'interrupteur) ; interrupteur
+  # éteint à la main : « MAINTENANCE OFF » s'il est en maintenance (🔧), ANNULER si l'ordre attend encore dans la file
+  # (⏳), rien sinon (extinction après INACTIVE / REFUSEE / abandon) : pas de commande inutile qui bloquerait la file.
   # ------------------------------------------------------------
   - id: noeuds_maintenance_ordre
     alias: Nœuds Wi-Fi - Mode maintenance (ordre au nœud)
@@ -2949,6 +3003,8 @@ automation:
     triggers:
       - trigger: state
         entity_id:
+          - input_boolean.thremise_maintenance
+          - input_boolean.thcave_maintenance
           - input_boolean.thchrdc_maintenance
           - input_boolean.thch1er_maintenance
           - input_boolean.thsdb_maintenance
@@ -2957,6 +3013,8 @@ automation:
         id: debut
       - trigger: state
         entity_id:
+          - input_boolean.thremise_maintenance
+          - input_boolean.thcave_maintenance
           - input_boolean.thchrdc_maintenance
           - input_boolean.thch1er_maintenance
           - input_boolean.thsdb_maintenance
@@ -2983,6 +3041,33 @@ automation:
                   duree: >-
                     {{ [[states('input_number.' ~ capteur ~ '_maintenance_duree') | int(30), 1] | max, 120] | min }}
                   fin: "{{ (now() + timedelta(minutes=duree | int)).strftime('%Y-%m-%d %H:%M') }}"
+                  # Nœuds LoRa : même liste que dans genere_noeuds.py
+                  lora: "['thremise', 'thnomade', 'thcave']"
+                  attente: "{{ states('sensor.' ~ capteur ~ '_commande_en_attente') }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ capteur in lora }}"
+                then:
+                  - if:
+                      - condition: template
+                        value_template: "{{ attente not in ['aucune', 'unknown', 'unavailable', ''] }}"
+                    then:
+                      - action: persistent_notification.create
+                        data:
+                          title: "❌ Maintenance de {{ capteur }} non envoyée"
+                          message: >-
+                            « {{ attente }} » attend déjà dans la file du relais. Annulez-la, ou attendez le
+                            prochain réveil du nœud, puis rallumez l'interrupteur Maintenance.
+                          notification_id: "maintenance_{{ capteur }}"
+                      - action: input_boolean.turn_off
+                        target:
+                          entity_id: "input_boolean.{{ capteur }}_maintenance"
+                    else:
+                      - action: script.noeud_commande
+                        data:
+                          capteur: "{{ capteur }}"
+                          commande: "MAINTENANCE {{ duree }}"
+                  - stop: "Nœud LoRa : ordre confié au relais"
               - action: input_datetime.set_datetime
                 target:
                   entity_id: "input_datetime.{{ capteur }}_maintenance_fin"
@@ -2997,11 +3082,36 @@ automation:
               - condition: trigger
                 id: fin
             sequence:
-              - action: mqtt.publish
-                data:
-                  topic: "home/conf{{ trigger.entity_id.split('.')[1] | replace('_maintenance', '') }}/maintenance"
-                  payload: "OFF"
-                  retain: true
+              - variables:
+                  capteur: "{{ trigger.entity_id.split('.')[1] | replace('_maintenance', '') }}"
+                  lora: "['thremise', 'thnomade', 'thcave']"
+                  attente: "{{ states('sensor.' ~ capteur ~ '_commande_en_attente') | upper }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ capteur not in lora }}"
+                    sequence:
+                      - action: mqtt.publish
+                        data:
+                          topic: "home/conf{{ capteur }}/maintenance"
+                          payload: "OFF"
+                          retain: true
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_state('sensor.' ~ capteur ~ '_maintenance', 'ACTIVE') }}"
+                    sequence:
+                      - action: script.noeud_commande
+                        data:
+                          capteur: "{{ capteur }}"
+                          commande: "MAINTENANCE OFF"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ attente.startswith('MAINTENANCE') }}"
+                    sequence:
+                      - action: script.noeud_commande
+                        data:
+                          capteur: "{{ capteur }}"
+                          commande: "ANNULER"
           - conditions:
               - condition: trigger
                 id: echeance
@@ -3037,6 +3147,8 @@ automation:
     triggers:
       - trigger: state
         entity_id:
+          - sensor.thremise_maintenance
+          - sensor.thcave_maintenance
           - sensor.thchrdc_maintenance
           - sensor.thch1er_maintenance
           - sensor.thsdb_maintenance
@@ -3052,7 +3164,7 @@ automation:
           etat: "{{ trigger.to_state.state }}"
           message: "{{ trigger.to_state.attributes.message | default('') }}"
           retards: >-
-            {%- set r = {'thchrdc': ['binary_sensor.thchrdc_en_retard', 'binary_sensor.batchrdc_en_retard'], 'thch1er': ['binary_sensor.thch1er_en_retard', 'binary_sensor.batch1er_en_retard'], 'thsdb': ['binary_sensor.thsdb_en_retard', 'binary_sensor.batsdb_en_retard', 'binary_sensor.coulsdb_en_retard']} -%}
+            {%- set r = {'thremise': ['binary_sensor.thremise_en_retard', 'binary_sensor.batremise_en_retard', 'binary_sensor.flotteurremise_en_retard'], 'thcave': ['binary_sensor.thcave_en_retard', 'binary_sensor.batcave_en_retard', 'binary_sensor.jncave_en_retard'], 'thchrdc': ['binary_sensor.thchrdc_en_retard', 'binary_sensor.batchrdc_en_retard'], 'thch1er': ['binary_sensor.thch1er_en_retard', 'binary_sensor.batch1er_en_retard'], 'thsdb': ['binary_sensor.thsdb_en_retard', 'binary_sensor.batsdb_en_retard', 'binary_sensor.coulsdb_en_retard']} -%}
             {{ r.get(capteur, []) | select('is_state', 'on') | map('state_attr', 'friendly_name')
                | map('replace', ' En retard', '') | list }}
       - choose:
@@ -3071,9 +3183,16 @@ automation:
             sequence:
               - action: persistent_notification.create
                 data:
-                  title: "✅ {{ nom }} : fin de maintenance"
+                  # LoRa (Capteur 5.0) : « INACTIVE abandon : <raison> » si la reprise après un redémarrage a échoué
+                  title: >-
+                    {{ '⚠️ ' ~ nom ~ ' : maintenance abandonnée' if ' abandon' in message
+                       else '✅ ' ~ nom ~ ' : fin de maintenance' }}
                   message: >-
+                    {%- if ' abandon' in message -%}
+                    {{ message | regex_replace('^INACTIVE abandon : ', '') }} ({{ now().strftime('%d/%m/%Y %H:%M') }}) ; {{ nom }} reprend son sommeil normal.
+                    {%- else -%}
                     {{ nom }} a quitté la maintenance ({{ now().strftime('%d/%m/%Y %H:%M') }}) et reprend son sommeil normal.
+                    {%- endif -%}
                     {%- if retards %} ⚠ Toujours sans nouvelles : {{ retards | join(', ') }}.{%- endif %}
                   notification_id: "maintenance_{{ capteur }}"
               - if:
@@ -3145,7 +3264,7 @@ automation:
             {{ {'OK': 'mise à jour réussie', 'ECHEC': 'mise à jour refusée ou échouée',
                  'RETOUR': 'retour au firmware précédent', 'DEBUT': 'mise à jour commencée',
                  'TRANSFERT': 'firmware reçu, redémarrage',
-                 'ATTENTE': 'prêt pour une mise à jour (commande OTA, nœud LoRa)'}.get(etape, etape) }}
+                 'ATTENTE': 'prêt pour une mise à jour'}.get(etape, etape) }}
       - action: persistent_notification.create
         data:
           title: "{{ icone }} {{ appareil }} : {{ libelle }}"

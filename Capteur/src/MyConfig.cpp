@@ -893,10 +893,10 @@ int CConfig::handleMqttCommand(const String& payload) {
     envoieConfig();
     envoieVersion();
   }
-  else if (cmd == "OTA") {
-    // Mise à jour du firmware à distance (Capteur 4.5) : nœud tenu éveillé, prêt à recevoir (voir main.cpp).
-    // 4.9 : nœud LoRa seulement ; un nœud Wi-Fi passe par le mode maintenance (onDemandeOta vide : commande refusée)
-    if (onDemandeOta) onDemandeOta(); else ret = -1;
+  else if (cmd.startsWith("MAINTENANCE")) {
+    // Mode maintenance d'un nœud LoRa (Capteur 5.0, main.cpp) : « MAINTENANCE <min> » / « MAINTENANCE OFF », par la file
+    // du relais ; remplace la commande OTA. Nœud Wi-Fi : ordre retenu sur topic_maintenance (onMaintenanceLora vide : refusé)
+    if (onMaintenanceLora) onMaintenanceLora(cmd.substring(11)); else ret = -1;
   }
   else if (cmd == "MUTE ON" || cmd == "MUTE OFF") {
     // Mesures muettes : même traitement que SET mute:1 / mute:0 (réponse CONFIG, ERREUR mute:1 si refusé)

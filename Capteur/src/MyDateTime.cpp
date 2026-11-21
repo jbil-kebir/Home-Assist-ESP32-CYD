@@ -73,6 +73,12 @@ String CMyDateTime::getDateTimeISO() {
   return String(buffer);
 }
 
+void CMyDateTime::demarreNtp() {
+    heureFiable();   // Initialise le drapeau (remis à faux hors réveil de deep sleep) AVANT la synchro, pas après
+    sntp_set_time_sync_notification_cb(onSynchroNtp);
+    configTzTime(tzFrance, ntpServer);
+}
+
 int CMyDateTime::setup() {
     int ret = 0;
     sntp_set_time_sync_notification_cb(onSynchroNtp);

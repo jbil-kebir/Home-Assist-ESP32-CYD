@@ -425,7 +425,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "4.9"
+#define VERSION "5.0"
 // Mode maintenance (Capteur 4.9, nœuds Wi-Fi) : message RETENU sur home/conf<x>/maintenance, publié par Home Assistant :
 // « ON AAAA-MM-JJ HH:MM » (heure de FIN, absolue) ou « OFF ». Nœud éveillé jusqu'à l'heure de fin (sommeil coupé, réglage
 // sleepA gardé), mesures et commandes inchangées, mise à jour par le réseau possible ; état publié, retenu, sur
@@ -433,14 +433,18 @@
 // Sortie (OFF ou heure de fin) : INACTIVE puis redémarrage. Heure de fin déjà passée : ignorée (pas de boucle au
 // redémarrage de sortie). Fin plus lointaine que MAINTENANCE_DUREE_MAX_S : ramenée à ce plafond (erreur de saisie).
 #define MAINTENANCE_DUREE_MAX_S 7200
-// Commande OTA (Capteur 4.5) : nœud tenu éveillé OTA_FENETRE_S pour une mise à jour (nœud LoRa : point d'accès Wi-Fi
-// « <nom>-MAJ », http://192.168.4.1/update) ; sans mise à jour, redémarrage à la fin (sommeil normal rétabli)
-#define OTA_FENETRE_S 600
-// Nœud LoRa (Capteur 4.6) : la commande OTA connecte d'abord le nœud au Wi-Fi de la maison (FORCE_WIFI_SSID /
-// FORCE_WIFI_PASSWD de secret.h ; répéteur posé près du nœud le temps des mises à jour), à l'adresse fixe de son profil
-// (OTA_IP_FIXE, platformio.ini) : mise à jour depuis le bureau (profil <nœud>_ota). Pas de Wi-Fi en OTA_WIFI_ATTENTE_S :
-// point d'accès « <nom>-MAJ » en secours.
+// Mode maintenance d'un nœud LoRa (Capteur 5.0) : commande « MAINTENANCE <min> » / « MAINTENANCE OFF » par la file du
+// relais (remplace la commande OTA, supprimée avec son point d'accès de secours). Entrée : Wi-Fi de la maison
+// (FORCE_WIFI_SSID / FORCE_WIFI_PASSWD de secret.h ; répéteur posé près du nœud) à l'adresse fixe du profil (OTA_IP_FIXE,
+// platformio.ini), puis heure NTP : heure de fin enregistrée en NVS (gardée par un téléversement : au redémarrage, le nœud
+// reprend la maintenance si elle n'est pas finie). Même état que les nœuds Wi-Fi, envoyé par LoRa sur
+// home/conf<x>/maintenance/etat (relayé non retenu) ; « INACTIVE abandon : <raison> » si la reprise échoue.
+// Wi-Fi absent en OTA_WIFI_ATTENTE_S, ou heure absente en MAINTENANCE_NTP_ATTENTE_S : refus (ou abandon), nœud rendormi.
+// En maintenance, trame de présence « <nom> EVEIL » toutes les MAINTENANCE_PRESENCE_LORA_S : le relais ne remet une
+// commande (MAINTENANCE OFF...) qu'après une trame du nœud.
 #define OTA_WIFI_ATTENTE_S 30
+#define MAINTENANCE_NTP_ATTENTE_S 15
+#define MAINTENANCE_PRESENCE_LORA_S 60
 // Nœud LoRa (Capteur 4.8) : validation d'un nouveau firmware et envoi de « OK » au plus tôt OTA_ANNONCE_OK_LORA_MS après le
 // démarrage (trame seule, après la rafale du démarrage), ou juste avant le deep sleep. Doit rester < OTA_DELAI_VALIDATION_S.
 #define OTA_ANNONCE_OK_LORA_MS 15000UL

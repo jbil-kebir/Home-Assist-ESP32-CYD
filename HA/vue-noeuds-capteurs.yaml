@@ -225,6 +225,26 @@ sections:
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            title: Maintenance
+            entities:
+              - entity: input_boolean.thremise_maintenance
+                name: Maintenance
+              - entity: input_number.thremise_maintenance_duree
+                name: Durée (min, 120 au plus)
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            content: |
+              {% set m = states('sensor.thremise_maintenance') %}
+              {% set msg = state_attr('sensor.thremise_maintenance', 'message') or '' %}
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
+              {% elif is_state('input_boolean.thremise_maintenance', 'on') %}⏳ **En attente du réveil** de ThRemise (ordre dans la file du relais ; durée comptée à partir de son entrée en maintenance)
+              {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
+              {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
+              {% else %}Pas en maintenance.{% endif %}
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.thremise_sleepa
@@ -523,6 +543,26 @@ sections:
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
+            title: Maintenance
+            entities:
+              - entity: input_boolean.thcave_maintenance
+                name: Maintenance
+              - entity: input_number.thcave_maintenance_duree
+                name: Durée (min, 120 au plus)
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
+            content: |
+              {% set m = states('sensor.thcave_maintenance') %}
+              {% set msg = state_attr('sensor.thcave_maintenance', 'message') or '' %}
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
+              {% elif is_state('input_boolean.thcave_maintenance', 'on') %}⏳ **En attente du réveil** de ThCave (ordre dans la file du relais ; durée comptée à partir de son entrée en maintenance)
+              {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
+              {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
+              {% else %}Pas en maintenance.{% endif %}
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.thcave_sleepa
@@ -775,7 +815,7 @@ sections:
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
-            title: Maintenance (éveillé, mise à jour par le réseau)
+            title: Maintenance
             entities:
               - entity: input_boolean.thchrdc_maintenance
                 name: Maintenance
@@ -790,6 +830,7 @@ sections:
               {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
               {% elif is_state('input_boolean.thchrdc_maintenance', 'on') %}⏳ **En attente du réveil** de ThChRDC (fin prévue à {{ as_timestamp(states('input_datetime.thchrdc_maintenance_fin'), 0) | timestamp_custom('%H:%M') }})
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
+              {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
           - type: entities
             card_mod:
@@ -1042,7 +1083,7 @@ sections:
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
-            title: Maintenance (éveillé, mise à jour par le réseau)
+            title: Maintenance
             entities:
               - entity: input_boolean.thch1er_maintenance
                 name: Maintenance
@@ -1057,6 +1098,7 @@ sections:
               {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
               {% elif is_state('input_boolean.thch1er_maintenance', 'on') %}⏳ **En attente du réveil** de ThCh1er (fin prévue à {{ as_timestamp(states('input_datetime.thch1er_maintenance_fin'), 0) | timestamp_custom('%H:%M') }})
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
+              {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
           - type: entities
             card_mod:
@@ -1336,7 +1378,7 @@ sections:
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
-            title: Maintenance (éveillé, mise à jour par le réseau)
+            title: Maintenance
             entities:
               - entity: input_boolean.thsdb_maintenance
                 name: Maintenance
@@ -1351,6 +1393,7 @@ sections:
               {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
               {% elif is_state('input_boolean.thsdb_maintenance', 'on') %}⏳ **En attente du réveil** de ThSdb (fin prévue à {{ as_timestamp(states('input_datetime.thsdb_maintenance_fin'), 0) | timestamp_custom('%H:%M') }})
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
+              {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
           - type: entities
             card_mod:
@@ -1659,11 +1702,14 @@ sections:
           **Après un flash** : cliquer d'abord sur « Relire », pour que HA connaisse la config du nouveau firmware
           (sinon Enregistrer ignore les réglages que l'ancienne config ne contenait pas, comme « Mesures muettes »).
 
-          **Maintenance** (nœuds Wi-Fi à sommeil : ThChRDC, ThCh1er, ThSdb ; Capteur 4.9) : interrupteur Maintenance
-          (durée de 5 à 120 min). Au prochain réveil (⏳), le nœud reste éveillé jusqu'à l'heure de fin (🔧), mesures
-          et commandes inchangées, mise à jour par le réseau possible (profil `<nœud>_ota`), puis reprend son sommeil
-          normal (redémarrage). Pas de mail « plus de nouvelles » pendant la maintenance ; à la fin, mail si un capteur
-          est toujours en retard. La commande `OTA` est réservée aux nœuds LoRa.
+          **Maintenance** (nœuds Wi-Fi à sommeil ThChRDC, ThCh1er, ThSdb : Capteur 4.9 ; nœuds LoRa ThRemise, ThCave :
+          Capteur 5.0) : interrupteur Maintenance (durée de 5 à 120 min). Au prochain réveil (⏳), le nœud reste éveillé
+          jusqu'à la fin (🔧), mesures et commandes inchangées, mise à jour par le réseau possible (profil `<nœud>_ota`),
+          puis reprend son sommeil normal (redémarrage). Nœud LoRa : ordre `MAINTENANCE <min>` par la file du relais
+          (refusé si une commande y attend), Wi-Fi de la maison obligatoire (répéteur près du nœud), durée comptée à
+          partir de son entrée ; refus ou abandon (Wi-Fi absent au redémarrage…) affichés avec leur raison. Pas de mail
+          « plus de nouvelles » pendant la maintenance ; à la fin, mail si un capteur est toujours en retard. La
+          commande `OTA` n'existe plus (remplacée par la maintenance).
 
           **Nettoyer retenu** : efface le message retenu du topic `home/conf<nœud>/command` (commande restée en
           retenu, ancien testament « offline »…). Sans effet sur la file du relais.

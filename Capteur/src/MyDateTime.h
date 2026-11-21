@@ -19,6 +19,9 @@ class CMyDateTime {
         unsigned long getAbsoluteSecondes() {return time(NULL);} // Retourne le nb de secondes depuis le 01/01/1970 00:00
         // Heure synchronisée par NTP depuis la mise sous tension (conservée pendant un deep sleep) ? Ne bloque pas.
         bool isTimeValid();
+        // Démarre la synchro NTP sans l'attendre (nœud LoRa en mode maintenance, une fois le Wi-Fi connecté) :
+        // isTimeValid() devient vrai à la 1re synchro (Capteur 5.0)
+        void demarreNtp();
 
 };
 #endif // __MYDATETIME_H__

@@ -186,7 +186,7 @@ public:
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
   std::function<void()> onMqttPowerDown;
   void setMqttPowerDownCallback(std::function<void()> cbMqttPowerDown); // Pour Power down MQTT
-  std::function<void()> onDemandeOta;   // Commande OTA, nœud LoRa : fenêtre de mise à jour (main.cpp, ouvreFenetreOta())
+  std::function<void(const String&)> onMaintenanceLora;   // Commande MAINTENANCE d'un nœud LoRa (main.cpp, Capteur 5.0)
   std::function<void(const String&)> onMaintenance;   // Message reçu sur topic_maintenance (main.cpp, traiteMaintenance())
   std::function<void()> onAvantDeepSleep;   // Juste avant le deep sleep (main.cpp : validation d'un nouveau firmware LoRa)
 

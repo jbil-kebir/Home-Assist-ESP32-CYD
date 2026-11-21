@@ -1,3 +1,16 @@
+5.0
+Mode maintenance des nœuds LoRa (étape 2) : commande « MAINTENANCE <min> » / « MAINTENANCE OFF » par la file du relais ;
+    la commande OTA (fenêtre de 10 min, OTA_FENETRE_S) et le point d'accès de secours « <nom>-MAJ » sont SUPPRIMÉS.
+    Entrée : Wi-Fi de la maison à l'adresse fixe du profil (point d'accès le plus fort : répéteur), heure NTP
+    (CMyDateTime::demarreNtp, sans attente), heure de fin enregistrée en NVS (espace « maintenance ») ; pas de deep sleep
+    (CConfig::mbMaintenance), mesures LoRa gardées, /update et ArduinoOTA ; état envoyé par LoRa sur
+    home/conf<x>/maintenance/etat (même format que les nœuds Wi-Fi, avec le RSSI Wi-Fi). Wi-Fi absent en 30 s ou heure
+    absente en 15 s (MAINTENANCE_NTP_ATTENTE_S) : « REFUSEE <raison> », nœud rendormi. Au démarrage (téléversement,
+    coupure), heure de fin en NVS : reprise de la maintenance si elle n'est pas finie, « INACTIVE abandon : <raison> » si
+    le Wi-Fi ou l'heure manque. Trame « <nom> EVEIL » toutes les 60 s en maintenance (MAINTENANCE_PRESENCE_LORA_S) : le
+    relais peut remettre MAINTENANCE OFF. Nouvelle commande MAINTENANCE <min> en maintenance : durée recomptée. Sortie
+    (OFF ou heure de fin) : NVS effacée, INACTIVE, redémarrage (21/11/2026)
+
 4.9
 Mode maintenance (nœuds Wi-Fi) : remplace la commande OTA, désormais réservée aux nœuds LoRa (étape 1 du mode maintenance
     généralisé). Home Assistant publie, retenu, sur home/conf<x>/maintenance « ON AAAA-MM-JJ HH:MM » (heure de FIN) ou

@@ -155,69 +155,20 @@ int publieMesureLora(const char* payload) {
 //-------------------------------------------------------------------------------------------
 //      Mise à jour du firmware à distance (Capteur 4.5, MyOta)
 //-------------------------------------------------------------------------------------------
-// Nœud Wi-Fi : PlatformIO (--upload-port <IP>) et page http://<IP>/update quand il est éveillé ; étapes publiées,
-// retenues, sur home/ota/<nom>. Nœud LoRa : rien en temps normal ; la commande OTA (par le relais) ouvre un point
-// d'accès Wi-Fi « <nom>-MAJ » (mot de passe OTA_MOT_DE_PASSE), http://192.168.4.1/update ou --upload-port 192.168.4.1 ;
-// étapes envoyées par LoRa au relais (trame « home/ota/<nom> … »). Commande OTA, tous nœuds : éveillé OTA_FENETRE_S
-// (sommeil coupé en RAM seulement), puis redémarrage s'il n'y a pas eu de mise à jour.
-static unsigned long sulDebutFenetreOta = 0;   // millis() de la commande OTA (0 : pas de fenêtre ouverte)
-#ifdef _LORA_P2P_MODE_
-static WebServer* spServeurAp = nullptr;       // Serveur Web de la mise à jour (nœud LoRa : Wi-Fi maison ou point d'accès)
-static unsigned long sulDebutWifiOta = 0;      // millis() du début de la connexion au Wi-Fi de la maison (0 : aucune)
-
-// Serveur Web /update et ArduinoOTA, sur le Wi-Fi de la maison ou sur le point d'accès
-static void demarreServeurOta() {
-  spServeurAp = new WebServer(80);
-  gOta.ajoutePagesWeb(*spServeurAp);
-  spServeurAp->begin();
-  gOta.demarreArduinoOta();
-}
-
-// Secours : pas de Wi-Fi de la maison (répéteur absent ou trop loin) → point d'accès « <nom>-MAJ »
-static void ouvrePointAcces(const String& sPourquoi) {
-  String sReseau = config.nomEquipement + "-MAJ";
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(sReseau.c_str(), OTA_MOT_DE_PASSE);
-  demarreServeurOta();
-  gOta.annonce("ATTENTE", ": " + sPourquoi + " ; point d'accès " + sReseau + ", http://" + WiFi.softAPIP().toString() + "/update");
-}
-
-// Appelée par loop() : fin de la connexion au Wi-Fi de la maison (réussie, ou abandon après OTA_WIFI_ATTENTE_S)
-static void suitConnexionWifiOta() {
-  if (sulDebutWifiOta == 0 || spServeurAp != nullptr) return;
-  if (WiFi.status() == WL_CONNECTED) {
-    demarreServeurOta();
-    gOta.annonce("ATTENTE", ": prêt " + String(OTA_FENETRE_S / 60) + " min sur le Wi-Fi de la maison (" + String(WiFi.RSSI()) +
-                 " dBm), http://" + WiFi.localIP().toString() + "/update");
-  }
-  else if (millis() - sulDebutWifiOta >= OTA_WIFI_ATTENTE_S * 1000UL)
-    ouvrePointAcces("Wi-Fi de la maison introuvable en " + String(OTA_WIFI_ATTENTE_S) + " s");
-}
-#endif
-
-// 4.9 : nœud LoRa seulement (un nœud Wi-Fi passe par le mode maintenance, voir traiteMaintenance())
+// Nœud Wi-Fi : PlatformIO (--upload-port <IP>) et page http://<IP>/update quand il est éveillé (sleepA:0 ou mode
+// maintenance) ; étapes publiées, retenues, sur home/ota/<nom>. Nœud LoRa : en mode maintenance seulement (Wi-Fi de la
+// maison, voir plus bas) ; étapes envoyées par LoRa au relais (trame « home/ota/<nom> … »).
+// 5.0 : commande OTA et point d'accès de secours « <nom>-MAJ » supprimés (remplacés par le mode maintenance).
 #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
-void ouvreFenetreOta() {
-  config.mbDeepSleepActive = false;   // RAM seulement : la NVS garde sleepA, rétabli au redémarrage de fin de fenêtre
-  sulDebutFenetreOta = millis();
-  if (sulDebutFenetreOta == 0) sulDebutFenetreOta = 1;
-  if (sulDebutWifiOta != 0) return;   // Commande renvoyée par le relais : connexion déjà lancée, suitConnexionWifiOta() annonce
-  // Wi-Fi de la maison, à l'adresse fixe du profil ; non bloquant (le nœud doit accuser la commande par LoRa)
-  WiFi.mode(WIFI_STA);
-  // 4.7 : balayage de tous les canaux puis point d'accès le plus fort (répéteur près du nœud plutôt que la box lointaine ;
-  // par défaut WIFI_FAST_SCAN prend le premier point d'accès trouvé portant le bon nom)
-  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
-  WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
-  #ifdef OTA_IP_FIXE
-  IPAddress ip, passerelle, masque(255, 255, 255, 0);
-  ip.fromString(OTA_IP_FIXE);
-  passerelle.fromString(OTA_PASSERELLE);
-  WiFi.config(ip, passerelle, masque, passerelle);
-  #endif
-  WiFi.begin(FORCE_WIFI_SSID, FORCE_WIFI_PASSWD);
-  sulDebutWifiOta = millis();
-  if (sulDebutWifiOta == 0) sulDebutWifiOta = 1;
+static WebServer* spServeurOta = nullptr;   // Serveur Web de la mise à jour (nœud LoRa en maintenance)
+
+// Serveur Web /update et ArduinoOTA, sur le Wi-Fi de la maison
+static void demarreServeurOta() {
+  if (spServeurOta != nullptr) return;
+  spServeurOta = new WebServer(80);
+  gOta.ajoutePagesWeb(*spServeurOta);
+  spServeurOta->begin();
+  gOta.demarreArduinoOta();
 }
 #endif
 
@@ -297,6 +248,194 @@ static void suitMaintenance() {
   if (stFinMaintenance == 0) return;
   if (ssSortieMaintenance.length() > 0) sortMaintenance(ssSortieMaintenance);
   else if (time(nullptr) >= stFinMaintenance) sortMaintenance("heure de fin atteinte");
+}
+#endif
+
+//-------------------------------------------------------------------------------------------
+//      Mode maintenance (Capteur 5.0, nœuds LoRa ; voir global.h)
+//-------------------------------------------------------------------------------------------
+// Étapes : connexion au Wi-Fi de la maison → heure NTP → maintenance active (serveur /update, ArduinoOTA). Non bloquant
+// (suitMaintenanceLora() dans loop) : le nœud doit accuser la commande par LoRa et garder ses mesures.
+#if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+#include <Preferences.h>
+enum EtapeMaintenanceLora { MNT_AUCUNE, MNT_WIFI, MNT_NTP, MNT_ACTIVE };
+static EtapeMaintenanceLora seEtapeMnt = MNT_AUCUNE;
+static bool sbRepriseMnt = false;            // Reprise au démarrage (heure de fin trouvée en NVS), sinon entrée par commande
+static unsigned long sulDureeMntS = 0;       // Entrée par commande : durée demandée (plafonnée)
+static String ssPlafondMnt;                  // « (plafonnée à … min) » si la durée demandée dépassait le plafond
+static time_t stFinMnt = 0;                  // Heure de fin de la maintenance (gardée en NVS)
+static unsigned long sulDebutEtapeMnt = 0;   // millis() du début de l'étape Wi-Fi ou NTP
+static unsigned long sulDernierePresenceMnt = 0;
+static String ssSortieMnt;                   // Sortie demandée (MAINTENANCE OFF) : faite par loop()
+static const char* NVS_MAINTENANCE = "maintenance";
+
+static void enregistreFinMnt(time_t t) {
+  Preferences p;
+  p.begin(NVS_MAINTENANCE, false);
+  p.putULong64("fin", (uint64_t)t);
+  p.end();
+}
+
+static time_t lisFinMnt() {
+  Preferences p;
+  p.begin(NVS_MAINTENANCE, true);
+  time_t t = (time_t)p.getULong64("fin", 0);
+  p.end();
+  return t;
+}
+
+static void effaceFinMnt() { if (lisFinMnt() != 0) enregistreFinMnt(0); }
+
+// État envoyé par LoRa, publié par le relais sur home/conf<x>/maintenance/etat
+static void annonceMnt(const String& sEtat) {
+  Serial.println("Maintenance : " + sEtat);
+  mLoraRxTx.sendPacket((config.topic_maintenance_etat + " " + sEtat).c_str());
+}
+
+static void annonceActiveMnt() {
+  char sHeure[8];
+  struct tm tmLocal;
+  localtime_r(&stFinMnt, &tmLocal);
+  strftime(sHeure, sizeof(sHeure), "%H:%M", &tmLocal);
+  annonceMnt("ACTIVE jusqu'à " + String(sHeure) + ssPlafondMnt + ", http://" + WiFi.localIP().toString() + "/update (Wi-Fi " +
+             String(WiFi.RSSI()) + " dBm)");
+}
+
+// Wi-Fi de la maison, à l'adresse fixe du profil ; non bloquant
+static void connecteWifiMaisonMnt() {
+  WiFi.mode(WIFI_STA);
+  // 4.7 : balayage de tous les canaux puis point d'accès le plus fort (répéteur près du nœud plutôt que la box lointaine ;
+  // par défaut WIFI_FAST_SCAN prend le premier point d'accès trouvé portant le bon nom)
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+  WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+  #ifdef OTA_IP_FIXE
+  IPAddress ip, passerelle, masque(255, 255, 255, 0);
+  ip.fromString(OTA_IP_FIXE);
+  passerelle.fromString(OTA_PASSERELLE);
+  WiFi.config(ip, passerelle, masque, passerelle);
+  #endif
+  WiFi.begin(FORCE_WIFI_SSID, FORCE_WIFI_PASSWD);
+  sulDebutEtapeMnt = millis();
+  seEtapeMnt = MNT_WIFI;
+}
+
+// Échec de l'entrée (refus) ou de la reprise au démarrage (abandon) : raison annoncée, Wi-Fi coupé, sommeil normal
+static void echecMnt(const String& sRaison) {
+  annonceMnt(sbRepriseMnt ? "INACTIVE abandon : " + sRaison : "REFUSEE " + sRaison);
+  effaceFinMnt();
+  seEtapeMnt = MNT_AUCUNE;
+  config.mbMaintenance = false;
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+}
+
+// Sortie (MAINTENANCE OFF, heure de fin) : NVS effacée, INACTIVE émis (fin d'émission attendue), puis redémarrage
+static void sortieMnt(const String& sPourquoi) {
+  Serial.println("Maintenance : fin (" + sPourquoi + "), redémarrage");
+  effaceFinMnt();
+  annonceMnt("INACTIVE");
+  unsigned long ulDebut = millis();
+  while (mLoraRxTx.emissionEnCours() && millis() - ulDebut < 3000) delay(10);
+  delay(200);
+  ESP.restart();
+}
+
+// Commande « MAINTENANCE <min> » / « MAINTENANCE OFF » (CConfig::handleMqttCommand, argument en majuscules)
+static void traiteMaintenanceLora(const String& sArgument) {
+  String sArg = sArgument; sArg.trim();
+  if (sArg == "OFF") {
+    if (seEtapeMnt != MNT_AUCUNE) ssSortieMnt = "MAINTENANCE OFF reçu";
+    else Serial.println("Maintenance : OFF reçu hors maintenance, ignoré");
+    return;
+  }
+  bool bNombre = sArg.length() > 0;
+  for (char c : sArg) if (!isdigit(c)) bNombre = false;
+  long lMinutes = bNombre ? sArg.toInt() : 0;
+  if (lMinutes <= 0) {
+    annonceMnt("REFUSEE durée attendue en minutes : MAINTENANCE <min> ou MAINTENANCE OFF (reçu : " + sArg + ")");
+    return;
+  }
+  unsigned long ulDureeS = (unsigned long)lMinutes * 60UL;
+  ssPlafondMnt = "";
+  if (ulDureeS > MAINTENANCE_DUREE_MAX_S) {
+    ulDureeS = MAINTENANCE_DUREE_MAX_S;
+    ssPlafondMnt = " (plafonnée à " + String(MAINTENANCE_DUREE_MAX_S / 60) + " min)";
+  }
+  if (seEtapeMnt == MNT_ACTIVE) {
+    // Déjà en maintenance : nouvelle durée comptée à partir de maintenant
+    stFinMnt = time(nullptr) + (time_t)ulDureeS;
+    enregistreFinMnt(stFinMnt);
+    annonceActiveMnt();
+    return;
+  }
+  if (seEtapeMnt != MNT_AUCUNE) return;   // Connexion déjà en cours (commande renvoyée par le relais)
+  sbRepriseMnt = false;
+  sulDureeMntS = ulDureeS;
+  config.mbMaintenance = true;            // Plus de deep sleep pendant la connexion
+  connecteWifiMaisonMnt();
+}
+
+// Démarrage : heure de fin en NVS (maintenance en cours avant un téléversement ou une coupure) → reprise
+static void repriseMaintenanceLora() {
+  stFinMnt = lisFinMnt();
+  if (stFinMnt == 0) return;
+  Serial.println("Maintenance : heure de fin trouvée en NVS, reprise");
+  sbRepriseMnt = true;
+  ssPlafondMnt = "";
+  config.mbMaintenance = true;
+  connecteWifiMaisonMnt();
+}
+
+// Appelée par loop()
+static void suitMaintenanceLora() {
+  if (seEtapeMnt == MNT_AUCUNE) return;
+  if (ssSortieMnt.length() > 0) { sortieMnt(ssSortieMnt); return; }
+  if (seEtapeMnt == MNT_WIFI) {
+    if (WiFi.status() == WL_CONNECTED) {
+      mDateTime.demarreNtp();
+      sulDebutEtapeMnt = millis();
+      seEtapeMnt = MNT_NTP;
+    }
+    else if (millis() - sulDebutEtapeMnt >= OTA_WIFI_ATTENTE_S * 1000UL)
+      echecMnt("Wi-Fi de la maison introuvable en " + String(OTA_WIFI_ATTENTE_S) + " s" + (sbRepriseMnt ? " au redémarrage" : ""));
+    return;
+  }
+  if (seEtapeMnt == MNT_NTP) {
+    if (mDateTime.isTimeValid()) {
+      time_t tMaintenant = time(nullptr);
+      if (sbRepriseMnt) {
+        if (stFinMnt <= tMaintenant) {
+          // Fin passée pendant le redémarrage (coupure...) : pas d'abandon, simple fin
+          effaceFinMnt();
+          annonceMnt("INACTIVE heure de fin passée au redémarrage");
+          seEtapeMnt = MNT_AUCUNE;
+          config.mbMaintenance = false;
+          WiFi.disconnect(true);
+          WiFi.mode(WIFI_OFF);
+          return;
+        }
+        if (stFinMnt - tMaintenant > (time_t)MAINTENANCE_DUREE_MAX_S) stFinMnt = tMaintenant + MAINTENANCE_DUREE_MAX_S;
+      }
+      else {
+        stFinMnt = tMaintenant + (time_t)sulDureeMntS;
+        enregistreFinMnt(stFinMnt);
+      }
+      demarreServeurOta();
+      seEtapeMnt = MNT_ACTIVE;
+      sulDernierePresenceMnt = millis();
+      annonceActiveMnt();
+    }
+    else if (millis() - sulDebutEtapeMnt >= MAINTENANCE_NTP_ATTENTE_S * 1000UL)
+      echecMnt("heure NTP non obtenue en " + String(MAINTENANCE_NTP_ATTENTE_S) + " s" + (sbRepriseMnt ? " au redémarrage" : ""));
+    return;
+  }
+  // MNT_ACTIVE
+  if (spServeurOta != nullptr) spServeurOta->handleClient();
+  if (time(nullptr) >= stFinMnt) { sortieMnt("heure de fin atteinte"); return; }
+  if (millis() - sulDernierePresenceMnt >= MAINTENANCE_PRESENCE_LORA_S * 1000UL && !mLoraRxTx.emissionEnCours()) {
+    sulDernierePresenceMnt = millis();
+    mLoraRxTx.sendPacket((config.topic_config_state + " " + config.nomEquipement + " EVEIL").c_str());
+  }
 }
 #endif
 
@@ -643,13 +782,14 @@ void setup() {
   config.onMaintenance = traiteMaintenance;
   #endif
   #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
-  config.onDemandeOta = ouvreFenetreOta;
-  // Nœud LoRa : étapes envoyées au relais (DATE et TIME remplacés par son heure) ; ArduinoOTA démarre avec le point
-  // d'accès (commande OTA)
+  config.onMaintenanceLora = traiteMaintenanceLora;
+  // Nœud LoRa : étapes envoyées au relais (DATE et TIME remplacés par son heure) ; ArduinoOTA démarre avec la
+  // maintenance (Wi-Fi de la maison)
   gOta.begin(config.nomEquipement, OTA_MOT_DE_PASSE, String(VERSION),
              [](const char* topic, const char* msg) { mLoraRxTx.sendPacket((String(topic) + " " + msg).c_str()); },
              []() { return String("DATE TIME"); }, false);
   config.onAvantDeepSleep = []() { if (mLoraRxTx.nbEmissions() > 0) gOta.confirme(); };
+  repriseMaintenanceLora();   // 5.0 : maintenance interrompue par un téléversement (heure de fin en NVS)
   #endif
 
   #ifdef _RCSWITCH_MODE_
@@ -807,7 +947,7 @@ void loop() {
   
   config.loop();
 
-  // Mise à jour du firmware à distance (voir ouvreFenetreOta())
+  // Mise à jour du firmware à distance (voir MyOta, mode maintenance)
   gOta.loop();
   // OTA_TEST_RETOUR (essai seulement : PLATFORMIO_BUILD_FLAGS=-DOTA_TEST_RETOUR) : firmware jamais validé, pour vérifier
   // le retour automatique au précédent au bout de OTA_DELAI_VALIDATION_S
@@ -815,20 +955,15 @@ void loop() {
   #elif defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
   if (!gOta.estConfirme() && mqtt.isConnected()) gOta.confirme();   // MQTT connecté : nouveau firmware validé
   #elif defined(_LORA_P2P_MODE_)
-  suitConnexionWifiOta();
-  if (spServeurAp != nullptr) spServeurAp->handleClient();
   // 1re trame LoRa émise : validé ; « OK » envoyé seul, après la rafale de trames du démarrage (4.8 : perdu au milieu),
   // ou juste avant le deep sleep s'il vient plus tôt (sinon le réveil ferait revenir au firmware précédent)
   if (!gOta.estConfirme() && mLoraRxTx.nbEmissions() > 0 && millis() >= OTA_ANNONCE_OK_LORA_MS) gOta.confirme();
   #endif
   #if defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
   suitMaintenance();
+  #elif defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+  suitMaintenanceLora();
   #endif
-  if (sulDebutFenetreOta != 0 && millis() - sulDebutFenetreOta >= OTA_FENETRE_S * 1000UL) {
-    gOta.annonce("ATTENTE", ": fenêtre fermée sans mise à jour, redémarrage (sommeil normal rétabli)");
-    delay(1000);
-    ESP.restart();
-  }
 
   #ifdef _WIFI_MODE_
   // Pas de deep sleep entre deux tours de loop() (DEBUG_NO_DEEP_SLEEP force mbDeepSleepActive à false
