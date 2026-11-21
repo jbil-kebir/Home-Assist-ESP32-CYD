@@ -1612,9 +1612,13 @@ def carte_ota():
                "{{ state_attr(e, 'message') or 'aucune mise à jour' }} | "
                "{{ relative_time(states[e].last_changed) if s not in ['unknown', 'unavailable'] else '—' }} |\n"
                "{%- endfor %}\n\n"
-               "Par PlatformIO (--upload-port <IP>, ou profils *_ota du relais et des CYD) ou par la page /update de "
-               "l'appareil (même mot de passe, secret.h). Nœud : éveillé (sleepA:0) ou commande OTA (10 min ; nœud LoRa : "
-               "point d'accès « <nom>-MAJ », 192.168.4.1). Notification à chaque étape, mail du résultat.\n")
+               "**Comment** : dans VS Code, profil `<appareil>_ota` puis flèche « Upload » (ou page `http://<IP>/update`, "
+               "même mot de passe, secret.h). Notification à chaque étape, mail du résultat.\n\n"
+               "- **Relais LoRa, CYD** : toujours joignables.\n"
+               "- **Nœud Wi-Fi** : éveillé (`sleepA:0`) ou commande `OTA` (reçue au réveil, 10 min d'éveil).\n"
+               "- **Nœud LoRa** (ThRemise .240, ThCave .241) : répéteur Wi-Fi à quelques mètres du nœud (pas collé), "
+               "commande `OTA`, attendre 🔧 « prêt 10 min sur le Wi-Fi de la maison », puis Upload. Sans Wi-Fi en 30 s : "
+               "point d'accès de secours « `<nom>-MAJ` » (`http://192.168.4.1/update`). OK environ 15 s après le redémarrage.\n")
     return {"type": "grid", "cards": [
         {"type": "heading", "heading": TITRE_OTA, "heading_style": "title", "icon": "mdi:update"},
         {"type": "markdown", "content": contenu, "grid_options": {"columns": "full"}}]}
