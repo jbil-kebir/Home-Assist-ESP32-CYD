@@ -77,22 +77,25 @@ PARAMS_JN = [("jn_sbas", "Seuil bas jour → nuit", "%"), ("jn_shaut", "Seuil ha
 # Réglages du flotteur (Capteur 3.1, attributs de sensor.<id>_config, lecture seule) : (clé, libellé, unité)
 PARAMS_FL = [("mfv_rev", "Réveil par le flotteur (1 oui, 0 non)", ""), ("mfv_revmin", "Anti-rafale", "s"),
              ("mfv_ack", "Confirmation par le contrôleur (1 oui, 0 non)", ""), ("mfv_ackn", "Essais de confirmation", "")]
-# Délai d'alerte (Capteur 3.9, Home-Assist 3.9) : préfixe NVS, côté Capteur, de chaque capteur unitaire (clé de son
-# retard toléré : <préfixe>_retard, dans la trame CONFIG et pour SET ; 0 à 7 jours, en secondes)
+# Délai d'alerte : préfixe NVS, côté Capteur, de chaque capteur unitaire. Clé dans la trame CONFIG et pour SET
+# (Capteur 4.4) : <préfixe>_alerte, délai d'alerte saisi en MINUTES (0 = au plus tôt, 0 à 10080), relevé par le nœud
+# au minimum (réveils pour couvrir le forçage + 60 s) s'il est plus court. (Capteur 3.9 à 4.3 : <préfixe>_retard,
+# retard toléré en s ajouté au minimum ; champs retirés le 21/11/2026, tous les nœuds en 4.4.)
 PREFIXES_RETARD = {"Th": "thhum", "Bat": "bat", "Flotteur": "mfv", "Jn": "jn", "Coul": "rgb"}
-RETARD_MAX_S = 604800
+ALERTE_MAX_MIN = 10080
+SUFFIXES_ALERTE = ("_force", "_alerte")
 # Forçage de la remontée de mesure de chaque capteur (Capteur 3.9 : SET <préfixe>_force, 60 à 86400 s ;
 # jn_force existait déjà)
 FORCE_MIN_S = 60
 FORCE_MAX_S = 86400
-# Clés réglables de chaque capteur dans la config (forçage et retard toléré)
-CLES_ALERTE = sorted(set(p + suf for p in PREFIXES_RETARD.values() for suf in ("_force", "_retard")))
+# Clés réglables de chaque capteur dans la config (forçage, délai d'alerte, ancien retard toléré)
+CLES_ALERTE = sorted(set(p + suf for p in PREFIXES_RETARD.values() for suf in SUFFIXES_ALERTE))
 LIBELLES_UNITES = {"Th": "thermomètre", "Bat": "batterie", "Flotteur": "flotteur", "Jn": "jour / nuit", "Coul": "voyant chaudière"}
 
 
-# Capteurs unitaires d'un nœud : (unité, nom de l'équipement, clé du retard toléré)
+# Capteurs unitaires d'un nœud : (unité, nom de l'équipement, préfixe de ses clés : <p>_force, <p>_alerte…)
 def capteurs_unitaires(n):
-    return [(u, u + n["suffixe"], PREFIXES_RETARD[u] + "_retard") for u in n["unites"] if u in PREFIXES_RETARD]
+    return [(u, u + n["suffixe"], PREFIXES_RETARD[u]) for u in n["unites"] if u in PREFIXES_RETARD]
 
 
 # Capteurs surveillés hors des nœuds (binary_sensor <nom>_en_retard + mail) : thermomètre local du CYD principal
@@ -105,9 +108,9 @@ def noms_alerte():
     return [nom_c for n in NOEUDS for _, nom_c, _ in capteurs_unitaires(n)] + CAPTEURS_ALERTE_HORS_NOEUDS
 
 
-# Clés de config réglables des capteurs d'un nœud : <préfixe>_force et <préfixe>_retard
+# Clés de config réglables des capteurs d'un nœud : <préfixe>_force, <préfixe>_alerte
 def cles_alerte(n):
-    return [PREFIXES_RETARD[u] + suf for u in n["unites"] if u in PREFIXES_RETARD for suf in ("_force", "_retard")]
+    return [PREFIXES_RETARD[u] + suf for u in n["unites"] if u in PREFIXES_RETARD for suf in SUFFIXES_ALERTE]
 
 
 PARAMS = [("sleepi", "Intervalle deep sleep", 86400, "mdi:timer-outline"),
@@ -340,8 +343,8 @@ def paquet():
 #           attribut texte) : vue Relais LoRa ; connexion = signal de moins de 3 min (ALIVE toutes les 60 s)
 #           input_boolean.<id>_sleepa, input_number.<id>_sleepi / _sleeps / _sleepm / _sleepl / _wakei
 #           input_text.<id>_commande (commande libre)
-#           Délai d'alerte (Capteur 3.9, Home-Assist 3.9) : input_number.<id>_<préfixe>_retard (retard toléré de chaque
-#           capteur : thhum, bat, mfv, jn, rgb ; attributs <préfixe>_retard de sensor.<id>_config),
+#           Délai d'alerte : input_number.<id>_<préfixe>_alerte (min, Capteur 4.4) de chaque capteur : thhum, bat, mfv,
+#           jn, rgb ; attributs de même nom de sensor.<id>_config,
 #           binary_sensor.<capteur>_en_retard (home/alerte/<capteur>, publié par le CYD principal ; attribut « le »),
 #           automatisation « Capteurs - Mail capteur en retard ou revenu »
 # Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
@@ -400,8 +403,7 @@ template:""")
         attributes:""")
         # mute : absent de la réponse d'un firmware antérieur au 28/10/2026 → none
         # jn_* : nœud équipé du détecteur jour / nuit seulement ; mfv_* : nœud équipé du flotteur (fl) seulement
-        # <préfixe>_force, <préfixe>_retard : forçage et retard toléré de chaque capteur (Capteur 3.9 ; absents avant :
-        # none, sauf jn_force)
+        # <préfixe>_force, <préfixe>_alerte : forçage et délai d'alerte (Capteur 4.4) de chaque capteur ; absents : none
         # sleepC : durée de sommeil en cours (Capteur 4.2 : temporaire SLEEPS/M/L ou sleepI ; absente avant : none)
         for k in (["sleepA", "sleepI", "sleepC", "sleepS", "sleepM", "sleepL", "wakeI", "mute"]
                   + ([c for c, _, _ in PARAMS_JN] if n.get("jn") else [])
@@ -526,7 +528,7 @@ template:""")
     unit_of_measurement: "s"
     icon: {ic}""")
         for u, nom_c, k in capteurs_unitaires(n):
-            w(f"""  {n['id']}_{PREFIXES_RETARD[u]}_force:
+            w(f"""  {n['id']}_{k}_force:
     name: "{n['nom']} Forçage {LIBELLES_UNITES[u]}"
     min: {FORCE_MIN_S}
     max: {FORCE_MAX_S}
@@ -534,13 +536,13 @@ template:""")
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline""")
-            w(f"""  {n['id']}_{k}:
-    name: "{n['nom']} Retard toléré {LIBELLES_UNITES[u]}"
+            w(f"""  {n['id']}_{k}_alerte:
+    name: "{n['nom']} Délai d'alerte {LIBELLES_UNITES[u]}"
     min: 0
-    max: {RETARD_MAX_S}
+    max: {ALERTE_MAX_MIN}
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline""")
         w("")
     w("input_text:")
@@ -664,8 +666,8 @@ template:""")
               {{%- set v = states('input_number.' ~ capteur ~ '_' ~ k | lower) | float(0) | int -%}}
               {{%- if v > 0 and v != state_attr(cfg, k) -%}}{{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}}{{%- endif -%}}
             {{%- endfor -%}}
-            {{#- Forçages et retards tolérés (Capteur 3.9) : seulement ceux de la dernière config reçue et dont le
-                 champ existe ; retard 0 permis, forçage de {FORCE_MIN_S} s au moins (bornes du champ) -#}}
+            {{#- Forçages et délais d'alerte : seulement ceux de la dernière config reçue et dont le champ existe ;
+                 délai 0 permis (au plus tôt), forçage de {FORCE_MIN_S} s au moins -#}}
             {{%- for k in {liste_yaml(CLES_ALERTE)} -%}}
               {{%- if state_attr(cfg, k) is not none and states('input_number.' ~ capteur ~ '_' ~ k) not in ['unknown', 'unavailable'] -%}}
                 {{%- set v = states('input_number.' ~ capteur ~ '_' ~ k) | float(-1) | int -%}}
@@ -786,7 +788,7 @@ automation:
                     entity_id: "input_number.{{{{ capteur }}}}_{{{{ repeat.item | lower }}}}"
                   data:
                     value: "{{{{ state_attr(trigger.entity_id, repeat.item) }}}}"
-      # Forçages et retards tolérés (Capteur 3.9), si le nœud les envoie et que le champ existe
+      # Forçages et délais d'alerte, si le nœud les envoie et que le champ existe
       - repeat:
           for_each: {liste_yaml(CLES_ALERTE)}
           sequence:
@@ -1006,11 +1008,29 @@ sections:""")
             w("""          - type: markdown
             title: Nouvelles des capteurs
             content: |""")
-            for u, nom_c, _ in capteurs_unitaires(n):
+            # Délai d'alerte recalculé comme le nœud (CCapteurBase::getDelaiMinimumS / getDelaiAlerteS, global.h
+            # DELAI_ALERTE_EVEIL_S 10, DELAI_ALERTE_MARGE_S 60) d'après la dernière CONFIG : explique l'heure des mails.
+            # <p>_alerte (min) relevé au minimum
+            w(f"""              {{% set cfg = 'sensor.{i}_config' %}}
+              {{% set sc = state_attr(cfg, 'sleepC') or state_attr(cfg, 'sleepI') %}}
+              {{% set sa = state_attr(cfg, 'sleepA') %}}""")
+            for u, nom_c, p in capteurs_unitaires(n):
                 b = f"binary_sensor.{nom_c.lower()}_en_retard"
                 w(f"""              {{% if is_state('{b}', 'on') %}}⚠️ **{nom_c}** : aucune nouvelle depuis le {{{{ state_attr('{b}', 'le') }}}}
               {{% elif is_state('{b}', 'off') %}}✅ **{nom_c}** : OK
               {{% else %}}❔ **{nom_c}** : pas encore d'information (nœud ou CYD antérieur à la 3.9 ?)
+              {{% endif %}}
+              {{%- set f = state_attr(cfg, '{p}_force') %}}{{% set al = state_attr(cfg, '{p}_alerte') %}}
+              {{%- if f is not none and al is not none %}}
+              {{%- set f = f | int %}}
+              {{%- if sa | int(0) == 1 and sc | int(0) > 0 %}}{{% set s = sc | int %}}{{% set nb = [((f + s - 1) // s), 1] | max %}}{{% set it = nb * (s + 10) %}}
+              {{%- else %}}{{% set it = f %}}{{% endif %}}
+              {{%- set mini = it + 60 %}}
+              {{%- set d = [al | int * 60, mini] | max -%}}
+              — alerte après **{{{{ (d // 3600) ~ ' h ' ~ '%02d' | format((d % 3600) // 60) if d >= 3600 else ((d // 60) ~ ' min') }}}}** sans nouvelle
+              ({{{{ 'au plus tôt' if al | int == 0 else ('délai saisi ' ~ al ~ ' min, relevé au minimum' if d == mini else 'délai saisi ' ~ al ~ ' min') }}}} ;
+              minimum {{{{ (mini // 3600) ~ ' h ' ~ '%02d' | format((mini % 3600) // 60) if mini >= 3600 else ((mini // 60) ~ ' min') }}}} :
+              forçage {{{{ f }}}} s{{% if sa | int(0) == 1 %}} = {{{{ nb }}}} réveils de {{{{ s }}}} s + 10 s{{% endif %}}, marge 60 s)
               {{% endif %}}
 """)  # Ligne vide : un paragraphe par capteur
         if n.get("jn"):
@@ -1028,7 +1048,7 @@ sections:""")
             w("""          - type: markdown
             content: |
               Ex. : `SET jn_sbas 15 jn_shaut 25` (commande libre) — clés : `jn_sbas` `jn_shaut` (0 à 100 %, bas < haut),
-              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s) ; forçage et retard toléré : dans les Réglages""")
+              `jn_ecl` 0/1, `jn_inter` (1 à 3600 s) ; forçage et délai d'alerte : dans les Réglages""")
         if n.get("fl"):
             w("""          - type: entities
             title: Flotteur (réglages reçus ; SET mfv_... par la commande libre)
@@ -1095,10 +1115,10 @@ sections:""")
         w(f"""              - entity: input_boolean.{i}_mute
                 name: Mesures muettes""")
         for u, nom_c, k in capteurs_unitaires(n):
-            w(f"""              - entity: input_number.{i}_{PREFIXES_RETARD[u]}_force
+            w(f"""              - entity: input_number.{i}_{k}_force
                 name: Forçage {LIBELLES_UNITES[u]}
-              - entity: input_number.{i}_{k}
-                name: Retard toléré {LIBELLES_UNITES[u]}""")
+              - entity: input_number.{i}_{k}_alerte
+                name: Délai d'alerte {LIBELLES_UNITES[u]} (min, 0 = au plus tôt)""")
         w(f"""          - type: button
             name: Enregistrer
             icon: mdi:content-save
@@ -1145,7 +1165,7 @@ sections:""")
           | `SET cle:valeur ...` | Modifie des paramètres : `sleepA` 0/1, `sleepI` `sleepS` `sleepM` `sleepL` (1 à 86400), `wakeI` (1 à 3600), `mute` 0/1 |
           | `SET jn_sbas 15 jn_shaut 25` | Détecteur jour / nuit (ThCave) : `jn_sbas` seuil bas jour → nuit, `jn_shaut` seuil haut nuit → jour (0 à 100 %, bas < haut), `jn_ecl` remonter l'éclairement 0/1, `jn_inter` intervalle de mesure (1 à 3600 s) |
           | `SET mfv_revmin 300 mfv_ack 1` | Flotteur (ThRemise, Capteur 3.1) : `mfv_rev` réveil par le flotteur 0/1, `mfv_revmin` anti-rafale (0 à 86400 s), `mfv_ack` confirmation par le contrôleur 0/1, `mfv_ackn` nombre d'envois sans confirmation avant de dormir (1 à 10) |
-          | `SET thhum_force 3600 thhum_retard 3600` | Forçage d'un capteur (envoi même sans changement, 60 à 86400 s) et retard toléré, en s (0 à 604800), Capteur 3.9 (jn_force : déjà avant) ; aussi dans les Réglages : `thhum_` thermomètre, `bat_` batterie, `mfv_` flotteur, `jn_` jour / nuit, `rgb_` voyant chaudière. Le nœud y ajoute son intervalle normal et une marge : le CYD signale le capteur au-delà (mail) |
+          | `SET thhum_force 3600 thhum_alerte 180` | Forçage d'un capteur (envoi même sans changement, 60 à 86400 s) et délai d'alerte, en **minutes** (0 à 10080, 0 = au plus tôt ; Capteur 4.4) ; aussi dans les Réglages : `thhum_` thermomètre, `bat_` batterie, `mfv_` flotteur, `jn_` jour / nuit, `rgb_` voyant chaudière. Le CYD signale le capteur au-delà (mail) |
           | `MUTE ON` / `MUTE OFF` | Mesures muettes : plus aucune mesure émise (réponses aux commandes, REVEIL, DEEPSLEEP ON et ALIVE inchangés), enregistré dans le nœud ; en LoRa, une trame « MUET » remplace les mesures (le relais peut ainsi encore lui envoyer ses commandes) |
           | `SLEEP ENABLE` / `SLEEP DISABLE` | Active / désactive le deep sleep |
           | `SLEEP n` | Intervalle = n s, et active le deep sleep |
@@ -1165,6 +1185,55 @@ sections:""")
           L'automatisation « Cuve - SLEEP et ACK flotteur » n'envoie pas son SLEEP quand une commande attend.
 
           Page du relais (réseau local) : [Capteurs LoRa](http://{{ states('input_text.ip_relaislora') }}/capteurs)
+      - type: markdown
+        title: Timings et mails « plus de nouvelles »
+        content: |
+          **1. Sommeil** — un nœud sur piles dort, se réveille, mesure, envoie, se rendort.
+          - `sleepI` : intervalle standard (ex. 900 s = 15 min).
+          - `sleepS` / `sleepM` / `sleepL` : durées courte / moyenne / longue (ex. 120 / 300 / 600 s), appliquées
+            **temporairement** par les commandes SLEEPS / SLEEPM / SLEEPL ; SLEEPI ramène à `sleepI`.
+          - `sleepC` (lecture seule) : durée **en cours**, affichée « 💤 Sommeil en cours ».
+          - Qui change le sommeil tout seul : ThCh1er selon l'écart à la consigne du thermostat Chaudière RDC
+            (`packages/thermostat_sommeil.yaml` : arrêt → SLEEPI ; écart ≤ 1 °C → SLEEPS ; ≤ 2 °C → SLEEPM ;
+            au-delà → SLEEPL) ; ThSdb de même (`packages/thsdb_sommeil.yaml`).
+
+          **2. Envoi d'une mesure** — à chaque réveil le nœud mesure, mais n'envoie que si :
+          - la valeur a **changé** (d'au moins 0,2 °C, 5 % d'humidité ou 0,05 V pour la batterie), ou
+          - le **forçage** est échu (`<capteur>_force`, ex. 3600 s) : envoi même sans changement, au premier réveil
+            qui suit l'échéance.
+
+          Le thermomètre change souvent : il envoie à presque chaque réveil. La **batterie** ne change presque
+          jamais : elle n'envoie **qu'au forçage**, donc une seule trame par heure.
+
+          **3. Délai d'alerte** (`<capteur>_alerte`, Réglages, en **minutes**, Capteur 4.4) — saisi par capteur, joint
+          par le nœud à chaque mesure (`alerte:<s>`), surveillé par le CYD principal, qui publie `home/alerte/<capteur>` ;
+          HA envoie alors le mail.
+
+          Le nœud ne peut pas annoncer moins que son **minimum** : s'il est plus court, le délai saisi est relevé.
+          **0 = au plus tôt** (le minimum).
+
+          > minimum = nombre de réveils pour couvrir le forçage × (sommeil + 10 s) + 60 s
+
+          | Sommeil en cours | Minimum (forçage 3600 s) |
+          |---|---|
+          | 120 s (SLEEPS) | 30 × 130 + 60 = 3960 s = **1 h 06** |
+          | 300 s (SLEEPM) | 12 × 310 + 60 = 3780 s = **1 h 03** |
+          | 600 s (SLEEPL) | 6 × 610 + 60 = 3720 s = **1 h 02** |
+          | 900 s (SLEEPI) | 4 × 910 + 60 = 3700 s = **1 h 01 min 40** |
+          | sans deep sleep | 3600 + 60 = 3660 s = **1 h 01** |
+
+          Ex. délai 180 min : alerte à 3 h pile, quel que soit le sommeil en cours. Le délai affiché sous « Nouvelles
+          des capteurs » est recalculé de la même façon d'après la dernière config.
+
+          **4. Les mails**
+          - « ⚠ X : aucune nouvelle depuis le *J à H* » : *H* = heure du **dernier message reçu** de X ; le mail
+            part à *H* + délai d'alerte (ex. dernière trame 22:14, sommeil 120 s → mail à 23:20).
+          - « ✅ X : de nouveau des nouvelles (*J à H*) » : *H* = heure du message qui a mis fin au silence.
+
+          **5. Réglage** (Capteur/doc/Réglages des nœuds, 21/11/2026) : **180 min** partout (une ou deux trames
+          forcées perdues sans mail), sauf les capteurs critiques à **0** (au plus tôt, vers 1 h) : flotteur de
+          ThRemise et voyant de la chaudière (ThSdb). Au plus tôt, une seule trame forcée perdue suffit à déclencher
+          l'alerte.
 """)
     return "\n".join(o)
 

@@ -19,8 +19,8 @@
 #           attribut texte) : vue Relais LoRa ; connexion = signal de moins de 3 min (ALIVE toutes les 60 s)
 #           input_boolean.<id>_sleepa, input_number.<id>_sleepi / _sleeps / _sleepm / _sleepl / _wakei
 #           input_text.<id>_commande (commande libre)
-#           Délai d'alerte (Capteur 3.9, Home-Assist 3.9) : input_number.<id>_<préfixe>_retard (retard toléré de chaque
-#           capteur : thhum, bat, mfv, jn, rgb ; attributs <préfixe>_retard de sensor.<id>_config),
+#           Délai d'alerte : input_number.<id>_<préfixe>_alerte (min, Capteur 4.4) de chaque capteur : thhum, bat, mfv,
+#           jn, rgb ; attributs de même nom de sensor.<id>_config,
 #           binary_sensor.<capteur>_en_retard (home/alerte/<capteur>, publié par le CYD principal ; attribut « le »),
 #           automatisation « Capteurs - Mail capteur en retard ou revenu »
 # Les commandes sont décrites dans Doc/mqtt.docx § 3.2 (et l'aide « ? » de la page du relais).
@@ -111,26 +111,26 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
-          thhum_retard: >-
+          thhum_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_alerte') if suite else none) }}
           bat_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
-          bat_retard: >-
+          bat_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_alerte') if suite else none) }}
           mfv_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('mfv_force') if suite else none) }}
-          mfv_retard: >-
+          mfv_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('mfv_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_alerte') if suite else none) }}
           erreur: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
@@ -275,26 +275,26 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
-          thhum_retard: >-
+          thhum_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_alerte') if suite else none) }}
           bat_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
-          bat_retard: >-
+          bat_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_alerte') if suite else none) }}
           mfv_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('mfv_force') if suite else none) }}
-          mfv_retard: >-
+          mfv_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('mfv_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' mfv_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('mfv_alerte') if suite else none) }}
           erreur: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
@@ -455,26 +455,26 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
-          thhum_retard: >-
+          thhum_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_alerte') if suite else none) }}
           bat_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
-          bat_retard: >-
+          bat_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_alerte') if suite else none) }}
           jn_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('jn_force') if suite else none) }}
-          jn_retard: >-
+          jn_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('jn_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' jn_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('jn_alerte') if suite else none) }}
           erreur: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
@@ -622,18 +622,18 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
-          thhum_retard: >-
+          thhum_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_alerte') if suite else none) }}
           bat_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
-          bat_retard: >-
+          bat_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_alerte') if suite else none) }}
           erreur: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
@@ -777,18 +777,18 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
-          thhum_retard: >-
+          thhum_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_alerte') if suite else none) }}
           bat_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
-          bat_retard: >-
+          bat_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_alerte') if suite else none) }}
           erreur: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
@@ -932,26 +932,26 @@ template:
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('thhum_force') if suite else none) }}
-          thhum_retard: >-
+          thhum_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('thhum_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' thhum_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('thhum_alerte') if suite else none) }}
           bat_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('bat_force') if suite else none) }}
-          bat_retard: >-
+          bat_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('bat_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' bat_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('bat_alerte') if suite else none) }}
           rgb_force: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' rgb_force:(\d+)') -%}
             {{ m[0] | int if m else (this.attributes.get('rgb_force') if suite else none) }}
-          rgb_retard: >-
+          rgb_alerte: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
-            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' rgb_retard:(\d+)') -%}
-            {{ m[0] | int if m else (this.attributes.get('rgb_retard') if suite else none) }}
+            {%- set m = trigger.payload.split(' ERREUR')[0] | regex_findall(' rgb_alerte:(\d+)') -%}
+            {{ m[0] | int if m else (this.attributes.get('rgb_alerte') if suite else none) }}
           erreur: >-
             {%- set suite = (trigger.payload.split(' ') + [''])[1] | upper == 'CONFIGSUITE' -%}
             {%- set p = trigger.payload.split(' ERREUR ') -%}
@@ -1813,13 +1813,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thremise_thhum_retard:
-    name: "ThRemise Retard toléré thermomètre"
+  thremise_thhum_alerte:
+    name: "ThRemise Délai d'alerte thermomètre"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thremise_bat_force:
     name: "ThRemise Forçage batterie"
@@ -1829,13 +1829,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thremise_bat_retard:
-    name: "ThRemise Retard toléré batterie"
+  thremise_bat_alerte:
+    name: "ThRemise Délai d'alerte batterie"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thremise_mfv_force:
     name: "ThRemise Forçage flotteur"
@@ -1845,13 +1845,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thremise_mfv_retard:
-    name: "ThRemise Retard toléré flotteur"
+  thremise_mfv_alerte:
+    name: "ThRemise Délai d'alerte flotteur"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
 
   # ---------- ThNomade (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
@@ -1903,13 +1903,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thnomade_thhum_retard:
-    name: "ThNomade Retard toléré thermomètre"
+  thnomade_thhum_alerte:
+    name: "ThNomade Délai d'alerte thermomètre"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thnomade_bat_force:
     name: "ThNomade Forçage batterie"
@@ -1919,13 +1919,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thnomade_bat_retard:
-    name: "ThNomade Retard toléré batterie"
+  thnomade_bat_alerte:
+    name: "ThNomade Délai d'alerte batterie"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thnomade_mfv_force:
     name: "ThNomade Forçage flotteur"
@@ -1935,13 +1935,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thnomade_mfv_retard:
-    name: "ThNomade Retard toléré flotteur"
+  thnomade_mfv_alerte:
+    name: "ThNomade Délai d'alerte flotteur"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
 
   # ---------- ThCave (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
@@ -1993,13 +1993,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thcave_thhum_retard:
-    name: "ThCave Retard toléré thermomètre"
+  thcave_thhum_alerte:
+    name: "ThCave Délai d'alerte thermomètre"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thcave_bat_force:
     name: "ThCave Forçage batterie"
@@ -2009,13 +2009,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thcave_bat_retard:
-    name: "ThCave Retard toléré batterie"
+  thcave_bat_alerte:
+    name: "ThCave Délai d'alerte batterie"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thcave_jn_force:
     name: "ThCave Forçage jour / nuit"
@@ -2025,13 +2025,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thcave_jn_retard:
-    name: "ThCave Retard toléré jour / nuit"
+  thcave_jn_alerte:
+    name: "ThCave Délai d'alerte jour / nuit"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
 
   # ---------- ThChRDC (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
@@ -2083,13 +2083,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thchrdc_thhum_retard:
-    name: "ThChRDC Retard toléré thermomètre"
+  thchrdc_thhum_alerte:
+    name: "ThChRDC Délai d'alerte thermomètre"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thchrdc_bat_force:
     name: "ThChRDC Forçage batterie"
@@ -2099,13 +2099,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thchrdc_bat_retard:
-    name: "ThChRDC Retard toléré batterie"
+  thchrdc_bat_alerte:
+    name: "ThChRDC Délai d'alerte batterie"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
 
   # ---------- ThCh1er (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
@@ -2157,13 +2157,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thch1er_thhum_retard:
-    name: "ThCh1er Retard toléré thermomètre"
+  thch1er_thhum_alerte:
+    name: "ThCh1er Délai d'alerte thermomètre"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thch1er_bat_force:
     name: "ThCh1er Forçage batterie"
@@ -2173,13 +2173,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thch1er_bat_retard:
-    name: "ThCh1er Retard toléré batterie"
+  thch1er_bat_alerte:
+    name: "ThCh1er Délai d'alerte batterie"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
 
   # ---------- ThSdb (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
@@ -2231,13 +2231,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thsdb_thhum_retard:
-    name: "ThSdb Retard toléré thermomètre"
+  thsdb_thhum_alerte:
+    name: "ThSdb Délai d'alerte thermomètre"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thsdb_bat_force:
     name: "ThSdb Forçage batterie"
@@ -2247,13 +2247,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thsdb_bat_retard:
-    name: "ThSdb Retard toléré batterie"
+  thsdb_bat_alerte:
+    name: "ThSdb Délai d'alerte batterie"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
   thsdb_rgb_force:
     name: "ThSdb Forçage voyant chaudière"
@@ -2263,13 +2263,13 @@ input_number:
     mode: box
     unit_of_measurement: "s"
     icon: mdi:timer-refresh-outline
-  thsdb_rgb_retard:
-    name: "ThSdb Retard toléré voyant chaudière"
+  thsdb_rgb_alerte:
+    name: "ThSdb Délai d'alerte voyant chaudière"
     min: 0
-    max: 604800
+    max: 10080
     step: 1
     mode: box
-    unit_of_measurement: "s"
+    unit_of_measurement: "min"
     icon: mdi:clock-alert-outline
 
   # ---------- PrGuirlande (bornes du capteur : 1 à 86400 s, wakeI 1 à 3600 s) ----------
@@ -2476,9 +2476,9 @@ script:
               {%- set v = states('input_number.' ~ capteur ~ '_' ~ k | lower) | float(0) | int -%}
               {%- if v > 0 and v != state_attr(cfg, k) -%}{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}{%- endif -%}
             {%- endfor -%}
-            {#- Forçages et retards tolérés (Capteur 3.9) : seulement ceux de la dernière config reçue et dont le
-                 champ existe ; retard 0 permis, forçage de 60 s au moins (bornes du champ) -#}
-            {%- for k in ['bat_force', 'bat_retard', 'jn_force', 'jn_retard', 'mfv_force', 'mfv_retard', 'rgb_force', 'rgb_retard', 'thhum_force', 'thhum_retard'] -%}
+            {#- Forçages et délais d'alerte : seulement ceux de la dernière config reçue et dont le champ existe ;
+                 délai 0 permis (au plus tôt), forçage de 60 s au moins -#}
+            {%- for k in ['bat_alerte', 'bat_force', 'jn_alerte', 'jn_force', 'mfv_alerte', 'mfv_force', 'rgb_alerte', 'rgb_force', 'thhum_alerte', 'thhum_force'] -%}
               {%- if state_attr(cfg, k) is not none and states('input_number.' ~ capteur ~ '_' ~ k) not in ['unknown', 'unavailable'] -%}
                 {%- set v = states('input_number.' ~ capteur ~ '_' ~ k) | float(-1) | int -%}
                 {%- if v >= 0 and v != state_attr(cfg, k) -%}{%- set ns.s = ns.s ~ ' ' ~ k ~ ':' ~ v -%}{%- endif -%}
@@ -2603,9 +2603,9 @@ automation:
                     entity_id: "input_number.{{ capteur }}_{{ repeat.item | lower }}"
                   data:
                     value: "{{ state_attr(trigger.entity_id, repeat.item) }}"
-      # Forçages et retards tolérés (Capteur 3.9), si le nœud les envoie et que le champ existe
+      # Forçages et délais d'alerte, si le nœud les envoie et que le champ existe
       - repeat:
-          for_each: ['bat_force', 'bat_retard', 'jn_force', 'jn_retard', 'mfv_force', 'mfv_retard', 'rgb_force', 'rgb_retard', 'thhum_force', 'thhum_retard']
+          for_each: ['bat_alerte', 'bat_force', 'jn_alerte', 'jn_force', 'mfv_alerte', 'mfv_force', 'rgb_alerte', 'rgb_force', 'thhum_alerte', 'thhum_force']
           sequence:
             - if:
                 - condition: template
