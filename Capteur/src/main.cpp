@@ -48,6 +48,9 @@
 #include "MyPresenceReseauElectrique.h"
 #endif
 #include "MyDateTime.h"
+#include "MyOta.h"
+#include "secret.h"   // OTA_MOT_DE_PASSE (exclu du dépôt ; modèle : secret.exemple.h)
+#include <WebServer.h>
 
 
 
@@ -150,10 +153,83 @@ int publieMesureLora(const char* payload) {
 
 
 //-------------------------------------------------------------------------------------------
+//      Mise à jour du firmware à distance (Capteur 4.5, MyOta)
+//-------------------------------------------------------------------------------------------
+// Nœud Wi-Fi : PlatformIO (--upload-port <IP>) et page http://<IP>/update quand il est éveillé ; étapes publiées,
+// retenues, sur home/ota/<nom>. Nœud LoRa : rien en temps normal ; la commande OTA (par le relais) ouvre un point
+// d'accès Wi-Fi « <nom>-MAJ » (mot de passe OTA_MOT_DE_PASSE), http://192.168.4.1/update ou --upload-port 192.168.4.1 ;
+// étapes envoyées par LoRa au relais (trame « home/ota/<nom> … »). Commande OTA, tous nœuds : éveillé OTA_FENETRE_S
+// (sommeil coupé en RAM seulement), puis redémarrage s'il n'y a pas eu de mise à jour.
+static unsigned long sulDebutFenetreOta = 0;   // millis() de la commande OTA (0 : pas de fenêtre ouverte)
+#ifdef _LORA_P2P_MODE_
+static WebServer* spServeurAp = nullptr;       // Serveur Web de la mise à jour (nœud LoRa : Wi-Fi maison ou point d'accès)
+static unsigned long sulDebutWifiOta = 0;      // millis() du début de la connexion au Wi-Fi de la maison (0 : aucune)
+
+// Serveur Web /update et ArduinoOTA, sur le Wi-Fi de la maison ou sur le point d'accès
+static void demarreServeurOta() {
+  spServeurAp = new WebServer(80);
+  gOta.ajoutePagesWeb(*spServeurAp);
+  spServeurAp->begin();
+  gOta.demarreArduinoOta();
+}
+
+// Secours : pas de Wi-Fi de la maison (répéteur absent ou trop loin) → point d'accès « <nom>-MAJ »
+static void ouvrePointAcces(const String& sPourquoi) {
+  String sReseau = config.nomEquipement + "-MAJ";
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(sReseau.c_str(), OTA_MOT_DE_PASSE);
+  demarreServeurOta();
+  gOta.annonce("ATTENTE", ": " + sPourquoi + " ; point d'accès " + sReseau + ", http://" + WiFi.softAPIP().toString() + "/update");
+}
+
+// Appelée par loop() : fin de la connexion au Wi-Fi de la maison (réussie, ou abandon après OTA_WIFI_ATTENTE_S)
+static void suitConnexionWifiOta() {
+  if (sulDebutWifiOta == 0 || spServeurAp != nullptr) return;
+  if (WiFi.status() == WL_CONNECTED) {
+    demarreServeurOta();
+    gOta.annonce("ATTENTE", ": prêt " + String(OTA_FENETRE_S / 60) + " min sur le Wi-Fi de la maison (" + String(WiFi.RSSI()) +
+                 " dBm), http://" + WiFi.localIP().toString() + "/update");
+  }
+  else if (millis() - sulDebutWifiOta >= OTA_WIFI_ATTENTE_S * 1000UL)
+    ouvrePointAcces("Wi-Fi de la maison introuvable en " + String(OTA_WIFI_ATTENTE_S) + " s");
+}
+#endif
+
+void ouvreFenetreOta() {
+  config.mbDeepSleepActive = false;   // RAM seulement : la NVS garde sleepA, rétabli au redémarrage de fin de fenêtre
+  sulDebutFenetreOta = millis();
+  if (sulDebutFenetreOta == 0) sulDebutFenetreOta = 1;
+  String sDuree = String(OTA_FENETRE_S / 60) + " min";
+  #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+  if (sulDebutWifiOta != 0) return;   // Commande renvoyée par le relais : connexion déjà lancée, suitConnexionWifiOta() annonce
+  // Wi-Fi de la maison, à l'adresse fixe du profil ; non bloquant (le nœud doit accuser la commande par LoRa)
+  WiFi.mode(WIFI_STA);
+  // 4.7 : balayage de tous les canaux puis point d'accès le plus fort (répéteur près du nœud plutôt que la box lointaine ;
+  // par défaut WIFI_FAST_SCAN prend le premier point d'accès trouvé portant le bon nom)
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+  WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+  #ifdef OTA_IP_FIXE
+  IPAddress ip, passerelle, masque(255, 255, 255, 0);
+  ip.fromString(OTA_IP_FIXE);
+  passerelle.fromString(OTA_PASSERELLE);
+  WiFi.config(ip, passerelle, masque, passerelle);
+  #endif
+  WiFi.begin(FORCE_WIFI_SSID, FORCE_WIFI_PASSWD);
+  sulDebutWifiOta = millis();
+  if (sulDebutWifiOta == 0) sulDebutWifiOta = 1;
+  (void)sDuree;
+  #else
+  gOta.annonce("ATTENTE", ": éveillé " + sDuree + ", http://" + WiFi.localIP().toString() + "/update");
+  #endif
+}
+
+//-------------------------------------------------------------------------------------------
 //      SETUP
 //-------------------------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
+  gOta.debutDemarrage();   // Nouveau firmware à l'essai : retour au précédent sans connexion à temps
   unsigned long start = millis();
   while(!Serial && millis() - start < 5000); // Attend max 5 secondes (USB CDC : re-énumération après reboot)
 
@@ -487,6 +563,15 @@ void setup() {
 
 
   config.setup();
+  config.onDemandeOta = ouvreFenetreOta;
+  #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+  // Nœud LoRa : étapes envoyées au relais (DATE et TIME remplacés par son heure) ; ArduinoOTA démarre avec le point
+  // d'accès (commande OTA)
+  gOta.begin(config.nomEquipement, OTA_MOT_DE_PASSE, String(VERSION),
+             [](const char* topic, const char* msg) { mLoraRxTx.sendPacket((String(topic) + " " + msg).c_str()); },
+             []() { return String("DATE TIME"); }, false);
+  config.onAvantDeepSleep = []() { if (mLoraRxTx.nbEmissions() > 0) gOta.confirme(); };
+  #endif
 
   #ifdef _RCSWITCH_MODE_
   mCC1101.setup();
@@ -562,6 +647,12 @@ void setup() {
 
   if (WiFi.status() == WL_CONNECTED) {
     webServer.setup();
+    #ifndef __DESACTIVE_ENVOI_MQTT__
+    gOta.begin(config.nomEquipement, OTA_MOT_DE_PASSE, String(VERSION),
+               [](const char* topic, const char* msg) { mqtt.publish(topic, msg, true); },
+               []() { return mDateTime.getDate() + " " + mDateTime.getTime(); });
+    gOta.ajoutePagesWeb(webServer.serveur());
+    #endif
   }
   #ifndef __DESACTIVE_ENVOI_MQTT__
   mqtt.begin();
@@ -636,6 +727,27 @@ void loop() {
   #endif // TEST_EMISSION_RCS
   
   config.loop();
+
+  // Mise à jour du firmware à distance (voir ouvreFenetreOta())
+  gOta.loop();
+  // OTA_TEST_RETOUR (essai seulement : PLATFORMIO_BUILD_FLAGS=-DOTA_TEST_RETOUR) : firmware jamais validé, pour vérifier
+  // le retour automatique au précédent au bout de OTA_DELAI_VALIDATION_S
+  #if defined(OTA_TEST_RETOUR)
+  #elif defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
+  if (!gOta.estConfirme() && mqtt.isConnected()) gOta.confirme();   // MQTT connecté : nouveau firmware validé
+  #elif defined(_LORA_P2P_MODE_)
+  suitConnexionWifiOta();
+  if (spServeurAp != nullptr) spServeurAp->handleClient();
+  // 1re trame LoRa émise : validé ; « OK » envoyé seul, après la rafale de trames du démarrage (4.8 : perdu au milieu),
+  // ou juste avant le deep sleep s'il vient plus tôt (sinon le réveil ferait revenir au firmware précédent)
+  if (!gOta.estConfirme() && mLoraRxTx.nbEmissions() > 0 && millis() >= OTA_ANNONCE_OK_LORA_MS) gOta.confirme();
+  #endif
+  if (sulDebutFenetreOta != 0 && millis() - sulDebutFenetreOta >= OTA_FENETRE_S * 1000UL) {
+    gOta.annonce("ATTENTE", ": fenêtre fermée sans mise à jour, redémarrage (sommeil normal rétabli)");
+    delay(1000);
+    ESP.restart();
+  }
+
   #ifdef _WIFI_MODE_
   // Pas de deep sleep entre deux tours de loop() (DEBUG_NO_DEEP_SLEEP force mbDeepSleepActive à false
   // dans CConfig::setup(), ou désactivé dynamiquement via NVS/web/MQTT) : le WiFi peut rester up

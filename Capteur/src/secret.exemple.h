@@ -9,3 +9,5 @@
 #define FORCE_MQTT_PORT 1883
 #define FORCE_MQTT_USER "xxxxxx"
 #define FORCE_MQTT_PWD "xxxxxxxxxx"
+// Mot de passe de la mise à jour à distance (ArduinoOTA, page /update, point d'accès des nœuds LoRa). Le même pour tous les appareils.
+#define OTA_MOT_DE_PASSE "changez-moi"

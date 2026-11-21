@@ -42,6 +42,7 @@ public:
   int publishState(bool state);
   int publish(const char* topic, const char* payload);
   int publish(const char* topic, const char* payload, bool retained);
+  bool isConnected() { return client.connected(); }
   bool getCurrentState() const {
     return currentState;
   }

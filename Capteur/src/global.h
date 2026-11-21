@@ -425,7 +425,19 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "4.4"
+#define VERSION "4.8"
+// Commande OTA (Capteur 4.5) : nœud tenu éveillé OTA_FENETRE_S pour une mise à jour (nœud LoRa : point d'accès Wi-Fi
+// « <nom>-MAJ », http://192.168.4.1/update) ; sans mise à jour, redémarrage à la fin (sommeil normal rétabli)
+#define OTA_FENETRE_S 600
+// Nœud LoRa (Capteur 4.6) : la commande OTA connecte d'abord le nœud au Wi-Fi de la maison (FORCE_WIFI_SSID /
+// FORCE_WIFI_PASSWD de secret.h ; répéteur posé près du nœud le temps des mises à jour), à l'adresse fixe de son profil
+// (OTA_IP_FIXE, platformio.ini) : mise à jour depuis le bureau (profil <nœud>_ota). Pas de Wi-Fi en OTA_WIFI_ATTENTE_S :
+// point d'accès « <nom>-MAJ » en secours.
+#define OTA_WIFI_ATTENTE_S 30
+// Nœud LoRa (Capteur 4.8) : validation d'un nouveau firmware et envoi de « OK » au plus tôt OTA_ANNONCE_OK_LORA_MS après le
+// démarrage (trame seule, après la rafale du démarrage), ou juste avant le deep sleep. Doit rester < OTA_DELAI_VALIDATION_S.
+#define OTA_ANNONCE_OK_LORA_MS 15000UL
+#define OTA_PASSERELLE "192.168.1.254"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

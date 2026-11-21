@@ -181,6 +181,8 @@ public:
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
   std::function<void()> onMqttPowerDown;
   void setMqttPowerDownCallback(std::function<void()> cbMqttPowerDown); // Pour Power down MQTT
+  std::function<void()> onDemandeOta;   // Commande OTA : fenêtre de mise à jour (main.cpp, ouvreFenetreOta())
+  std::function<void()> onAvantDeepSleep;   // Juste avant le deep sleep (main.cpp : validation d'un nouveau firmware LoRa)
 
   void setup();
   void traiteReveil();

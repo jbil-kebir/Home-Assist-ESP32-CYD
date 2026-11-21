@@ -1,3 +1,34 @@
+4.8
+Nœud LoRa : « OK » d'une mise à jour envoyé seul, 15 s après le démarrage (OTA_ANNONCE_OK_LORA_MS), ou juste avant le deep
+    sleep s'il vient plus tôt (CConfig::onAvantDeepSleep) ; perdu en 4.7 au milieu de la rafale de trames du démarrage,
+    HA restait sur TRANSFERT (21/11/2026)
+
+4.7
+Commande OTA d'un nœud LoRa : connexion au point d'accès le plus fort (WIFI_ALL_CHANNEL_SCAN + WIFI_CONNECT_AP_BY_SIGNAL)
+    au lieu du premier trouvé : ThRemise s'était connecté à la box à -92 dBm, répéteur posé à côté (21/11/2026)
+
+4.6
+Commande OTA d'un nœud LoRa : connexion au Wi-Fi de la maison (FORCE_WIFI_SSID / FORCE_WIFI_PASSWD de secret.h,
+    répéteur posé près du nœud le temps des mises à jour) à l'adresse fixe de son profil (OTA_IP_FIXE : ThRemise
+    192.168.1.240, ThCave 192.168.1.241), puis mise à jour depuis le bureau (profils ThRemise_Xiao_S3_ota et
+    ThCave_Xiao_S3_ota, flèche « Upload » de VS Code). Connexion non bloquante ; pas de Wi-Fi en OTA_WIFI_ATTENTE_S (30 s) :
+    point d'accès « <nom>-MAJ » en secours (4.5). Annonce dans HA : « prêt 10 min sur le Wi-Fi de la maison (-xx dBm),
+    http://192.168.1.240/update ». Le point d'accès seul (4.5) demandait trop de manipulations (21/11/2026)
+
+4.5
+Mise à jour du firmware à distance (MyOta.h/.cpp, même module que Relais-Lora 2.9 et Home-Assist 4.3) :
+    - nœud Wi-Fi éveillé : PlatformIO (pio run -e <profil> -t upload --upload-port <IP>, ota_auth.py bascule sur espota
+      dès que le port est une IP) ou page http://<IP>/update ;
+    - commande OTA (tous nœuds) : éveillé OTA_FENETRE_S (600 s), sommeil coupé en RAM seulement, redémarrage à la fin
+      sans mise à jour ; nœud LoRa : point d'accès Wi-Fi « <nom>-MAJ » (mot de passe OTA_MOT_DE_PASSE),
+      http://192.168.4.1/update ou --upload-port 192.168.4.1 ;
+    - étiquette = nom du profil PlatformIO (ETIQUETTE_FIRMWARE=${PIOENV}) : /update refuse le firmware d'un autre nœud ;
+    - retour arrière : validé à la connexion MQTT (Wi-Fi) ou à la 1re trame LoRa émise, sinon retour au précédent ;
+    - étapes publiées sur home/ota/<nom> (Wi-Fi : retenu ; LoRa : par le relais) : DEBUT, ECHEC, TRANSFERT, OK,
+      RETOUR, ATTENTE ;
+    - C3 : découpage min_spiffs.csv (deux emplacements de 1,9 Mo) : 1re installation par USB. S3 : 8 Mo, inchangé.
+    (21/11/2026)
+
 4.4
 Délai d'alerte saisi directement, en minutes, à la place du « retard toléré » (secondes, ajouté au minimum) :
     clé <préfixe>alerte (NVS, page Web, SET, CONFIG), 0 à DELAI_ALERTE_MAX_MIN (10080), 0 = au plus tôt. Le nœud annonce

@@ -352,6 +352,7 @@ void CConfig::enterDeepSleep() {
    Serial.println("Entrée en deep sleep... Mode Deep Sleep Inactif (commutateur). On sort."); Serial.flush();
    return;
   #endif
+  if (onAvantDeepSleep) onAvantDeepSleep();   // 4.8 : validation d'un nouveau firmware LoRa avant de dormir (main.cpp)
   Serial.printf("Deep sleep pour %lu secondes...\n", getSommeilEnCours());
   Serial.flush();           // Attend que le serial soit vide
   delay(100);               // Sécurité
@@ -888,6 +889,10 @@ int CConfig::handleMqttCommand(const String& payload) {
   else if (cmd == "GET") {
     envoieConfig();
     envoieVersion();
+  }
+  else if (cmd == "OTA") {
+    // Mise à jour du firmware à distance (Capteur 4.5) : nœud tenu éveillé, prêt à recevoir (voir main.cpp)
+    if (onDemandeOta) onDemandeOta(); else ret = -1;
   }
   else if (cmd == "MUTE ON" || cmd == "MUTE OFF") {
     // Mesures muettes : même traitement que SET mute:1 / mute:0 (réponse CONFIG, ERREUR mute:1 si refusé)
