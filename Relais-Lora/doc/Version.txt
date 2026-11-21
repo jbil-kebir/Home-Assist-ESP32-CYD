@@ -1,3 +1,16 @@
+2.8
+Capteur LoRa éveillé (dernière config sleepA:0 et pas de DEEPSLEEP ON depuis) : commande envoyée directement, sans
+    attendre une trame du capteur, puis renvoyée toutes les FILE_CMD_RENVOI_EVEILLE_MS (30 s) jusqu'à l'accusé ;
+    FILE_CMD_MAX_ENVOIS envois au plus, puis abandon signalé. Avant, un capteur éveillé n'émettant que sur changement
+    ou au forçage, la commande pouvait attendre jusqu'à 1 h (SET sleepA:1 de ThRemise : 4 min le 21/11/2026).
+    Capteur qui dort : inchangé (envoi après sa trame de réveil, un essai par réveil)
+
+2.7
+Écart minimal LORA_ECART_EMISSIONS_MS = 300 ms entre la fin d'une émission et la suivante (CMyLoraRxTx::pretAEmettre(),
+    vérifié par la file de commandes et les envois différés, sans bloquer la boucle) : la commande en attente partait
+    4 ms après l'ACK du flotteur, pendant que le capteur traitait l'ACK ; jamais reçue (ThRemise, SET sleepA:0,
+    7 essais sur 10, 21/11/2026)
+
 2.6
 ACK du flotteur (commandes relayées depuis home/thermometre/command) : émis au prochain silence radio
     (FILE_CMD_SILENCE_MS sans trame reçue, au plus LORA_DIFFERE_MAX_MS = 5 s d'attente, file de LORA_DIFFERES_MAX = 4) ;

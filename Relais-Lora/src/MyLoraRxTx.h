@@ -47,6 +47,7 @@ private:
   std::vector<String> mvDifferes;           // Messages en attente (topic + " " + payload)
   unsigned long mulPremierDiffere = 0;      // millis() de mise en attente du plus ancien
   void envoieDifferes();                    // Appelée par loop()
+  unsigned long mulFinEmission = 0;         // millis() de la fin de la dernière émission (LORA_ECART_EMISSIONS_MS)
 
 public:
   CMyLoraRxTx(CConfig& cfg, SX1262& radio) : mConfig(&cfg), mRadio(radio) {
@@ -71,6 +72,8 @@ public:
   int sendPacket(const char* topic, const char* pyload);
   int sendPacket(const char* message);
   int sendPacketDiffere(const char* topic, const char* pyload); // Émis au prochain silence (voir envoieDifferes())
+  // Radio en écoute et dernière émission terminée depuis LORA_ECART_EMISSIONS_MS au moins (file de commandes, différés)
+  bool pretAEmettre() const;
   int validateParameters();
   int parseMessage(ParsedLoraP2PMessage& result, const String& input);
   int handleIncommingLoraP2PMessage(const String& inMessage);

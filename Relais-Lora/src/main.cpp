@@ -56,6 +56,7 @@ void setup() {
   mFileCommandes.onLoraPublish = [](const char* topic, const char* payload) -> int {
       return mLoraRxTx.sendPacket(topic, payload);
   };
+  mFileCommandes.onLoraPret = []() -> bool { return mLoraRxTx.pretAEmettre(); };
   mFileCommandes.onMqttPublish = [](const char* topic, const char* payload) -> int {
       return mqtt.publish(topic, payload);
   };

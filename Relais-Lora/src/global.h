@@ -76,7 +76,12 @@
 // Le capteur écoute LORA_FENETRE_ECOUTE_MS = 1,5 s après sa dernière émission (Capteur 4.0 ; 1 s avant)
 #define FILE_CMD_SILENCE_MS         600
 #define FILE_CMD_NOUVEAU_REVEIL_MS  5000  // Silence au-delà duquel une trame marque un nouveau réveil
-#define FILE_CMD_MAX_ENVOIS         10    // Réveils sans accusé avant abandon
+#define FILE_CMD_MAX_ENVOIS         10    // Réveils sans accusé avant abandon (capteur éveillé : envois sans accusé)
+// Capteur ÉVEILLÉ (dernière config reçue : sleepA:0, et dernière trame autre que DEEPSLEEP ON) : il écoute en
+// permanence, mais n'émet que sur changement de mesure ou au forçage (jusqu'à 1 h) ; attendre une de ses trames
+// retardait d'autant la commande (ThRemise, 21/11/2026). Commande envoyée directement, puis renvoyée toutes les
+// FILE_CMD_RENVOI_EVEILLE_MS jusqu'à l'accusé (FILE_CMD_MAX_ENVOIS envois au plus, puis abandon)
+#define FILE_CMD_RENVOI_EVEILLE_MS  30000
 
 
 // Espace de nom pour l'enregistrement NVS
@@ -84,9 +89,14 @@
 
 
 // Version du logiciel
-#define VERSION "2.6"
+#define VERSION "2.8"
 // Attente maximale de la fin d'une émission LoRa avant d'en commencer une autre (CMyLoraRxTx::sendPacket())
 #define LORA_ATTENTE_TX_MS 2000
+// Écart minimal entre la fin d'une émission et le début de la suivante (CMyLoraRxTx::pretAEmettre()) : le capteur
+// qui vient de recevoir un paquet le traite avant de se remettre en écoute, et rate le préambule d'un paquet émis
+// juste derrière. Le 21/11/2026, SET sleepA:0 émis 4 ms après l'ACK du flotteur : jamais reçu par ThRemise (7 essais).
+// Reste bien inférieur à la fenêtre d'écoute du capteur (LORA_FENETRE_ECOUTE_MS = 1,5 s, Capteur 4.0)
+#define LORA_ECART_EMISSIONS_MS 300
 // Envois différés (ACK du flotteur relayé depuis MQTT) : émis après FILE_CMD_SILENCE_MS sans trame reçue,
 // au plus LORA_DIFFERE_MAX_MS après leur mise en attente ; LORA_DIFFERES_MAX messages en attente au plus
 #define LORA_DIFFERE_MAX_MS 5000

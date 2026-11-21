@@ -28,6 +28,8 @@ private:
     bool bEnvoyeCeReveil = false;       // Commande déjà envoyée pendant ce réveil : pas de renvoi avant le suivant
                                         // (sinon le relais émettait par-dessus l'accusé et le DEEPSLEEP ON du capteur)
     int nbEnvois = 0;                   // Envois faits pour la commande en attente
+    unsigned long ulDernierEnvoi = 0;   // millis() du dernier envoi de la commande (renvoi au capteur éveillé)
+    bool bEndormi = true;               // Dernière trame reçue = DEEPSLEEP ON (ou jamais vu)
     String nomCapteur;                  // Nom annoncé dans la réponse CONFIG (ex : ThRemise)
     String ip;                          // IP en fin de la dernière trame ("" en LoRa seul : 0.0.0.0)
     String config;                      // Dernière config reçue : « sleepA:1 sleepI:30 ... »
@@ -46,10 +48,14 @@ private:
   void noteConfig(SEntree& e, const String& payload, int iConfig);
   void retire(int i);         // Vide la commande en attente du capteur i
   void publieAttente(int i);  // Commande en attente sur home/<conf>/attente (retenu), pour Home Assistant
+  bool estEveille(const SEntree& e) const;  // Capteur éveillé : envoi direct, sans attendre une trame (2.8)
+  void envoie(int i);         // Envoi LoRa de la commande en attente du capteur i (compté)
+  void abandonne(int i, const char* sRaison);
 
 public:
   // Envoi LoRa (topic, payload) et publication MQTT (topic, payload)
   std::function<int(const char*, const char*)> onLoraPublish;
+  std::function<bool()> onLoraPret;   // Radio prête à émettre (écart LORA_ECART_EMISSIONS_MS après la précédente)
   std::function<int(const char*, const char*)> onMqttPublish;
   std::function<int(const char*, const char*, bool)> onMqttPublishRetenu;
   String topicEtatRelais; // Où signaler les abandons

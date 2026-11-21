@@ -36,6 +36,7 @@ void CFileCommandes::memorise(const String& topicConfig, const String& commande)
   }
   mEntrees[i].commande = commande;
   mEntrees[i].nbEnvois = 0;
+  mEntrees[i].ulDernierEnvoi = 0;
   mEntrees[i].bEnvoiArme = false;
   mEntrees[i].bEnvoyeCeReveil = false; // Nouvelle commande : envoyable dès la prochaine fin de rafale, même pendant ce réveil
   Serial.printf("[File] %s : commande mise en attente <%s>\n", topicConfig.c_str(), commande.c_str());
@@ -73,6 +74,7 @@ void CFileCommandes::noteTrame(const String& topic, const String& nomEquipement,
   bool bNouveauReveil = !e.bDejaVu || (ulMaintenant - e.ulDerniereTrame >= FILE_CMD_NOUVEAU_REVEIL_MS);
   e.ulDerniereTrame = ulMaintenant;
   e.bDejaVu = true;
+  e.bEndormi = (payload.indexOf("DEEPSLEEP ON") >= 0);
   if (bNouveauReveil) e.bEnvoyeCeReveil = false;
   if (e.nomCapteur.length() == 0) e.nomCapteur = nomEquipement;
   String sIP = payload.substring(payload.lastIndexOf(' ') + 1);
@@ -116,11 +118,7 @@ void CFileCommandes::noteTrame(const String& topic, const String& nomEquipement,
   }
 
   if (bNouveauReveil && e.nbEnvois >= FILE_CMD_MAX_ENVOIS) {
-    String sMsg = "ABANDON commande " + String(mCapteurs[i].topicConfig) + " : " + e.commande +
-                  " (" + String(e.nbEnvois) + " réveils sans accusé)";
-    Serial.println("[File] " + sMsg);
-    if (onMqttPublish && topicEtatRelais.length() > 0) onMqttPublish(topicEtatRelais.c_str(), sMsg.c_str());
-    retire(i);
+    abandonne(i, "réveils sans accusé");
     return;
   }
 
@@ -137,15 +135,47 @@ void CFileCommandes::loop() {
                 "FILE_CMD_CAPTEURS : augmenter FILE_CMD_NB_MAX_CAPTEURS");
   for (int i = 0; i < NB_CAPTEURS; i++) {
     SEntree& e = mEntrees[i];
-    if (!e.bEnvoiArme || e.commande.length() == 0) continue;
+    if (e.commande.length() == 0) continue;
+    // Capteur en pleine rafale de trames : attendre qu'il se taise (radio semi-duplex)
     if (millis() - e.ulDerniereTrame < FILE_CMD_SILENCE_MS) continue;
-    e.bEnvoiArme = false;
-    e.bEnvoyeCeReveil = true;
-    e.nbEnvois++;
-    Serial.printf("[File] %s : envoi %d/%d de <%s>\n", mCapteurs[i].topicConfig, e.nbEnvois, FILE_CMD_MAX_ENVOIS, e.commande.c_str());
-    if (onLoraPublish) onLoraPublish(mCapteurs[i].topicConfig, e.commande.c_str());
-    publieAttente(i);
+    bool bEveille = estEveille(e);
+    bool bRenvoiDu = bEveille && (e.ulDernierEnvoi == 0 || millis() - e.ulDernierEnvoi >= FILE_CMD_RENVOI_EVEILLE_MS);
+    if (!e.bEnvoiArme && !bRenvoiDu) continue;
+    // Capteur éveillé qui n'a toujours pas accusé après le dernier envoi permis : abandon
+    if (!e.bEnvoiArme && e.nbEnvois >= FILE_CMD_MAX_ENVOIS) { abandonne(i, "envois sans accusé, capteur éveillé"); continue; }
+    // Radio encore en émission (ACK du flotteur...) ou émission juste finie : envoi au passage suivant
+    if (onLoraPret && !onLoraPret()) return;
+    if (!e.bEnvoiArme) Serial.printf("[File] %s : capteur éveillé, envoi direct\n", mCapteurs[i].topicConfig);
+    envoie(i);
   }
+}
+
+// Éveillé : deep sleep désactivé d'après sa dernière config (sleepA:0) et pas de DEEPSLEEP ON depuis. La config seule
+// ne suffit pas : un DEEPSLEEP ON perdu ferait croire éveillé un capteur qui dort, et les renvois épuiseraient les
+// FILE_CMD_MAX_ENVOIS avant son réveil suivant.
+bool CFileCommandes::estEveille(const SEntree& e) const {
+  if (!e.bDejaVu || e.bEndormi || !e.bConfigConnue) return false;
+  return (" " + e.config + " ").indexOf(" sleepA:0 ") >= 0;
+}
+
+void CFileCommandes::envoie(int i) {
+  SEntree& e = mEntrees[i];
+  e.bEnvoiArme = false;
+  e.bEnvoyeCeReveil = true;
+  e.nbEnvois++;
+  e.ulDernierEnvoi = millis();
+  if (e.ulDernierEnvoi == 0) e.ulDernierEnvoi = 1;
+  Serial.printf("[File] %s : envoi %d/%d de <%s>\n", mCapteurs[i].topicConfig, e.nbEnvois, FILE_CMD_MAX_ENVOIS, e.commande.c_str());
+  if (onLoraPublish) onLoraPublish(mCapteurs[i].topicConfig, e.commande.c_str());
+  publieAttente(i);
+}
+
+void CFileCommandes::abandonne(int i, const char* sRaison) {
+  String sMsg = "ABANDON commande " + String(mCapteurs[i].topicConfig) + " : " + mEntrees[i].commande +
+                " (" + String(mEntrees[i].nbEnvois) + " " + sRaison + ")";
+  Serial.println("[File] " + sMsg);
+  if (onMqttPublish && topicEtatRelais.length() > 0) onMqttPublish(topicEtatRelais.c_str(), sMsg.c_str());
+  retire(i);
 }
 
 // « <topic de config> : dernière trame il y a 12 s — en attente : SET sleepI 60 (envoi 1/10) », une ligne par capteur

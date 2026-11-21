@@ -274,6 +274,7 @@ int CMyLoraRxTx::loop() {
       if (currentMode == MODE_TX) {
         // C'était une émission
         mRadio.finishTransmit();
+        mulFinEmission = millis();
         Serial.println(F("[LoRa] Envoi terminé, retour en écoute."));
         startRx();
     
@@ -326,10 +327,14 @@ int CMyLoraRxTx::sendPacketDiffere(const char* topic, const char* pyload) {
   return 0;
 }
 
+bool CMyLoraRxTx::pretAEmettre() const {
+  return currentMode == MODE_RX && millis() - mulFinEmission >= LORA_ECART_EMISSIONS_MS;
+}
+
 // Un message différé par passage, quand la radio écoute et qu'aucune trame n'est arrivée depuis FILE_CMD_SILENCE_MS
 // (au plus LORA_DIFFERE_MAX_MS d'attente pour le plus ancien, si les trames ne s'arrêtent pas)
 void CMyLoraRxTx::envoieDifferes() {
-  if (mvDifferes.empty() || currentMode != MODE_RX) return;
+  if (mvDifferes.empty() || !pretAEmettre()) return;
   bool bSilence = millis() - mulDerniereReception >= FILE_CMD_SILENCE_MS;
   bool bTropAttendu = millis() - mulPremierDiffere >= LORA_DIFFERE_MAX_MS;
   if (!bSilence && !bTropAttendu) return;
@@ -396,6 +401,7 @@ int CMyLoraRxTx::sendPacket(const char* message) {
     if (operationDone) {
       operationDone = false;
       mRadio.finishTransmit();
+      mulFinEmission = millis();
     }
     else Serial.println(F("[SX1262] Émission précédente non terminée : interrompue"));
   }
