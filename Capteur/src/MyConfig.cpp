@@ -194,7 +194,8 @@ void CConfig::loop() {
   // S'il est actif, on n'entre en deep sleep que si le délai avant deep sleep est écoulé et qu'une mesure a été remontée (pour tous les capteurs)
   // Pour les capteurs qui ont besoin d'un ACK, on n'entre en deep-sleep que si l'ACK a été reçu
   //
-  if (mbDeepSleepActive) {
+  // Mode maintenance (4.9) : nœud tenu éveillé, sans toucher au réglage sleepA
+  if (mbDeepSleepActive && !mbMaintenance) {
     // Wi-Fi : fin d'éveil anticipée dès que toutes les mesures sont remontées sur MQTT, après
     // DELAI_COMMANDES_APRES_REMONTEE_MS pour traiter les commandes retained (reçues dès l'abonnement).
     // mulWakeDuration reste la durée maximale d'éveil (MQTT injoignable, publication échouée).
@@ -590,6 +591,8 @@ void CConfig::loadFromNVS() {
   //this->mqttSubTopic = CONFIG_SUB_TOPIC;
   topic_config_command = domotique_prefix + this->mqttSubTopic + /*mqqtInfo.subtopic_command; //*/"command";
   topic_config_state   = domotique_prefix + this->mqttSubTopic + /*mqqtInfo.subtopic_state; //*/"state";
+  topic_maintenance      = domotique_prefix + this->mqttSubTopic + "maintenance";
+  topic_maintenance_etat = topic_maintenance + "/etat";
 
 }
 
@@ -891,7 +894,8 @@ int CConfig::handleMqttCommand(const String& payload) {
     envoieVersion();
   }
   else if (cmd == "OTA") {
-    // Mise à jour du firmware à distance (Capteur 4.5) : nœud tenu éveillé, prêt à recevoir (voir main.cpp)
+    // Mise à jour du firmware à distance (Capteur 4.5) : nœud tenu éveillé, prêt à recevoir (voir main.cpp).
+    // 4.9 : nœud LoRa seulement ; un nœud Wi-Fi passe par le mode maintenance (onDemandeOta vide : commande refusée)
     if (onDemandeOta) onDemandeOta(); else ret = -1;
   }
   else if (cmd == "MUTE ON" || cmd == "MUTE OFF") {

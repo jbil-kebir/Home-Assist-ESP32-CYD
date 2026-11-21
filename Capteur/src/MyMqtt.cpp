@@ -110,6 +110,11 @@ void CMqtt::reconnect() {
 
       client.subscribe(mConfig.topic_config_command.c_str(), 1);
       Serial.println("Abonnement à : " + mConfig.topic_config_command);
+      // Mode maintenance (4.9) : ordre retenu de HA, lu à chaque réveil, AVANT l'écho (traité avant la décision de dormir)
+      if (mConfig.mbConfiguree && mConfig.topic_maintenance.length() > 0) {
+        client.subscribe(mConfig.topic_maintenance.c_str(), 1);
+        Serial.println("Abonnement à : " + mConfig.topic_maintenance);
+      }
 
       // Écho de connexion (4.3) : abonnement puis publication sur <topic config state>/echo, APRÈS les abonnements
       // aux commandes. Le broker délivre les retained d'un abonnement avant de traiter les publications suivantes :
@@ -282,6 +287,10 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       ESP.restart();
     }
   } // if (String(topic) == mConfig.topic_config_command) { 
+  // Mode maintenance (4.9) : « ON AAAA-MM-JJ HH:MM » / « OFF », retenu, publié par HA (voir main.cpp)
+  else if (String(topic) == mConfig.topic_maintenance) {
+    if (mConfig.mbConfiguree && mConfig.onMaintenance) mConfig.onMaintenance(messageOrg);
+  }
   else if (String(topic) == "home/thermometre/command") {
     if (false) {
       // Traiter les commandes de configuration

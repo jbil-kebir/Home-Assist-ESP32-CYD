@@ -196,12 +196,12 @@ static void suitConnexionWifiOta() {
 }
 #endif
 
+// 4.9 : nœud LoRa seulement (un nœud Wi-Fi passe par le mode maintenance, voir traiteMaintenance())
+#if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
 void ouvreFenetreOta() {
   config.mbDeepSleepActive = false;   // RAM seulement : la NVS garde sleepA, rétabli au redémarrage de fin de fenêtre
   sulDebutFenetreOta = millis();
   if (sulDebutFenetreOta == 0) sulDebutFenetreOta = 1;
-  String sDuree = String(OTA_FENETRE_S / 60) + " min";
-  #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
   if (sulDebutWifiOta != 0) return;   // Commande renvoyée par le relais : connexion déjà lancée, suitConnexionWifiOta() annonce
   // Wi-Fi de la maison, à l'adresse fixe du profil ; non bloquant (le nœud doit accuser la commande par LoRa)
   WiFi.mode(WIFI_STA);
@@ -218,11 +218,87 @@ void ouvreFenetreOta() {
   WiFi.begin(FORCE_WIFI_SSID, FORCE_WIFI_PASSWD);
   sulDebutWifiOta = millis();
   if (sulDebutWifiOta == 0) sulDebutWifiOta = 1;
-  (void)sDuree;
-  #else
-  gOta.annonce("ATTENTE", ": éveillé " + sDuree + ", http://" + WiFi.localIP().toString() + "/update");
-  #endif
 }
+#endif
+
+//-------------------------------------------------------------------------------------------
+//      Mode maintenance (Capteur 4.9, nœuds Wi-Fi ; voir global.h)
+//-------------------------------------------------------------------------------------------
+#if defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
+static time_t stFinMaintenance = 0;   // Heure de fin de la maintenance en cours (0 : pas en maintenance)
+static String ssSortieMaintenance;    // Sortie demandée (raison) : faite par loop(), pas dans le callback MQTT
+
+static void publieEtatMaintenance(const String& sEtat) {
+  Serial.println("Maintenance : " + sEtat);
+  mqtt.publish(config.topic_maintenance_etat.c_str(), sEtat.c_str(), true);
+}
+
+// Sortie : état INACTIVE (remis au broker avant de couper : écho de powerDown()), puis redémarrage, qui rétablit le
+// sommeil normal ; le message retenu relu au redémarrage (OFF, ou ON à l'heure passée) est ignoré.
+// Appelée par loop() seulement : powerDown() fait tourner le client MQTT, à éviter dans son propre callback.
+static void sortMaintenance(const String& sPourquoi) {
+  Serial.println("Maintenance : fin (" + sPourquoi + "), redémarrage");
+  publieEtatMaintenance("INACTIVE");
+  mqtt.powerDown();
+  delay(200);
+  ESP.restart();
+}
+
+// Message retenu de HA sur topic_maintenance : « ON AAAA-MM-JJ HH:MM » (heure de fin) ou « OFF »
+static void traiteMaintenance(const String& sMessage) {
+  String s = sMessage; s.trim();
+  String sMaj = s; sMaj.toUpperCase();
+  if (sMaj.startsWith("OFF")) {
+    if (stFinMaintenance != 0) ssSortieMaintenance = "OFF reçu";
+    return;
+  }
+  if (!sMaj.startsWith("ON")) {
+    Serial.println("Maintenance : message ignoré : " + s);
+    return;
+  }
+  int iAn, iMois, iJour, iHeure, iMinute;
+  if (sscanf(s.c_str() + 2, "%d-%d-%d %d:%d", &iAn, &iMois, &iJour, &iHeure, &iMinute) != 5) {
+    publieEtatMaintenance("REFUSEE format attendu ON AAAA-MM-JJ HH:MM : " + s);
+    return;
+  }
+  // Heure NTP indispensable pour comparer (synchronisée au démarrage, avant la connexion MQTT)
+  if (!mDateTime.isTimeValid()) {
+    publieEtatMaintenance("REFUSEE heure du nœud non synchronisée");
+    return;
+  }
+  struct tm tmFin = {};
+  tmFin.tm_year = iAn - 1900; tmFin.tm_mon = iMois - 1; tmFin.tm_mday = iJour;
+  tmFin.tm_hour = iHeure; tmFin.tm_min = iMinute; tmFin.tm_isdst = -1;   // Heure locale (fuseau de configTzTime)
+  time_t tFin = mktime(&tmFin);
+  time_t tMaintenant = time(nullptr);
+  if (tFin <= tMaintenant) {
+    // Heure passée : fin pendant la maintenance (HA en retard d'un OFF), sinon ordre périmé (redémarrage de sortie,
+    // OFF de HA manqué) : état remis à INACTIVE au cas où il serait resté ACTIVE (coupure de courant…)
+    if (stFinMaintenance != 0) ssSortieMaintenance = "heure de fin passée";
+    else publieEtatMaintenance("INACTIVE");
+    return;
+  }
+  String sPlafond;
+  if (tFin - tMaintenant > (time_t)MAINTENANCE_DUREE_MAX_S) {
+    tFin = tMaintenant + MAINTENANCE_DUREE_MAX_S;
+    sPlafond = " (plafonnée à " + String(MAINTENANCE_DUREE_MAX_S / 60) + " min)";
+  }
+  stFinMaintenance = tFin;
+  config.mbMaintenance = true;
+  char sHeure[8];
+  struct tm tmLocal;
+  localtime_r(&tFin, &tmLocal);
+  strftime(sHeure, sizeof(sHeure), "%H:%M", &tmLocal);
+  publieEtatMaintenance("ACTIVE jusqu'à " + String(sHeure) + sPlafond + ", http://" + WiFi.localIP().toString() + "/update");
+}
+
+// Appelée par loop() : sortie demandée (OFF), ou à l'heure de fin, même sans OFF de HA
+static void suitMaintenance() {
+  if (stFinMaintenance == 0) return;
+  if (ssSortieMaintenance.length() > 0) sortMaintenance(ssSortieMaintenance);
+  else if (time(nullptr) >= stFinMaintenance) sortMaintenance("heure de fin atteinte");
+}
+#endif
 
 //-------------------------------------------------------------------------------------------
 //      SETUP
@@ -563,8 +639,11 @@ void setup() {
 
 
   config.setup();
-  config.onDemandeOta = ouvreFenetreOta;
+  #if defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
+  config.onMaintenance = traiteMaintenance;
+  #endif
   #if defined(_LORA_P2P_MODE_) && !defined(_WIFI_MODE_)
+  config.onDemandeOta = ouvreFenetreOta;
   // Nœud LoRa : étapes envoyées au relais (DATE et TIME remplacés par son heure) ; ArduinoOTA démarre avec le point
   // d'accès (commande OTA)
   gOta.begin(config.nomEquipement, OTA_MOT_DE_PASSE, String(VERSION),
@@ -742,6 +821,9 @@ void loop() {
   // ou juste avant le deep sleep s'il vient plus tôt (sinon le réveil ferait revenir au firmware précédent)
   if (!gOta.estConfirme() && mLoraRxTx.nbEmissions() > 0 && millis() >= OTA_ANNONCE_OK_LORA_MS) gOta.confirme();
   #endif
+  #if defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
+  suitMaintenance();
+  #endif
   if (sulDebutFenetreOta != 0 && millis() - sulDebutFenetreOta >= OTA_FENETRE_S * 1000UL) {
     gOta.annonce("ATTENTE", ": fenêtre fermée sans mise à jour, redémarrage (sommeil normal rétabli)");
     delay(1000);
@@ -754,7 +836,7 @@ void loop() {
   // indéfiniment et se couper sans qu'aucun redémarrage ne vienne le reconnecter. On surveille donc
   // la connexion ici et on retente le profil actuellement utilisé.
   static unsigned long wifiDownSince = 0; // 0 = pas de coupure en cours
-  if (!config.mbDeepSleepActive) {
+  if (!config.mbDeepSleepActive || config.mbMaintenance) {   // 4.9 : maintenance = éveil permanent
     static unsigned long lastWifiReconnectAttempt = 0;
     const unsigned long WIFI_RECONNECT_INTERVAL_MS = 30000;
     if (WiFi.status() != WL_CONNECTED) {

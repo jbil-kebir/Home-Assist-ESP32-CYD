@@ -81,7 +81,7 @@ sections:
       **Comment** : dans VS Code, profil `<appareil>_ota` puis flèche « Upload » (ou page `http://<IP>/update`, même mot de passe, secret.h). Notification à chaque étape, mail du résultat.
 
       - **Relais LoRa, CYD** : toujours joignables ; **NoeudChauffageSdb** : dès qu'il est alimenté (relais du chauffage).
-      - **Nœud Wi-Fi** : éveillé (`sleepA:0`) ou commande `OTA` (reçue au réveil, 10 min d'éveil).
+      - **Nœud Wi-Fi** : éveillé (`sleepA:0`) ou **mode maintenance** (vue Nœuds capteurs : interrupteur Maintenance, attendre 🔧 au réveil du nœud, puis Upload ; sommeil normal rétabli à la fin).
       - **Nœud LoRa** (ThRemise .240, ThCave .241) : répéteur Wi-Fi à quelques mètres du nœud (pas collé), commande `OTA`, attendre 🔧 « prêt 10 min sur le Wi-Fi de la maison », puis Upload. Sans Wi-Fi en 30 s : point d'accès de secours « `<nom>-MAJ` » (`http://192.168.4.1/update`). OK environ 15 s après le redémarrage.
     grid_options:
       columns: full

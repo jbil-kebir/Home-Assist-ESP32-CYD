@@ -105,6 +105,8 @@ public:
   String mqttSubTopic; // configuration
   String  topic_config_command, // home/configuration/
           topic_config_state; 
+  // Mode maintenance (Capteur 4.9, voir global.h) : home/conf<x>/maintenance (ordre retenu de HA) et .../maintenance/etat
+  String  topic_maintenance, topic_maintenance_etat;
   // Temps entre deux mesures (en secondes)
   const unsigned int DEFAULT_SLEEP_DURATION_SEC = 120;   // 2 minutes par défaut  
   const unsigned int DEFAULT_SLEEP_DURATIONS_SEC = 120;   // 2 minutes par défaut  
@@ -135,6 +137,9 @@ public:
   // Wi-Fi : intervalle entre deux nouvelles tentatives de publication des mesures non remontées
   const unsigned long DELAI_RELANCE_MESURES_MS = 2000UL;
   bool mbDeepSleepActive = false;
+  // Mode maintenance en cours (Capteur 4.9, main.cpp) : pas de deep sleep, RAM seulement (mbDeepSleepActive, le réglage
+  // sleepA, n'est pas touché : un SET ou la page Web enregistrés pendant la maintenance ne le perdent pas)
+  bool mbMaintenance = false;
   // Wi-Fi (4.3) : écho de connexion reçu (CMqtt::reconnect / callback) : les commandes retained, délivrées par le broker
   // avant cet écho, ont été traitées. Le deep sleep l'attend (WIFI_ATTENTE_MAX_RETENUS_MS au plus).
   bool mbRetenusLus = false;
@@ -181,7 +186,8 @@ public:
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
   std::function<void()> onMqttPowerDown;
   void setMqttPowerDownCallback(std::function<void()> cbMqttPowerDown); // Pour Power down MQTT
-  std::function<void()> onDemandeOta;   // Commande OTA : fenêtre de mise à jour (main.cpp, ouvreFenetreOta())
+  std::function<void()> onDemandeOta;   // Commande OTA, nœud LoRa : fenêtre de mise à jour (main.cpp, ouvreFenetreOta())
+  std::function<void(const String&)> onMaintenance;   // Message reçu sur topic_maintenance (main.cpp, traiteMaintenance())
   std::function<void()> onAvantDeepSleep;   // Juste avant le deep sleep (main.cpp : validation d'un nouveau firmware LoRa)
 
   void setup();

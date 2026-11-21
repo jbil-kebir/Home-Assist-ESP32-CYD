@@ -425,7 +425,14 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "4.8"
+#define VERSION "4.9"
+// Mode maintenance (Capteur 4.9, nœuds Wi-Fi) : message RETENU sur home/conf<x>/maintenance, publié par Home Assistant :
+// « ON AAAA-MM-JJ HH:MM » (heure de FIN, absolue) ou « OFF ». Nœud éveillé jusqu'à l'heure de fin (sommeil coupé, réglage
+// sleepA gardé), mesures et commandes inchangées, mise à jour par le réseau possible ; état publié, retenu, sur
+// home/conf<x>/maintenance/etat (« ACTIVE jusqu'à HH:MM, http://<IP>/update », « INACTIVE », « REFUSEE <raison> »).
+// Sortie (OFF ou heure de fin) : INACTIVE puis redémarrage. Heure de fin déjà passée : ignorée (pas de boucle au
+// redémarrage de sortie). Fin plus lointaine que MAINTENANCE_DUREE_MAX_S : ramenée à ce plafond (erreur de saisie).
+#define MAINTENANCE_DUREE_MAX_S 7200
 // Commande OTA (Capteur 4.5) : nœud tenu éveillé OTA_FENETRE_S pour une mise à jour (nœud LoRa : point d'accès Wi-Fi
 // « <nom>-MAJ », http://192.168.4.1/update) ; sans mise à jour, redémarrage à la fin (sommeil normal rétabli)
 #define OTA_FENETRE_S 600

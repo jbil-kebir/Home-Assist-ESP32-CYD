@@ -1,3 +1,14 @@
+4.9
+Mode maintenance (nœuds Wi-Fi) : remplace la commande OTA, désormais réservée aux nœuds LoRa (étape 1 du mode maintenance
+    généralisé). Home Assistant publie, retenu, sur home/conf<x>/maintenance « ON AAAA-MM-JJ HH:MM » (heure de FIN) ou
+    « OFF » ; le nœud s'y abonne avant l'écho de connexion (ordre traité avant la décision de dormir). En maintenance :
+    pas de deep sleep (CConfig::mbMaintenance, RAM seulement : le réglage sleepA n'est pas touché, même par un SET ou la
+    page Web), mesures et commandes inchangées, mise à jour par le réseau possible ; état publié, retenu, sur
+    home/conf<x>/maintenance/etat : « ACTIVE jusqu'à HH:MM, http://<IP>/update », « INACTIVE », « REFUSEE <raison> »
+    (format, heure NTP absente). Sortie sur OFF ou à l'heure de fin (même sans HA) : INACTIVE puis redémarrage ; heure de
+    fin passée : ordre ignoré (pas de boucle) ; fin plus lointaine que MAINTENANCE_DUREE_MAX_S (2 h) ramenée au plafond.
+    Un téléversement pendant la maintenance redémarre le nœud, qui y revient si l'heure de fin n'est pas passée (21/11/2026)
+
 4.8
 Nœud LoRa : « OK » d'une mise à jour envoyé seul, 15 s après le démarrage (OTA_ANNONCE_OK_LORA_MS), ou juste avant le deep
     sleep s'il vient plus tôt (CConfig::onAvantDeepSleep) ; perdu en 4.7 au milieu de la rafale de trames du démarrage,
