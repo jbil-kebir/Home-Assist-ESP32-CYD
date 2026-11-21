@@ -629,7 +629,7 @@ void CDetecteurRGB_TCS34725::loadFromNVS() {
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
   mucNbEnvois = prefs.getUShort((mPrefixNVS+"renvois").c_str(), 1);
   mulIntervalleEnvoi = prefs.getLong((mPrefixNVS+"interr").c_str(), mulDefaultIntervalleEnvoi);
-  chargeRetardNVS(prefs);
+  chargeAlerteNVS(prefs);
   mucIntegrationTime = prefs.getUChar((mPrefixNVS+"integr").c_str(), TCS34725_INTEGRATIONTIME_614MS);
   mucGain = prefs.getUChar((mPrefixNVS+"gain").c_str(), TCS34725_GAIN_60X);
   muiRougeOn = prefs.getUInt((mPrefixNVS+"ron").c_str(), VAL_LED_ROUGE_ON);
@@ -666,7 +666,7 @@ void CDetecteurRGB_TCS34725::saveToNVS() {
   prefs.putLong((mPrefixNVS+"force").c_str(), mulIntervalleForcageRemonteeMesure);
   prefs.putUShort((mPrefixNVS+"renvois").c_str(), mucNbEnvois);
   prefs.putLong((mPrefixNVS+"interr").c_str(), mulIntervalleEnvoi);
-  enregistreRetardNVS(prefs);
+  enregistreAlerteNVS(prefs);
   prefs.putUChar((mPrefixNVS+"integr").c_str(), mucIntegrationTime);
   prefs.putUChar((mPrefixNVS+"gain").c_str(), mucGain);
   prefs.putUInt((mPrefixNVS+"ron").c_str(), muiRougeOn);
@@ -700,7 +700,7 @@ void CDetecteurRGB_TCS34725::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
   if (server.hasArg((mPrefixNVS+"inter").c_str())) mulIntervalleMesure = server.arg((mPrefixNVS+"inter")).toInt();
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
-  litRetardWeb(server);
+  litAlerteWeb(server);
   if (server.hasArg((mPrefixNVS+"renvois").c_str())) mucNbEnvois = server.arg((mPrefixNVS+"renvois")).toInt();
   if (server.hasArg((mPrefixNVS+"interr").c_str())) mulIntervalleEnvoi = server.arg((mPrefixNVS+"interr")).toInt();
   if (server.hasArg((mPrefixNVS+"integr").c_str())) mucIntegrationTime = server.arg((mPrefixNVS+"integr")).toInt();
@@ -754,7 +754,7 @@ String CDetecteurRGB_TCS34725::getHTML() {
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
-  html += getHTMLRetard();
+  html += getHTMLAlerte();
   html += "<div class=\"row\">"
         "<div><label>Nombre de renvois</label><input type=\"text\" name=" + (mPrefixNVS+"renvois") + " value=\"" + mucNbEnvois + "\"></div>"
         "<div><label>Intervalle de renvoi</label><input type=\"text\" name=" + (mPrefixNVS+"interr") + " value=\"" + mulIntervalleEnvoi + "\"></div>"
@@ -786,7 +786,7 @@ void CDetecteurRGB_TCS34725::print() const {
   Serial.printf("     Remontée brute       : %s\n", remonterMesuresBrutes ? "OUI" : "NON");
   Serial.printf("     Intervalle mesures   : %ld s\n", mulIntervalleMesure);
   Serial.printf("     Forcage remontée     : %ld s\n", mulIntervalleForcageRemonteeMesure);
-  Serial.printf("     Retard toléré        : %lu s (alerte après %lu s)\n", mulRetardTolereS, getDelaiAlerteS());
+  Serial.printf("     Délai d'alerte        : %lu min (annoncé : %lu s)\n", mulDelaiAlerteMin, getDelaiAlerteS());
   Serial.printf("     Nombre de renvois    : %d\n", mucNbEnvois);
   Serial.printf("     Intervalle de renvoi : %ld s\n", mulIntervalleEnvoi);
   Serial.printf("     MQTTSubTopic         : %s\n", mqttSubTopic.c_str());

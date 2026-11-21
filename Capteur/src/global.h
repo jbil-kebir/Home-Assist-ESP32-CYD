@@ -376,13 +376,13 @@
 // Délai d'alerte des capteurs (voir CapteurBase.h)
 // -----------------------------------------------------------------------------
 // Chaque mesure porte « alerte:<s> » : durée sans nouvelles de ce capteur au-delà de laquelle le contrôleur (CYD)
-// le signale. Calculé par le nœud : plus long écart normal entre deux envois (forçage arrondi au réveil suivant)
-// + retard toléré (page Web, par capteur) + marge. Le contrôleur ne peut donc jamais alerter sur un nœud qui suit
-// son rythme normal.
+// le signale. Saisi par capteur, en minutes (page Web, SET <préfixe>alerte ; Capteur 4.4), relevé par le nœud au
+// minimum s'il est plus court : plus long écart normal entre deux envois (forçage arrondi au réveil suivant) + marge.
+// Le contrôleur ne peut donc jamais alerter sur un nœud qui suit son rythme normal. 0 = au plus tôt (le minimum).
 #define DELAI_ALERTE_MARGE_S            60      // Marge fixe : réveil, connexion, relais LoRa, dérive de l'horloge
 #define DELAI_ALERTE_EVEIL_S            10      // Durée d'éveil estimée par cycle de deep sleep (ajoutée à chaque sommeil)
-#define DELAI_ALERTE_RETARD_DEFAUT_S    0       // Retard toléré par défaut (s) : alerte dès qu'un envoi manque
-#define DELAI_ALERTE_RETARD_MAX_S       604800  // Retard toléré maximal (7 jours)
+#define DELAI_ALERTE_DEFAUT_MIN         0       // Délai d'alerte par défaut (min) : 0 = au plus tôt (dès qu'un envoi manque)
+#define DELAI_ALERTE_MAX_MIN            10080   // Délai d'alerte maximal (7 jours)
 // Forçage réglable par SET <préfixe>force (CCapteurBase::setParamAlerte(), mêmes bornes que jn_force)
 #define FORCAGE_MIN_S                   60
 #define FORCAGE_MAX_S                   86400
@@ -425,7 +425,7 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "4.3"
+#define VERSION "4.4"
 
 // Chien de garde de loop() : un tour de boucle plus long redémarre la puce. Plus long que la plus longue attente
 // prévue dans loop() (reconnexion Wi-Fi : WIFI_TIMEOUT_RAPIDE_MS + WIFI_TIMEOUT_MS = 18 s)

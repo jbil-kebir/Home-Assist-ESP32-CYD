@@ -100,7 +100,7 @@ public:
   int handleMqttCommand(const String& payload);
   int readAndPublish(bool force=false);
   // Commande SET (voir CConfig::setParam()) : clés jn_sbas, jn_shaut, jn_ecl, jn_inter, jn_force
-  // (jn_retard : CCapteurBase::setParamAlerte(), appelé par CConfig ; jn_force traité ici d'abord)
+  // (jn_alerte : CCapteurBase::setParamAlerte(), appelé par CConfig ; jn_force traité ici d'abord)
   int setParam(const String& cle, const String& valeur);
   bool valideSeuils();
   String getParams() const;

@@ -1,3 +1,18 @@
+4.4
+Délai d'alerte saisi directement, en minutes, à la place du « retard toléré » (secondes, ajouté au minimum) :
+    clé <préfixe>alerte (NVS, page Web, SET, CONFIG), 0 à DELAI_ALERTE_MAX_MIN (10080), 0 = au plus tôt. Le nœud annonce
+    le délai saisi, relevé au minimum (réveils pour couvrir le forçage + DELAI_ALERTE_MARGE_S) s'il est plus court
+    (CCapteurBase::getDelaiMinimumS / getDelaiAlerteS) ; page Web : « → alerte après … (minimum …) ». L'heure de l'alerte
+    ne dépend plus du sommeil en cours (ThCh1er : 3 h 01 ou 3 h 06 selon SLEEPI / SLEEPS avec l'ancien retard).
+    Conversion au 1er démarrage : retard 0 → 0, sinon (retard + forçage) / 60 arrondi (7200 + 3600 → 180 min) ; ancienne
+    clé <préfixe>retard effacée au prochain enregistrement. SET <préfixe>retard refusé (clé inconnue). Le CYD ne change pas
+    (il reçoit toujours alerte:<s>). Demandé après les fausses alertes BatCh1er des 18-20/11/2026 (21/11/2026)
+
+4.3
+Deep sleep Wi-Fi : la fin d'éveil attend l'écho de connexion MQTT (publié après les abonnements) pour traiter d'abord les
+    commandes retenues (au plus WIFI_ATTENTE_MAX_RETENUS_MS) ; avant, un SET reçu après DEEPSLEEP ON ne prenait effet
+    qu'au réveil suivant (ThSdb, 20/11/2026)
+
 4.2
 Sommeil temporaire : SLEEPS / SLEEPM / SLEEPL n'écrasent plus sleepI (durée standard) ; ils imposent une durée temporaire
     (sleepS / sleepM / sleepL), gardée en NVS (sleepT), jusqu'à la nouvelle commande SLEEPI (retour à sleepI).

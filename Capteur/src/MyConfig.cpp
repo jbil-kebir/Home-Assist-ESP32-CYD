@@ -870,7 +870,7 @@ int CConfig::handleMqttCommand(const String& payload) {
   String cmd = payload;
   cmd.toUpperCase();
   cmd.trim();
-  // Délais d'alerte avant la commande (SET d'un forçage / retard, sommeil...) : voir renvoieMesuresSiDelaiChange()
+  // Délais d'alerte avant la commande (SET d'un forçage / délai d'alerte, sommeil...) : voir renvoieMesuresSiDelaiChange()
   std::vector<unsigned long> vDelais;
   for (CCapteurBase* c : capteursAlerte()) vDelais.push_back(c->getDelaiAlerteS());
 
@@ -925,7 +925,7 @@ int CConfig::handleMqttCommand(const String& payload) {
       mJourNuit->saveToNVS();
     }
     #endif
-    // Capteurs (retard toléré <préfixe>retard, réglages du flotteur...)
+    // Capteurs (délai d'alerte <préfixe>alerte, réglages du flotteur...)
     for (CCapteurBase* c : capteursAlerte()) c->saveToNVS();
     saveToNVS();
     envoieConfig(sErreurs);
@@ -947,7 +947,7 @@ int CConfig::handleMqttCommand(const String& payload) {
 }
 
 //
-// Délai d'alerte d'un capteur changé par une commande (forçage, retard toléré, sommeil) : le contrôleur ne l'apprend
+// Délai d'alerte d'un capteur changé par une commande (forçage, délai saisi, sommeil) : le contrôleur ne l'apprend
 // qu'avec la mesure suivante, et garde d'ici là l'ancien délai (fausse alerte si le nouveau est plus long : constaté
 // le 16/11 sur FlotteurRemise, forçage 20 s → 3600 s). Les mesures des capteurs concernés sont donc renvoyées tout de
 // suite (forcées, dernière valeur, sans nouvelle lecture), avec leur nouveau délai.
@@ -1028,7 +1028,7 @@ int CConfig::setParam(const String& cle, const String& valeur) {
     #ifdef FLOTTEUR_VERTICAL
     if (r == -1 && mFlotteurVertical != nullptr) r = mFlotteurVertical->setParam(cle, v);
     #endif
-    // Forçage et retard toléré de chaque capteur (<préfixe>force, <préfixe>retard : délai d'alerte, voir CapteurBase.h)
+    // Forçage et délai d'alerte de chaque capteur (<préfixe>force en s, <préfixe>alerte en min, voir CapteurBase.h)
     for (CCapteurBase* capteur : capteursAlerte())
       if (r == -1) r = capteur->setParamAlerte(cle, v);
     if (r != 0) return r;
@@ -1063,10 +1063,10 @@ std::vector<CCapteurBase*> CConfig::capteursAlerte() const {
 }
 
 // Séparateur « : » : Relais-Lora refuse un '=' dans une trame
-// Taille : peut dépasser une trame LoRa avec les forçages et retards (ThRemise ≈ 248 octets) : voir envoieConfig()
+// Taille : peut dépasser une trame LoRa avec les forçages et délais d'alerte (ThRemise ≈ 245 octets) : voir envoieConfig()
 String CConfig::getParams() const {
-  String sRetards;
-  for (CCapteurBase* c : capteursAlerte()) sRetards += " " + c->getParamsAlerte();
+  String sAlertes;
+  for (CCapteurBase* c : capteursAlerte()) sAlertes += " " + c->getParamsAlerte();
   return "sleepA:" + String(mbDeepSleepActive ? 1 : 0) +
          " sleepI:" + String(mulSleepDuration) +
          " sleepC:" + String(getSommeilEnCours()) +   // Durée en cours (temporaire SLEEPS/M/L ou sleepI), lecture seule
@@ -1081,7 +1081,7 @@ String CConfig::getParams() const {
          #ifdef FLOTTEUR_VERTICAL
          + (mFlotteurVertical != nullptr ? " " + mFlotteurVertical->getParams() : String(""))
          #endif
-         + sRetards;
+         + sAlertes;
 }
 
 // « <nom> CONFIG <paramètres> [ERREUR <cle:valeur ...>] » sur topic_config_state, par MQTT et par LoRa.

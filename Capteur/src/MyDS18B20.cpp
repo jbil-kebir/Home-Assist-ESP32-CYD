@@ -193,7 +193,7 @@ void MyDS18B20::loadFromNVS() {
   active = prefs.getBool((mPrefixNVS+"active").c_str(), false); // Désactivé tant que non configuré (puce neuve muette)
   mulIntervalleMesure = prefs.getLong((mPrefixNVS+"inter").c_str(), mulDefaultIntervalleMesure);
   mulIntervalleForcageRemonteeMesure = prefs.getLong((mPrefixNVS+"force").c_str(), mulDefaultIntervalleForcageRemonteeMesure);
-  chargeRetardNVS(prefs);
+  chargeAlerteNVS(prefs);
 
   // On forme les subtopic MQTT
   domotique_prefix = prefs.getString("domo_prefix", default_domotique_topic_prefix);
@@ -213,7 +213,7 @@ void MyDS18B20::saveToNVS() {
   prefs.putBool((mPrefixNVS+"active").c_str(), active);
   prefs.putLong((mPrefixNVS+"inter").c_str(), mulIntervalleMesure);
   prefs.putLong((mPrefixNVS+"force").c_str(), mulIntervalleForcageRemonteeMesure);
-  enregistreRetardNVS(prefs);
+  enregistreAlerteNVS(prefs);
 
   prefs.end();
 }
@@ -234,7 +234,7 @@ void MyDS18B20::loadFromWebServer (WebServer& server) {
   if (server.hasArg((mPrefixNVS+"subtopic").c_str())) mqttSubTopic = server.arg((mPrefixNVS+"subtopic").c_str());
   if (server.hasArg((mPrefixNVS+"inter").c_str())) mulIntervalleMesure = server.arg((mPrefixNVS+"inter")).toInt();
   if (server.hasArg((mPrefixNVS+"force").c_str())) mulIntervalleForcageRemonteeMesure = server.arg((mPrefixNVS+"force")).toInt();
-  litRetardWeb(server);
+  litAlerteWeb(server);
 }
 
 void MyDS18B20::print() const {
@@ -244,7 +244,7 @@ void MyDS18B20::print() const {
   Serial.printf("     Actif              : %s\n", active ? "OUI" : "NON");
   Serial.printf("     Intervalle mesures : %ld min\n", mulIntervalleMesure);
   Serial.printf("     Forcage remontée   : %ld s\n", mulIntervalleForcageRemonteeMesure);
-  Serial.printf("     Retard toléré      : %lu s (alerte après %lu s)\n", mulRetardTolereS, getDelaiAlerteS());
+  Serial.printf("     Délai d'alerte      : %lu min (annoncé : %lu s)\n", mulDelaiAlerteMin, getDelaiAlerteS());
   //Serial.printf("     Equipement local : %s\n", bLocal ? "OUI" : "NON");
   Serial.printf("     MQTTSubTopic       : %s\n", mqttSubTopic.c_str());
   Serial.printf("     MQTTCmd            : %s\n", mqttSubTopicCommand.c_str());
@@ -265,7 +265,7 @@ String MyDS18B20::getHTML() {
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
-  html += getHTMLRetard();
+  html += getHTMLAlerte();
   html += "<div class=\"row\">"
         "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";

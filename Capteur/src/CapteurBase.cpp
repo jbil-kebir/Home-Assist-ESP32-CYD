@@ -6,7 +6,7 @@ const CConfig* CCapteurBase::smConfig = nullptr;
 //
 // Délai d'alerte (s) : voir CapteurBase.h
 //
-unsigned long CCapteurBase::getDelaiAlerteS() const {
+unsigned long CCapteurBase::getDelaiMinimumS() const {
   unsigned long forcage = mulIntervalleForcageRemonteeMesure > 0 ? mulIntervalleForcageRemonteeMesure : 1UL;
   unsigned long intervalle = forcage;
   if (smConfig != nullptr && smConfig->mbDeepSleepActive && smConfig->getSommeilEnCours() > 0) {
@@ -17,7 +17,14 @@ unsigned long CCapteurBase::getDelaiAlerteS() const {
     if (nbReveils == 0) nbReveils = 1;
     intervalle = nbReveils * (sommeil + DELAI_ALERTE_EVEIL_S);
   }
-  return intervalle + mulRetardTolereS + DELAI_ALERTE_MARGE_S;
+  return intervalle + DELAI_ALERTE_MARGE_S;
+}
+
+// Délai saisi (minutes), relevé au minimum s'il est plus court (0 : au plus tôt)
+unsigned long CCapteurBase::getDelaiAlerteS() const {
+  unsigned long saisi = mulDelaiAlerteMin * 60UL;
+  unsigned long minimum = getDelaiMinimumS();
+  return saisi > minimum ? saisi : minimum;
 }
 
 String CCapteurBase::formateDuree(unsigned long s) {
@@ -32,7 +39,7 @@ String CCapteurBase::formateDuree(unsigned long s) {
 
 String CCapteurBase::getParamsAlerte() const {
   return getPrefixNVS() + "force:" + String(mulIntervalleForcageRemonteeMesure) +
-         " " + getPrefixNVS() + "retard:" + String(mulRetardTolereS);
+         " " + getPrefixNVS() + "alerte:" + String(mulDelaiAlerteMin);
 }
 
 int CCapteurBase::setParamAlerte(const String& cle, const String& valeur) {
@@ -40,7 +47,7 @@ int CCapteurBase::setParamAlerte(const String& cle, const String& valeur) {
   String p = getPrefixNVS(); p.toUpperCase();
   if (!c.startsWith(p)) return -1;
   c = c.substring(p.length());
-  if (c != "FORCE" && c != "RETARD") return -1;
+  if (c != "FORCE" && c != "ALERTE") return -1;
   String v = valeur; v.trim();
   bool bNombre = v.length() > 0 && v.length() <= 7;
   for (char ch : v) if (!isdigit(ch)) bNombre = false;
@@ -51,32 +58,48 @@ int CCapteurBase::setParamAlerte(const String& cle, const String& valeur) {
     mulIntervalleForcageRemonteeMesure = ul;
   }
   else {
-    if (ul > DELAI_ALERTE_RETARD_MAX_S) return -2;
-    mulRetardTolereS = ul;
+    if (ul > DELAI_ALERTE_MAX_MIN) return -2;
+    mulDelaiAlerteMin = ul;
   }
   Serial.println("CCapteurBase::setParamAlerte() - " + cle + " = " + v);
   return 0;
 }
 
-void CCapteurBase::chargeRetardNVS(Preferences& prefs) {
-  mulRetardTolereS = prefs.getULong((getPrefixNVS() + "retard").c_str(), DELAI_ALERTE_RETARD_DEFAUT_S);
-  if (mulRetardTolereS > DELAI_ALERTE_RETARD_MAX_S) mulRetardTolereS = DELAI_ALERTE_RETARD_DEFAUT_S;
+void CCapteurBase::chargeAlerteNVS(Preferences& prefs) {
+  String cle = getPrefixNVS() + "alerte", ancienne = getPrefixNVS() + "retard";
+  if (prefs.isKey(cle.c_str())) mulDelaiAlerteMin = prefs.getULong(cle.c_str(), DELAI_ALERTE_DEFAUT_MIN);
+  else if (prefs.isKey(ancienne.c_str())) {
+    // Firmware antérieur à la 4.4 : retard toléré (s) converti ; écrit en NVS au prochain enregistrement
+    unsigned long retard = prefs.getULong(ancienne.c_str(), 0);
+    mulDelaiAlerteMin = (retard == 0) ? 0 : (retard + mulIntervalleForcageRemonteeMesure + 30UL) / 60UL;
+    Serial.printf("CCapteurBase::chargeAlerteNVS() - %s : retard toléré %lu s converti en délai d'alerte %lu min\n",
+                  getPrefixNVS().c_str(), retard, mulDelaiAlerteMin);
+  }
+  else mulDelaiAlerteMin = DELAI_ALERTE_DEFAUT_MIN;
+  if (mulDelaiAlerteMin > DELAI_ALERTE_MAX_MIN) mulDelaiAlerteMin = DELAI_ALERTE_MAX_MIN;
 }
 
-void CCapteurBase::enregistreRetardNVS(Preferences& prefs) {
-  prefs.putULong((getPrefixNVS() + "retard").c_str(), mulRetardTolereS);
+void CCapteurBase::enregistreAlerteNVS(Preferences& prefs) {
+  prefs.putULong((getPrefixNVS() + "alerte").c_str(), mulDelaiAlerteMin);
+  String ancienne = getPrefixNVS() + "retard";
+  if (prefs.isKey(ancienne.c_str())) prefs.remove(ancienne.c_str());
 }
 
 // Mêmes contrôles que SET : une valeur invalide laisse l'ancienne
-void CCapteurBase::litRetardWeb(WebServer& server) {
-  String cle = getPrefixNVS() + "retard";
+void CCapteurBase::litAlerteWeb(WebServer& server) {
+  String cle = getPrefixNVS() + "alerte";
   if (server.hasArg(cle.c_str())) setParamAlerte(cle, server.arg(cle.c_str()));
 }
 
-String CCapteurBase::getHTMLRetard() const {
+String CCapteurBase::getHTMLAlerte() const {
+  unsigned long delai = getDelaiAlerteS(), minimum = getDelaiMinimumS();
+  String sResultat = "&rarr; alerte après " + formateDuree(delai) + " sans nouvelle";
+  if (mulDelaiAlerteMin == 0) sResultat += " (au plus tôt)";
+  else if (delai == minimum) sResultat += " (relevé au minimum)";
+  else sResultat += " (minimum " + formateDuree(minimum) + ")";
   return "<div class=\"row\">"
-           "<div><label>Retard toléré (s, 0 à " + String(DELAI_ALERTE_RETARD_MAX_S) + ")</label><input type=\"text\" name=" +
-             (getPrefixNVS() + "retard") + " value=\"" + String(mulRetardTolereS) + "\"></div>"
-           "<div><label>&rarr; alerte si aucune nouvelle pendant " + formateDuree(getDelaiAlerteS()) + "</label></div>"
+           "<div><label>Délai d'alerte (min, 0 = au plus tôt, max " + String(DELAI_ALERTE_MAX_MIN) + ")</label><input type=\"text\" name=" +
+             (getPrefixNVS() + "alerte") + " value=\"" + String(mulDelaiAlerteMin) + "\"></div>"
+           "<div><label>" + sResultat + "</label></div>"
          "</div>";
 }
