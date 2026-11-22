@@ -58,6 +58,8 @@ public:
   void setPrefixNVS(const char* pr) { mPrefixNVS = pr; }
   String getHTML(int i);  
   void loadFromWebServer(WebServer& server);  
+  // Réglages à chaud (Capteur 5.3, MyWebServer::handleSave) : réglages qui demandent un redémarrage
+  String reglagesRedemarrage() const { return wifi_ssid + "\x1f" + wifi_password + "\x1f" + String(active) + "\x1f" + String(mcTxPower) + "\x1f" + String(mbIpFixe) + "\x1f" + msIp + "\x1f" + msPasserelle + "\x1f" + msMasque + "\x1f" + msDns + "\x1f" + String(mbMemoCanal) + "\x1f" + mqttSubTopic; }
   void print() const;
   // Échec MQTT avec une IP apprise : reconnexion en DHCP (une fois par réveil), adresse réapprise si elle a changé.
   // Retour : true si la reconnexion a été faite et a réussi (le MQTT peut être retenté aussitôt).

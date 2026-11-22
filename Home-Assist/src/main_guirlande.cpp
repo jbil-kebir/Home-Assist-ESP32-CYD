@@ -29,6 +29,10 @@ void setup_guirlande() {
   guirlande.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
     return mqtt.publish(topic, payload);
   });
+  // Mode maintenance (Home-Assist 4.4) : état publié retenu
+  guirlande.onMqttPublishRetenu = [](const char* topic, const char* payload, bool retenu) -> int {
+    return mqtt.publish(topic, payload, retenu);
+  };
   guirlande.setup("guir_");
 #else
   config.mRemoteGuirlande = &mRemoteGuirlande;

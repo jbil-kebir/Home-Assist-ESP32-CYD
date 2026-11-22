@@ -25,6 +25,7 @@ private:
   bool mbDejaLu = false;
 
 public:
+  unsigned char getPin() const { return mucPin; }   // Réglages à chaud (MyWebServer::handleSave) : broche modifiée ?
   MyDS18B20(uint8_t gpioPin) : mucPin(gpioPin), oneWire(gpioPin), sensors(&oneWire) {/*bLocal = true;*/} 
 
   unsigned long mulIntervalleMesure = 10, mulDefaultIntervalleMesure = 10; // en minutes : Intervalle entre deux mesures. En secondes pour les tests

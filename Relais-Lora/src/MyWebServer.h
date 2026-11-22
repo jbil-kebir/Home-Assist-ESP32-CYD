@@ -19,6 +19,7 @@ private:
 
   void handleRoot();
   void handleSave();
+  void handleReboot();    // 3.0 : bouton « Redémarrer »
   void handleCapteurs();
   void handleCapteursSave();
   void handleLogs();      // Journal (voir MyJournal.h)

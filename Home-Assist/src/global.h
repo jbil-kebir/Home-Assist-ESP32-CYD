@@ -146,7 +146,21 @@
 #define DELAI_ALERTE_DEFAUT_S 3600UL
 
 // Version du logiciel
-#define VERSION "4.3"
+#define VERSION "4.7"
+// Page Web (4.6) : signe ajouté au libellé des réglages qui ne s'appliquent pas à chaud. À tenir en accord avec
+// empreintesReglages (MyWebServer.cpp), qui décide réellement du redémarrage ou de la reconnexion MQTT
+#define MARQUE_REDEMARRAGE "<span class=\"mq-r\" title=\"Modification appliquée après un redémarrage\"> ↻</span>"
+#define MARQUE_MQTT "<span class=\"mq-m\" title=\"Modification appliquée par une reconnexion MQTT, sans redémarrage\"> ⇄</span>"
+#define LEGENDE_MARQUES "<span class=\"mq-r\">↻</span> redémarrage · <span class=\"mq-m\">⇄</span> reconnexion MQTT · sans signe : immédiat"
+// Mode maintenance des appareils 433 MHz à nœud (Home-Assist 4.4, voir CRCDevice) : ordre retenu de Home Assistant
+// « ON » / « OFF » (4.7 : plus d'heure de fin) sur le topic de maintenance du nœud ; état publié, retenu, par le
+// CYD principal sur <topic>/etat. Guirlande : topic déduit du nœud de présence (home/conf<nœud>/maintenance).
+#define TOPIC_MAINTENANCE_CHAUFFAGE_SB "home/confnoeud/maintenance"   // NoeudChauffageSdb (topics home/confnoeud/...)
+// 4.7 : ordre « ON » / « OFF » sans heure de fin (« ON AAAA-MM-JJ HH:MM » des versions précédentes accepté, heure
+// ignorée) : la maintenance dure jusqu'à l'OFF demandé par l'utilisateur (HA ne le publie que nœud visible)
+// Commande MESURES aux thermomètres après le démarrage (CMqtt::prepareMesures) : attente des messages retenus de leurs
+// topics de commande avant l'envoi (une commande de HA en attente n'est pas écrasée)
+#define MESURES_ATTENTE_RETENUS_MS 3000UL
 // Étiquette du firmware (MyOta.cpp) : la page /update refuse un fichier qui n'a pas celle du profil de l'appareil
 // (un firmware de CYD auxiliaire ne peut pas remplacer celui du principal, et inversement)
 #if defined(CYD_AUXILIAIRE)

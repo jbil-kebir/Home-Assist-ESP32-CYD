@@ -164,6 +164,12 @@ void CRemotePresenceReseauElectrique::handleMqttState(const String& payload) {
     return;
   }
   signalRecu();
+  // IP en fin de trame (nœud Wi-Fi) : lien de mise à jour du mode maintenance (Home-Assist 4.4, CRCDevice)
+  int iEspace = s.lastIndexOf(' ');
+  if (iEspace > 0) {
+    String sIp = s.substring(iEspace + 1);
+    if (sIp.length() >= 7 && isDigit(sIp[0]) && sIp.indexOf('.') > 0 && sIp != "0.0.0.0") mIP = sIp;
+  }
   if (sReste.startsWith("DEEPSLEEP ON")) changeNonVerifie(true);
   else if (sReste.startsWith("ALIVE")) changeNonVerifie(false); // ALIVE jamais émis en deep sleep
   else if (sReste.startsWith("CONFIG")) {
@@ -230,7 +236,7 @@ String CRemotePresenceReseauElectrique::getHTML() {
   String html =
       "<h3>Vérification par nœud de présence</h3>"
       "<div class=\"row\">"
-        "<div><label>Nœud de présence (vide = pas de vérification)</label><input type=\"text\" name=" + (mPrefixNVS+"noeud") + " value=\"" + nomEquipement + "\" placeholder=\"PrGuirlande\"></div>"
+        "<div><label>Nœud de présence (vide = pas de vérification)" MARQUE_MQTT "</label><input type=\"text\" name=" + (mPrefixNVS+"noeud") + " value=\"" + nomEquipement + "\" placeholder=\"PrGuirlande\"></div>"
         "<div><label>État mesuré</label><input type=\"text\" value=\"" + (active ? sEtat : String(bNom ? "— (vérification désactivée)" : "—")) + "\" disabled></div>"
       "</div>"
       "<div class=\"checkbox-row\"><label>Vérification active (décochée : nom et réglages gardés, fonctionnement sans vérification)</label><input type=\"checkbox\" name=" + (mPrefixNVS+"actif") + " value=\"1\"" + String(mbVerifActive ? " checked" : "") + "></div>"

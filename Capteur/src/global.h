@@ -425,25 +425,37 @@
 #define NVS_NAME_SPACE "ThCh1er"
 
 // Version du logiciel
-#define VERSION "5.0"
+#define VERSION "5.4"
+// Page Web (5.3) : signe ajouté au libellé des réglages qui ne s'appliquent pas à chaud. À tenir en accord avec
+// reglagesRedemarrage() / reglagesConnexion() de chaque classe, qui décident réellement (MyWebServer::handleSave)
+#define MARQUE_REDEMARRAGE "<span class=\"mq-r\" title=\"Modification appliquée après un redémarrage\"> ↻</span>"
+#define MARQUE_MQTT "<span class=\"mq-m\" title=\"Modification appliquée par une reconnexion MQTT, sans redémarrage\"> ⇄</span>"
+#define LEGENDE_MARQUES "<span class=\"mq-r\">↻</span> redémarrage · <span class=\"mq-m\">⇄</span> reconnexion MQTT · sans signe : immédiat"
 // Mode maintenance (Capteur 4.9, nœuds Wi-Fi) : message RETENU sur home/conf<x>/maintenance, publié par Home Assistant :
-// « ON AAAA-MM-JJ HH:MM » (heure de FIN, absolue) ou « OFF ». Nœud éveillé jusqu'à l'heure de fin (sommeil coupé, réglage
-// sleepA gardé), mesures et commandes inchangées, mise à jour par le réseau possible ; état publié, retenu, sur
-// home/conf<x>/maintenance/etat (« ACTIVE jusqu'à HH:MM, http://<IP>/update », « INACTIVE », « REFUSEE <raison> »).
-// Sortie (OFF ou heure de fin) : INACTIVE puis redémarrage. Heure de fin déjà passée : ignorée (pas de boucle au
-// redémarrage de sortie). Fin plus lointaine que MAINTENANCE_DUREE_MAX_S : ramenée à ce plafond (erreur de saisie).
-#define MAINTENANCE_DUREE_MAX_S 7200
-// Mode maintenance d'un nœud LoRa (Capteur 5.0) : commande « MAINTENANCE <min> » / « MAINTENANCE OFF » par la file du
+// « ON » ou « OFF » (5.4 : plus d'heure de fin ni de plafond, la maintenance dure jusqu'à l'OFF demandé par l'utilisateur ;
+// « ON AAAA-MM-JJ HH:MM » des versions précédentes accepté, heure ignorée). Nœud éveillé (sommeil coupé, réglage sleepA
+// gardé), mesures et commandes inchangées, mise à jour par le réseau possible ; état publié, retenu, sur
+// home/conf<x>/maintenance/etat (« ACTIVE, http://<IP>/update », « INACTIVE »). Sortie (OFF) : INACTIVE puis redémarrage.
+// Nœud actionneur alimenté par une prise commandée (ACTIONNEUR_IR : NoeudChauffageSdb, Capteur 5.1) : le CYD principal
+// porte la maintenance (il lit le même ordre, ferme et coupe la prise, publie l'état). Le nœud lit l'ordre AVANT l'IR du
+// démarrage (jamais d'IR sans l'avoir lu : écho MQTT), et en maintenance n'émet aucun IR ni état du micro ; il ne publie
+// rien sur .../maintenance/etat et ne redémarre pas à la sortie (un redémarrage vaudrait demande de marche) : la sortie
+// lève la neutralisation, le CYD coupe la prise.
+// 5.2 : même règle pour un nœud de présence sur le réseau électrique (CAPTEUR_PRESENCE_RESEAU : PrGuirlande…), lui aussi
+// alimenté par la prise d'un appareil du CYD : rien publié sur .../maintenance/etat (le CYD le fait), pas de redémarrage.
+#if defined(ACTIONNEUR_IR) || defined(CAPTEUR_PRESENCE_RESEAU)
+#define NOEUD_A_PRISE
+#endif
+// Mode maintenance d'un nœud LoRa (Capteur 5.0) : commande « MAINTENANCE ON » / « MAINTENANCE OFF » par la file du
 // relais (remplace la commande OTA, supprimée avec son point d'accès de secours). Entrée : Wi-Fi de la maison
 // (FORCE_WIFI_SSID / FORCE_WIFI_PASSWD de secret.h ; répéteur posé près du nœud) à l'adresse fixe du profil (OTA_IP_FIXE,
-// platformio.ini), puis heure NTP : heure de fin enregistrée en NVS (gardée par un téléversement : au redémarrage, le nœud
-// reprend la maintenance si elle n'est pas finie). Même état que les nœuds Wi-Fi, envoyé par LoRa sur
+// platformio.ini) ; marque enregistrée en NVS (gardée par un téléversement : au redémarrage, le nœud reprend la
+// maintenance). 5.4 : plus de durée ni d'heure NTP (« MAINTENANCE <min> » des versions précédentes vaut ON). Même état que les nœuds Wi-Fi, envoyé par LoRa sur
 // home/conf<x>/maintenance/etat (relayé non retenu) ; « INACTIVE abandon : <raison> » si la reprise échoue.
-// Wi-Fi absent en OTA_WIFI_ATTENTE_S, ou heure absente en MAINTENANCE_NTP_ATTENTE_S : refus (ou abandon), nœud rendormi.
+// Wi-Fi absent en OTA_WIFI_ATTENTE_S : refus (ou abandon), nœud rendormi.
 // En maintenance, trame de présence « <nom> EVEIL » toutes les MAINTENANCE_PRESENCE_LORA_S : le relais ne remet une
 // commande (MAINTENANCE OFF...) qu'après une trame du nœud.
 #define OTA_WIFI_ATTENTE_S 30
-#define MAINTENANCE_NTP_ATTENTE_S 15
 #define MAINTENANCE_PRESENCE_LORA_S 60
 // Nœud LoRa (Capteur 4.8) : validation d'un nouveau firmware et envoi de « OK » au plus tôt OTA_ANNONCE_OK_LORA_MS après le
 // démarrage (trame seule, après la rafale du démarrage), ou juste avant le deep sleep. Doit rester < OTA_DELAI_VALIDATION_S.

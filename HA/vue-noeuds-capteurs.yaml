@@ -228,17 +228,15 @@ sections:
             title: Maintenance
             entities:
               - entity: input_boolean.thremise_maintenance
-                name: Maintenance
-              - entity: input_number.thremise_maintenance_duree
-                name: Durée (min, 120 au plus)
+                name: Maintenance (jusqu'à extinction ; refusée si le nœud est invisible)
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
             content: |
               {% set m = states('sensor.thremise_maintenance') %}
               {% set msg = state_attr('sensor.thremise_maintenance', 'message') or '' %}
-              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
-              {% elif is_state('input_boolean.thremise_maintenance', 'on') %}⏳ **En attente du réveil** de ThRemise (ordre dans la file du relais ; durée comptée à partir de son entrée en maintenance)
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | regex_replace('^ACTIVE,? *', '') }}
+              {% elif is_state('input_boolean.thremise_maintenance', 'on') %}⏳ **En attente du réveil** de ThRemise (ordre dans la file du relais)
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
               {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
@@ -546,17 +544,15 @@ sections:
             title: Maintenance
             entities:
               - entity: input_boolean.thcave_maintenance
-                name: Maintenance
-              - entity: input_number.thcave_maintenance_duree
-                name: Durée (min, 120 au plus)
+                name: Maintenance (jusqu'à extinction ; refusée si le nœud est invisible)
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(255,152,0,0.15) !important; }"
             content: |
               {% set m = states('sensor.thcave_maintenance') %}
               {% set msg = state_attr('sensor.thcave_maintenance', 'message') or '' %}
-              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
-              {% elif is_state('input_boolean.thcave_maintenance', 'on') %}⏳ **En attente du réveil** de ThCave (ordre dans la file du relais ; durée comptée à partir de son entrée en maintenance)
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | regex_replace('^ACTIVE,? *', '') }}
+              {% elif is_state('input_boolean.thcave_maintenance', 'on') %}⏳ **En attente du réveil** de ThCave (ordre dans la file du relais)
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
               {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
@@ -818,17 +814,15 @@ sections:
             title: Maintenance
             entities:
               - entity: input_boolean.thchrdc_maintenance
-                name: Maintenance
-              - entity: input_number.thchrdc_maintenance_duree
-                name: Durée (min, 120 au plus)
+                name: Maintenance (jusqu'à extinction ; refusée si le nœud est invisible)
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(156,39,176,0.15) !important; }"
             content: |
               {% set m = states('sensor.thchrdc_maintenance') %}
               {% set msg = state_attr('sensor.thchrdc_maintenance', 'message') or '' %}
-              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
-              {% elif is_state('input_boolean.thchrdc_maintenance', 'on') %}⏳ **En attente du réveil** de ThChRDC (fin prévue à {{ as_timestamp(states('input_datetime.thchrdc_maintenance_fin'), 0) | timestamp_custom('%H:%M') }})
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | regex_replace('^ACTIVE,? *', '') }}
+              {% elif is_state('input_boolean.thchrdc_maintenance', 'on') %}⏳ **En attente du réveil** de ThChRDC
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
               {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
@@ -1086,17 +1080,15 @@ sections:
             title: Maintenance
             entities:
               - entity: input_boolean.thch1er_maintenance
-                name: Maintenance
-              - entity: input_number.thch1er_maintenance_duree
-                name: Durée (min, 120 au plus)
+                name: Maintenance (jusqu'à extinction ; refusée si le nœud est invisible)
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(0,150,136,0.15) !important; }"
             content: |
               {% set m = states('sensor.thch1er_maintenance') %}
               {% set msg = state_attr('sensor.thch1er_maintenance', 'message') or '' %}
-              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
-              {% elif is_state('input_boolean.thch1er_maintenance', 'on') %}⏳ **En attente du réveil** de ThCh1er (fin prévue à {{ as_timestamp(states('input_datetime.thch1er_maintenance_fin'), 0) | timestamp_custom('%H:%M') }})
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | regex_replace('^ACTIVE,? *', '') }}
+              {% elif is_state('input_boolean.thch1er_maintenance', 'on') %}⏳ **En attente du réveil** de ThCh1er
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
               {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
@@ -1381,17 +1373,15 @@ sections:
             title: Maintenance
             entities:
               - entity: input_boolean.thsdb_maintenance
-                name: Maintenance
-              - entity: input_number.thsdb_maintenance_duree
-                name: Durée (min, 120 au plus)
+                name: Maintenance (jusqu'à extinction ; refusée si le nœud est invisible)
           - type: markdown
             card_mod:
               style: "ha-card { background: rgba(233,30,99,0.15) !important; }"
             content: |
               {% set m = states('sensor.thsdb_maintenance') %}
               {% set msg = state_attr('sensor.thsdb_maintenance', 'message') or '' %}
-              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | replace('ACTIVE ', '') }}
-              {% elif is_state('input_boolean.thsdb_maintenance', 'on') %}⏳ **En attente du réveil** de ThSdb (fin prévue à {{ as_timestamp(states('input_datetime.thsdb_maintenance_fin'), 0) | timestamp_custom('%H:%M') }})
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | regex_replace('^ACTIVE,? *', '') }}
+              {% elif is_state('input_boolean.thsdb_maintenance', 'on') %}⏳ **En attente du réveil** de ThSdb
               {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
               {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
               {% else %}Pas en maintenance.{% endif %}
@@ -1606,6 +1596,24 @@ sections:
           - type: entities
             card_mod:
               style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
+            title: Maintenance
+            entities:
+              - entity: input_boolean.prguirlande_maintenance
+                name: Maintenance (jusqu'à extinction ; refusée si le nœud est invisible)
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
+            content: |
+              {% set m = states('sensor.prguirlande_maintenance') %}
+              {% set msg = state_attr('sensor.prguirlande_maintenance', 'message') or '' %}
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | regex_replace('^ACTIVE,? *', '') }}
+              {% elif is_state('input_boolean.prguirlande_maintenance', 'on') %}⏳ **En attente du CYD principal** (prise de PrGuirlande)
+              {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
+              {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
+              {% else %}Pas en maintenance.{% endif %}
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(121,85,72,0.18) !important; }"
             title: Réglages (envoyés au prochain réveil)
             entities:
               - entity: input_boolean.prguirlande_sleepa
@@ -1672,6 +1680,137 @@ sections:
                 card_mod:
                   style: "ha-card { height: 60px !important; }"
 
+  # ======================= Nœud chauffage SdB (actionneur) =======================
+  - type: grid
+    cards:
+      - type: vertical-stack
+        cards:
+          # Titre porté par la carte entities : une carte heading en tête de pile était recouverte par la suivante
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            title: Nœud chauffage SdB
+            icon: mdi:remote
+            entities:
+              - entity: sensor.noeud_derniere_trame
+                name: Dernière trame
+                format: relative
+              - entity: sensor.noeud_commande_en_attente
+                name: Commande en attente
+              - entity: sensor.noeud_version
+                name: Firmware
+              - type: attribute
+                entity: sensor.noeud_version
+                attribute: compilation
+                name: Compilé le
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            content: |
+              {% set ip = states('sensor.c3_chauffage_sdb_ip') %}
+              {% if ip not in ['unknown', 'unavailable', ''] %}
+              **Noeud** : [page Web](http://{{ ip }}/) · [journal](http://{{ ip }}/logs) ({{ ip }})
+
+              {% endif %}
+              {% set r = states('sensor.noeud_rapport') %}
+              {% if r not in ['unknown', 'unavailable'] %}
+              **État** (reçu {{ relative_time(as_datetime(state_attr('sensor.noeud_rapport', 'recu'))) }}) :
+
+              {{ r | replace(' | ', '  \n') }}
+              {% else %}
+              *Pas encore de réponse au bouton État (le nœud n'est joignable que chauffage en marche).*
+              {% endif %}
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: État
+                icon: mdi:information
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: noeud
+                    commande: STATUS
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Annuler
+                icon: mdi:cancel
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: noeud
+                    commande: ANNULER
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Redémarrer
+                icon: mdi:restart
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande
+                  data:
+                    capteur: noeud
+                    commande: REBOOT
+                  confirmation:
+                    text: Redémarrer le Nœud chauffage SdB (seulement s'il est sous tension) ?
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 60px !important;
+                      background: rgba(200,0,0,0.2) !important;
+                    }
+                    ha-icon { color: red !important; }
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            title: Maintenance
+            entities:
+              - entity: input_boolean.noeud_maintenance
+                name: Maintenance (jusqu'à extinction ; refusée si le nœud est invisible)
+          - type: markdown
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            content: |
+              {% set m = states('sensor.noeud_maintenance') %}
+              {% set msg = state_attr('sensor.noeud_maintenance', 'message') or '' %}
+              {% if m == 'ACTIVE' %}🔧 **En maintenance** : {{ msg | regex_replace('^ACTIVE,? *', '') }}
+              {% elif is_state('input_boolean.noeud_maintenance', 'on') %}⏳ **En attente du CYD principal** (prise de Nœud chauffage SdB)
+              {% elif m == 'REFUSEE' %}❌ **Dernière demande refusée** : {{ msg | replace('REFUSEE ', '') }}
+              {% elif ' abandon' in msg %}⚠️ **Dernière maintenance abandonnée** : {{ msg | replace('INACTIVE abandon : ', '') }}
+              {% else %}Pas en maintenance.{% endif %}
+          - type: entities
+            card_mod:
+              style: "ha-card { background: rgba(33,150,243,0.15) !important; }"
+            entities:
+              - entity: input_text.noeud_commande
+                name: Commande libre
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Envoyer
+                icon: mdi:send
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_commande_libre
+                  data:
+                    capteur: noeud
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+              - type: button
+                name: Nettoyer retenu
+                icon: mdi:broom
+                tap_action:
+                  action: perform-action
+                  perform_action: script.noeud_nettoyer_retenu
+                  data:
+                    capteur: noeud
+                  confirmation:
+                    text: Effacer le message retenu sur home/confnoeud/command ?
+                card_mod:
+                  style: "ha-card { height: 60px !important; }"
+
   # ======================= Aide =======================
   - type: grid
     cards:
@@ -1710,6 +1849,10 @@ sections:
           partir de son entrée ; refus ou abandon (Wi-Fi absent au redémarrage…) affichés avec leur raison. Pas de mail
           « plus de nouvelles » pendant la maintenance ; à la fin, mail si un capteur est toujours en retard. La
           commande `OTA` n'existe plus (remplacée par la maintenance).
+          Nœuds alimentés par une prise du CYD principal (PrGuirlande, NoeudChauffageSdb ; Home-Assist 4.4, Capteur 5.1) :
+          le CYD ferme la prise (la guirlande s'allume ; le chauffage SdB reste éteint, refusé s'il est en marche),
+          refuse les commandes de l'appareil (bouton « MAINT. »), publie l'état, puis remet la guirlande comme avant ou
+          coupe la prise du chauffage.
 
           **Nettoyer retenu** : efface le message retenu du topic `home/conf<nœud>/command` (commande restée en
           retenu, ancien testament « offline »…). Sans effet sur la file du relais.

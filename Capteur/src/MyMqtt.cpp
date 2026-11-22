@@ -69,6 +69,7 @@ void CMqtt::reconnect() {
         : client.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_password.c_str());
     if (bConnecte) {
       Serial.println("connecté");
+      bool bReconnexion = (gDiag.ulMqtt != 0);   // Pas la 1re connexion depuis le démarrage
       if (gDiag.ulMqtt == 0) gDiag.ulMqtt = millis();
 
       // === ABONNEMENTS FORCÉS À CHAQUE CONNEXION ===
@@ -127,6 +128,13 @@ void CMqtt::reconnect() {
         client.publish(sTopicEcho.c_str(), mConfig.nomEquipement.c_str(), false);
       }
       else mConfig.mbRetenusLus = true;
+
+      #ifdef CAPTEUR_PRESENCE_RESEAU
+      // 5.2 : reconnexion (coupure Wi-Fi, keepalive dépassé) : le broker a publié le testament « offline », le CYD croit
+      // l'appareil éteint ; PRESENT le détrompe aussitôt (au démarrage, l'annonce est faite par CPresenceReseauElectrique)
+      if (bReconnexion && mConfig.mbConfiguree && mConfig.mPresence != nullptr && mConfig.mPresence->active)
+        mConfig.mPresence->publiePresent();
+      #endif
  
  
       String sDate = (mConfig.mDateTime != nullptr) ? mConfig.mDateTime->getDate() : "DATE";
@@ -483,15 +491,15 @@ String CMqtt::getHTML() {
   html =  "<h2>MQTT</h2>"
     "<div class=\"row\">"
       "<div class=\"row\"><div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+String("nom")) + " value=\"" + nomEquipement + "\"></div>"
-      "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div></div>"
+      "<div class=\"checkbox-row\"><label>Actif" MARQUE_MQTT "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div></div>"
     "</div>"
     "<div class=\"row\">"
-      "<div><label>MQTT Serveur</label><input type=\"text\" name=\"mqtt_server\" value=\"" + mqtt_server + "\"></div>"
-      "<div><label>MQTT Port</label><input type=\"number\" name=\"mqtt_port\" value=\"" + String(mqtt_port) + "\"></div>"
+      "<div><label>MQTT Serveur" MARQUE_MQTT "</label><input type=\"text\" name=\"mqtt_server\" value=\"" + mqtt_server + "\"></div>"
+      "<div><label>MQTT Port" MARQUE_MQTT "</label><input type=\"number\" name=\"mqtt_port\" value=\"" + String(mqtt_port) + "\"></div>"
     "</div>"
     "<div class=\"row\">"
-      "<div><label>MQTT Utilisateur</label><input type=\"text\" name=\"mqtt_user\" value=\"" + mqtt_user + "\"></div>"
-      "<div><label>MQTT Mot de passe</label><input type=\"password\" name=\"mqtt_password\" value=\"" + mqtt_password + "\"></div>"
+      "<div><label>MQTT Utilisateur" MARQUE_MQTT "</label><input type=\"text\" name=\"mqtt_user\" value=\"" + mqtt_user + "\"></div>"
+      "<div><label>MQTT Mot de passe" MARQUE_MQTT "</label><input type=\"password\" name=\"mqtt_password\" value=\"" + mqtt_password + "\"></div>"
     "</div>";
 
 

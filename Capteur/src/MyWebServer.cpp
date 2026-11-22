@@ -40,6 +40,8 @@ void MyWebServer::handleRoot() {
         ".checkbox-row { display: flex; align-items: center; gap: 10px; }"
         ".device { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; margin-bottom: 20px; }"
         ".timing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin: 15px 0; }"
+        ".mq-r { color: #fd7e14; cursor: help; } .mq-m { color: #007BFF; cursor: help; }"
+        ".legende { text-align: center; color: #555; margin: 10px 0; }"
       "</style>"
     "</head>"
     "<body>"
@@ -50,7 +52,8 @@ void MyWebServer::handleRoot() {
 
       "<hr style=\"margin: 40px 0;\">"
 
-      "<form action=\"/save\" method=\"POST\">";
+      "<form action=\"/save\" method=\"POST\">"
+      "<p class=\"legende\">" LEGENDE_MARQUES "</p>";
 
   // === WiFi (2 colonnes) ===
   html +=  "<h2>WiFi</h2>"
@@ -109,7 +112,13 @@ void MyWebServer::handleRoot() {
 
   html +=  "</div>";
 
-  html +=  "<input type=\"submit\" value=\"Sauvegarder et redémarrer\">"
+  // 5.3 : enregistrement à chaud (redémarrage seulement si le Wi-Fi, un topic, une broche ou l'activation d'un capteur
+  // change) ; redémarrage à la demande par le second bouton
+  html +=  "<p class=\"legende\">" LEGENDE_MARQUES "</p>"
+    "<input type=\"submit\" value=\"Sauvegarder\">"
+    "</form>"
+    "<form method=\"post\" action=\"/reboot\" onsubmit=\"return confirm('Redémarrer le nœud ?');\">"
+    "<input type=\"submit\" value=\"Redémarrer\" style=\"background:#c0392b\">"
     "</form>"
   "</body>"
   "</html>";
@@ -118,7 +127,69 @@ void MyWebServer::handleRoot() {
 }
 
 
+//----------------------------------------------------------------------------------
+// Réglages à chaud (Capteur 5.3) : empreintes des réglages qui demandent un redémarrage (Wi-Fi, topics, broches,
+// activation des capteurs, puce configurée) ou une reconnexion MQTT (broker, identifiants, nom), comparées avant /
+// après la lecture de la page. Les autres valeurs (sommeil, forçages, délais d'alerte, seuils, mute…) sont appliquées
+// dès leur lecture. Dans le doute, un réglage va dans la catégorie redémarrage.
+//----------------------------------------------------------------------------------
+struct EmpreintesReglages { String sWifi, sNoeud, sMqtt; };
+
+static EmpreintesReglages empreintesReglages(CConfig& config, CWifi* mWifi) {
+  EmpreintesReglages e;
+  for (int i = 0; i < MAX_WIFI_NETS; i++) e.sWifi += mWifi[i].reglagesRedemarrage() + "\x1e";
+  e.sNoeud = config.reglagesRedemarrage() + "\x1e";
+  #ifdef CAPTEUR_DS18B20
+  if (config.ds18b20 != nullptr) e.sNoeud += config.ds18b20->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef CAPTEUR_DHT20
+  if (config.dht20 != nullptr) e.sNoeud += config.dht20->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef FLOTTEUR_VERTICAL
+  if (config.mFlotteurVertical != nullptr) e.sNoeud += config.mFlotteurVertical->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef CAPTEUR_RGB_TCS34725
+  if (config.mCapteurRGB != nullptr) e.sNoeud += config.mCapteurRGB->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef CAPTEUR_MICRO_MAX4466
+  if (config.mMicro != nullptr) e.sNoeud += config.mMicro->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef ACTIONNEUR_IR
+  if (config.mActionneurIR != nullptr) e.sNoeud += config.mActionneurIR->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef CAPTEUR_BATTERIE
+  if (config.mBatterieAA != nullptr) e.sNoeud += config.mBatterieAA->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef CAPTEUR_JOUR_NUIT
+  if (config.mJourNuit != nullptr) e.sNoeud += config.mJourNuit->reglagesRedemarrage() + "\x1e";
+  #endif
+  #ifdef CAPTEUR_PRESENCE_RESEAU
+  if (config.mPresence != nullptr) e.sNoeud += config.mPresence->reglagesRedemarrage() + "\x1e";
+  #endif
+  e.sMqtt = config.reglagesConnexion();   // + broker, ajouté par handleSave() (membre mqtt)
+  return e;
+}
+
+// Page de retour d'un enregistrement ou d'un redémarrage, retour à la page principale
+static String pageRetour(const String& sTitre, const String& sMessage, int iDelaiS) {
+  return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"" + String(iDelaiS) +
+         ";url=/\"><title>Sauvegarde</title><style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
+         "h1{color:#007BFF;font-size:40px;}p{font-size:22px;}</style></head><body><h1>" + sTitre + "</h1><p>" + sMessage +
+         "<br>Retour à la page principale dans " + String(iDelaiS) + " secondes.</p></body></html>";
+}
+
+// Bouton « Redémarrer » (5.3) : indépendant des modifications
+void MyWebServer::handleReboot() {
+  server.send(200, "text/html", pageRetour("Redémarrage", "Redémarrage du nœud en cours...", 10));
+  delay(1000);
+  ESP.restart();
+}
+
 void MyWebServer::handleSave() {
+  EmpreintesReglages avant = empreintesReglages(config, mWifi);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  avant.sMqtt += "\x1e" + mqtt.reglagesConnexion();
+  #endif
 
   // === PARAMÈTRES CLASSIQUES ===
   config.loadFromWebServer(server);
@@ -203,18 +274,30 @@ void MyWebServer::handleSave() {
   if (config.mPresence != nullptr) config.mPresence->saveToNVS();
   #endif
 
-  // Page de confirmation
-  String html = F("<!DOCTYPE html>"
-  "<html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/\">"
-  "<title>Sauvegarde</title>"
-  "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
-  "h1{color:#007BFF;font-size:48px;}p{font-size:24px;}</style></head>"
-  "<body><h1>✓ Configuration sauvegardée !</h1>"
-  "<p>Redémarrage en cours...<br>Retour à la page principale dans 3 secondes.</p></body></html>");
-
-  server.send(200, "text/html", html);
-  delay(1000);
-  ESP.restart();
+  // 5.3 : redémarrage seulement si un réglage qui l'exige a changé ; sinon reconnexion MQTT ou rien (appliqué à chaud)
+  EmpreintesReglages apres = empreintesReglages(config, mWifi);
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  apres.sMqtt += "\x1e" + mqtt.reglagesConnexion();
+  #endif
+  String sRaison = (apres.sWifi != avant.sWifi) ? "Wi-Fi modifié"
+                 : (apres.sNoeud != avant.sNoeud) ? "topic, broche ou capteur modifié" : "";
+  if (sRaison.length() > 0) {
+    Serial.println("MyWebServer::handleSave() - Enregistré, redémarrage (" + sRaison + ")");
+    server.send(200, "text/html", pageRetour("✓ Configuration sauvegardée", "Redémarrage (" + sRaison + ")...", 10));
+    delay(1000);
+    ESP.restart();
+  }
+  String sMessage = "Enregistré, appliqué sans redémarrage";
+  #ifndef __DESACTIVE_ENVOI_MQTT__
+  if (apres.sMqtt != avant.sMqtt) {
+    sMessage = "Enregistré, reconnexion MQTT";
+    mqtt.reconnecteNouveauxReglages();
+  }
+  #endif
+  Serial.println("MyWebServer::handleSave() - " + sMessage);
+  // Nouveaux réglages renvoyés (sommeil, forçages…) : HA les voit sans attendre un GET
+  config.envoieConfig();
+  server.send(200, "text/html", pageRetour("✓ Configuration sauvegardée", sMessage, 3));
 }
 
 
@@ -312,6 +395,7 @@ void MyWebServer::handleLogsClear() {
 void MyWebServer::setup() {
   server.on("/", HTTP_GET, [this]() { handleRoot(); });
   server.on("/save", HTTP_POST, [this]() { handleSave(); });
+  server.on("/reboot", HTTP_POST, [this]() { handleReboot(); });
   server.on("/logs",       HTTP_GET,  [this]() { handleLogs(); });
   server.on("/logs/data",  HTTP_GET,  [this]() { handleLogsData(); });
   server.on("/logs/clear", HTTP_POST, [this]() { handleLogsClear(); });

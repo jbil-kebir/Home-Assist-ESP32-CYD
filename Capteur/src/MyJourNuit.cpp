@@ -273,7 +273,7 @@ String CJourNuit::getHTML() {
         "<div><label>GPIO mesure / alim.</label><input type=\"text\" value=\"" + String(mucPin) + " / " + String(mucPinAlim) + "\" disabled></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Actif" MARQUE_REDEMARRAGE "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
         "<div class=\"checkbox-row\"><label>Remonter l'éclairement</label><input type=\"checkbox\" name=" + (mPrefixNVS+"ecl") + " value=\"1\"" + String(mbRemonterEclairement ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
@@ -290,7 +290,7 @@ String CJourNuit::getHTML() {
       "</div>";
   html += getHTMLAlerte();
   html += "<div class=\"row\">"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
   return html;
 }

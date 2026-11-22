@@ -2,6 +2,7 @@
 #define __MYMQTT_H__
 
 #include <PubSubClient.h>
+#include <vector>
 #include <Preferences.h>
 #include "global.h"
 #include "MyWebServer.h"
@@ -32,6 +33,7 @@ public:
   void setup(const String pref);
   void begin(String serv="", uint16_t uiport=0, String user="", String passwd="");
   void reconnect();
+  void reconnecteNouveauxReglages();   // Broker / identifiants / nom modifiés sur la page Web (Home-Assist 4.6)
   void loop();
   int publishState(bool state);
   int publish(const char* topic, const char* payload);
@@ -73,5 +75,12 @@ public:
 
 private:
     void callback(char* topic, byte* payload, unsigned int length);
+    // 4.7 : commande MESURES aux thermomètres, une fois après le démarrage du CYD principal (voir MyMqtt.cpp)
+    std::vector<String> mvTopicsMesures;     // home/conf<nœud>/command des thermomètres actifs
+    std::vector<bool> mvCommandeEnAttente;   // Message retenu non vide trouvé : MESURES non envoyé (pas d'écrasement)
+    unsigned long mulDebutMesures = 0;       // millis() des abonnements (0 : pas commencé)
+    bool mbMesuresFaites = false;
+    void prepareMesures();
+    void envoieMesures();
 };
 #endif // __MYMQTT_H__

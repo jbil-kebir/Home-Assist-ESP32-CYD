@@ -72,6 +72,12 @@ void CMqtt::reconnect() {
   } // while()
 }
 
+// 3.0 : déconnexion puis nouveau broker ; loop() refait la connexion (testament avec le nom actuel) et les abonnements
+void CMqtt::reconnecteNouveauxReglages() {
+  client.disconnect();
+  client.setServer(mqtt_server.c_str(), mqtt_port);
+}
+
   void CMqtt::loop() {
     if (!client.connected()) reconnect();
     client.loop();
@@ -213,15 +219,15 @@ String CMqtt::getHTML() {
   html =  "<h2>MQTT</h2>"
     "<div class=\"row\">"
       "<div class=\"row\"><div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+String("nom")) + " value=\"" + nomEquipement + "\"></div>"
-      "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div></div>"
+      "<div class=\"checkbox-row\"><label>Actif" MARQUE_MQTT "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div></div>"
     "</div>"
     "<div class=\"row\">"
-      "<div><label>MQTT Serveur</label><input type=\"text\" name=\"mqtt_server\" value=\"" + mqtt_server + "\"></div>"
-      "<div><label>MQTT Port</label><input type=\"number\" name=\"mqtt_port\" value=\"" + String(mqtt_port) + "\"></div>"
+      "<div><label>MQTT Serveur" MARQUE_MQTT "</label><input type=\"text\" name=\"mqtt_server\" value=\"" + mqtt_server + "\"></div>"
+      "<div><label>MQTT Port" MARQUE_MQTT "</label><input type=\"number\" name=\"mqtt_port\" value=\"" + String(mqtt_port) + "\"></div>"
     "</div>"
     "<div class=\"row\">"
-      "<div><label>MQTT Utilisateur</label><input type=\"text\" name=\"mqtt_user\" value=\"" + mqtt_user + "\"></div>"
-      "<div><label>MQTT Mot de passe</label><input type=\"password\" name=\"mqtt_password\" value=\"" + mqtt_password + "\"></div>"
+      "<div><label>MQTT Utilisateur" MARQUE_MQTT "</label><input type=\"text\" name=\"mqtt_user\" value=\"" + mqtt_user + "\"></div>"
+      "<div><label>MQTT Mot de passe" MARQUE_MQTT "</label><input type=\"password\" name=\"mqtt_password\" value=\"" + mqtt_password + "\"></div>"
     "</div>";
 
 

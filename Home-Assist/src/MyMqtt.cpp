@@ -97,6 +97,15 @@ client.publish("home/chaudiere/status",  "", true);*/
             client.subscribe(a->mPresence.mqttSubTopicState.c_str());
           }
       }
+      // Mode maintenance (Home-Assist 4.4) : ordres retenus de Home Assistant (guirlande, chauffage SdB)
+      {
+        CRCDevice* appareils[] = {mConfig.guirlande, mConfig.chauffageSb};
+        for (CRCDevice* a : appareils)
+          if (a != nullptr && a->msTopicMaintenance.length() > 0) {
+            DBGLN(DBG_MQTT, "Abonnement à " + a->msTopicMaintenance);
+            client.subscribe(a->msTopicMaintenance.c_str());
+          }
+      }
 
       // Publication des états retained
       //client.publish(mConfig.chaudiere->mqttSubTopicStatus.c_str(), "online", false);
@@ -134,6 +143,9 @@ client.publish("home/chaudiere/status",  "", true);*/
         DBGLN(DBG_MQTT, "Abonnement à " + mConfig.mRemoteNewNas->mqttSubTopicState);
         client.subscribe(mConfig.mRemoteNewNas->mqttSubTopicState.c_str());
       }
+      #ifdef __LOCAL_MODE__
+      if (!mbMesuresFaites && mulDebutMesures == 0) prepareMesures();
+      #endif
     } else {
       DBG(DBG_MQTT, "échec, rc=");
       DBGLN(DBG_MQTT, client.state());
@@ -142,10 +154,57 @@ client.publish("home/chaudiere/status",  "", true);*/
   }
 }
 
+// Réglages MQTT modifiés sur la page Web (Home-Assist 4.6) : déconnexion, nouveau broker ; loop() se reconnecte et
+// refait tous les abonnements (topics des nœuds de présence et de maintenance compris)
+void CMqtt::reconnecteNouveauxReglages() {
+  client.disconnect();
+  client.setServer(mqtt_server.c_str(), mqtt_port);
+}
+
   void CMqtt::loop() {
     if (!client.connected()) reconnect();
     client.loop();
+    if (mulDebutMesures != 0 && !mbMesuresFaites && millis() - mulDebutMesures >= MESURES_ATTENTE_RETENUS_MS) envoieMesures();
   }
+
+//----------------------------------------------------------------------------------
+// Commande MESURES (4.7, conception du 16/11/2026) : après un démarrage du CYD principal, chaque capteur reste KO
+// jusqu'à sa prochaine trame (jusqu'à 1 h). Le principal demande donc, une fois, à chaque thermomètre actif de renvoyer
+// ses mesures : « MESURES », RETENU sur home/conf<nœud>/command (lu au réveil ; Wi-Fi : effacé par HA à l'accusé ;
+// LoRa : file du relais, qui l'efface à l'accusé). Un message retenu déjà présent (commande de HA en attente) n'est pas
+// écrasé : abonnement aux topics, attente MESURES_ATTENTE_RETENUS_MS des retenus, puis envoi aux seuls topics vides.
+//----------------------------------------------------------------------------------
+void CMqtt::prepareMesures() {
+  #ifdef __LOCAL_MODE__
+  CEquipementBase* thermos[] = {mConfig.mRemoteThCh1er, mConfig.mRemoteThSdb, mConfig.mRemoteThChRdc,
+                                mConfig.mRemoteThRemise, mConfig.mRemoteThCave, mConfig.mRemoteThNomade};
+  mvTopicsMesures.clear();
+  mvCommandeEnAttente.clear();
+  for (CEquipementBase* t : thermos) {
+    if (t == nullptr || !t->active) continue;
+    String sNom = t->nomEquipement; sNom.toLowerCase();
+    String sTopic = mConfig.domotique_prefix + "conf" + sNom + "/command";
+    mvTopicsMesures.push_back(sTopic);
+    mvCommandeEnAttente.push_back(false);
+    client.subscribe(sTopic.c_str());
+  }
+  mulDebutMesures = millis();
+  if (mulDebutMesures == 0) mulDebutMesures = 1;
+  #endif
+}
+
+void CMqtt::envoieMesures() {
+  mbMesuresFaites = true;
+  for (size_t i = 0; i < mvTopicsMesures.size(); i++) {
+    client.unsubscribe(mvTopicsMesures[i].c_str());
+    if (mvCommandeEnAttente[i]) {
+      DBGLN(DBG_MQTT, "MESURES non envoyé : commande en attente sur " + mvTopicsMesures[i]);
+      continue;
+    }
+    publish(mvTopicsMesures[i].c_str(), "MESURES", true);
+    DBGLN(DBG_MQTT, "MESURES envoyé (retenu) sur " + mvTopicsMesures[i]);
+  }
+}
 
   int CMqtt::publishState(bool state) {
     if (!active) return -1;
@@ -219,6 +278,16 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
 
   DBG(DBG_MQTT, "void CMqtt::callback() - reçu : %s :  %s\n", topicStr.c_str(), message.c_str());
 
+  // 4.7 : retenus des topics de commande des thermomètres, lus avant l'envoi de MESURES (voir prepareMesures())
+  if (!mbMesuresFaites) {
+    for (size_t i = 0; i < mvTopicsMesures.size(); i++) {
+      if (topicStr != mvTopicsMesures[i]) continue;
+      // Testament « <nom> offline » d'un ancien firmware : pas une commande (comme le relais)
+      if (message.length() > 0 && !message.endsWith(" OFFLINE") && message != "MESURES") mvCommandeEnAttente[i] = true;
+      return;
+    }
+  }
+
   // Copie republiée par le principal (auxiliaires seulement) : traitée comme une trame du topic d'état
   // correspondant, mais sans effet sur le bandeau d'éveil (CRemoteThermo / CRemoteDHT20::noteEveil())
   CRemoteCapteurBase::sbTrameCopie = false;
@@ -256,6 +325,14 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
     //Serial.println("CMqtt::callback() - Chauffage - Topic : " + topicStr + " - Msg : " + message);
 
     mConfig.chauffageSb->handleMqttCommand(messageOrg);
+  }
+  else if (mConfig.guirlande != nullptr && mConfig.guirlande->msTopicMaintenance.length() > 0
+           && topicStr == mConfig.guirlande->msTopicMaintenance) {
+    mConfig.guirlande->handleMaintenance(messageOrg);   // Mode maintenance (Home-Assist 4.4)
+  }
+  else if (mConfig.chauffageSb != nullptr && mConfig.chauffageSb->msTopicMaintenance.length() > 0
+           && topicStr == mConfig.chauffageSb->msTopicMaintenance) {
+    mConfig.chauffageSb->handleMaintenance(messageOrg);
   }
   else if (CRCDevice* a = appareilDuNoeudDePresence(mConfig, topicStr)) {
     // Nœud de présence (PrGuirlande...) : état réel de l'appareil 433 MHz
@@ -442,6 +519,19 @@ void CMqtt::callback(char* topic, byte* payload, unsigned int length) {
       publish(mConfig.topic_config_state.c_str(), (mConfig.nomEquipement + " VERSION " + versionComplete()).c_str(), false);
 
     }
+    else if (message == "ETATS") {
+      // 4.7 : états des appareils republiés (ENABLER / DISABLER, ONR / OFFR, maintenance), demandés par HA à son
+      // démarrage : ces réponses ne sont pas retenues, et ses interrupteurs restaient « unknown » jusqu'au prochain
+      // démarrage du CYD (le bouton envoyait alors OFF au lieu de ON)
+      #ifdef __LOCAL_MODE__
+      mConfig.chaudiere->remonteStatusParMqtt();
+      mConfig.projecteur->remonteStatusParMqtt();
+      mConfig.guirlande->remonteStatusParMqtt();
+      mConfig.lumiereCave->remonteStatusParMqtt();
+      mConfig.chauffageRdc->remonteStatusParMqtt();
+      mConfig.chauffageSb->remonteStatusParMqtt();
+      #endif
+    }
     else if (message.startsWith("VEILLE ")) {
       #ifdef __CYD__
       int32_t veilleTimeout = (int32_t)message.substring(6).toDouble();
@@ -619,12 +709,12 @@ String CMqtt::getHTML() {
       "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div></div>"
     "</div>"
     "<div class=\"row\">"
-      "<div><label>MQTT Serveur</label><input type=\"text\" name=\"mqtt_server\" value=\"" + mqtt_server + "\"></div>"
-      "<div><label>MQTT Port</label><input type=\"number\" name=\"mqtt_port\" value=\"" + String(mqtt_port) + "\"></div>"
+      "<div><label>MQTT Serveur" MARQUE_MQTT "</label><input type=\"text\" name=\"mqtt_server\" value=\"" + mqtt_server + "\"></div>"
+      "<div><label>MQTT Port" MARQUE_MQTT "</label><input type=\"number\" name=\"mqtt_port\" value=\"" + String(mqtt_port) + "\"></div>"
     "</div>"
     "<div class=\"row\">"
-      "<div><label>MQTT Utilisateur</label><input type=\"text\" name=\"mqtt_user\" value=\"" + mqtt_user + "\"></div>"
-      "<div><label>MQTT Mot de passe</label><input type=\"password\" name=\"mqtt_password\" value=\"" + mqtt_password + "\"></div>"
+      "<div><label>MQTT Utilisateur" MARQUE_MQTT "</label><input type=\"text\" name=\"mqtt_user\" value=\"" + mqtt_user + "\"></div>"
+      "<div><label>MQTT Mot de passe" MARQUE_MQTT "</label><input type=\"password\" name=\"mqtt_password\" value=\"" + mqtt_password + "\"></div>"
     "</div>";
 
 

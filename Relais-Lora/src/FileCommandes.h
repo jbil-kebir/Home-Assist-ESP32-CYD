@@ -38,6 +38,7 @@ private:
     bool bGetAutoFait = false;          // GET automatique déjà demandé depuis le démarrage
     String etat;                        // Dernière réponse STATUS : « <date> <heure> | Wdog : ... | Uptime : ... »
     unsigned long ulEtatRecu = 0;
+    bool bMesuresEnAttente = false;     // 3.1 : MESURES reçu pendant une autre commande : envoyé après elle
   };
   static const SCapteurLora mCapteurs[];
   static const int NB_CAPTEURS;

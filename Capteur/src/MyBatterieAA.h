@@ -63,6 +63,8 @@ public:
 
   void loadFromNVS();
   void loadFromWebServer (WebServer& server);
+  // Réglages à chaud (Capteur 5.3, MyWebServer::handleSave) : réglages qui demandent un redémarrage
+  String reglagesRedemarrage() const { return String(active) + "/" + String(mucPin) + "/" + mqttSubTopic; }
   void saveToNVS();
   void setActive(bool state);
   void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}

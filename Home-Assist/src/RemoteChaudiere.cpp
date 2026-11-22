@@ -309,7 +309,7 @@ String CRemoteChaudiere::getHTML() {
   html = "<h2>Configuration de la chaudière</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=\"chaud_nom\" value=\"" + nomEquipement + "\"></div>"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=\"topic_prefix\" value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=\"topic_prefix\" value=\"" + mqttSubTopic + "\"></div>"
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=\"chaud_active\" value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"

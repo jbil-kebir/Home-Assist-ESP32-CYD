@@ -43,6 +43,8 @@ public:
 
   void loadFromNVS();
   void loadFromWebServer(WebServer& server);
+  // Réglages à chaud (Capteur 5.3, MyWebServer::handleSave) : réglages qui demandent un redémarrage
+  String reglagesRedemarrage() const { return String(active); }
   void saveToNVS();
   String getHTML();
 

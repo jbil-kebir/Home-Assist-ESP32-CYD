@@ -89,7 +89,12 @@
 
 
 // Version du logiciel
-#define VERSION "2.9"
+#define VERSION "3.1"
+// Page Web (3.0) : signe ajouté au libellé des réglages qui ne s'appliquent pas à chaud. À tenir en accord avec
+// empreintesReglages (MyWebServer.cpp), qui décide réellement du redémarrage ou de la reconnexion MQTT
+#define MARQUE_REDEMARRAGE "<span class=\"mq-r\" title=\"Modification appliquée après un redémarrage\"> ↻</span>"
+#define MARQUE_MQTT "<span class=\"mq-m\" title=\"Modification appliquée par une reconnexion MQTT, sans redémarrage\"> ⇄</span>"
+#define LEGENDE_MARQUES "<span class=\"mq-r\">↻</span> redémarrage · <span class=\"mq-m\">⇄</span> reconnexion MQTT · sans signe : immédiat"
 // Étiquette du firmware (MyOta.cpp) : la page /update refuse un fichier qui n'a pas celle de l'appareil
 #define ETIQUETTE_FIRMWARE "Relais-Lora"
 // Attente maximale de la fin d'une émission LoRa avant d'en commencer une autre (CMyLoraRxTx::sendPacket())

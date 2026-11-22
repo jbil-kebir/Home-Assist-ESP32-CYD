@@ -93,6 +93,13 @@ int CRemoteRCDevice::toggleDevice() {
 //----------------------------------------------------------------------------------
 int CRemoteRCDevice::envoiOnOff() {
   int ret = 0;
+  // Mode maintenance (Home-Assist 4.4, annoncé par le principal) : commande refusée ici aussi
+  if (maintenance) {
+    String s = buttonName + " : en maintenance";
+    if (mEcran != nullptr) mEcran->updateStatus(s);
+    DBGLN(DBG_ACTIONNEURS, s);
+    return -4;
+  }
 
   ret = onMqttPublish(mqttSubTopicCommand.c_str(), etat ? "ON" : "OFF");
 
@@ -117,6 +124,12 @@ void CRemoteRCDevice::handleMqttCommand(const String& payload) {
 
   DBG(DBG_ACTIONNEURS, "CRemoteRCDevice::handleMqttCommand() - Equipement %s - Cmd : %s \n", nomEquipement.c_str(), cmd.c_str());
 
+  if (cmd == "MAINTENANCER ON" || cmd == "MAINTENANCER OFF") {
+    // Mode maintenance de l'appareil (Home-Assist 4.4), annoncé par le CYD principal : bouton grisé « MAINT. »
+    maintenance = (cmd == "MAINTENANCER ON");
+    if (mEcran != nullptr) mEcran->updateAllStates();
+    return;
+  }
   if (cmd == "ONR") {
     if (this->active) {
       //this->toggleDevice();
@@ -173,7 +186,7 @@ String CRemoteRCDevice::getHTML() {
           "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active").c_str() + " value=\"1\"" + String(active ? " checked" : "") + "></div></div>"
           "<div class=\"row\">"
             "<div><label>Nom bouton</label><input type=\"text\" name=" + (mPrefixNVS+"name").c_str() + " value=\"" + buttonName + "\"></div>"
-            "<div><label>MQTT subtopic</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
+            "<div><label>MQTT subtopic" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
           "</div>";
 
   return html;

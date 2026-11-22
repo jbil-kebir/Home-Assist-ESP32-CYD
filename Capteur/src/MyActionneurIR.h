@@ -86,10 +86,13 @@ public:
 
   // MQTT callback (publication IRKO)
   std::function<int(const char*, const char*)> onMqttPublish;
+  std::function<bool()> onEstEnMaintenance;   // Mode maintenance (Capteur 5.1) : aucune émission IR
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish);
 
   void loadFromNVS();
   void loadFromWebServer (WebServer& server);
+  // Réglages à chaud (Capteur 5.3, MyWebServer::handleSave) : réglages qui demandent un redémarrage
+  String reglagesRedemarrage() const { return String(active) + "/" + String(mucPin); }
   void saveToNVS();
   void setActive(bool state);
   void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}

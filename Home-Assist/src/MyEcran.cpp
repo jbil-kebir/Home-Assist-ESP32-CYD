@@ -459,7 +459,7 @@ String CEcran::getHTML() {
   html =   "<h2>Ecran</h2>"
   "<div class=\"row\">"
     "<div><label>Timeout veille (secondes, -1 = désactivée)</label><input type=\"number\" name=" + mPrefixNVS + String("sleep_timeout") + " value=\"" + String(sleep_timeout) + "\"></div>"
-    "<div><label>Orientation (0 à 3)</label><input type=\"number\" name=" + (mPrefixNVS + "or_ecran").c_str() + " value=\"" + String(mucOrientationEcran) + "\"></div>"
+    "<div><label>Orientation (0 à 3)" MARQUE_REDEMARRAGE "</label><input type=\"number\" name=" + (mPrefixNVS + "or_ecran").c_str() + " value=\"" + String(mucOrientationEcran) + "\"></div>"
   "</div>"
   "<div class=\"row\">"
     "<div><label>Nb max de séries d'affichages (1-255)</label><input type=\"text\" name=" + (mPrefixNVS + "aff_max").c_str() + " value=\"" + mucNbAffichagesMax + "\"></div>"

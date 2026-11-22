@@ -31,7 +31,16 @@ void CFileCommandes::memorise(const String& topicConfig, const String& commande)
   }
   if (commande.equalsIgnoreCase("ANNULER")) {
     Serial.printf("[File] %s : commande <%s> annulée\n", topicConfig.c_str(), mEntrees[i].commande.c_str());
+    mEntrees[i].bMesuresEnAttente = false;
     retire(i);
+    return;
+  }
+  // 3.1 : MESURES (retenu, publié par le CYD principal après son démarrage) ne remplace pas une commande en attente
+  // (SET de HA...) : gardé de côté, envoyé quand elle est retirée
+  if (commande.equalsIgnoreCase("MESURES") && mEntrees[i].commande.length() > 0 &&
+      !mEntrees[i].commande.equalsIgnoreCase("MESURES")) {
+    mEntrees[i].bMesuresEnAttente = true;
+    Serial.printf("[File] %s : MESURES gardé de côté (en attente : <%s>)\n", topicConfig.c_str(), mEntrees[i].commande.c_str());
     return;
   }
   mEntrees[i].commande = commande;
@@ -44,8 +53,18 @@ void CFileCommandes::memorise(const String& topicConfig, const String& commande)
 }
 
 void CFileCommandes::retire(int i) {
+  // 3.1 : MESURES est retenu sur le topic de commande : effacé une fois traité (accusé, abandon, annulation), sinon le
+  // relais le reprendrait à sa prochaine connexion MQTT (le payload vide reçu en retour est ignoré par memorise())
+  if (mEntrees[i].commande.equalsIgnoreCase("MESURES") && onMqttPublishRetenu)
+    onMqttPublishRetenu(mCapteurs[i].topicConfig, "", true);
   mEntrees[i].commande = "";
   mEntrees[i].bEnvoiArme = false;
+  if (mEntrees[i].bMesuresEnAttente) {
+    // MESURES gardé de côté pendant la commande qui vient d'être retirée : mis en attente à son tour
+    mEntrees[i].bMesuresEnAttente = false;
+    memorise(mCapteurs[i].topicConfig, "MESURES");
+    return;
+  }
   publieAttente(i);
 }
 

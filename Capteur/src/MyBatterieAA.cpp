@@ -270,10 +270,10 @@ String CBatterieAA::getHTML() {
       "<h2>Configuration de " + nomEquipement + "</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
-        "<div><label>GPIO</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
+        "<div><label>GPIO" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Actif" MARQUE_REDEMARRAGE "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Dernière tension</label><input type=\"text\" name=" + (mPrefixNVS+"u") + " value=\"" + mLastTension + "\"></div>"
@@ -286,7 +286,7 @@ String CBatterieAA::getHTML() {
   html += getHTMLAlerte();
   html += "<div class=\"row\">"
         "<div><label>Calibre</label><input type=\"text\" name=" + (mPrefixNVS+"cal") + " value=\"" + mCalibre + "\"></div>"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 
   return html;

@@ -41,6 +41,8 @@ void MyWebServer::handleRoot() {
         ".checkbox-row { display: flex; align-items: center; gap: 10px; }"
         ".device { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; margin-bottom: 20px; }"
         ".timing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin: 15px 0; }"
+        ".mq-r { color: #fd7e14; cursor: help; } .mq-m { color: #007BFF; cursor: help; }"
+        ".legende { text-align: center; color: #555; margin: 10px 0; }"
       "</style>"
     "</head>"
     "<body>"
@@ -59,7 +61,8 @@ void MyWebServer::handleRoot() {
     html +=    "<p class=\"status\"><a href=\"/capteurs\">Capteurs LoRa</a> &nbsp;|&nbsp; <a href=\"/logs\">Journal</a></p>"
       "<hr style=\"margin: 40px 0;\">"
 
-      "<form action=\"/save\" method=\"POST\">";
+      "<form action=\"/save\" method=\"POST\">"
+      "<p class=\"legende\">" LEGENDE_MARQUES "</p>";
   html +=  config.getHTML();
 
   // === WiFi (2 colonnes) ===
@@ -76,10 +79,7 @@ void MyWebServer::handleRoot() {
   // === MQTT (2 colonnes) ===
   html += mqtt.getHTML();
 
-  // === PRÉFIXE DOMOTIQUE ===
-  html += "<h2>Préfixe domotique (projecteur, guirlande, sdb)</h2>"
-        "<label>Préfixe (ex: home/)</label>"
-        "<input type=\"text\" name=\"domo_prefix\" value=\"" + config.domotique_prefix + "\">";
+  // (3.0 : champ « domo_prefix » retiré : jamais lu, doublon du « Préfixe domotique » de la configuration)
 
   // === APPAREILS Lora 866 MHz ===
   html +=  "<h2>Appareils Lora 866 MHz</h2>"
@@ -88,7 +88,12 @@ void MyWebServer::handleRoot() {
 
   html +=  "</div>";
 
-  html +=  "<input type=\"submit\" value=\"Sauvegarder et redémarrer\">"
+  // 3.0 : enregistrement à chaud (redémarrage seulement si le Wi-Fi ou un topic change) ; redémarrage à la demande
+  html +=  "<p class=\"legende\">" LEGENDE_MARQUES "</p>"
+    "<input type=\"submit\" value=\"Sauvegarder\">"
+    "</form>"
+    "<form method=\"post\" action=\"/reboot\" onsubmit=\"return confirm('Redémarrer le relais ?');\">"
+    "<input type=\"submit\" value=\"Redémarrer\" style=\"background:#c0392b\">"
     "</form>"
   "</body>"
   "</html>";
@@ -96,7 +101,40 @@ void MyWebServer::handleRoot() {
   server.send(200, "text/html", html);
 }
 
+//----------------------------------------------------------------------------------
+// Réglages à chaud (3.0, comme Home-Assist 4.6 et Capteur 5.3) : empreintes comparées avant / après la lecture de la
+// page. Redémarrage : Wi-Fi, préfixes (topics calculés au démarrage) ; reconnexion MQTT : broker, identifiants, nom
+// (testament) ; le reste (sommeil, watchdog…) est appliqué dès sa lecture.
+//----------------------------------------------------------------------------------
+struct EmpreintesReglages { String sWifi, sTopics, sMqtt; };
+
+static EmpreintesReglages empreintesReglages(CConfig& config, CMqtt& mqtt, CWifi* mWifi) {
+  EmpreintesReglages e;
+  for (int i = 0; i < MAX_WIFI_NETS; i++)
+    e.sWifi += mWifi[i].wifi_ssid + "\x1f" + mWifi[i].wifi_password + "\x1f" + String(mWifi[i].active) + "\x1f" +
+               mWifi[i].mqttSubTopic + "\x1e";
+  e.sTopics = config.domotique_prefix + "\x1f" + config.mqttConfigSubTopic + "\x1f" + config.mqttConfigMaitreSubTopic;
+  e.sMqtt = mqtt.reglagesConnexion() + "\x1e" + config.nomEquipement;
+  return e;
+}
+
+// Page de retour d'un enregistrement ou d'un redémarrage, retour à la page principale
+static String pageRetour(const String& sTitre, const String& sMessage, int iDelaiS) {
+  return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"" + String(iDelaiS) +
+         ";url=/\"><title>Sauvegarde</title><style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
+         "h1{color:#007BFF;font-size:40px;}p{font-size:22px;}</style></head><body><h1>" + sTitre + "</h1><p>" + sMessage +
+         "<br>Retour à la page principale dans " + String(iDelaiS) + " secondes.</p></body></html>";
+}
+
+// Bouton « Redémarrer » (3.0) : indépendant des modifications
+void MyWebServer::handleReboot() {
+  server.send(200, "text/html", pageRetour("Redémarrage", "Redémarrage du relais en cours...", 10));
+  delay(1000);
+  ESP.restart();
+}
+
 void MyWebServer::handleSave() {
+  EmpreintesReglages avant = empreintesReglages(config, mqtt, mWifi);
 
   // === PARAMÈTRES CLASSIQUES ===
   config.loadFromWebServer(server);
@@ -124,18 +162,22 @@ void MyWebServer::handleSave() {
   mqtt.saveToNVS();
 //  config.mRemoteProjecteur->saveToNVS();
 
-  // Page de confirmation
-  String html = F("<!DOCTYPE html>"
-  "<html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/\">"
-  "<title>Sauvegarde</title>"
-  "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
-  "h1{color:#007BFF;font-size:48px;}p{font-size:24px;}</style></head>"
-  "<body><h1>✓ Configuration sauvegardée !</h1>"
-  "<p>Redémarrage en cours...<br>Retour à la page principale dans 3 secondes.</p></body></html>");
-
-  server.send(200, "text/html", html);
-  delay(1000);
-  ESP.restart();
+  // 3.0 : redémarrage seulement si un réglage qui l'exige a changé ; sinon reconnexion MQTT ou rien (appliqué à chaud)
+  EmpreintesReglages apres = empreintesReglages(config, mqtt, mWifi);
+  String sRaison = (apres.sWifi != avant.sWifi) ? "Wi-Fi modifié" : (apres.sTopics != avant.sTopics) ? "topic modifié" : "";
+  if (sRaison.length() > 0) {
+    Serial.println("MyWebServer::handleSave() - Enregistré, redémarrage (" + sRaison + ")");
+    server.send(200, "text/html", pageRetour("✓ Configuration sauvegardée", "Redémarrage (" + sRaison + ")...", 10));
+    delay(1000);
+    ESP.restart();
+  }
+  String sMessage = "Enregistré, appliqué sans redémarrage";
+  if (apres.sMqtt != avant.sMqtt) {
+    sMessage = "Enregistré, reconnexion MQTT";
+    mqtt.reconnecteNouveauxReglages();
+  }
+  Serial.println("MyWebServer::handleSave() - " + sMessage);
+  server.send(200, "text/html", pageRetour("✓ Configuration sauvegardée", sMessage, 3));
 }
 
 
@@ -320,6 +362,7 @@ void MyWebServer::handleNotFound() {
 void MyWebServer::setup() {
   server.on("/", HTTP_GET, [this]() { handleRoot(); });
   server.on("/save", HTTP_POST, [this]() { handleSave(); });
+  server.on("/reboot", HTTP_POST, [this]() { handleReboot(); });
   server.on("/capteurs", HTTP_GET, [this]() { handleCapteurs(); });
   server.on("/capteurs_save", HTTP_POST, [this]() { handleCapteursSave(); });
   server.on("/logs",       HTTP_GET,  [this]() { handleLogs(); });

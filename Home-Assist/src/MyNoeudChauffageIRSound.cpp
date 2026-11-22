@@ -19,8 +19,10 @@ extern CMyDateTime mDateTime; // Heure dans les traces DBG_NOEUD
 // -1 : Equipement inactif
 // -2 : Séquence en cours
 // -3 : Pas de noeud ou pas de MQTT
+// -4 : Mode maintenance
 //----------------------------------------------------------------------------------
 int CNoeudChauffageIRSound::envoiOnOff() {
+  if (refuseEnMaintenance()) return -4;
   if (!active) {
     message(nomEquipement + ": inactif");
     return -1;
@@ -41,6 +43,11 @@ int CNoeudChauffageIRSound::envoiOnOff() {
 //----------------------------------------------------------------------------------
 void CNoeudChauffageIRSound::setEtatReelOnOff(bool state) {
   DBG(DBG_NOEUD, "[%s] %s : OnOff %d reçu (état affiché %s)\n", mDateTime.getTime().c_str(), nomEquipement.c_str(), state, etat ? "ON" : "OFF");
+  // Mode maintenance : le nœud ne publie pas son état ; un OnOff reçu (ancien firmware) ne change rien
+  if (maintenance) {
+    message(nomEquipement + ": OnOff ignore (maintenance)");
+    return;
+  }
   // Chauffage désactivé (procédure : OFF puis DISABLE) : un ON est un bip parasite du micro.
   // Il ne doit ni annuler la coupure programmée, ni changer l'état affiché.
   // Les OnOff 0 restent traités (fin d'une séquence d'arrêt lancée juste avant le DISABLE).
@@ -144,6 +151,7 @@ void CNoeudChauffageIRSound::appliqueEtat(bool state) {
 // -3 : Pas de noeud ou pas de MQTT
 //----------------------------------------------------------------------------------
 int CNoeudChauffageIRSound::demandeOff() {
+  if (refuseEnMaintenance()) return -4;
   if (!active) {
     message(nomEquipement + ": inactif");
     return -1;
@@ -208,6 +216,7 @@ void CNoeudChauffageIRSound::publieCommandeNoeud(const char* cmd) {
 // -3 : Pas de noeud ou pas de MQTT
 //----------------------------------------------------------------------------------
 int CNoeudChauffageIRSound::demandeOn() {
+  if (refuseEnMaintenance()) return -4;
   if (!active) {
     message(nomEquipement + ": inactif");
     return -1;
@@ -246,6 +255,13 @@ int CNoeudChauffageIRSound::demandeOn() {
 // vérifie l'état par le bip et réémet l'IR si besoin.
 //----------------------------------------------------------------------------------
 void CNoeudChauffageIRSound::loop() {
+  // Mode maintenance : séquences et coupures suspendues (voir loopMaintenanceChauffage())
+  if (maintenance) {
+    loopMaintenanceChauffage();
+    loopMaintenance();
+    mbNoeudPresent = noeudPresent();
+    return;
+  }
   bool bPresent = noeudPresent();
   bool bDisparition = mbNoeudPresent && !bPresent;
   bool bApparition = !mbNoeudPresent && bPresent;
@@ -437,6 +453,84 @@ void CNoeudChauffageIRSound::armeCoupureNonConfirmee() {
   mbOffConfirme = false;
   mulDebutCoupureDifferee = millis();
   DBG(DBG_NOEUD, "[%s] %s : coupure non confirmee programmee dans %lu min\n", mDateTime.getTime().c_str(), nomEquipement.c_str(), mulDelaiCoupureApresOff);
+}
+
+//----------------------------------------------------------------------------------
+// Mode maintenance (Home-Assist 4.4)
+//----------------------------------------------------------------------------------
+// Refusée chauffage en marche ou séquence en cours (comme la chaudière)
+String CNoeudChauffageIRSound::raisonRefusMaintenance() {
+  if (!active) return "chauffage SdB inactif";
+  if (mNoeud == nullptr) return "pas de noeud";
+  if (etat) return "chauffage SdB en marche";
+  if (mEtatSequence != SEQ_REPOS) return "sequence en cours (" + etapeSequence() + ")";
+  return "";
+}
+
+// Prise fermée sans séquence de marche : nœud présent, rien à faire ; absent, on l'observe d'abord pendant
+// mulDelaiVerification s (au démarrage du CYD, un nœud alimenté ne s'est pas encore manifesté : le code, qui bascule,
+// couperait sa prise), puis code et attente de son démarrage
+void CNoeudChauffageIRSound::entreMaintenance(bool /*bReprise*/) {
+  mbCoupureDiffereeArmee = false;
+  muiEnvoisMnt = 0;
+  mulDebutMnt = millis();
+  mEtapeMnt = noeudPresent() ? MNT_PRESENT : MNT_OBSERVATION;
+  message(nomEquipement + (noeudPresent() ? ": maintenance, noeud present" : ": maintenance, attente noeud"));
+}
+
+void CNoeudChauffageIRSound::loopMaintenanceChauffage() {
+  bool bPresent = noeudPresent();
+  switch (mEtapeMnt) {
+    case MNT_OBSERVATION:
+      if (bPresent) mEtapeMnt = MNT_PRESENT;
+      else if (millis() - mulDebutMnt >= mulDelaiVerification * 1000UL) {
+        muiEnvoisMnt = 1;
+        message(nomEquipement + ": maintenance, code " + String(muiEnvoisMnt) + "/" + String(muiNbEnvoisCode));
+        toggleDevice();
+        mulDebutMnt = millis();
+        mEtapeMnt = MNT_DEMARRAGE;
+      }
+      break;
+    case MNT_DEMARRAGE:
+      if (bPresent) mEtapeMnt = MNT_PRESENT;
+      else if (millis() - mulDebutMnt >= mulDelaiApparition * 1000UL) {
+        if (muiEnvoisMnt < muiNbEnvoisCode) {
+          muiEnvoisMnt++;
+          message(nomEquipement + ": maintenance, code " + String(muiEnvoisMnt) + "/" + String(muiNbEnvoisCode));
+          toggleDevice();
+          mulDebutMnt = millis();
+        }
+        else {
+          message(nomEquipement + ": maintenance, noeud absent");
+          mEtapeMnt = MNT_ABSENT;
+        }
+      }
+      break;
+    case MNT_ABSENT:
+      if (bPresent) mEtapeMnt = MNT_PRESENT;
+      break;
+    case MNT_PRESENT:
+      break;   // Nœud disparu (téléversement, redémarrage) : on attend son retour, prise fermée
+  }
+}
+
+String CNoeudChauffageIRSound::detailMaintenance() {
+  if (noeudPresent())
+    return mNoeud->mIP.length() > 0 ? "http://" + mNoeud->mIP + "/update" : String("nœud présent");
+  if (mEtapeMnt == MNT_OBSERVATION || mEtapeMnt == MNT_DEMARRAGE || mEtapeMnt == MNT_PRESENT) return "nœud en démarrage";
+  return "nœud absent";
+}
+
+// Sortie : coupure de la prise (logique habituelle : code seulement nœud présent, puis vérification de sa disparition)
+void CNoeudChauffageIRSound::sortMaintenance() {
+  appliqueEtat(false);
+  mbNoeudPresent = noeudPresent();
+  if (noeudPresent()) {
+    message(nomEquipement + ": fin maintenance, coupure prise");
+    muiEnvoisCode = 0;
+    coupeRelais();
+  }
+  else message(nomEquipement + ": fin maintenance, noeud absent");
 }
 
 bool CNoeudChauffageIRSound::noeudPresent() const {
@@ -888,7 +982,7 @@ String CNoeudChauffageIRSound::getHTML() {
   html = "<h2>Configuration de la chaudière</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=\"chaud_nom\" value=\"" + nomEquipement + "\"></div>"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=\"topic_prefix\" value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=\"topic_prefix\" value=\"" + mqttSubTopic + "\"></div>"
         "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=\"chaud_active\" value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"

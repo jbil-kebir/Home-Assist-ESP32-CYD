@@ -33,6 +33,7 @@ private:
   float lastHum = -1.0;     // Valeur invalide par défaut
 
 public:
+  String getBroches() const { return String(mucSdaPin) + "/" + String(mucSclPin); }   // Réglages à chaud (handleSave)
   MyDHT20(uint8_t sdaPin, uint8_t sclPin) : dht(&Wire), mucSdaPin(sdaPin), mucSclPin(sclPin) {}
 
   unsigned long mulIntervalleMesure = 10, mulDefaultIntervalleMesure = 10; // en minutes : Intervalle entre deux mesures. En secondes pour les tests

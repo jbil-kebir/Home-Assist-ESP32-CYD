@@ -228,6 +228,11 @@ void CMax4466::setEtatInconnu() {
 //
 bool CMax4466::publieSurMqtt(bool force/*=false*/) {
     if (onMqttPublish == nullptr) return false;
+    // Mode maintenance (Capteur 5.1) : rien publié (le CYD ne doit pas réagir aux bips d'essai) ; compté comme remonté
+    if (onEstEnMaintenance && onEstEnMaintenance()) {
+      Serial.println("CMax4466::publieSurMqtt() : mode maintenance, état non publié");
+      return true;
+    }
     String sDate = (mDateTime != nullptr) ? mDateTime->getDate() : "DATE";
     String sTime = (mDateTime != nullptr) ? mDateTime->getTime() : "TIME";
     String sVal = nomEquipement + " OnOff " + sDate + " " + sTime + " " + String(miLastVal);
@@ -327,10 +332,10 @@ String CMax4466::getHTML() {
   html =  "<h2>Configuration de " + nomEquipement + " (micro MAX4466)</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
-        "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Actif" MARQUE_REDEMARRAGE "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Pin</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
+        "<div><label>Pin" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
         "<div class=\"checkbox-row\"><label>Trace amplitude</label><input type=\"checkbox\" name=" + (mPrefixNVS+"trace") + " value=\"1\"" + String(mbTrace ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
@@ -351,7 +356,7 @@ String CMax4466::getHTML() {
         "<div><label>Intervalle forçage remontée (s)</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
   html += "<div class=\"row\">"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 
   return html;

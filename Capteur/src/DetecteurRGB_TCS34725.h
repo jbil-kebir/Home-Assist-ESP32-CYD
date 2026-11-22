@@ -113,6 +113,12 @@ public:
 
     void loadFromNVS();
     void loadFromWebServer (WebServer& server);
+    // Réglages à chaud (Capteur 5.3, MyWebServer::handleSave) : réglages qui demandent un redémarrage
+    String reglagesRedemarrage() const { return String(active) + "/" + String(mucSdaPin) + "/" + String(mucSclPin) + "/" +
+    #ifdef LED_CAPTEUR_RGB
+      String(mucLedCapteurRGBPin) + "/" +
+    #endif
+      mqttSubTopic; }
     void saveToNVS();
     void setActive(bool state);
     void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}

@@ -1,3 +1,58 @@
+4.7
+Correctifs groupés du 22/11/2026 :
+    - Mode maintenance SANS FIN AUTOMATIQUE : ordre retenu « ON » / « OFF » (heure après ON ignorée), état « ACTIVE,
+      <détail> », marque « mnton » en NVS pour la reprise (remplace l'heure de fin « mntfin ») ; MAINTENANCE_DUREE_MAX_S
+      retiré.
+    - Commande refusée en maintenance : état réel republié (ONR / OFFR, l'interrupteur de HA revient) et
+      « <nom> REFUSEE en maintenance » sur le topic d'état (notification de HA).
+    - Nouvelle commande ETATS (home/configuration/command) : états des appareils republiés ; envoyée par HA à son
+      démarrage (interrupteurs « unknown » après un redémarrage de HA, le bouton envoyait OFF).
+    - « MAINTENANCER ON|OFF » aux CYD auxiliaires seulement après la lecture de l'ordre retenu (au démarrage, un OFF
+      précédait le ON de la reprise).
+    - Commande MESURES (conception du 16/11) : après son démarrage, le CYD principal envoie « MESURES », retenu, à chaque
+      thermomètre actif (home/conf<nœud>/command), sauf si une commande y est déjà en attente (retenus lus pendant
+      MESURES_ATTENTE_RETENUS_MS) : capteurs KO jusqu'à 1 h après un redémarrage, sinon.
+
+4.6
+Réglages de la page Web appliqués à chaud (Doc/Pistes d'amélioration § 2.1) : « Sauvegarder » (au lieu de « Sauvegarder et
+    redémarrer ») compare, avant et après la lecture de la page, les réglages sensibles (MyWebServer::handleSave,
+    empreintesReglages) :
+    - redémarrage : Wi-Fi (réseau, mot de passe, profil actif), sous-topics et préfixes (topics calculés au démarrage
+      dans chaque objet), thermomètre local (activation, broches), orientation de l'écran ;
+    - reconnexion MQTT sans redémarrage (CMqtt::reconnecteNouveauxReglages, abonnements refaits) : broker, port,
+      identifiants, nom du CYD, nœuds de présence (topic de maintenance recalculé, CRCDevice::loadFromWebServer) ;
+    - sinon appliqué à chaud (codes RF, cases Actif / Vérification, délais, seuils, libellés…) : écran redessiné.
+    Page de retour : « Enregistré, appliqué sans redémarrage » / « …, reconnexion MQTT » / « Redémarrage (raison) » ;
+    même message dans la barre d'état. Nouveau bouton « Redémarrer » (/reboot, avec confirmation), indépendant des
+    modifications (22/11/2026)
+    Page Web : signe après le libellé des réglages qui ne s'appliquent pas à chaud, ↻ orange (redémarrage) ou ⇄ bleu
+    (reconnexion MQTT), bulle au survol, légende en haut et près de « Sauvegarder » (MARQUE_REDEMARRAGE, MARQUE_MQTT,
+    LEGENDE_MARQUES dans global.h, à tenir en accord avec empreintesReglages) ; sous-topic du Wi-Fi et du thermomètre
+    local ajoutés aux empreintes « redémarrage » (22/11/2026)
+
+4.5
+Mode maintenance de la guirlande : à la sortie, état réel vérifié par PING (CRemotePresenceReseauElectrique, vérification
+    seule) avant de remettre l'état d'avant, code envoyé seulement s'il diffère (CRCDevice::sortMaintenance / loop) ; en
+    4.4, l'état supposé (nœud cru absent après un testament « offline ») donnait « déjà éteint » et laissait la prise
+    fermée (essai du 22/11/2026) (22/11/2026)
+
+4.4
+Mode maintenance des appareils 433 MHz à nœud (étape 3 du mode maintenance ; CRCDevice, CYD principal) : ordre retenu
+    de Home Assistant « ON AAAA-MM-JJ HH:MM » (heure de fin, plafond 2 h) / « OFF » ; guirlande : topic du nœud de
+    présence (home/confprguirlande/maintenance) ; chauffage SdB : home/confnoeud/maintenance
+    (TOPIC_MAINTENANCE_CHAUFFAGE_SB, lu aussi par NoeudChauffageSdb, Capteur 5.1). En maintenance : commandes refusées
+    (écran, CYD auxiliaires, HA ; code -4), bouton gris « MAINT. » (CEquipementBase::maintenance, CMyBouton), annonce
+    « MAINTENANCER ON|OFF » aux auxiliaires (aussi dans remonteStatusParMqtt) ; état publié, retenu, sur <topic>/etat :
+    « ACTIVE jusqu'à HH:MM, http://<IP>/update » (IP du nœud d'après ses trames), « …, nœud en démarrage », « …, nœud
+    absent », « INACTIVE », « REFUSEE <raison> ». Heure de fin en NVS (<préfixe>mntfin, état d'avant <préfixe>mntav) :
+    reprise après un redémarrage du CYD.
+    - Guirlande : prise fermée (guirlande allumée) par la commande vérifiée par PrGuirlande (attendue tant que l'état réel
+      est inconnu au démarrage), sortie = état d'avant la maintenance remis ; refusée sans nœud de présence.
+    - Chauffage SdB : refusée chauffage en marche ou séquence en cours ; prise fermée sans séquence de marche : nœud
+      absent observé pendant le délai de vérification (au démarrage du CYD), puis code et attente de son démarrage
+      (renvois au plus sb_offnbcod, puis « nœud absent », plus de code) ; séquences, coupures différées et OnOff ignorés ;
+      sortie = coupure de la prise (code seulement nœud présent, puis vérification de sa disparition) (22/11/2026)
+
 4.3
 Mise à jour du firmware à distance (MyOta.h/.cpp, même module que Relais-Lora 2.9) :
     - PlatformIO par le réseau : profils cyd-principal-ota (192.168.1.94) et cyd-aux-ota (--upload-port <IP>) ;

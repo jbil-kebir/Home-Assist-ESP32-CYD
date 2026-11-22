@@ -25,6 +25,9 @@ public:
   String mIP;
   bool active = true;
   bool etat = false;
+  // Mode maintenance (Home-Assist 4.4) : appareil commandé par le nœud qu'on entretient ; commandes refusées, bouton
+  // grisé « MAINT. » (CMyBouton). Principal : CRCDevice ; auxiliaires : « MAINTENANCER ON|OFF » (CRemoteRCDevice)
+  bool maintenance = false;
 
   std::function<int(const String&, const String&)> onEquipement;    // Verifie et le cas échéant ajoute l'équipement
   void setonEquipementCallback(std::function<int(const String& nom, const String& ip)> onEqu); 

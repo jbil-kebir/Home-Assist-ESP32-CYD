@@ -176,18 +176,31 @@ static void demarreServeurOta() {
 //      Mode maintenance (Capteur 4.9, nœuds Wi-Fi ; voir global.h)
 //-------------------------------------------------------------------------------------------
 #if defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
-static time_t stFinMaintenance = 0;   // Heure de fin de la maintenance en cours (0 : pas en maintenance)
+static bool sbEnMaintenance = false;   // Maintenance en cours
 static String ssSortieMaintenance;    // Sortie demandée (raison) : faite par loop(), pas dans le callback MQTT
 
 static void publieEtatMaintenance(const String& sEtat) {
   Serial.println("Maintenance : " + sEtat);
+  #ifdef NOEUD_A_PRISE
+  // Nœud alimenté par une prise commandée (5.1, 5.2) : l'état est publié par le CYD principal, pas par le nœud
+  return;
+  #endif
   mqtt.publish(config.topic_maintenance_etat.c_str(), sEtat.c_str(), true);
 }
 
 // Sortie : état INACTIVE (remis au broker avant de couper : écho de powerDown()), puis redémarrage, qui rétablit le
-// sommeil normal ; le message retenu relu au redémarrage (OFF, ou ON à l'heure passée) est ignoré.
+// sommeil normal ; le message retenu relu au redémarrage (OFF) est ignoré.
 // Appelée par loop() seulement : powerDown() fait tourner le client MQTT, à éviter dans son propre callback.
 static void sortMaintenance(const String& sPourquoi) {
+  #ifdef NOEUD_A_PRISE
+  // Nœud alimenté par une prise commandée (5.1, 5.2) : pas de redémarrage (chauffage SdB : il vaudrait demande de
+  // marche ; présence : inutile) ; neutralisation levée, le CYD remet la prise comme il faut
+  Serial.println("Maintenance : fin (" + sPourquoi + "), fonctionnement normal rétabli");
+  sbEnMaintenance = false;
+  ssSortieMaintenance = "";
+  config.mbMaintenance = false;
+  return;
+  #endif
   Serial.println("Maintenance : fin (" + sPourquoi + "), redémarrage");
   publieEtatMaintenance("INACTIVE");
   mqtt.powerDown();
@@ -195,59 +208,27 @@ static void sortMaintenance(const String& sPourquoi) {
   ESP.restart();
 }
 
-// Message retenu de HA sur topic_maintenance : « ON AAAA-MM-JJ HH:MM » (heure de fin) ou « OFF »
+// Message retenu de HA sur topic_maintenance : « ON » ou « OFF » (5.4 : plus d'heure de fin, la maintenance dure
+// jusqu'à l'OFF demandé par l'utilisateur ; l'heure après « ON », envoyée par HA avant la 5.4, est ignorée)
 static void traiteMaintenance(const String& sMessage) {
   String s = sMessage; s.trim();
   String sMaj = s; sMaj.toUpperCase();
   if (sMaj.startsWith("OFF")) {
-    if (stFinMaintenance != 0) ssSortieMaintenance = "OFF reçu";
+    if (sbEnMaintenance) ssSortieMaintenance = "OFF reçu";
     return;
   }
   if (!sMaj.startsWith("ON")) {
     Serial.println("Maintenance : message ignoré : " + s);
     return;
   }
-  int iAn, iMois, iJour, iHeure, iMinute;
-  if (sscanf(s.c_str() + 2, "%d-%d-%d %d:%d", &iAn, &iMois, &iJour, &iHeure, &iMinute) != 5) {
-    publieEtatMaintenance("REFUSEE format attendu ON AAAA-MM-JJ HH:MM : " + s);
-    return;
-  }
-  // Heure NTP indispensable pour comparer (synchronisée au démarrage, avant la connexion MQTT)
-  if (!mDateTime.isTimeValid()) {
-    publieEtatMaintenance("REFUSEE heure du nœud non synchronisée");
-    return;
-  }
-  struct tm tmFin = {};
-  tmFin.tm_year = iAn - 1900; tmFin.tm_mon = iMois - 1; tmFin.tm_mday = iJour;
-  tmFin.tm_hour = iHeure; tmFin.tm_min = iMinute; tmFin.tm_isdst = -1;   // Heure locale (fuseau de configTzTime)
-  time_t tFin = mktime(&tmFin);
-  time_t tMaintenant = time(nullptr);
-  if (tFin <= tMaintenant) {
-    // Heure passée : fin pendant la maintenance (HA en retard d'un OFF), sinon ordre périmé (redémarrage de sortie,
-    // OFF de HA manqué) : état remis à INACTIVE au cas où il serait resté ACTIVE (coupure de courant…)
-    if (stFinMaintenance != 0) ssSortieMaintenance = "heure de fin passée";
-    else publieEtatMaintenance("INACTIVE");
-    return;
-  }
-  String sPlafond;
-  if (tFin - tMaintenant > (time_t)MAINTENANCE_DUREE_MAX_S) {
-    tFin = tMaintenant + MAINTENANCE_DUREE_MAX_S;
-    sPlafond = " (plafonnée à " + String(MAINTENANCE_DUREE_MAX_S / 60) + " min)";
-  }
-  stFinMaintenance = tFin;
+  sbEnMaintenance = true;
   config.mbMaintenance = true;
-  char sHeure[8];
-  struct tm tmLocal;
-  localtime_r(&tFin, &tmLocal);
-  strftime(sHeure, sizeof(sHeure), "%H:%M", &tmLocal);
-  publieEtatMaintenance("ACTIVE jusqu'à " + String(sHeure) + sPlafond + ", http://" + WiFi.localIP().toString() + "/update");
+  publieEtatMaintenance("ACTIVE, http://" + WiFi.localIP().toString() + "/update");
 }
 
-// Appelée par loop() : sortie demandée (OFF), ou à l'heure de fin, même sans OFF de HA
+// Appelée par loop() : sortie demandée (OFF)
 static void suitMaintenance() {
-  if (stFinMaintenance == 0) return;
-  if (ssSortieMaintenance.length() > 0) sortMaintenance(ssSortieMaintenance);
-  else if (time(nullptr) >= stFinMaintenance) sortMaintenance("heure de fin atteinte");
+  if (sbEnMaintenance && ssSortieMaintenance.length() > 0) sortMaintenance(ssSortieMaintenance);
 }
 #endif
 
@@ -260,31 +241,31 @@ static void suitMaintenance() {
 #include <Preferences.h>
 enum EtapeMaintenanceLora { MNT_AUCUNE, MNT_WIFI, MNT_NTP, MNT_ACTIVE };
 static EtapeMaintenanceLora seEtapeMnt = MNT_AUCUNE;
-static bool sbRepriseMnt = false;            // Reprise au démarrage (heure de fin trouvée en NVS), sinon entrée par commande
-static unsigned long sulDureeMntS = 0;       // Entrée par commande : durée demandée (plafonnée)
-static String ssPlafondMnt;                  // « (plafonnée à … min) » si la durée demandée dépassait le plafond
-static time_t stFinMnt = 0;                  // Heure de fin de la maintenance (gardée en NVS)
+static bool sbRepriseMnt = false;            // Reprise au démarrage (marque trouvée en NVS), sinon entrée par commande
 static unsigned long sulDebutEtapeMnt = 0;   // millis() du début de l'étape Wi-Fi ou NTP
 static unsigned long sulDernierePresenceMnt = 0;
 static String ssSortieMnt;                   // Sortie demandée (MAINTENANCE OFF) : faite par loop()
 static const char* NVS_MAINTENANCE = "maintenance";
 
-static void enregistreFinMnt(time_t t) {
+// 5.4 : marque « maintenance en cours » en NVS (gardée par un téléversement ou une coupure : reprise au démarrage) ;
+// plus d'heure de fin (« fin » des versions 5.0 à 5.3 : lue comme une marque, puis effacée)
+static void enregistreMarqueMnt(bool b) {
   Preferences p;
   p.begin(NVS_MAINTENANCE, false);
-  p.putULong64("fin", (uint64_t)t);
+  p.putBool("active", b);
+  p.remove("fin");
   p.end();
 }
 
-static time_t lisFinMnt() {
+static bool lisMarqueMnt() {
   Preferences p;
   p.begin(NVS_MAINTENANCE, true);
-  time_t t = (time_t)p.getULong64("fin", 0);
+  bool b = p.getBool("active", false) || p.getULong64("fin", 0) != 0;
   p.end();
-  return t;
+  return b;
 }
 
-static void effaceFinMnt() { if (lisFinMnt() != 0) enregistreFinMnt(0); }
+static void effaceMarqueMnt() { if (lisMarqueMnt()) enregistreMarqueMnt(false); }
 
 // État envoyé par LoRa, publié par le relais sur home/conf<x>/maintenance/etat
 static void annonceMnt(const String& sEtat) {
@@ -293,12 +274,7 @@ static void annonceMnt(const String& sEtat) {
 }
 
 static void annonceActiveMnt() {
-  char sHeure[8];
-  struct tm tmLocal;
-  localtime_r(&stFinMnt, &tmLocal);
-  strftime(sHeure, sizeof(sHeure), "%H:%M", &tmLocal);
-  annonceMnt("ACTIVE jusqu'à " + String(sHeure) + ssPlafondMnt + ", http://" + WiFi.localIP().toString() + "/update (Wi-Fi " +
-             String(WiFi.RSSI()) + " dBm)");
+  annonceMnt("ACTIVE, http://" + WiFi.localIP().toString() + "/update (Wi-Fi " + String(WiFi.RSSI()) + " dBm)");
 }
 
 // Wi-Fi de la maison, à l'adresse fixe du profil ; non bloquant
@@ -322,25 +298,29 @@ static void connecteWifiMaisonMnt() {
 // Échec de l'entrée (refus) ou de la reprise au démarrage (abandon) : raison annoncée, Wi-Fi coupé, sommeil normal
 static void echecMnt(const String& sRaison) {
   annonceMnt(sbRepriseMnt ? "INACTIVE abandon : " + sRaison : "REFUSEE " + sRaison);
-  effaceFinMnt();
+  effaceMarqueMnt();
   seEtapeMnt = MNT_AUCUNE;
   config.mbMaintenance = false;
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
 }
 
-// Sortie (MAINTENANCE OFF, heure de fin) : NVS effacée, INACTIVE émis (fin d'émission attendue), puis redémarrage
+// Sortie (MAINTENANCE OFF) : NVS effacée, INACTIVE émis (fin d'émission attendue), puis redémarrage
 static void sortieMnt(const String& sPourquoi) {
   Serial.println("Maintenance : fin (" + sPourquoi + "), redémarrage");
-  effaceFinMnt();
+  effaceMarqueMnt();
   annonceMnt("INACTIVE");
   unsigned long ulDebut = millis();
   while (mLoraRxTx.emissionEnCours() && millis() - ulDebut < 3000) delay(10);
+  // 5.4 : nouveau firmware validé avant de redémarrer. Une sortie moins de OTA_ANNONCE_OK_LORA_MS après le démarrage
+  // d'un firmware téléversé redémarrait avant sa validation : retour à l'ancien (ThCave, 22/11/2026 12:33)
+  if (!gOta.estConfirme() && mLoraRxTx.nbEmissions() > 0) gOta.confirme();
   delay(200);
   ESP.restart();
 }
 
-// Commande « MAINTENANCE <min> » / « MAINTENANCE OFF » (CConfig::handleMqttCommand, argument en majuscules)
+// Commande « MAINTENANCE ON » / « MAINTENANCE OFF » (CConfig::handleMqttCommand, argument en majuscules).
+// 5.4 : plus de durée, la maintenance dure jusqu'à MAINTENANCE OFF ; « MAINTENANCE <min> » (HA avant la 5.4) vaut ON.
 static void traiteMaintenanceLora(const String& sArgument) {
   String sArg = sArgument; sArg.trim();
   if (sArg == "OFF") {
@@ -350,38 +330,22 @@ static void traiteMaintenanceLora(const String& sArgument) {
   }
   bool bNombre = sArg.length() > 0;
   for (char c : sArg) if (!isdigit(c)) bNombre = false;
-  long lMinutes = bNombre ? sArg.toInt() : 0;
-  if (lMinutes <= 0) {
-    annonceMnt("REFUSEE durée attendue en minutes : MAINTENANCE <min> ou MAINTENANCE OFF (reçu : " + sArg + ")");
+  if (sArg != "ON" && !(bNombre && sArg.toInt() > 0)) {
+    annonceMnt("REFUSEE attendu : MAINTENANCE ON ou MAINTENANCE OFF (reçu : " + sArg + ")");
     return;
   }
-  unsigned long ulDureeS = (unsigned long)lMinutes * 60UL;
-  ssPlafondMnt = "";
-  if (ulDureeS > MAINTENANCE_DUREE_MAX_S) {
-    ulDureeS = MAINTENANCE_DUREE_MAX_S;
-    ssPlafondMnt = " (plafonnée à " + String(MAINTENANCE_DUREE_MAX_S / 60) + " min)";
-  }
-  if (seEtapeMnt == MNT_ACTIVE) {
-    // Déjà en maintenance : nouvelle durée comptée à partir de maintenant
-    stFinMnt = time(nullptr) + (time_t)ulDureeS;
-    enregistreFinMnt(stFinMnt);
-    annonceActiveMnt();
-    return;
-  }
+  if (seEtapeMnt == MNT_ACTIVE) { annonceActiveMnt(); return; }   // Déjà en maintenance : état rappelé
   if (seEtapeMnt != MNT_AUCUNE) return;   // Connexion déjà en cours (commande renvoyée par le relais)
   sbRepriseMnt = false;
-  sulDureeMntS = ulDureeS;
   config.mbMaintenance = true;            // Plus de deep sleep pendant la connexion
   connecteWifiMaisonMnt();
 }
 
-// Démarrage : heure de fin en NVS (maintenance en cours avant un téléversement ou une coupure) → reprise
+// Démarrage : marque en NVS (maintenance en cours avant un téléversement ou une coupure) → reprise
 static void repriseMaintenanceLora() {
-  stFinMnt = lisFinMnt();
-  if (stFinMnt == 0) return;
-  Serial.println("Maintenance : heure de fin trouvée en NVS, reprise");
+  if (!lisMarqueMnt()) return;
+  Serial.println("Maintenance : marque trouvée en NVS, reprise");
   sbRepriseMnt = true;
-  ssPlafondMnt = "";
   config.mbMaintenance = true;
   connecteWifiMaisonMnt();
 }
@@ -392,46 +356,19 @@ static void suitMaintenanceLora() {
   if (ssSortieMnt.length() > 0) { sortieMnt(ssSortieMnt); return; }
   if (seEtapeMnt == MNT_WIFI) {
     if (WiFi.status() == WL_CONNECTED) {
-      mDateTime.demarreNtp();
-      sulDebutEtapeMnt = millis();
-      seEtapeMnt = MNT_NTP;
-    }
-    else if (millis() - sulDebutEtapeMnt >= OTA_WIFI_ATTENTE_S * 1000UL)
-      echecMnt("Wi-Fi de la maison introuvable en " + String(OTA_WIFI_ATTENTE_S) + " s" + (sbRepriseMnt ? " au redémarrage" : ""));
-    return;
-  }
-  if (seEtapeMnt == MNT_NTP) {
-    if (mDateTime.isTimeValid()) {
-      time_t tMaintenant = time(nullptr);
-      if (sbRepriseMnt) {
-        if (stFinMnt <= tMaintenant) {
-          // Fin passée pendant le redémarrage (coupure...) : pas d'abandon, simple fin
-          effaceFinMnt();
-          annonceMnt("INACTIVE heure de fin passée au redémarrage");
-          seEtapeMnt = MNT_AUCUNE;
-          config.mbMaintenance = false;
-          WiFi.disconnect(true);
-          WiFi.mode(WIFI_OFF);
-          return;
-        }
-        if (stFinMnt - tMaintenant > (time_t)MAINTENANCE_DUREE_MAX_S) stFinMnt = tMaintenant + MAINTENANCE_DUREE_MAX_S;
-      }
-      else {
-        stFinMnt = tMaintenant + (time_t)sulDureeMntS;
-        enregistreFinMnt(stFinMnt);
-      }
+      // 5.4 : plus d'heure de fin, donc plus d'attente de l'heure NTP (étape MNT_NTP inutilisée)
+      if (!sbRepriseMnt) enregistreMarqueMnt(true);
       demarreServeurOta();
       seEtapeMnt = MNT_ACTIVE;
       sulDernierePresenceMnt = millis();
       annonceActiveMnt();
     }
-    else if (millis() - sulDebutEtapeMnt >= MAINTENANCE_NTP_ATTENTE_S * 1000UL)
-      echecMnt("heure NTP non obtenue en " + String(MAINTENANCE_NTP_ATTENTE_S) + " s" + (sbRepriseMnt ? " au redémarrage" : ""));
+    else if (millis() - sulDebutEtapeMnt >= OTA_WIFI_ATTENTE_S * 1000UL)
+      echecMnt("Wi-Fi de la maison introuvable en " + String(OTA_WIFI_ATTENTE_S) + " s" + (sbRepriseMnt ? " au redémarrage" : ""));
     return;
   }
   // MNT_ACTIVE
   if (spServeurOta != nullptr) spServeurOta->handleClient();
-  if (time(nullptr) >= stFinMnt) { sortieMnt("heure de fin atteinte"); return; }
   if (millis() - sulDernierePresenceMnt >= MAINTENANCE_PRESENCE_LORA_S * 1000UL && !mLoraRxTx.emissionEnCours()) {
     sulDernierePresenceMnt = millis();
     mLoraRxTx.sendPacket((config.topic_config_state + " " + config.nomEquipement + " EVEIL").c_str());
@@ -789,7 +726,7 @@ void setup() {
              [](const char* topic, const char* msg) { mLoraRxTx.sendPacket((String(topic) + " " + msg).c_str()); },
              []() { return String("DATE TIME"); }, false);
   config.onAvantDeepSleep = []() { if (mLoraRxTx.nbEmissions() > 0) gOta.confirme(); };
-  repriseMaintenanceLora();   // 5.0 : maintenance interrompue par un téléversement (heure de fin en NVS)
+  repriseMaintenanceLora();   // 5.0 : maintenance interrompue par un téléversement (5.4 : marque en NVS)
   #endif
 
   #ifdef _RCSWITCH_MODE_
@@ -886,8 +823,16 @@ void setup() {
   #endif // TEST_EMISSION_RCS
 
   #ifdef ACTIONNEUR_IR
-  // Le noeud n'est alimenté que lorsque le relais 433 MHz est fermé : la mise sous tension vaut demande ON
+  // Le noeud n'est alimenté que lorsque le relais 433 MHz est fermé : la mise sous tension vaut demande ON.
+  // 5.1 : envoyée par loop() une fois l'ordre de maintenance lu (écho MQTT), jamais avant (voir global.h)
+  #if defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
+  mActionneurIR.onEstEnMaintenance = []() { return config.mbMaintenance; };
+  #ifdef CAPTEUR_MICRO_MAX4466
+  mMicro.onEstEnMaintenance = []() { return config.mbMaintenance; };
+  #endif
+  #else
   mActionneurIR.demandeEtat(1);
+  #endif
   #endif
 
   // Chien de garde de loop() : redémarrage si un tour de boucle dure plus de LOOP_WDT_TIMEOUT_S secondes
@@ -1216,6 +1161,16 @@ void loop() {
   // Actionneur IR (attente du bip après émission, publication du résultat)
   //------------------------------------------------------------------------------------
   #ifdef ACTIONNEUR_IR
+  #if defined(_WIFI_MODE_) && !defined(__DESACTIVE_ENVOI_MQTT__)
+  // Demande de marche de la mise sous tension (5.1) : seulement après lecture des messages retenus (écho de connexion,
+  // ordre de maintenance compris) ; en maintenance, pas d'IR. MQTT injoignable : jamais (télécommande en secours).
+  static bool sbIrDemarrageTraite = false;
+  if (!sbIrDemarrageTraite && config.mbRetenusLus) {
+    sbIrDemarrageTraite = true;
+    if (config.mbMaintenance) Serial.println("[Main] Mode maintenance : pas d'IR de mise sous tension");
+    else mActionneurIR.demandeEtat(1);
+  }
+  #endif
   mActionneurIR.loop();
   #endif
 

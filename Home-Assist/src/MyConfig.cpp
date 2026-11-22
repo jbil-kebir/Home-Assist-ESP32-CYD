@@ -302,7 +302,7 @@ void CConfig::loadFromWebServer (WebServer& server) {
 String CConfig::getHTML() {
   String html = "<h1>Configuration " + nomEquipement + "</h1>";
       html += "<div class=\"row\">"
-        "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
+        "<div><label>Nom" MARQUE_MQTT "</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
         "<div class=\"checkbox-row\"><label>Deep Sleep</label><input type=\"checkbox\" name=" + (mPrefixNVS+"sleepA") + " value=\"1\"" + String(mbDeepSleepActive ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
@@ -310,8 +310,8 @@ String CConfig::getHTML() {
         "<div><label>Intervalle entre Sleep</label><input type=\"text\" name=" + (mPrefixNVS+"wakeI") + " value=\"" + mulWakeDuration + "\"></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Préfixe domotique</label><input type=\"text\" name=" + (mPrefixNVS+"dom_pre") + " value=\"" + domotique_prefix + "\"></div>"
-        "<div><label>Préfixe Configuration</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_pre") + " value=\"" + mqttConfigSubTopic + "\"></div>"
+        "<div><label>Préfixe domotique" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"dom_pre") + " value=\"" + domotique_prefix + "\"></div>"
+        "<div><label>Préfixe Configuration" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_pre") + " value=\"" + mqttConfigSubTopic + "\"></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Intervalle de remontée Watchdog Alive (s)</label><input type=\"text\" name=" + (mPrefixNVS+"wdog") + " value=\"" + mulWatchDogAlivePeriod + "\"></div>";
@@ -321,7 +321,7 @@ String CConfig::getHTML() {
     html += "</div>";
     #ifndef __LOCAL_MODE__
     html +=  "<div class=\"row\">"
-        "<div><label>Préfixe Configuration du Maître</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_mai") + " value=\"" + mqttConfigMaitreSubTopic + "\"></div>"
+        "<div><label>Préfixe Configuration du Maître" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"cfg_mai") + " value=\"" + mqttConfigMaitreSubTopic + "\"></div>"
       "</div>";
     #endif
   return html;

@@ -196,6 +196,10 @@ public:
   void setWifi(CWifi  *wifiInfo) {mWifi = wifiInfo;}
   void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}
   void loadFromWebServer (WebServer& server);
+  // Réglages à chaud (Capteur 5.3, MyWebServer::handleSave) : topics (calculés au démarrage) et puce configurée → redémarrage ;
+  // nom (testament, identifiant MQTT) → reconnexion MQTT
+  String reglagesRedemarrage() const { return domotique_prefix + "\x1f" + mqttSubTopic + "\x1f" + String(mbConfiguree); }
+  String reglagesConnexion() const { return nomEquipement; }
   void loadFromNVS();
   void saveToNVS();
   int parseSleepCommand(const String& msg);

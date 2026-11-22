@@ -1,3 +1,23 @@
+3.1
+Commande MESURES (envoyée retenue par le CYD principal après son démarrage, Home-Assist 4.7) : ne remplace pas une
+    commande déjà en attente (gardée de côté, mise en file quand celle-ci est retirée) ; message retenu effacé quand elle
+    est retirée (accusé, abandon, ANNULER), sinon reprise à chaque connexion MQTT du relais (22/11/2026)
+
+3.0
+Réglages de la page Web appliqués à chaud (comme Home-Assist 4.6 et Capteur 5.3) : « Sauvegarder » (au lieu de
+    « Sauvegarder et redémarrer ») compare avant / après la lecture de la page les réglages sensibles
+    (MyWebServer::handleSave, empreintesReglages) :
+    - redémarrage : Wi-Fi (réseau, mot de passe, profil actif, subtopic), préfixes domotique / configuration / maître
+      (topics calculés au démarrage) ;
+    - reconnexion MQTT sans redémarrage (CMqtt::reconnecteNouveauxReglages, abonnements refaits par loop()) : broker,
+      port, identifiants, MQTT actif, nom du relais (testament) ;
+    - sinon appliqué à chaud (sommeil, watchdog ALIVE…).
+    Page de retour : « Enregistré, appliqué sans redémarrage » / « …, reconnexion MQTT » / « Redémarrage (raison) ».
+    Nouveau bouton « Redémarrer » (/reboot, avec confirmation). Signe après le libellé des réglages non appliqués à
+    chaud : ↻ orange (redémarrage), ⇄ bleu (reconnexion MQTT), bulle au survol, légende (MARQUE_REDEMARRAGE,
+    MARQUE_MQTT, LEGENDE_MARQUES dans global.h). Champ « Préfixe (ex: home/) » (domo_prefix) retiré : jamais lu, doublon
+    du préfixe domotique de la configuration (22/11/2026)
+
 2.9
 Mise à jour du firmware à distance (MyOta.h/.cpp, module prévu aussi pour le CYD et les nœuds) :
     - PlatformIO par le réseau : profil seeed_xiao_esp32s3_ota (ArduinoOTA, espota, 192.168.1.107) ;

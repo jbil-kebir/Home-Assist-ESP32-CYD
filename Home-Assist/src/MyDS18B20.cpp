@@ -203,17 +203,17 @@ String MyDS18B20::getHTML() {
   html =  "<h2>Configuration du thermomètre " + nomEquipement + "</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
-        "<div><label>GPIO</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
+        "<div><label>GPIO" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Actif" MARQUE_REDEMARRAGE "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
         "<div><label>Intervalle forçage remontée</label><input type=\"text\" name=" + (mPrefixNVS+"force") + " value=\"" + mulIntervalleForcageRemonteeMesure + "\"></div>"
       "</div>";
   html += "<div class=\"row\">"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=\"th_subtopic\" value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=\"th_subtopic\" value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 
   return html;

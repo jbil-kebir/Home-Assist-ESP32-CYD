@@ -1,3 +1,50 @@
+5.4
+Correctifs groupés du 22/11/2026 :
+    - Mode maintenance SANS FIN AUTOMATIQUE (décision du 22/11) : ordre « ON » / « OFF » (Wi-Fi, retenu) et
+      « MAINTENANCE ON » / « MAINTENANCE OFF » (LoRa) ; plus d'heure de fin, de plafond (MAINTENANCE_DUREE_MAX_S retiré)
+      ni d'attente NTP ; « ON AAAA-MM-JJ HH:MM » et « MAINTENANCE <min> » des versions précédentes acceptés (heure, durée
+      ignorées) ; état « ACTIVE, http://<IP>/update » ; LoRa : marque « active » en NVS pour la reprise après un
+      téléversement (l'ancienne heure de fin vaut marque).
+    - LoRa : nouveau firmware validé (gOta.confirme) avant le redémarrage de sortie de maintenance : une sortie moins de
+      15 s après le démarrage d'un firmware téléversé le faisait revenir au précédent (ThCave, 22/11 12:33).
+    - Nouvelle commande MESURES (conception du 16/11) : dernière mesure de chaque capteur actif renvoyée, forcée, avec son
+      délai d'alerte ; envoyée retenue par le CYD principal après son démarrage (Home-Assist 4.7).
+
+5.3
+Réglages de la page Web appliqués à chaud (comme Home-Assist 4.6) : « Sauvegarder » (au lieu de « Sauvegarder et
+    redémarrer ») compare avant / après la lecture de la page les réglages sensibles (reglagesRedemarrage() de chaque
+    classe, MyWebServer::handleSave) :
+    - redémarrage : Wi-Fi (réseau, mot de passe, profil actif, puissance, IP fixe, passerelle, masque, DNS, mémorisation
+      du canal), préfixe domotique et sous-topics (topics calculés au démarrage), puce configurée, activation et broches
+      des capteurs (DS18B20, DHT20, TCS34725 et sa DEL, flotteur, batterie, jour / nuit, micro, IR, présence) ;
+    - reconnexion MQTT sans redémarrage (CMqtt::reconnecteNouveauxReglages) : broker, port, identifiants, nom ;
+    - sinon appliqué à chaud (sommeil, éveil, forçages, délais d'alerte, seuils, mute…), et trame CONFIG renvoyée (HA
+      voit les nouveaux réglages sans GET).
+    Page de retour : « Enregistré, appliqué sans redémarrage » / « …, reconnexion MQTT » / « Redémarrage (raison) ».
+    Nouveau bouton « Redémarrer » (/reboot, avec confirmation) (22/11/2026)
+    Page Web : signe après le libellé des réglages qui ne s'appliquent pas à chaud, ↻ orange (redémarrage) ou ⇄ bleu
+    (reconnexion MQTT), bulle au survol, légende en haut et près de « Sauvegarder » (MARQUE_REDEMARRAGE, MARQUE_MQTT,
+    LEGENDE_MARQUES dans global.h, à tenir en accord avec reglagesRedemarrage() / reglagesConnexion()) ; sous-topic du
+    Wi-Fi ajouté à CWifi::reglagesRedemarrage (22/11/2026)
+
+5.2
+Nœud de présence sur le réseau électrique (CAPTEUR_PRESENCE_RESEAU : PrGuirlande) traité comme NoeudChauffageSdb en mode
+    maintenance (NOEUD_A_PRISE, global.h) : rien publié sur .../maintenance/etat, pas de redémarrage à la sortie (le CYD
+    principal porte la maintenance) ; en 5.1, il publiait aussi l'état et redémarrait à l'heure de fin.
+Présence : « PRESENT » republié à chaque RECONNEXION MQTT (coupure Wi-Fi, keepalive de 5 s dépassé) : le testament
+    « offline » publié par le broker faisait croire l'appareil éteint au CYD jusqu'au prochain ALIVE (10 min) ; vu le
+    22/11/2026 sur PrGuirlande (Wi-Fi à -79 dBm) (22/11/2026)
+
+5.1
+Mode maintenance d'un nœud actionneur alimenté par une prise commandée (ACTIONNEUR_IR : NoeudChauffageSdb ; étape 3) :
+    le CYD principal porte la maintenance (Home-Assist 4.4 : il lit le même ordre retenu home/confnoeud/maintenance,
+    ferme puis coupe la prise, publie l'état). Le nœud n'envoie plus l'IR de mise sous tension dans setup() mais dans
+    loop(), une fois les messages retenus lus (écho de connexion) : jamais d'IR sans avoir lu l'ordre (MQTT injoignable :
+    pas de chauffage, télécommande en secours). En maintenance : aucune émission IR (CActionneurIR::demandeEtat refuse,
+    -8), état du micro non publié (CMax4466::publieSurMqtt) ; rien publié sur .../maintenance/etat ; à la sortie, pas de
+    redémarrage (il vaudrait demande de marche) : neutralisation levée, le CYD coupe la prise. ALIVE inchangé (présence
+    vue par le CYD) (22/11/2026)
+
 5.0
 Mode maintenance des nœuds LoRa (étape 2) : commande « MAINTENANCE <min> » / « MAINTENANCE OFF » par la file du relais ;
     la commande OTA (fenêtre de 10 min, OTA_FENETRE_S) et le point d'accès de secours « <nom>-MAJ » sont SUPPRIMÉS.

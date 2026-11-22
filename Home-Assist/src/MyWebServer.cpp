@@ -47,6 +47,8 @@ void MyWebServer::handleRoot() {
         ".checkbox-row { display: flex; align-items: center; gap: 10px; }"
         ".device { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; margin-bottom: 20px; }"
         ".timing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin: 15px 0; }"
+        ".mq-r { color: #fd7e14; cursor: help; } .mq-m { color: #007BFF; cursor: help; }"
+        ".legende { text-align: center; color: #555; margin: 10px 0; }"
       "</style>"
     "</head>"
     "<body>"
@@ -78,7 +80,8 @@ void MyWebServer::handleRoot() {
 
       "<hr style=\"margin: 40px 0;\">"
 
-      "<form action=\"/save\" method=\"POST\">";
+      "<form action=\"/save\" method=\"POST\">"
+      "<p class=\"legende\">" LEGENDE_MARQUES "</p>";
   html +=  config.getHTML();
 
   // === WiFi (2 colonnes) ===
@@ -166,7 +169,13 @@ void MyWebServer::handleRoot() {
 
   html +=  "</div>";
 
-  html +=  "<input type=\"submit\" value=\"Sauvegarder et redémarrer\">"
+  // 4.6 : enregistrement à chaud (redémarrage seulement si le Wi-Fi, un topic, une broche ou l'écran change) ;
+  // redémarrage à la demande par le second bouton
+  html +=  "<p class=\"legende\">" LEGENDE_MARQUES "</p>"
+    "<input type=\"submit\" value=\"Sauvegarder\">"
+    "</form>"
+    "<form method=\"post\" action=\"/reboot\" onsubmit=\"return confirm('Redémarrer le CYD ?');\">"
+    "<input type=\"submit\" value=\"Redémarrer\" style=\"background:#c0392b\">"
     "</form>"
   "</body>"
   "</html>";
@@ -174,7 +183,79 @@ void MyWebServer::handleRoot() {
   server.send(200, "text/html", html);
 }
 
+//----------------------------------------------------------------------------------
+// Réglages à chaud (Home-Assist 4.6) : empreintes des réglages qui demandent un redémarrage ou une reconnexion MQTT,
+// comparées avant / après la lecture de la page. Les autres valeurs sont appliquées dès leur lecture (codes RF, cases
+// Actif / Vérification, délais, seuils, libellés…). Dans le doute, un réglage va dans la catégorie redémarrage.
+//----------------------------------------------------------------------------------
+static std::vector<CEquipementBase*> equipementsPage(CConfig& config) {
+  std::vector<CEquipementBase*> v;
+  #ifdef __LOCAL_MODE__
+  v.insert(v.end(), {config.chaudiere, config.projecteur, config.guirlande, config.lumiereCave, config.chauffageRdc,
+                     config.chauffageSb});
+  #else
+  v.insert(v.end(), {config.mRemoteChaudiere, config.mRemoteProjecteur, config.mRemoteGuirlande, config.mRemoteLumiereCave,
+                     config.mRemoteChauffageRdc, config.mRemoteChauffage, config.mRemoteThMain});
+  #endif
+  v.insert(v.end(), {config.mRemoteThCh1er, config.mRemoteBatThCh1er, config.mRemoteThSdb, config.mRemoteCoulSdb,
+                     config.mRemoteBatSdb, config.mRemoteThCave, config.mRemoteTor, config.mRemoteBatCave,
+                     config.mRemoteJnCave, config.mRemoteThNomade, config.mRemoteTorNomade, config.mRemoteBatNomade,
+                     config.mRemoteTorChauffageSb, config.mRemoteThRemise, config.mRemoteBatRemise, config.mRemoteThChRdc,
+                     config.mRemoteBatChRdc, config.mRemoteNewNas, config.mRemoteBigNas});
+  return v;
+}
+
+// Redémarrage : Wi-Fi, sous-topics et préfixes (topics calculés au démarrage), broches et activation du thermomètre local,
+// écran. Renvoie la raison du 1er écart ("" : aucun)
+struct EmpreintesReglages { String sWifi, sTopics, sMateriel, sEcran, sMqtt; };
+
+static EmpreintesReglages empreintesReglages(CConfig& config, CEcran& ecran, CMqtt& mqtt, CWifi* mWifi) {
+  EmpreintesReglages e;
+  for (int i = 0; i < MAX_WIFI_NETS; i++)
+    e.sWifi += mWifi[i].wifi_ssid + "\x1f" + mWifi[i].wifi_password + "\x1f" + String(mWifi[i].active) + "\x1f" +
+               mWifi[i].mqttSubTopic + "\x1e";
+  e.sTopics = config.domotique_prefix + "\x1f" + config.mqttConfigSubTopic + "\x1f" + config.mqttConfigMaitreSubTopic + "\x1e";
+  for (CEquipementBase* q : equipementsPage(config)) if (q != nullptr) e.sTopics += q->mqttSubTopic + "\x1f";
+  #ifdef __LOCAL_MODE__
+  #ifdef __LOCAL_DS18B20__
+  if (config.ds18b20 != nullptr) e.sMateriel = String(config.ds18b20->active) + "/" + String(config.ds18b20->getPin()) +
+                                               "/" + config.ds18b20->mqttSubTopic;
+  #elif defined(__LOCAL_DHT20__)
+  if (config.dht20 != nullptr) e.sMateriel = String(config.dht20->active) + "/" + config.dht20->getBroches() +
+                                             "/" + config.dht20->mqttSubTopic;
+  #endif
+  #endif
+  #ifdef __CYD__
+  e.sEcran = String(ecran.mucOrientationEcran);
+  #endif
+  // Reconnexion MQTT : broker, identifiants, nom du CYD (testament), nœuds de présence (abonnements)
+  e.sMqtt = mqtt.mqtt_server + "\x1f" + String(mqtt.mqtt_port) + "\x1f" + mqtt.mqtt_user + "\x1f" + mqtt.mqtt_password +
+            "\x1f" + config.nomEquipement + "\x1e";
+  #ifdef __LOCAL_MODE__
+  CRCDevice* appareils[] = {config.projecteur, config.guirlande, config.lumiereCave, config.chauffageRdc};
+  for (CRCDevice* a : appareils)
+    if (a != nullptr) e.sMqtt += a->mPresence.nomEquipement + "/" + String(a->mPresence.estConfiguree()) + "\x1f";
+  #endif
+  return e;
+}
+
+// Page de retour d'un enregistrement ou d'un redémarrage, retour à la page principale
+static String pageRetour(const String& sTitre, const String& sMessage, int iDelaiS) {
+  return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"" + String(iDelaiS) +
+         ";url=/\"><title>Sauvegarde</title><style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
+         "h1{color:#007BFF;font-size:40px;}p{font-size:22px;}</style></head><body><h1>" + sTitre + "</h1><p>" + sMessage +
+         "<br>Retour à la page principale dans " + String(iDelaiS) + " secondes.</p></body></html>";
+}
+
+// Bouton « Redémarrer » (4.6) : indépendant des modifications
+void MyWebServer::handleReboot() {
+  server.send(200, "text/html", pageRetour("Redémarrage", "Redémarrage du CYD en cours...", 10));
+  delay(1000);
+  ESP.restart();
+}
+
 void MyWebServer::handleSave() {
+  EmpreintesReglages avant = empreintesReglages(config, ecran, mqtt, mWifi);
 
   // === PARAMÈTRES CLASSIQUES ===
   config.loadFromWebServer(server);
@@ -312,18 +393,29 @@ void MyWebServer::handleSave() {
   config.mRemoteNewNas->saveToNVS();
   config.mRemoteBigNas->saveToNVS();
 
-  // Page de confirmation
-  String html = F("<!DOCTYPE html>"
-  "<html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"3;url=/\">"
-  "<title>Sauvegarde</title>"
-  "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
-  "h1{color:#007BFF;font-size:48px;}p{font-size:24px;}</style></head>"
-  "<body><h1>✓ Configuration sauvegardée !</h1>"
-  "<p>Redémarrage en cours...<br>Retour à la page principale dans 3 secondes.</p></body></html>");
-
-  server.send(200, "text/html", html);
-  delay(1000);
-  ESP.restart();
+  // 4.6 : redémarrage seulement si un réglage qui l'exige a changé ; sinon reconnexion MQTT ou rien (appliqué à chaud)
+  EmpreintesReglages apres = empreintesReglages(config, ecran, mqtt, mWifi);
+  String sRaison = (apres.sWifi != avant.sWifi) ? "Wi-Fi modifié"
+                 : (apres.sTopics != avant.sTopics) ? "topic modifié"
+                 : (apres.sMateriel != avant.sMateriel) ? "thermomètre local modifié"
+                 : (apres.sEcran != avant.sEcran) ? "écran modifié" : "";
+  if (sRaison.length() > 0) {
+    DBGLN(DBG_CONFIG, "MyWebServer::handleSave() - Enregistré, redémarrage (" + sRaison + ")");
+    server.send(200, "text/html", pageRetour("✓ Configuration sauvegardée", "Redémarrage (" + sRaison + ")...", 10));
+    delay(1000);
+    ESP.restart();
+  }
+  String sMessage = "Enregistré, appliqué sans redémarrage";
+  if (apres.sMqtt != avant.sMqtt) {
+    sMessage = "Enregistré, reconnexion MQTT";
+    mqtt.reconnecteNouveauxReglages();
+  }
+  DBGLN(DBG_CONFIG, "MyWebServer::handleSave() - " + sMessage);
+  #ifdef __CYD__
+  // Barre d'état : sans accents (police de l'écran)
+  ecran.updateStatus(apres.sMqtt != avant.sMqtt ? "Enregistre, reconnexion MQTT" : "Enregistre, sans redemarrage", true);
+  #endif
+  server.send(200, "text/html", pageRetour("✓ Configuration sauvegardée", sMessage, 3));
 }
 
 void MyWebServer::handleToggleP() {
@@ -856,6 +948,7 @@ void MyWebServer::handleNotFound() {
 void MyWebServer::setup() {
   server.on("/", HTTP_GET, [this]() { handleRoot(); });
   server.on("/save", HTTP_POST, [this]() { handleSave(); });
+  server.on("/reboot", HTTP_POST, [this]() { handleReboot(); });
   server.on("/force_on", HTTP_POST, [this]() { handleForceOn(); });
   server.on("/force_off", HTTP_POST, [this]() { handleForceOff(); });
   server.on("/toggle_p", HTTP_POST, [this]() { handleToggleP(); });

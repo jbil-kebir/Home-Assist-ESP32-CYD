@@ -64,6 +64,34 @@ public:
   virtual int envoiOnOff();
   int commande(bool voulu);       // État voulu (ON / OFF) : code envoyé seulement si l'état mesuré diffère
   int activeEquipement();
+
+  //------------------------------------------------------------------------------
+  // Mode maintenance (Home-Assist 4.4) : le nœud de l'appareil (PrGuirlande, NoeudChauffageSdb) est entretenu
+  // (téléversement, page Web) ; le CYD alimente sa prise, suspend la logique de l'appareil, refuse ses commandes,
+  // publie l'état ; à la fin (heure de fin ou OFF), remet l'appareil comme il faut (sortMaintenance()).
+  //------------------------------------------------------------------------------
+  std::function<int(const char*, const char*, bool)> onMqttPublishRetenu = nullptr;
+  String msTopicMaintenance;       // Ordre de HA (vide : pas de maintenance)
+  String msTopicMaintenanceEtat;   // État publié par le CYD (msTopicMaintenance + "/etat")
+  void setTopicMaintenance(const String& topic);
+  void handleMaintenance(const String& payload);
+  bool refuseEnMaintenance();      // Commande refusée (message) si l'appareil est en maintenance
+  void publieMaintenanceAux();     // « MAINTENANCER ON|OFF » pour les CYD auxiliaires
+
+protected:
+  int commandeDirecte(bool voulu); // commande() sans le contrôle de la maintenance
+  bool mbOrdreMaintenanceLu = false;          // 4.7 : ordre retenu déjà lu (annonce aux CYD aux seulement après)
+  bool mbEtatAvantMaintenance = false;
+  bool mbEntreeMaintenanceEnAttente = false;  // Guirlande : état réel pas encore connu (démarrage du CYD)
+  bool mbSortieMaintenanceEnAttente = false;  // Guirlande : état réel vérifié (PING) avant de remettre l'état d'avant
+  String msEtatMaintenancePublie;
+  void loopMaintenance();
+  void publieEtatMaintenance(const String& sEtat);
+  void quitteMaintenance(const String& sRaison);
+  virtual String raisonRefusMaintenance();   // "" : maintenance possible
+  virtual void entreMaintenance(bool bReprise);
+  virtual void sortMaintenance();
+  virtual String detailMaintenance();
 };
 
 #endif

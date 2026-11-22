@@ -36,6 +36,15 @@ void CMyBouton::draw() {
         return;
     }
 
+    // Mode maintenance (Home-Assist 4.4) : bouton gris foncé « MAINT. », commandes refusées
+    if (mDevice->maintenance) {
+        mTft.fillRoundRect(muiPosX, muiPosY, muiWidth, muiHight, 8, TFT_DARKGREY);
+        mTft.drawRoundRect(muiPosX, muiPosY, muiWidth, muiHight, 8, TFT_WHITE);
+        mTft.setTextColor(TFT_WHITE);
+        mTft.drawCentreString(msNom, muiPosX + muiWidth/2, muiPosY + muiHight/2 - 14, 2);
+        mTft.drawCentreString("MAINT.", muiPosX + muiWidth/2, muiPosY + muiHight/2 + 2, 2);
+        return;
+    }
     setActif(mDevice->active);
     setOnOff(mDevice->etat);
     if (mfEtatMesure && mbActif) {

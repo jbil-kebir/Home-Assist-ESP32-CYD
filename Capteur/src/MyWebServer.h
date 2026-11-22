@@ -22,6 +22,7 @@ private:
 
   void handleRoot();
   void handleSave();
+  void handleReboot();   // Bouton « Redémarrer » de la page (Capteur 5.3)
   void handleNotFound();
   void handleLogs();      // Journal (voir MyJournal.h)
   void handleLogsData();

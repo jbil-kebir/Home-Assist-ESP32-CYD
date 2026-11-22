@@ -30,6 +30,9 @@ public:
   void setup(const String pref);
   void begin(String serv="", uint16_t uiport=0, String user="", String passwd="");
   void reconnect();
+  // 3.0 : réglages de connexion (comparés avant / après la page Web) ; nouvelle connexion avec les réglages lus
+  String reglagesConnexion() const { return mqtt_server + "\x1f" + String(mqtt_port) + "\x1f" + mqtt_user + "\x1f" + mqtt_password + "\x1f" + String(active); }
+  void reconnecteNouveauxReglages();
   void loop();
   int publish(const char* topic, const char* payload);
   int publish(const char* topic, const char* payload, bool retained);

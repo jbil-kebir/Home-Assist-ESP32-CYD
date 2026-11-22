@@ -38,6 +38,14 @@ public:
   String getHTML();
   void verifieParametres(); // Bornes des délais (dépend du watchdog du noeud : appeler une fois mNoeud chargé)
 
+protected:
+  // Mode maintenance (Home-Assist 4.4, voir CRCDevice) : prise fermée sans séquence de marche (le nœud, en maintenance,
+  // n'émet pas d'IR), logique du chauffage suspendue ; sortie : coupure de la prise
+  String raisonRefusMaintenance() override;
+  void entreMaintenance(bool bReprise) override;
+  void sortMaintenance() override;
+  String detailMaintenance() override;
+
 private:
   enum EtatSequence {
     SEQ_REPOS,
@@ -70,6 +78,13 @@ private:
   void fermeRelais();
   String etapeSequence() const;
   void message(const String& s);
+  // Mode maintenance : nœud observé (absent : prise peut-être fermée, le nœud se manifeste dans son watchdog), puis
+  // code envoyé et démarrage attendu (renvois au plus muiNbEnvoisCode), présent, ou absent (plus de code envoyé)
+  enum EtapeMaintenance { MNT_OBSERVATION, MNT_DEMARRAGE, MNT_PRESENT, MNT_ABSENT };
+  EtapeMaintenance mEtapeMnt = MNT_OBSERVATION;
+  unsigned long mulDebutMnt = 0;
+  unsigned int muiEnvoisMnt = 0;
+  void loopMaintenanceChauffage();
 public:
   /*CNoeudChauffageIRSound() = default;
   CNoeudChauffageIRSound(const String& nomEqu, CEcran& ecran,

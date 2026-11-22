@@ -12,10 +12,19 @@ void CRCDevice::setup(const String pref) {
   // Nœud de présence : clés NVS <préfixe>p... (ex. guir_pnoeud)
   mPresence.setup(pref + "p");
   branchePresence();
+  // Mode maintenance : topic du nœud de présence (home/conf<nœud>/state → home/conf<nœud>/maintenance)
+  if (mPresence.estConfiguree() && mPresence.mqttSubTopicState.endsWith("state"))
+    setTopicMaintenance(mPresence.mqttSubTopicState.substring(0, mPresence.mqttSubTopicState.length() - 5) + "maintenance");
 }
 
 void CRCDevice::loop() {
   mPresence.loop();
+  loopMaintenance();
+  // Sortie de maintenance (4.5) : état réel vérifié, état d'avant remis (code seulement s'il diffère)
+  if (mbSortieMaintenanceEnAttente && !mPresence.verificationEnCours()) {
+    mbSortieMaintenanceEnAttente = false;
+    commandeDirecte(mbEtatAvantMaintenance);
+  }
 }
 
 // Réactions de l'appareil aux conclusions du nœud de présence (messages de la barre d'état : courts, sans accents)
@@ -171,8 +180,14 @@ int CRCDevice::envoiOnOff() {
 // 0 : RAS
 // -1 : Equipement inactif
 // -2 : Vérification en cours, commande ignorée
+// -4 : Mode maintenance, commande refusée
 //----------------------------------------------------------------------------------
 int CRCDevice::commande(bool voulu) {
+  if (refuseEnMaintenance()) return -4;
+  return commandeDirecte(voulu);
+}
+
+int CRCDevice::commandeDirecte(bool voulu) {
   int ret = 0;
   if (!active) {
     String s = "L'equipement " + nomEquipement + " n'est pas actif";
@@ -230,6 +245,9 @@ void CRCDevice::handleMqttCommand(const String& payload) {
     // Sans nœud de présence, ON comme OFF basculent l'appareil (fonctionnement historique, voir commande())
     commande(cmd == "ON");
  }
+ else if (cmd.startsWith("MAINTENANCER")) {
+    // Notre propre annonce aux CYD auxiliaires (publieMaintenanceAux()), reçue sur le topic de commande : rien à faire
+  }
  else if (cmd == "ENABLE") {
     setActive(true);
     onMqttPublish(this->mqttSubTopicCommand.c_str(), "ENABLER");
@@ -258,6 +276,7 @@ int CRCDevice::remonteStatusParMqtt() {
   DBG(DBG_ACTIONNEURS, "CRCDevice::remonteStatusParMqtt() - Envoi %s sur %s\n", this->etat ? "ONR" : "OFFR", this->mqttSubTopicCommand.c_str());
   onMqttPublish(this->mqttSubTopicCommand.c_str(), this->etat ? "ONR" : "OFFR");
   delay(200);
+  publieMaintenanceAux();
   return ret;
 } 
 
@@ -271,6 +290,9 @@ void CRCDevice::loadFromWebServer (WebServer& server) {
 
   CEquipementBase::loadFromWebServer (server);
   mPresence.loadFromWebServer(server);
+  // Réglages à chaud (4.6) : nœud de présence changé → topic de maintenance recalculé (abonné à la reconnexion MQTT)
+  if (mPresence.estConfiguree() && mPresence.mqttSubTopicState.endsWith("state"))
+    setTopicMaintenance(mPresence.mqttSubTopicState.substring(0, mPresence.mqttSubTopicState.length() - 5) + "maintenance");
 
 }
 
@@ -281,7 +303,7 @@ String CRCDevice::getHTML() {
           "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active").c_str() + " value=\"1\"" + String(active ? " checked" : "") + "></div></div>"
           "<div class=\"row\">"
             "<div><label>Nom bouton</label><input type=\"text\" name=" + (mPrefixNVS+"name").c_str() + " value=\"" + buttonName + "\"></div>"
-            "<div><label>MQTT subtopic</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
+            "<div><label>MQTT subtopic" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
           "</div>"
           "<div class=\"row\">"
             "<div><label>Code (hex)</label><input type=\"text\" name=" + (mPrefixNVS+"code").c_str() + " value=\"" + String(code, HEX) + "\"></div>"
@@ -296,4 +318,147 @@ String CRCDevice::getHTML() {
   html += "</div>";
 
   return html;
+}
+
+//==================================================================================
+//      Mode maintenance (Home-Assist 4.4)
+//==================================================================================
+void CRCDevice::setTopicMaintenance(const String& topic) {
+  msTopicMaintenance = topic;
+  msTopicMaintenanceEtat = topic.length() > 0 ? topic + "/etat" : "";
+}
+
+// Commande refusée pendant la maintenance (écran, CYD auxiliaires, Home Assistant)
+// 4.7 : état réel republié (ONR / OFFR : l'interrupteur de HA, qui avait basculé, revient) et refus annoncé sur le
+// topic d'état (« <nom> REFUSEE en maintenance » : notification de HA)
+bool CRCDevice::refuseEnMaintenance() {
+  if (!maintenance) return false;
+  String s = buttonName + " : en maintenance";
+  if (mEcran != nullptr) mEcran->updateStatus(s);
+  DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + s + ", commande refusee");
+  if (onMqttPublish != nullptr) {
+    onMqttPublish(mqttSubTopicCommand.c_str(), etat ? "ONR" : "OFFR");
+    onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + " REFUSEE en maintenance").c_str());
+  }
+  return true;
+}
+
+// 4.7 : rien avant la lecture de l'ordre retenu (au démarrage, un « MAINTENANCER OFF » précédait le « ON » de la reprise)
+void CRCDevice::publieMaintenanceAux() {
+  if (!mbOrdreMaintenanceLu) return;
+  if (msTopicMaintenance.length() == 0 || onMqttPublish == nullptr) return;
+  onMqttPublish(mqttSubTopicCommand.c_str(), maintenance ? "MAINTENANCER ON" : "MAINTENANCER OFF");
+}
+
+void CRCDevice::publieEtatMaintenance(const String& sEtat) {
+  msEtatMaintenancePublie = sEtat;
+  DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + nomEquipement + " maintenance : " + sEtat);
+  if (onMqttPublishRetenu != nullptr && msTopicMaintenanceEtat.length() > 0)
+    onMqttPublishRetenu(msTopicMaintenanceEtat.c_str(), sEtat.c_str(), true);
+}
+
+//----------------------------------------------------------------------------------
+// Ordre retenu de Home Assistant : « ON » ou « OFF » (4.7 : plus d'heure de fin, la maintenance dure jusqu'à l'OFF
+// demandé par l'utilisateur ; une heure après « ON », envoyée par HA avant la 4.7, est ignorée).
+// Relu à chaque connexion MQTT (redémarrage du CYD : reprise, marque « mnton » en NVS).
+//----------------------------------------------------------------------------------
+void CRCDevice::handleMaintenance(const String& payload) {
+  String s = payload; s.trim();
+  String sMaj = s; sMaj.toUpperCase();
+  bool bPremiereLecture = !mbOrdreMaintenanceLu;
+  mbOrdreMaintenanceLu = true;
+  if (sMaj.startsWith("OFF") || sMaj.length() == 0) {
+    if (maintenance) quitteMaintenance("OFF recu");
+    else {
+      if (msEtatMaintenancePublie.length() > 0 && !msEtatMaintenancePublie.startsWith("INACTIVE")) publieEtatMaintenance("INACTIVE");
+      if (bPremiereLecture) publieMaintenanceAux();
+    }
+    return;
+  }
+  if (!sMaj.startsWith("ON")) return;
+  if (maintenance) return;   // Ordre relu (reconnexion MQTT)
+  String sRefus = raisonRefusMaintenance();
+  if (sRefus.length() > 0) {
+    publieEtatMaintenance("REFUSEE " + sRefus);
+    return;
+  }
+  // Reprise (CYD redémarré pendant la maintenance) : marque « mnton » restée en NVS, état d'avant gardé
+  prefs.begin(nvs_namespace, false);
+  bool bReprise = prefs.getBool((mPrefixNVS + "mnton").c_str(), false);
+  if (!bReprise) {
+    prefs.putBool((mPrefixNVS + "mnton").c_str(), true);
+    prefs.putBool((mPrefixNVS + "mntav").c_str(), etat);
+  }
+  mbEtatAvantMaintenance = prefs.getBool((mPrefixNVS + "mntav").c_str(), etat);
+  prefs.remove((mPrefixNVS + "mntfin").c_str());   // Heure de fin des versions 4.4 à 4.6
+  prefs.end();
+  maintenance = true;
+  msEtatMaintenancePublie = "";
+  entreMaintenance(bReprise);
+  publieMaintenanceAux();
+  if (mEcran != nullptr) { mEcran->updateAllStates(); mEcran->updateStatus(buttonName + " : maintenance"); }
+}
+
+void CRCDevice::quitteMaintenance(const String& sRaison) {
+  DBGLN(DBG_ACTIONNEURS, "CRCDevice - " + nomEquipement + " : fin de maintenance (" + sRaison + ")");
+  maintenance = false;
+  mbEntreeMaintenanceEnAttente = false;
+  prefs.begin(nvs_namespace, false);
+  prefs.remove((mPrefixNVS + "mnton").c_str());
+  prefs.remove((mPrefixNVS + "mntfin").c_str());
+  prefs.end();
+  sortMaintenance();
+  publieEtatMaintenance("INACTIVE");
+  publieMaintenanceAux();
+  if (mEcran != nullptr) { mEcran->updateAllStates(); mEcran->updateStatus(buttonName + " : fin maintenance"); }
+}
+
+// Appelée par loop() : entrée différée, état publié (« ACTIVE, <détail> » quand il change ; 4.7 : plus d'heure de fin)
+void CRCDevice::loopMaintenance() {
+  if (!maintenance) return;
+  if (mbEntreeMaintenanceEnAttente && !mPresence.verificationEnCours() && mPresence.getEtat() != PRESENCE_INCONNUE) {
+    mbEntreeMaintenanceEnAttente = false;
+    if (mPresence.getEtat() != PRESENCE_PRESENT) commandeDirecte(true);
+  }
+  String sEtat = "ACTIVE, " + detailMaintenance();
+  if (sEtat != msEtatMaintenancePublie) publieEtatMaintenance(sEtat);
+}
+
+// Appareil à nœud de présence (guirlande) : pas de maintenance sans nœud associé
+String CRCDevice::raisonRefusMaintenance() {
+  if (!active) return "appareil inactif";
+  if (!mPresence.estConfiguree()) return "pas de noeud de presence associe";
+  return "";
+}
+
+// Guirlande : prise fermée (guirlande allumée) ; état réel inconnu (démarrage du CYD) : attendu avant d'envoyer le code
+void CRCDevice::entreMaintenance(bool /*bReprise*/) {
+  if (mPresence.verificationEnCours() || mPresence.getEtat() == PRESENCE_INCONNUE) {
+    mbEntreeMaintenanceEnAttente = true;
+    return;
+  }
+  if (mPresence.getEtat() != PRESENCE_PRESENT) commandeDirecte(true);
+}
+
+// Guirlande : remise dans l'état d'avant la maintenance. 4.5 : l'état supposé n'est pas fiable (nœud téléversé,
+// redémarré, testament « offline » d'une coupure Wi-Fi) : vérification par PING d'abord, puis code seulement s'il le
+// faut (voir loop()) ; sans quoi « déjà éteint » laissait la prise fermée (essai du 22/11/2026)
+void CRCDevice::sortMaintenance() {
+  if (!mPresence.estConfiguree()) {
+    commandeDirecte(mbEtatAvantMaintenance);
+    return;
+  }
+  mbSortieMaintenanceEnAttente = true;
+  if (!mPresence.verificationEnCours()) {
+    mPresence.demandeEtat(PRESENCE_VERIF_SANS_COMMANDE);
+    if (onMqttPublish != nullptr)
+      onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + " VERIFICATION EN_COURS").c_str());
+  }
+}
+
+String CRCDevice::detailMaintenance() {
+  if (mPresence.getEtat() == PRESENCE_PRESENT)
+    return mPresence.mIP.length() > 0 ? "http://" + mPresence.mIP + "/update" : String("nœud présent");
+  if (mbEntreeMaintenanceEnAttente || mPresence.verificationEnCours()) return "nœud en démarrage";
+  return "nœud absent";
 }

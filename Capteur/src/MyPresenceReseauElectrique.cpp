@@ -105,7 +105,7 @@ String CPresenceReseauElectrique::getHTML() {
       "<h2>Configuration de " + nomEquipement + " (présence sur le réseau électrique)</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
-        "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Actif" MARQUE_REDEMARRAGE "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Annonce de démarrage</label><input type=\"text\" value=\"" + String(mbAnnonceEnvoyee ? "publiée" : "en attente") + "\" disabled></div>"

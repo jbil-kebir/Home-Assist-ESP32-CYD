@@ -36,7 +36,12 @@ void setup_chauffageSb() {
   chauffageSb.setMqttPublishCallback([](const char* topic, const char* payload) -> int {
     return mqtt.publish(topic, payload);
   });
+  // Mode maintenance (Home-Assist 4.4) : ordre de HA sur le topic de maintenance du nœud, état publié retenu
+  chauffageSb.onMqttPublishRetenu = [](const char* topic, const char* payload, bool retenu) -> int {
+    return mqtt.publish(topic, payload, retenu);
+  };
   chauffageSb.setup("sb_");
+  chauffageSb.setTopicMaintenance(TOPIC_MAINTENANCE_CHAUFFAGE_SB);
 #else
   config.mRemoteChauffage = &mRemoteChauffage;
   mRemoteChauffage.setup("sb_");

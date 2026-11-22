@@ -495,7 +495,7 @@ String CRemoteTCS34725::getHTML() {
       "</div>"
       "<div class=\"row\">"
         + getHTMLWatchdog() +
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS + "subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS + "subtopic").c_str() + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 
   return html;

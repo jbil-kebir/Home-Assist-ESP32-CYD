@@ -84,11 +84,16 @@ void CActionneurIR::envoie() {
 // Retour
 // 0 : séquence lancée
 // -1 : consigne invalide
+// -8 : Mode maintenance (Capteur 5.1) : aucune émission
 // -9 : Inactif
 //--------------------------------------------------------------------------
 int CActionneurIR::demandeEtat(int consigne) {
   if (!active) return -9;
   if (consigne != 0 && consigne != 1) return -1;
+  if (onEstEnMaintenance && onEstEnMaintenance()) {
+    Serial.printf("CActionneurIR::demandeEtat() - Consigne %s ignorée : mode maintenance\n", consigne ? "ON" : "OFF");
+    return -8;
+  }
   Serial.printf("CActionneurIR::demandeEtat() - Consigne : %s\n", consigne ? "ON" : "OFF");
   miConsigne = consigne;
   muiTentative = 0;
@@ -306,8 +311,8 @@ String CActionneurIR::getHTML() {
   String html = "";
   html =  "<h2>Configuration de l'actionneur IR</h2>"
       "<div class=\"row\">"
-        "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
-        "<div><label>Pin</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
+        "<div class=\"checkbox-row\"><label>Actif" MARQUE_REDEMARRAGE "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+        "<div><label>Pin" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Protocole (1 NEC, 2 SONY, 3 RC5, 4 RC6)</label><input type=\"text\" name=" + (mPrefixNVS+"proto") + " value=\"" + mucProtocole + "\"></div>"

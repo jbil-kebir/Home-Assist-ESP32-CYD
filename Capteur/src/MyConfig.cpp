@@ -667,7 +667,7 @@ String CConfig::getHTML() {
   String html = "";
   html =  "<h2>Configuration générale</h2>"
       "<div class=\"row\">"
-        "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
+        "<div><label>Nom" MARQUE_MQTT "</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
         "<div class=\"checkbox-row\"><label>Deep Sleep</label><input type=\"checkbox\" name=" + (mPrefixNVS+"sleepA") + " value=\"1\"" + String(mbDeepSleepActive ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
@@ -691,8 +691,8 @@ String CConfig::getHTML() {
         "<div class=\"checkbox-row\"><label>Mesures muettes (MUTE)</label><input type=\"checkbox\" name=" + (mPrefixNVS+"mute") + " value=\"1\"" + String(mbMute ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Préfixe domotique</label><input type=\"text\" name=" + (mPrefixNVS+"domo_pref") + " value=\"" + domotique_prefix + "\"></div>"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Préfixe domotique" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"domo_pref") + " value=\"" + domotique_prefix + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 
   return html;
@@ -892,6 +892,11 @@ int CConfig::handleMqttCommand(const String& payload) {
   else if (cmd == "GET") {
     envoieConfig();
     envoieVersion();
+  }
+  else if (cmd == "MESURES") {
+    // 5.4 : demandée par le CYD principal après son démarrage (retenue sur le topic de commande) : dernière mesure de
+    // chaque capteur actif renvoyée tout de suite, forcée, avec son délai d'alerte (sans elle, KO jusqu'à 1 h)
+    for (CCapteurBase* c : capteursAlerte()) renvoieMesure(c);
   }
   else if (cmd.startsWith("MAINTENANCE")) {
     // Mode maintenance d'un nœud LoRa (Capteur 5.0, main.cpp) : « MAINTENANCE <min> » / « MAINTENANCE OFF », par la file

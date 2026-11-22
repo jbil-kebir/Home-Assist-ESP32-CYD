@@ -118,10 +118,13 @@ public:
 
   // MQTT callback
   std::function<int(const char*, const char*)> onMqttPublish;
+  std::function<bool()> onEstEnMaintenance;   // Mode maintenance (Capteur 5.1) : état entendu non publié
   void setMqttPublishCallback(std::function<int(const char* topic, const char* payload)> cbMqttPublish); // Pour publication MQTT
 
   void loadFromNVS();
   void loadFromWebServer (WebServer& server);
+  // Réglages à chaud (Capteur 5.3, MyWebServer::handleSave) : réglages qui demandent un redémarrage
+  String reglagesRedemarrage() const { return String(active) + "/" + String(mucPin) + "/" + mqttSubTopic; }
   void saveToNVS();
   void setActive(bool state);
   void setPrefixNVS(const char* pr) {mPrefixNVS = pr;}

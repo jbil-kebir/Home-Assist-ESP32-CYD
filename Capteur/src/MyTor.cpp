@@ -522,7 +522,7 @@ String CTor::getHTML() {
   html =  "<h2>Configuration de " + nomEquipement + "</h2>"
       "<div class=\"row\">"
         "<div><label>Nom</label><input type=\"text\" name=" + (mPrefixNVS+"nom") + " value=\"" + nomEquipement + "\"></div>"
-        "<div class=\"checkbox-row\"><label>Actif</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
+        "<div class=\"checkbox-row\"><label>Actif" MARQUE_REDEMARRAGE "</label><input type=\"checkbox\" name=" + (mPrefixNVS+"active") + " value=\"1\"" + String(active ? " checked" : "") + "></div>"
       "</div>"
       "<div class=\"row\">"
         "<div class=\"checkbox-row\"><label>Confirmation par le contrôleur</label><input type=\"checkbox\" name=" + (mPrefixNVS+"ack") + " value=\"1\"" + String(mbAckNeeded ? " checked" : "") + "></div>"
@@ -536,8 +536,8 @@ String CTor::getHTML() {
         "<div><label>ID</label><input type=\"text\" name=" + (mPrefixNVS+"id") + " value=\"" + mucCapteurID + "\"></div>"
       "</div>"
       "<div class=\"row\">"
-        "<div><label>Pin</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
-        "<div><label>Mode : " + String(INPUT_PULLUP) + " = PULLUP, " + String(INPUT_PULLDOWN) + " = PULLDOWN</label><input type=\"text\" name=" + (mPrefixNVS+"pmode") + " value=\"" + mucPinMode + "\"></div>"
+        "<div><label>Pin" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"pin") + " value=\"" + mucPin + "\"></div>"
+        "<div><label>Mode : " + String(INPUT_PULLUP) + " = PULLUP, " + String(INPUT_PULLDOWN) + " = PULLDOWN" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"pmode") + " value=\"" + mucPinMode + "\"></div>"
       "</div>"
       "<div class=\"row\">"
         "<div><label>Intervalle mesure</label><input type=\"text\" name=" + (mPrefixNVS+"inter") + " value=\"" + mulIntervalleMesure + "\"></div>"
@@ -549,7 +549,7 @@ String CTor::getHTML() {
         "<div><label>Intervalle de renvoi</label><input type=\"text\" name=" + (mPrefixNVS+"interr") + " value=\"" + mulIntervalleEnvoi + "\"></div>"
       "</div>";
   html += "<div class=\"row\">"
-        "<div><label>Topic prefix MQTT</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
+        "<div><label>Topic prefix MQTT" MARQUE_REDEMARRAGE "</label><input type=\"text\" name=" + (mPrefixNVS+"subtopic") + " value=\"" + mqttSubTopic + "\"></div>"
       "</div>";
 
   return html;

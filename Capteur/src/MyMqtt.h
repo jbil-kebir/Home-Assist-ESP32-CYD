@@ -37,6 +37,9 @@ public:
   void setup(const String pref);
   void begin();
   void reconnect();
+  // Réglages à chaud (Capteur 5.3) : broker modifié sur la page Web → déconnexion, loop() se reconnecte (abonnements refaits)
+  String reglagesConnexion() const { return mqtt_server + "\x1f" + String(mqtt_port) + "\x1f" + mqtt_user + "\x1f" + mqtt_password + "\x1f" + String(active); }
+  void reconnecteNouveauxReglages() { client.disconnect(); client.setServer(mqtt_server.c_str(), mqtt_port); mulDerniereTentative = 0; }
   void powerDown(); // Appelée pour deep-sleep
   void loop();
   int publishState(bool state);

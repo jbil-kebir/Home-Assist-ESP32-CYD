@@ -25,6 +25,7 @@ private:
   void handleChauffageSb();
   void handleRoot();
   void handleSave();
+  void handleReboot();   // Bouton « Redémarrer » de la page (Home-Assist 4.6)
   void handleNotFound();
   void handleLogs();
   void handleLogsData();
