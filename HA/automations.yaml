@@ -526,40 +526,6 @@
     data:
       value: '{{ states(''sensor.system_monitor_adresse_ipv4_end0'') }}'
   mode: single
-- id: '1775853470108'
-  alias: Chaudière - Allumer si froid
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id: sensor.thchrdc_temperature
-    below: 22.8
-  conditions:
-  - condition: time
-    after: '18:00:00'
-    before: '23:59:00'
-  actions:
-  - action: mqtt.publish
-    data:
-      topic: home/chaudiere/command
-      payload: ON_FORCE
-  mode: single
-- id: '1775853496116'
-  alias: Chaudière - Éteindre si chaud
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id: sensor.thchrdc_temperature
-    above: 22.8
-  conditions:
-  - condition: time
-    after: '18:00:00'
-    before: '23:59:00'
-  actions:
-  - action: mqtt.publish
-    data:
-      topic: home/chaudiere/command
-      payload: OFF_FORCE
-  mode: single
 - id: '1776081017162'
   alias: Capteurs - Recevoir IP ThCYD
   description: ''

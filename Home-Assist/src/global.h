@@ -146,7 +146,7 @@
 #define DELAI_ALERTE_DEFAUT_S 3600UL
 
 // Version du logiciel
-#define VERSION "4.7"
+#define VERSION "4.8"
 // Page Web (4.6) : signe ajouté au libellé des réglages qui ne s'appliquent pas à chaud. À tenir en accord avec
 // empreintesReglages (MyWebServer.cpp), qui décide réellement du redémarrage ou de la reconnexion MQTT
 #define MARQUE_REDEMARRAGE "<span class=\"mq-r\" title=\"Modification appliquée après un redémarrage\"> ↻</span>"

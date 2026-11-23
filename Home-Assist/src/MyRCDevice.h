@@ -80,6 +80,9 @@ public:
 
 protected:
   int commandeDirecte(bool voulu); // commande() sans le contrôle de la maintenance
+  // OFF_FORCE (4.8, comme CChaudiere) : appareil réactivé pour l'extinction, puis désactivé une fois éteint
+  bool mbForcerDisable = false;
+  void finForcerDisable();         // Désactivation demandée par OFF_FORCE, une fois la commande terminée
   bool mbOrdreMaintenanceLu = false;          // 4.7 : ordre retenu déjà lu (annonce aux CYD aux seulement après)
   bool mbEtatAvantMaintenance = false;
   bool mbEntreeMaintenanceEnAttente = false;  // Guirlande : état réel pas encore connu (démarrage du CYD)

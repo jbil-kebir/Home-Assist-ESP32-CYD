@@ -58,6 +58,7 @@ void CRCDevice::branchePresence() {
   mPresence.onFinCommande = [this]() {
     if (onMqttPublish != nullptr)
       onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + " VERIFICATION FIN").c_str());
+    finForcerDisable();
   };
   mPresence.onNonVerifieChange = [this](bool nonVerifie) {
     String s = buttonName + (nonVerifie ? " : etat non verifie" : " : etat verifie");
@@ -65,6 +66,19 @@ void CRCDevice::branchePresence() {
     if (onMqttPublish != nullptr)
       onMqttPublish(mqttSubTopicState.c_str(), (nomEquipement + (nonVerifie ? " NONVERIFIE" : " VERIFIE")).c_str());
   };
+}
+
+// OFF_FORCE (4.8) : désactivation une fois la commande terminée, seulement si l'appareil est bien éteint (échec de
+// l'extinction : il reste actif, le thermostat de HA peut réessayer)
+void CRCDevice::finForcerDisable() {
+  if (!mbForcerDisable) return;
+  mbForcerDisable = false;
+  if (etat || !active) return;
+  setActive(false);
+  if (onMqttPublish != nullptr) onMqttPublish(mqttSubTopicCommand.c_str(), "DISABLER");
+  String s = nomEquipement + " : desactive (force OFF)";
+  if (mEcran != nullptr) mEcran->updateStatus(s, true);
+  DBGLN(DBG_ACTIONNEURS, s);
 }
 
 int CRCDevice::activeEquipement() {
@@ -241,9 +255,23 @@ void CRCDevice::handleMqttCommand(const String& payload) {
       
   //Serial.println("CRCDevice::handleMqttCommand() - Bouton Chauffage - Cmd : " + cmd);
 
-  if (cmd == "ON" || cmd == "OFF") {
+  if (cmd == "ON" || cmd == "OFF" || cmd == "ON_FORCE" || cmd == "OFF_FORCE") {
     // Sans nœud de présence, ON comme OFF basculent l'appareil (fonctionnement historique, voir commande())
-    commande(cmd == "ON");
+    bool bVoulu = (cmd == "ON" || cmd == "ON_FORCE");
+    // 4.8 : ON_FORCE / OFF_FORCE (thermostat de HA, comme la chaudière) : commande exécutée même appareil désactivé,
+    // qui est réactivé ; après OFF_FORCE, il est désactivé de nouveau une fois éteint (finForcerDisable())
+    if (cmd.endsWith("_FORCE")) {
+      if (refuseEnMaintenance()) return;
+      setActive(true);
+      if (onMqttPublish != nullptr) onMqttPublish(mqttSubTopicCommand.c_str(), "ENABLER");
+      String s = nomEquipement + (bVoulu ? " : active (force ON)" : " : active (force OFF)");
+      if (mEcran != nullptr) mEcran->updateStatus(s, true);
+      DBGLN(DBG_ACTIONNEURS, s);
+      mbForcerDisable = !bVoulu;
+    }
+    commande(bVoulu);
+    // Commande déjà terminée (sans nœud de présence, ou appareil déjà dans l'état voulu) ; sinon : fin de la vérification
+    if (!mPresence.verificationEnCours()) finForcerDisable();
  }
  else if (cmd.startsWith("MAINTENANCER")) {
     // Notre propre annonce aux CYD auxiliaires (publieMaintenanceAux()), reçue sur le topic de commande : rien à faire

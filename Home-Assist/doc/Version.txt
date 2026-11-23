@@ -1,3 +1,10 @@
+4.8
+Thermostat « Chauffage RDC » de Home Assistant (23/11/2026) : les appareils 433 MHz (CRCDevice) acceptent ON_FORCE /
+    OFF_FORCE, comme la chaudière : commande exécutée même appareil désactivé, qui est réactivé (ENABLER) ; après
+    OFF_FORCE, désactivé de nouveau (DISABLER) une fois éteint (fin de la vérification par le nœud de présence, ou tout
+    de suite sans nœud) ; extinction en échec : reste actif. Refusés en maintenance. CYD auxiliaires inchangés (ils
+    suivent ENABLER / ONR / OFFR / DISABLER du principal).
+
 4.7
 Correctifs groupés du 22/11/2026 :
     - Mode maintenance SANS FIN AUTOMATIQUE : ordre retenu « ON » / « OFF » (heure après ON ignorée), état « ACTIVE,

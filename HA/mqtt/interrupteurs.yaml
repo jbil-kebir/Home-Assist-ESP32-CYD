@@ -104,6 +104,19 @@
   state_off: "OFFR"
   icon: mdi:radiator
 
+# Commande du thermostat « Chauffage RDC » (packages/chauffage_rdc.yaml), comme « Chaudiere Programmation » :
+# ON_FORCE / OFF_FORCE (Home-Assist 4.8) exécutés même cadenas fermé, qui est rouvert ; après OFF_FORCE, refermé une fois
+# l'extinction confirmée. État = ONR / OFFR, état mesuré par PrChauffageRDC (nœud de présence de la prise)
+- name: "Chauffage RdC Programmation"
+  unique_id: mqtt_chauffage_rdc_programmation
+  command_topic: "home/chauffagerdc/command"
+  payload_on: "ON_FORCE"
+  payload_off: "OFF_FORCE"
+  state_topic: "home/chauffagerdc/command"
+  state_on: "ONR"
+  state_off: "OFFR"
+  icon: mdi:radiator
+
 - name: "Chauffage RdC Enable"
   unique_id: mqtt_chauffage_rdc_enable
   command_topic: "home/chauffagerdc/command"

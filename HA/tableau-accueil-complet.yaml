@@ -1,4 +1,5 @@
-# Tableau « Accueil » COMPLET (6 vues) : export .storage/lovelace.dashboard_accueil du 12/11/2026
+# Tableau « Accueil » COMPLET (7 vues) : export .storage/lovelace.dashboard_accueil du 12/11/2026
+# + vue Chauffage RDC de vue-chauffage-rdc.yaml (23/11/2026, après Chaudière)
 # + vue Actionneurs de vue-actionneurs.yaml (carte Chauffage RdC, couleur de Lumière cave selon sensor.jncave_etat).
 # Installation : tableau Accueil → ✏️ → ⋮ → « Éditeur de configuration brute » → tout remplacer par ce fichier.
 views:
@@ -699,6 +700,109 @@ views:
       - climate.chaudiere_rdc
       time_step: 15
       show_header_toggle: false
+  show_icon_and_title: true
+  cards: []
+- type: sections
+  max_columns: 4
+  title: Chauffage RDC
+  path: chauffage-rdc
+  icon: mdi:radiator
+  sections:
+    - type: grid
+      cards:
+        - type: vertical-stack
+          cards:
+            - type: custom:mushroom-entity-card
+              entity: switch.chauffage_rdc
+              name: Chauffage RdC
+              icon: mdi:radiator
+              tap_action:
+                action: none
+              card_mod:
+                style: |
+                  ha-state-icon {
+                    color: {{ 'green' if is_state('switch.chauffage_rdc', 'on') else 'red' }} !important;
+                  }
+                  .shape {
+                    background: none !important;
+                  }
+            - type: horizontal-stack
+              cards:
+                - type: custom:button-card
+                  entity: switch.chauffage_rdc_enable
+                  name: ""
+                  show_name: false
+                  tap_action:
+                    action: toggle
+                  icon: |
+                    [[[return states['switch.chauffage_rdc_enable'].state === 'on' ? 'mdi:lock-open' : 'mdi:lock']]]
+                  styles:
+                    card:
+                      - height: 60px
+                      - background: |
+                          [[[return states['switch.chauffage_rdc_enable'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+                    icon:
+                      - color: |
+                          [[[return states['switch.chauffage_rdc_enable'].state === 'on' ? 'green' : 'red']]]
+                - type: custom:button-card
+                  entity: switch.chauffage_rdc
+                  name: ""
+                  show_name: false
+                  tap_action:
+                    action: toggle
+                  icon: mdi:power
+                  styles:
+                    card:
+                      - height: 60px
+                      - background: |
+                          [[[return states['switch.chauffage_rdc'].state === 'on' ? 'rgba(0,200,0,0.2)' : 'rgba(200,0,0,0.2)']]]
+                    icon:
+                      - color: |
+                          [[[return states['switch.chauffage_rdc'].state === 'on' ? 'green' : 'red']]]
+        # ThChRDC (mesure du thermostat) : éveil / sommeil (sommeil selon l'écart à la consigne, packages/chauffage_rdc.yaml)
+        - type: vertical-stack
+          cards:
+            - type: custom:mushroom-template-card
+              entity: binary_sensor.thchrdc_eveille
+              primary: ThChRDC (température chambre RDC)
+              secondary: |-
+                {%- set e = states('binary_sensor.thchrdc_eveille') -%}
+                {%- set a = states('sensor.thchrdc_commande_en_attente') -%}
+                {%- set r = states('sensor.thchrdc_prochain_reveil') -%}
+                {%- set c = state_attr('sensor.thchrdc_config', 'sleepC') -%}
+                {%- if e == 'on' -%}Éveillé
+                {%- elif e == 'off' -%}Endormi
+                {%- if r not in ['unknown', 'unavailable', ''] -%}
+                {%- set t = as_datetime(r) -%}
+                {%- set s = (t - now()).total_seconds() -%}
+                {%- if s > 0 %} · réveil vers {{ as_local(t).strftime('%H:%M') }} (dans {{ (s / 60) | round(0, 'ceil') | int }} min)
+                {%- elif s > -60 %} · réveil imminent
+                {%- else %} · réveil attendu depuis {{ (-s / 60) | int }} min
+                {%- endif -%}
+                {%- endif -%}
+                {%- else -%}Inconnu
+                {%- endif -%}
+                {%- if c is not none %} · sommeil {{ (c | int / 60) | round(1) }} min{% endif %}
+                {%- if a not in ['aucune', 'unknown', 'unavailable', ''] %} · en attente : {{ a }}{% endif %}
+              icon: "{{ 'mdi:sleep-off' if is_state('binary_sensor.thchrdc_eveille', 'on') else 'mdi:sleep' }}"
+              tap_action:
+                action: more-info
+              card_mod:
+                style: |
+                  ha-state-icon {
+                    color: {{ 'green' if is_state('binary_sensor.thchrdc_eveille', 'on') else ('red' if is_state('binary_sensor.thchrdc_eveille', 'off') else 'grey') }} !important;
+                  }
+                  .shape {
+                    background: none !important;
+                  }
+        - type: thermostat
+          entity: climate.chauffage_rdc
+        - type: custom:scheduler-card
+          title: Programmation chauffage RDC
+          include:
+            - climate.chauffage_rdc
+          time_step: 15
+          show_header_toggle: false
   show_icon_and_title: true
   cards: []
 - type: sections

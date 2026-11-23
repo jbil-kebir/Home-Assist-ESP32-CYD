@@ -1,0 +1,194 @@
+# ============================================================
+# Package : thermostat « Chauffage RDC » (23/11/2026)
+#
+# Chauffage de la chambre du rez-de-chaussée (prise 433 MHz du CYD principal, état mesuré par PrChauffageRDC) régulé
+# sur la température de ThChRDC. Indépendant du thermostat « Chaudière RDC » (packages/chaudiere.yaml), sur le même
+# modèle :
+#   - climate.chauffage_rdc : generic_thermostat sur switch.chauffage_rdc_programmation (mqtt/interrupteurs.yaml :
+#     ON_FORCE / OFF_FORCE, Home-Assist 4.8) ; min_temp = consigne posée à l'arrêt ;
+#   - veille à l'arrêt : comme packages/thermostat_arret.yaml ;
+#   - sommeil de ThChRDC selon l'écart à la consigne : comme packages/thermostat_sommeil.yaml (ThCh1er) ;
+#   - sensor.thchrdc_prochain_reveil : réveil estimé, pour la carte ThChRDC de la vue « Chauffage RDC ».
+# ============================================================
+
+climate:
+  - platform: generic_thermostat
+    name: Chauffage RDC
+    unique_id: chauffage_rdc_thermostat
+    heater: switch.chauffage_rdc_programmation
+    target_sensor: sensor.thchrdc_temperature
+    min_temp: 6
+    max_temp: 25
+    cold_tolerance: 0.5
+    hot_tolerance: 0.5
+    target_temp: 6
+
+# ---------- Seuils du sommeil de ThChRDC (durées = ses réglages sleepS / sleepM / sleepL / sleepI) ----------
+input_number:
+  thchrdc_seuil_court:
+    name: "ThChRDC Seuil sommeil court"
+    icon: mdi:thermometer-chevron-down
+    min: 0.2
+    max: 5
+    step: 0.1
+    initial: 1
+    unit_of_measurement: "°C"
+    mode: box
+  thchrdc_seuil_moyen:
+    name: "ThChRDC Seuil sommeil moyen"
+    icon: mdi:thermometer-chevron-down
+    min: 0.5
+    max: 10
+    step: 0.1
+    initial: 2
+    unit_of_measurement: "°C"
+    mode: box
+
+template:
+  # ---------- Prochain réveil estimé de ThChRDC : heure de la trame DEEPSLEEP ON + durée annoncée ----------
+  # Trame : « ThChRDC DEEPSLEEP ON 23/11/2026 10:32:05 600 Durée éveil : 2441 ms » (durée = 6e mot, en s)
+  - trigger:
+      - trigger: mqtt
+        topic: "home/+/state"
+        value_template: >-
+          {%- set m = value.split(' ') -%}
+          {{ 'ok' if m | length > 5 and m[0] | upper in ['THCHRDC', 'BATCHRDC'] and m[1] | upper == 'DEEPSLEEP' and m[2] | upper == 'ON' else '' }}
+        payload: "ok"
+    sensor:
+      - name: "ThChRDC Prochain réveil"
+        unique_id: thchrdc_prochain_reveil
+        device_class: timestamp
+        icon: mdi:alarm
+        state: >-
+          {%- set d = trigger.payload.split(' ')[5] | int(0) -%}
+          {{ (now() + timedelta(seconds=d)).isoformat() if d > 0 else none }}
+
+automation:
+  # ---------- Veille à l'arrêt (même logique que « Thermostat RDC - Veille à l'arrêt ») ----------
+  # 1. consigne mémorisée abaissée au minimum : le planificateur passe en chauffe AVANT de régler la consigne ;
+  # 2. DISABLE au CYD principal une fois l'extinction confirmée (switch.chauffage_rdc off = mesure de PrChauffageRDC)
+  #    + 2 min : sécurité contre un allumage manuel hors période de chauffe (le thermostat, lui, envoie ON_FORCE).
+  #    Extinction non confirmée en 15 min : rien n'est envoyé, notification.
+  - id: chauffage_rdc_veille_a_l_arret
+    alias: Chauffage RDC - Veille à l'arrêt
+    description: >-
+      À l'arrêt du thermostat Chauffage RDC : consigne mémorisée abaissée au minimum, puis DISABLE au CYD une fois le
+      chauffage éteint.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: climate.chauffage_rdc
+        to: "off"
+    actions:
+      - if:
+          - condition: template
+            value_template: >-
+              {{ state_attr('climate.chauffage_rdc', 'temperature') | float(0)
+                 > state_attr('climate.chauffage_rdc', 'min_temp') | float(0) }}
+        then:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.chauffage_rdc
+            data:
+              temperature: "{{ state_attr('climate.chauffage_rdc', 'min_temp') | float }}"
+      - wait_template: "{{ is_state('switch.chauffage_rdc', 'off') }}"
+        timeout: "00:15:00"
+        continue_on_timeout: true
+      - if:
+          - condition: template
+            value_template: "{{ not wait.completed }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              notification_id: chauffage_rdc_veille
+              title: Thermostat Chauffage RDC à l'arrêt
+              message: >-
+                Extinction du chauffage RDC non confirmée 15 min après l'arrêt du thermostat
+                (Chauffage RdC : {{ states('switch.chauffage_rdc') }}) : DISABLE non envoyé au CYD.
+          - stop: Extinction non confirmée
+      - delay: "00:02:00"
+      - condition: state
+        entity_id: climate.chauffage_rdc
+        state: "off"
+      - action: mqtt.publish
+        data:
+          topic: home/chauffagerdc/command
+          payload: DISABLE
+
+  # ---------- Sommeil de ThChRDC selon l'écart à la consigne (même logique que ThCh1er) ----------
+  #   - thermostat à l'arrêt                        -> SLEEPI : intervalle standard (sleepI)
+  #   - en chauffe, |consigne - T| <= seuil court   -> SLEEPS (sleepS)
+  #   - en chauffe, |écart| <= seuil moyen          -> SLEEPM (sleepM)
+  #   - en chauffe, |écart| > seuil moyen           -> SLEEPL (sleepL)
+  # Envoyé seulement si la durée voulue diffère de sleepC ; remplace une commande de sommeil en attente, ne touche pas
+  # aux autres (nouvel essai au déclenchement suivant).
+  - id: thchrdc_sommeil_ecart_consigne
+    alias: ThChRDC - Sommeil selon l'écart à la consigne
+    description: >-
+      Règle la durée de sommeil de ThChRDC (SLEEPS / SLEEPM / SLEEPL, ou SLEEPI à l'arrêt) selon l'écart entre la
+      consigne du thermostat Chauffage RDC et la température de ThChRDC.
+    mode: queued
+    max: 3
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: sensor.thchrdc_temperature
+      - trigger: state
+        entity_id: climate.chauffage_rdc
+      - trigger: state
+        entity_id: climate.chauffage_rdc
+        attribute: temperature
+      - trigger: state
+        entity_id: sensor.thchrdc_config
+      - trigger: state
+        entity_id:
+          - input_number.thchrdc_seuil_court
+          - input_number.thchrdc_seuil_moyen
+      - trigger: homeassistant
+        event: start
+    variables:
+      cfg: sensor.thchrdc_config
+      mode_thermostat: "{{ states('climate.chauffage_rdc') }}"
+      t: "{{ states('sensor.thchrdc_temperature') | float(none) }}"
+      consigne: "{{ state_attr('climate.chauffage_rdc', 'temperature') | float(none) }}"
+      seuil_court: "{{ states('input_number.thchrdc_seuil_court') | float(1) }}"
+      seuil_moyen: "{{ states('input_number.thchrdc_seuil_moyen') | float(2) }}"
+      commande: >-
+        {%- if mode_thermostat != 'heat' -%} SLEEPI
+        {%- elif t is none or consigne is none -%}
+        {%- else -%}
+          {%- set e = (consigne - t) | abs -%}
+          {{ 'SLEEPS' if e <= seuil_court else ('SLEEPM' if e <= seuil_moyen else 'SLEEPL') }}
+        {%- endif -%}
+      duree_voulue: >-
+        {%- set cle = {'SLEEPI': 'sleepI', 'SLEEPS': 'sleepS', 'SLEEPM': 'sleepM', 'SLEEPL': 'sleepL'}.get(commande) -%}
+        {{ state_attr(cfg, cle) if cle else none }}
+      duree_en_cours: "{{ state_attr(cfg, 'sleepC') }}"
+      attente: "{{ states('sensor.thchrdc_commande_en_attente') | trim }}"
+      rien_en_attente: "{{ attente in ['aucune', 'unknown', 'unavailable', ''] }}"
+      sommeil_en_attente: "{{ attente | upper in ['SLEEPI', 'SLEEPS', 'SLEEPM', 'SLEEPL'] }}"
+    conditions:
+      - condition: template
+        value_template: "{{ commande != '' and duree_voulue is not none and duree_en_cours is not none }}"
+      - condition: template
+        value_template: "{{ duree_voulue | int != duree_en_cours | int }}"
+      - condition: template
+        value_template: "{{ attente | upper != commande }}"
+      - condition: template
+        value_template: "{{ rien_en_attente or sommeil_en_attente }}"
+    actions:
+      - if:
+          - condition: template
+            value_template: "{{ sommeil_en_attente }}"
+        then:
+          - action: script.noeud_commande
+            data:
+              capteur: thchrdc
+              commande: ANNULER
+          - wait_template: "{{ states('sensor.thchrdc_commande_en_attente') in ['aucune', 'unknown', 'unavailable', ''] }}"
+            timeout: "00:00:15"
+            continue_on_timeout: false
+      - action: script.noeud_commande
+        data:
+          capteur: thchrdc
+          commande: "{{ commande }}"
